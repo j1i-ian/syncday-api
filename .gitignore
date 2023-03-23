@@ -1,3 +1,6 @@
+# generated docs
+.docs
+
 # generated docker-volumes
 .docker
 
