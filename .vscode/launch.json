@@ -1,0 +1,55 @@
+{
+    "version": "1.0.0",
+    "configurations": [
+        {
+            "name": "Run with nest (app backend)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/nest",
+            "cwd": "${workspaceRoot}",
+            "console": "integratedTerminal",
+            "args": [
+                "start",
+                "--watch"
+            ],
+            "env": {
+                "NODE_ENV": "test"
+            },
+            "internalConsoleOptions": "neverOpen",
+            "sourceMaps": true
+        },
+        {
+            "type": "node",
+            "name": "Mocha Single Test",
+            "request": "launch",
+            "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/mocha",
+            "args": [
+                "--no-parallel",
+                "--config",
+                ".mocharc.yml",
+                "${file}"
+            ],
+            "cwd": "${workspaceRoot}",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "type": "node",
+            "name": "Mocha Single Test with watching",
+            "request": "launch",
+            "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/mocha",
+            "args": [
+                "--no-parallel",
+                "--config",
+                ".mocharc.yml",
+                "--watch",
+                "--watch-files",
+                "src",
+                "${file}"
+            ],
+            "cwd": "${workspaceRoot}",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        }
+    ]
+}
