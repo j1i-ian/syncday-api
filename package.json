@@ -8,7 +8,6 @@
   "scripts": {
     "bumpup": "npm version patch --no-git-tag-version",
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -16,6 +15,7 @@
     "start:docker:nginx": "docker compose up nginx",
     "start:docker:mariadb": "docker compose up mariadb",
     "start:docker:redis": "docker compose up redis",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
