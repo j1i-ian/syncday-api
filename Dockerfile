@@ -8,7 +8,7 @@ ENV ENV production
 
 COPY . .
 
-RUN npm install --legacy-peer-deps --ignore-scripts
+RUN npm install --ignore-scripts
 
 RUN npm run build
 
