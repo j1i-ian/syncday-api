@@ -8,7 +8,7 @@ ENV ENV production
 
 COPY . .
 
-RUN npm install --ignore-scripts
+RUN npm install --ignore-scripts --production
 
 RUN npm run build
 
