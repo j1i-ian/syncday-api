@@ -58,6 +58,7 @@
     "eslint-plugin-jsdoc": "^40.1.0",
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-unused-imports": "^2.0.0",
+    "husky": "^8.0.3",
     "mocha": "^10.2.0",
     "mocha-simple-html-reporter": "^2.0.0",
     "nyc": "^15.1.0",
