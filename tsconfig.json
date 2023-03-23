@@ -6,16 +6,69 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "es2017",
+    "target": "ES2020",
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
+    "lib": [
+      "ES2020"
+    ],
     "skipLibCheck": true,
-    "strictNullChecks": false,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "downlevelIteration": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "resolveJsonModule": true,
+    "strictPropertyInitialization": true,
+    "paths": {
+      "@config/*": [
+        "src/configs/*"
+      ],
+      "@decorators/*": [
+        "src/@core/core/decorators/*"
+      ],
+      "@interfaces/*": [
+        "src/@core/core/interfaces/*"
+      ],
+      "@entity/*": [
+        "src/@core/core/entities/*"
+      ],
+      "@dto/*": [
+        "src/main/dto/*",
+        "src/@core/core/dto/*"
+      ],
+      "@services/*": [
+        "src/main/services/*"
+      ],
+      "@core/*": [
+        "src/@core/core/*"
+      ],
+      "@app/*": [
+        "src/main/*"
+      ],
+      "@test/*": [
+        "src/test/*"
+      ],
+      "*": [
+        "node_modules/*"
+      ]
+    },
+    "typeRoots": [
+      "node_modules/@types",
+      "./typings"
+    ],
+    "types": [
+      "mocha",
+      "chai",
+      "node",
+      "test"
+    ]
   }
 }
