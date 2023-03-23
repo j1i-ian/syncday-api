@@ -4,7 +4,7 @@
   "description": "api backend for syncday",
   "author": "Alan",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "LICENSED",
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
