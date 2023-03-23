@@ -1,0 +1,14 @@
+{
+    "editor.formatOnSave": true,
+    "eslint.format.enable": true,
+    "eslint.workingDirectories": [
+        {
+            "mode": "auto"
+        }
+    ],
+    "[markdown]": {
+        "editor.formatOnSave": false
+    },
+    "editor.suggest.showMethods": true,
+    "editor.suggest.preview": true
+}
