@@ -1,0 +1,71 @@
+version: '3.7'
+services:
+  app:
+    # ECS Task Definition 의 container name 과 맞춤
+    container_name: syncday-backend-api
+    build:
+      context: .
+      dockerfile: ./Dockerfile.dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm start
+    env_file:
+      - .env.docker
+    networks:
+      - docker-net
+    ports:
+      - 3011:3011
+    depends_on:
+      - nginx
+      - mariadb
+  nginx:
+    image: nginx
+    volumes:
+      - ./configs/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - docker-net
+    ports:
+      - 80:80
+  mariadb:
+    image: mariadb
+    container_name: syncday-local-mariadb
+    ports:
+      - 3306:3306
+    networks:
+      - docker-net
+    volumes:
+      - ".docker/syncday-local-mariadb:/var/lib/mysql"
+    environment:
+      - MYSQL_USER=local_sample
+      - MYSQL_ROOT_PASSWORD=syncday_local_r00tPass
+      - MYSQL_PASSWORD=syncday_local_Pass
+      - MYSQL_DATABASE=syncday_local
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "-uroot",
+          "-psyncday_local_r00tPass",
+          " ping",
+          "-h",
+          "localhost"
+        ]
+      timeout: 50s
+      retries: 10
+  # production 에서는 elasticache 로 대체됨
+  redis:
+    container_name: redis
+    image: "redis:latest"
+    ports:
+      - 6379:6379
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ".docker/redis:/opt/redis-data"
+      - ./configs/redis/redis.local.conf:/usr/local/etc/redis/redis.conf
+    restart: always
+
+networks:
+  docker-net:
+    driver: bridge
