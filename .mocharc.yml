@@ -1,0 +1,22 @@
+require:
+  - ts-node/register/transpile-only
+  - tsconfig-paths/register
+  # - scripts/mocha-bootload.ts
+  # - typeorm-faker/registers
+  # - chai/register-expect
+reporter: "spec"
+reporter-options: output=.docs/report.html
+package: ./package.json
+# TODO: Remote CI 를 위해 parellel false 로 설정하고 이후 연구를 통해 true 로.
+parallel: false
+timeout: 5000
+ui: bdd
+recursive: true
+jobs: 5
+exclude:
+  - node_modules
+#spec:
+#  spec 은 single test run 을 위해 parameter 로 받습니다.
+watch: false
+watch-files:
+  - 'src/**/*{.test,.spec}.ts'
