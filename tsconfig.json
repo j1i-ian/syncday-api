@@ -62,13 +62,15 @@
     },
     "typeRoots": [
       "node_modules/@types",
-      "./typings"
+      "./typings",
+      "node_modules/typeorm-faker/@types"
     ],
     "types": [
       "mocha",
       "chai",
       "node",
-      "test"
+      "test",
+      "typeorm-faker"
     ]
   }
 }
