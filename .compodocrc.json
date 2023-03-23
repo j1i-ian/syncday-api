@@ -1,0 +1,7 @@
+{
+    "$schema": "./node_modules/@compodoc/compodoc/src/config/schema.json",
+    "output": "docs",
+    "name": "Syncday Service Document",
+    "unitTestCoverage": "coverage/coverage-summary.json",
+    "includes": ".docs"
+}
