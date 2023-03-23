@@ -1,0 +1,17 @@
+{
+    "apps": [
+        {
+            "name": "syncday-backend-api",
+            "script": "dist/main.js",
+            "instances": 1,
+            "max_memory_restart": "1G",
+            "exec_mode": "fork",
+            "log_date_format": "YYYY-MM-DD HH:mm Z",
+            "env": {
+                "NODE_ENV": "production"
+            },
+            "interpreter": "node",
+            "error_file": "/dev/null"
+        }
+    ]
+}
