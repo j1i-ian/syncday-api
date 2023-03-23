@@ -3,12 +3,20 @@
   "check-coverage": true,
   "statements": 80,
   "lines": 80,
-  "functions": 0,
-  "branches": 0,
+  "functions": 80,
+  "branches": 80,
+  "sourceMap": true,
+  "instrument": true,
+  "cache": true,
   "reporter": [
     "json-summary"
   ],
+  "include": [
+    "src/**/*.spec.ts"
+  ],
   "exclude": [
+    "src/main.ts",
+    "src/**/*.module.ts",
     "coverage/**",
     "docs/**",
     "packages/*/test{,s}/**",
