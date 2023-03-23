@@ -47,6 +47,7 @@
     "pm2": "^5.3.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.2.0",
+    "typeorm": "^0.3.12",
     "winston": "^3.8.2",
     "winston-cloudwatch": "^6.1.1"
   },
