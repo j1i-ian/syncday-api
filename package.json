@@ -5,6 +5,9 @@
   "author": "Alan",
   "private": true,
   "license": "LICENSED",
+  "options": {
+    "mocha": "--config .mocharc.yml"
+  },
   "scripts": {
     "bumpup": "npm version patch --no-git-tag-version",
     "build": "nest build",
@@ -17,11 +20,10 @@
     "start:docker:redis": "docker compose up redis",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "",
-    "test:watch": "",
-    "test:cov": "",
-    "test:debug": "",
-    "test:e2e": ""
+    "test": "mocha $npm_package_options_mocha 'src/**/*{.test,.spec}.ts'",
+    "test:ci": "mocha $npm_package_options_mocha -R mocha-simple-html-reporter 'src/**/*{.test,.spec}.ts'",
+    "test:failonly": "mocha $npm_package_options_mocha 'src/**/*{.test,.spec}.ts' | grep -B 3 -A 3 -E '\\d)'",
+    "test:single": "mocha $npm_package_options_mocha"
   },
   "dependencies": {
     "@nestjs/common": "^9.0.0",
