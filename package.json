@@ -1,8 +1,8 @@
 {
   "name": "syncday-backend-api",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "api backend for syncday",
+  "author": "Alan",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
