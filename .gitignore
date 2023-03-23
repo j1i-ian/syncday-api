@@ -1,5 +1,7 @@
 # generated docs
-.docs
+.docs/*
+!.docs/summary.json
+docs
 
 # generated docker-volumes
 .docker
