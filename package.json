@@ -25,6 +25,7 @@
     "test:ci": "mocha $npm_package_options_mocha -R mocha-simple-html-reporter 'src/**/*{.test,.spec}.ts'",
     "test:failonly": "mocha $npm_package_options_mocha 'src/**/*{.test,.spec}.ts' | grep -B 3 -A 3 -E '\\d)'",
     "test:single": "mocha $npm_package_options_mocha",
+    "prune": "bash scripts/prune-merged-branches.sh",
     "prepare": "husky install"
   },
   "dependencies": {
