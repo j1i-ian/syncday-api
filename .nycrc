@@ -1,0 +1,27 @@
+{
+  "all": true,
+  "check-coverage": true,
+  "statements": 80,
+  "lines": 80,
+  "functions": 0,
+  "branches": 0,
+  "reporter": [
+    "json-summary"
+  ],
+  "exclude": [
+    "coverage/**",
+    "docs/**",
+    "packages/*/test{,s}/**",
+    "**/*.d.ts",
+    "test{,spec}/**",
+    "test{,-*}.{js,cjs,mjs,ts}",
+    "**/*{.,-}test.{js,cjs,mjs,ts}",
+    "**/__tests__/**",
+    "**/{karma,rollup,webpack}.config.js",
+    "**/{babel.config,.eslintrc,.mocharc}.{js,cjs}",
+    "lib/browser/**",
+    "package-scripts.js",
+    "scripts/**",
+    "ormconfig*"
+  ]
+}
