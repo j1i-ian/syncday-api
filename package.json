@@ -11,6 +11,9 @@
   "scripts": {
     "bumpup": "npm version patch --no-git-tag-version",
     "build": "nest build",
+    "prebuild:docs": "npm run test:coverage",
+    "build:docs": "compodoc -p tsconfig.doc.json",
+    "postbuild:docs": "cp .docs/report.html docs/additional-documentation/syncday-test-html-report.html",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
