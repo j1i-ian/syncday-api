@@ -7,4 +7,4 @@ import * as sinon from 'sinon';
 chai.use(chaiAsPromised);
 
 (globalThis as any).sinon = sinon;
-// (globalThis as any).stubQueryBuilder = typeormFaker.stubQueryBuilder;
+(globalThis as any).stubQueryBuilder = typeormFaker.stubQueryBuilder;
