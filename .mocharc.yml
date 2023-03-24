@@ -1,9 +1,9 @@
 require:
+  - typeorm-faker/registers
   - ts-node/register/transpile-only
   - tsconfig-paths/register
   - chai/register-expect
   - scripts/mocha-bootload.ts
-  - typeorm-faker/registers
 reporter: "spec"
 reporter-options: output=.docs/report.html
 package: ./package.json
