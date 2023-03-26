@@ -10,6 +10,7 @@
   },
   "scripts": {
     "bumpup": "npm version patch --no-git-tag-version",
+    "prebuild": "rm -rf dist",
     "build": "nest build",
     "prebuild:docs": "npm run test:coverage",
     "build:docs": "compodoc -p tsconfig.doc.json",
