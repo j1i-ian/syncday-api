@@ -1,7 +1,7 @@
 {
     "apps": [
         {
-            "name": "syncday-backend-api",
+            "name": "syncday-api",
             "script": "dist/main.js",
             "instances": 1,
             "max_memory_restart": "1G",

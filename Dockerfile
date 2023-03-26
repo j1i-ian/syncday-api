@@ -1,6 +1,6 @@
 FROM keymetrics/pm2:18-alpine
 
-WORKDIR /opt/syncday-backend-api
+WORKDIR /opt/syncday-api
 
 RUN apk add --no-cache tzdata curl
 

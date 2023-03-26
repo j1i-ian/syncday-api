@@ -2,7 +2,7 @@ version: '3.7'
 services:
   app:
     # ECS Task Definition 의 container name 과 맞춤
-    container_name: syncday-backend-api
+    container_name: syncday-api
     build:
       context: .
       dockerfile: ./Dockerfile.dev
