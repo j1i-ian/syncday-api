@@ -1,0 +1,74 @@
+default:
+  image: node:19-alpine
+
+cache:
+  paths:
+    - node_modules/
+    - dist/
+
+stages:
+  - .pre
+  - build
+  - lint
+  - test
+  - security
+  - deploy
+  # for ecs template
+  - review
+  - dast
+  - production
+  - cleanup
+
+
+init:
+  stage: .pre
+  script:
+    - npm install
+
+build-production:
+  stage: build
+  needs:
+    - init
+  script:
+    - npm run build
+  artifacts:
+    when: on_success
+    paths:
+      - dist/
+    expire_in: 1 week
+
+lint:
+  stage: test
+  needs:
+    - build-production
+  script:
+    - npm run lint
+
+test:
+  stage: test
+  needs:
+    - build-production
+  script:
+    - npm run test
+
+deploy-to-production:
+  stage: deploy
+  needs:
+    - lint
+    - test
+  dependencies:
+    - lint
+    - test
+  variables:
+    NODE_ENV: production
+  environment:
+    name: production
+    url: https://api.sync.day
+  only:
+    - main
+  script:
+    - echo "Deploy to production"
+include:
+  - template: AWS/Deploy-ECS.gitlab-ci.yml
+    rules:
+      - if: $CI_COMMIT_BRANCH == "main"
