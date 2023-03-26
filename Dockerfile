@@ -9,6 +9,7 @@ ENV ENV production
 COPY . .
 
 RUN npm install --ignore-scripts --production
+RUN npm install @nestjs/cli
 
 RUN npm run build
 
