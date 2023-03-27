@@ -1,0 +1,23 @@
+{
+    "type": "mariadb",
+    "charset": "utf8mb4",
+    "logging": false,
+    "logger": "file",
+    "timezone": "+09:00",
+    "entities": [
+        "dist/@core/core/entities/**/*{.ts,.js}"
+    ],
+    "migrations": [
+        "dist/migrations/**/*{.ts,.js}"
+    ],
+    "subscribers": [
+        "dist/subscriber/**/*{.ts,.js}"
+    ],
+    "cli": {
+        "entitiesDir": [
+            "dist/@core/core/entities"
+        ],
+        "migrationsDir": "dist/migration",
+        "subscribersDir": "dist/subscriber"
+    }
+}
