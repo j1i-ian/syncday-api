@@ -4,6 +4,8 @@
     },
     "editor.formatOnSave": true,
     "eslint.format.enable": true,
+    "editor.suggest.showMethods": true,
+    "editor.suggest.preview": true,
     "eslint.workingDirectories": [
         {
             "mode": "auto"
@@ -12,6 +14,6 @@
     "[markdown]": {
         "editor.formatOnSave": false
     },
-    "editor.suggest.showMethods": true,
-    "editor.suggest.preview": true
-}
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "typescript.preferences.importModuleSpecifier": "relative",
+  }
