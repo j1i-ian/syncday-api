@@ -43,10 +43,11 @@ export class User {
     })
     phone: string;
 
-    @Column({
-        length: 300
+    @Column('varchar', {
+        length: 300,
+        default: null
     })
-    profileImage: string;
+    profileImage: string | null;
 
     @Column('simple-array')
     roles: Role[];
