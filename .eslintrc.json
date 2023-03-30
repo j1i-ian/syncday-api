@@ -231,6 +231,11 @@
                         "position": "after"
                     },
                     {
+                        "pattern": "@dto/**",
+                        "group": "internal",
+                        "position": "after"
+                    },
+                    {
                         "pattern": "@app/**/*",
                         "group": "internal",
                         "position": "after"

@@ -8,6 +8,9 @@ import { AppConfigService } from '@config/app-config.service';
 import { UserModule } from '@services/users/user.module';
 import { GlobalExceptionFilter } from '@app/filters/global-exception.filter';
 import { AuthModule } from './main/auth/auth.module';
+import { EventGroupsModule } from './main/services/event-groups/event-groups.module';
+import { SchedulesModule } from './main/services/schedules/schedules.module';
+import { PaymentsModule } from './main/services/payments/payments.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -21,7 +24,13 @@ import { AppController } from './app.controller';
 
         UserModule,
 
-        AuthModule
+        AuthModule,
+
+        EventGroupsModule,
+
+        SchedulesModule,
+
+        PaymentsModule
     ],
     controllers: [AppController],
     providers: [
