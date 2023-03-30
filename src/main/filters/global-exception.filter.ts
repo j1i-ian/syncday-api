@@ -22,7 +22,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         return GlobalExceptionFilter._instance;
     }
 
-    @Inject(WINSTON_MODULE_PROVIDER) private static readonly logger: Logger;
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
 
     catch(exception: EntityNotFoundError | HttpException, host: ArgumentsHost): void {
         const ctx = host.switchToHttp();
@@ -49,7 +49,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             }
         }
 
-        GlobalExceptionFilter.logger.error(exception);
+        this.logger.error(exception);
 
         response.status(status).json({
             statusCode: status,
