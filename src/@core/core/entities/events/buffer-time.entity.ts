@@ -2,12 +2,12 @@ import { Column } from "typeorm";
 
 export class BufferTime {
 
-    @Column({
+    @Column('timestamp', {
         nullable: true
     })
     before?: Date | null;
 
-    @Column({
+    @Column('timestamp', {
         nullable: true
     })
     after?: Date | null;
