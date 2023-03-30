@@ -1,12 +1,36 @@
+import 'reflect-metadata';
+
 import { NestFactory } from '@nestjs/core';
+import { urlencoded, json } from 'body-parser';
+import helmet from 'helmet';
+import { Logger } from '@nestjs/common';
+import { AppConfigService } from '@config/app-config.service';
 import { AppModule } from './app.module';
+
+const PORT = 3011;
+
+const logger = new Logger('App');
 
 async function bootstrap(): Promise<void> {
     const app = await NestFactory.create(AppModule);
 
-    const PORT = 3011;
+    const origin = AppConfigService.getCorsSettingByEnv();
+
+    app.use(helmet());
+    app.enableCors({
+        origin,
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        preflightContinue: false,
+        optionsSuccessStatus: 204
+    });
+
+    app.enableShutdownHooks();
+
+    app.use(urlencoded({ limit: '20MB', extended: true }));
+    app.use(json({ limit: '20MB' }));
+
     await app.listen(PORT, () => {
-        console.log(`Server is started with port ${PORT} ✨`);
+        logger.log(`Server is started with port ${PORT} ✨`);
     });
 }
 bootstrap();

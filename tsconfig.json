@@ -26,7 +26,7 @@
     "moduleResolution": "node",
     "importHelpers": true,
     "resolveJsonModule": true,
-    "strictPropertyInitialization": true,
+    "strictPropertyInitialization": false,
     "paths": {
       "@config/*": [
         "src/configs/*"
