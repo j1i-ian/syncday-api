@@ -95,7 +95,7 @@ export class AppConfigService {
                         ? [this._getWinstonModuleProductionTransports(configService)]
                         : [
                               new winston.transports.Console({
-                                  format: winston.format.simple()
+                                  format: winston.format.json()
                               })
                           ];
 
