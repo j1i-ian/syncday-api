@@ -19,6 +19,11 @@ stages:
   - production
   - cleanup
 
+variables:
+  APP_NAME: syncday-api
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
 
 init:
   stage: .pre
@@ -51,14 +56,37 @@ test:
   script:
     - npm run test
 
-deploy-to-production:
+upload-container-repository:
   stage: deploy
+  image:
+    name: amazon/aws-cli
+    entrypoint: [""]
   needs:
     - lint
     - test
+  variables:
+    NODE_ENV: production
+  services:
+    - docker:dind
+  before_script: |
+    amazon-linux-extras install docker
+    aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
+  script: |
+    echo "Upload container image to AWS ECR repository"
+    docker build -t $APP_NAME .
+    docker tag $APP_NAME:latest $ECR_REPOSITORY_URL/$APP_NAME:latest
+    docker push $ECR_REPOSITORY_URL/$APP_NAME:latest
+  after_script:
+    - docker logout
+  only:
+    - main
+
+deploy-to-production:
+  stage: deploy
   dependencies:
     - lint
     - test
+    - upload-container-repository
   variables:
     NODE_ENV: production
   environment:
