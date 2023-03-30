@@ -1,7 +1,6 @@
 {
     "type": "mariadb",
     "charset": "utf8mb4",
-    "logging": false,
     "logger": "file",
     "timezone": "+09:00",
     "entities": [

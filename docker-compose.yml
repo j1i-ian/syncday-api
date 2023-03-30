@@ -1,6 +1,7 @@
 version: '3.7'
 services:
   app:
+    profiles: ["container"]
     # ECS Task Definition 의 container name 과 맞춤
     container_name: syncday-api
     build:
