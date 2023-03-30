@@ -3,9 +3,12 @@ import {
     Catch,
     ExceptionFilter,
     HttpException,
+    Inject,
+    Logger,
     UnauthorizedException
 } from '@nestjs/common';
 import { Response } from 'express';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { EntityNotFoundError } from 'typeorm';
 
 @Catch()
@@ -18,6 +21,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         }
         return GlobalExceptionFilter._instance;
     }
+
+    @Inject(WINSTON_MODULE_PROVIDER) private static readonly logger: Logger;
 
     catch(exception: EntityNotFoundError | HttpException, host: ArgumentsHost): void {
         const ctx = host.switchToHttp();
@@ -32,21 +37,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             message = _responseMessages.join('');
         }
 
-        const checkHangulRegex = /[ㄱ-힣]/;
-        const hasHangul = checkHangulRegex.test(message);
         const status = (exception as HttpException).getStatus?.() || 500;
 
         const isInternalErrorMessage = this.isInternalErrorEnglishMessage(message);
 
-        if (hasHangul === false || isInternalErrorMessage) {
+        if (isInternalErrorMessage) {
             if (status / 100 === 5) {
-                message = '서버 에러가 발생했습니다.';
+                message = 'Server error happend.';
             } else if (exception instanceof UnauthorizedException) {
-                message = '인증 정보가 올바르지 않습니다.';
-            } else if (hasHangul === false) {
-                message = '요청 중 문제가 발생했습니다.';
+                message = 'Unauthoized Information.';
             }
         }
+
+        GlobalExceptionFilter.logger.error(exception);
 
         response.status(status).json({
             statusCode: status,
