@@ -36,6 +36,10 @@ describe('Test User Service', () => {
     });
 
     describe('Test user finding', () => {
+        afterEach(() => {
+            userRepositoryStub.findOneByOrFail.reset();
+        });
+
         it('should be found user by user id', async () => {
             const userStub = stubOne(User);
 
@@ -55,11 +59,11 @@ describe('Test User Service', () => {
 
             userRepositoryStub.findOneByOrFail.resolves(userStub);
 
-            const loadedUser = await service.findUserById(userStub.id);
+            const loadedUser = await service.findUserByEmail(userStub.email);
 
-            const actualPassedParam = userRepositoryStub.findOneByOrFail.getCall(1)
+            const actualPassedParam = userRepositoryStub.findOneByOrFail.getCall(0)
                 .args[0] as FindOptionsWhere<User>;
-            expect(actualPassedParam.id).equals(userStub.id);
+            expect(actualPassedParam.email).equals(userStub.email);
 
             expect(loadedUser).equal(userStub);
         });
