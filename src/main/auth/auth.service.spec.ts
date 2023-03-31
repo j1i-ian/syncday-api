@@ -1,6 +1,6 @@
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcryptModule from 'bcrypt';
-import { JwtService } from '@nestjs/jwt';
 import { UserService } from '@services/users/user.service';
 import { User } from '@entity/users/user.entity';
 import { AuthService } from './auth.service';
@@ -42,22 +42,45 @@ describe('AuthService', () => {
         expect(service).ok;
     });
 
-    it('should be validated email for issueing user auth token', async () => {
-        const plainPassword = 'thisisUserPlainPassword';
-
-        const userStub = stubOne(User, {
-            hashedPassword: plainPassword
+    describe('Test email validation', () => {
+        afterEach(() => {
+            bcryptCompareSyncStub.reset();
+            userServiceStub.findUserByEmail.reset();
         });
 
-        bcryptCompareSyncStub.returns(true);
+        it('should be passed email validation when user is exist', async () => {
+            const plainPassword = 'thisisUserPlainPassword';
 
-        userServiceStub.findUserByEmail.resolves(userStub);
+            const userStub = stubOne(User, {
+                hashedPassword: plainPassword
+            });
 
-        const validationResult = await service.validateEmail(userStub.email, plainPassword);
+            bcryptCompareSyncStub.returns(true);
 
-        bcryptCompareSyncStub.reset();
+            userServiceStub.findUserByEmail.resolves(userStub);
 
-        expect(validationResult).ok;
+            const validationResult = await service.validateEmail(userStub.email, plainPassword);
+
+            bcryptCompareSyncStub.reset();
+
+            expect(validationResult).true;
+        });
+
+        it('should be not passed email validation when user is not exist', async () => {
+            const dummy = 'thisisUserPlainPassword';
+
+            const userStub = stubOne(User);
+
+            bcryptCompareSyncStub.returns(true);
+
+            userServiceStub.findUserByEmail.resolves(null);
+
+            const validationResult = await service.validateEmail(userStub.email, dummy);
+
+            bcryptCompareSyncStub.reset();
+
+            expect(validationResult).false;
+        });
     });
 
     it('should be issued jwt token', () => {
