@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { compareSync } from 'bcrypt';
+import * as bcrypt from 'bcrypt';
 import { UserService } from '@services/users/user.service';
 import { User } from '@entity/users/user.entity';
 
@@ -18,7 +18,7 @@ export class AuthService {
         let result = false;
         if (loadedUser) {
             // bcrypt compare
-            result = compareSync(requestPlainPassword, loadedUser.hashedPassword);
+            result = bcrypt.compareSync(requestPlainPassword, loadedUser.hashedPassword);
         } else {
             result = false;
         }
