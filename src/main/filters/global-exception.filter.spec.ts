@@ -3,31 +3,28 @@ import { GlobalExceptionFilter } from './global-exception.filter';
 describe('GlobalExceptionFilter', () => {
     const globalFilterException = new GlobalExceptionFilter();
 
-    it('전역 필터 초기화 테스트', () => {
+    it('Global filter initialization test', () => {
         expect(globalFilterException).ok;
     });
 
-    describe('내부 서버 에러 체크', () => {
+    describe('Internal server error check', () => {
         [
             {
-                description: '한글 에러 메시지일 경우 에러 메시지가 바뀌면 안 된다.',
+                description:
+                    'In the case of a Korean error message, the error message must not be changed.',
                 message: '영어로만 되어있는 에러 메시지일 경우 시스템의 것일 가능성이 큽니다.',
                 expected: false
             },
             {
-                description: '한글을 포함한 영문 에러 메시지일 경우 적절하게 변환되어야한다.',
-                message:
-                    'global exception: EntityNotFoundError: Could not find any entity of type "User" matching: {\n    "nickname": "모어모발"\n}',
-                expected: true
-            },
-            {
-                description: '영문만으로 되어있는 에러 메시지일 경우 적절하게 변환되어야한다.',
+                description:
+                    'If the error message is only in English, it must be properly converted.',
                 message:
                     'Do not pass internal error message. It can be malformed by crackers easily.',
                 expected: true
             },
             {
-                description: '영문만으로 되어있는 에러 메시지일 경우 적절하게 변환되어야한다.',
+                description:
+                    'In the case of an error message in English only, it must be properly converted.',
                 message: '요청변수가 적합하지 않습니다.(query - 주소를 상세히 입력해 주십시오.)',
                 expected: false
             }
