@@ -66,6 +66,8 @@ upload-container-repository:
     - test
   services:
     - docker:dind
+  environment:
+    name: production
   before_script: |
     amazon-linux-extras install docker
     aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
