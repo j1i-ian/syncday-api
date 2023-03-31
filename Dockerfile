@@ -8,8 +8,11 @@ ENV ENV production
 
 COPY . .
 
+# RUN npm install
 RUN npm install --ignore-scripts --production
-RUN npm install @nestjs/cli
+
+# fixing for bcrypt error
+RUN npm install bcrypt @nestjs/cli
 
 RUN npm run build
 
