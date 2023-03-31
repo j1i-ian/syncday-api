@@ -64,8 +64,6 @@ upload-container-repository:
   needs:
     - lint
     - test
-  variables:
-    NODE_ENV: production
   services:
     - docker:dind
   before_script: |
@@ -88,8 +86,6 @@ deploy-to-production:
     - lint
     - test
     - upload-container-repository
-  variables:
-    NODE_ENV: production
   environment:
     name: production
     url: https://api.sync.day
