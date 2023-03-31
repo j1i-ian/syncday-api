@@ -1,6 +1,18 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Patch,
+    Post
+} from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
+import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
 import { UserFetchResponseDto } from '@dto/users/user-fetch-response.dto';
-import { CreateUserDto } from '../../dto/users/create-user.dto';
 import { UserService } from './user.service';
 
 @Controller()
@@ -15,23 +27,23 @@ export class UserController {
     }
 
     @Post()
-    async createUser(@Body() newUser: CreateUserDto): Promise<boolean> {
+    async createUser(@Body() newUser: CreateUserRequestDto): Promise<CreateUserResponseDto> {
         const createdUser = await this.userService.createUser(newUser);
 
-        return !!createdUser;
+        return plainToInstance(CreateUserResponseDto, {
+            ...createdUser
+        } as CreateUserResponseDto);
     }
 
     @Patch(':userId')
-    async updateUser(@Param('userId') userId: number): Promise<boolean> {
-        const updateSuccess = await this.userService.updateUser(userId);
-
-        return updateSuccess;
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async updateUser(@Param('userId') userId: number): Promise<void> {
+        await this.userService.updateUser(userId);
     }
 
     @Delete(':userId')
-    async deleteUser(@Param('userId') userId: number): Promise<boolean> {
-        const deleteSuccess = await this.userService.deleteUser(userId);
-
-        return deleteSuccess;
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async deleteUser(@Param('userId') userId: number): Promise<void> {
+        await this.userService.deleteUser(userId);
     }
 }

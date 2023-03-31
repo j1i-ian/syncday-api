@@ -201,6 +201,11 @@
                         "group": "external"
                     },
                     {
+                        "pattern": "@aws-sdk/**",
+                        "group": "external",
+                        "position": "after"
+                    },
+                    {
                         "pattern": "@core/**",
                         "group": "internal",
                         "position": "after"
