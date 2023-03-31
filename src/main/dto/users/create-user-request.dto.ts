@@ -10,7 +10,4 @@ export class CreateUserRequestDto {
 
     @IsDefined()
     nickname: string;
-
-    @IsDefined()
-    phone: string;
 }
