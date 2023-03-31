@@ -73,7 +73,7 @@ upload-container-repository:
     aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
   script: |
     echo "Upload container image to AWS ECR repository"
-    echo "$DOTENV" > .env.production
+    cat $DOTENV > .env.production
     docker build -t $APP_NAME .
     docker tag $APP_NAME:latest $ECR_REPOSITORY_URL/$APP_NAME:latest
     docker push $ECR_REPOSITORY_URL/$APP_NAME:latest
