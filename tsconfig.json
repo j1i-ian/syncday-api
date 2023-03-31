@@ -32,7 +32,8 @@
         "src/configs/*"
       ],
       "@decorators/*": [
-        "src/@core/core/decorators/*"
+        "src/@core/core/decorators/*",
+        "src/main/decorators/*",
       ],
       "@interfaces/*": [
         "src/@core/core/interfaces/*"

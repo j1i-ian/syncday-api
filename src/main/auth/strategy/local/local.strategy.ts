@@ -1,25 +1,31 @@
-import { Strategy } from 'passport-local';
-import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { AuthService } from '../../auth.service';
+import { PassportStrategy } from '@nestjs/passport';
+import { Strategy } from 'passport-local';
+import { UserService } from '@services/users/user.service';
+import { User } from '@entity/users/user.entity';
 
 // TODO: test case 만들어줘야됨
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
-    constructor(private authService: AuthService) {
+    constructor(private userService: UserService) {
         super({
             usernameField: 'email',
-            session: false
+            passwordField: 'plainPassword',
+            session: false,
+            passReqToCallback: false
         });
     }
 
-    async validate(email: string, password: string): Promise<boolean> {
-        const isValid = await this.authService.validateEmail(email, password);
+    async validate(email: string, password: string): Promise<User | null> {
+        const validatedUserOrNull = await this.userService.validateEmailAndPassword(
+            email,
+            password
+        );
 
-        if (!isValid) {
-            throw new UnauthorizedException('아이디 혹은 패스워드가 잘못되었습니다.');
+        if (validatedUserOrNull === null) {
+            throw new UnauthorizedException('email or password is wrong.');
         }
 
-        return isValid;
+        return validatedUserOrNull;
     }
 }

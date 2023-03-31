@@ -4,6 +4,7 @@ import { EventsModule } from '@services/event-groups/events/events.module';
 import { SchedulesModule } from '@services/schedules/schedules.module';
 import { UserSettingModule } from '@services/users/user-setting/user-setting.module';
 import { UserModule } from '@services/users/user.module';
+import { TokenModule } from '../main/auth/token/token.module';
 import { PaymentsModule } from '../main/services/payments/payments.module';
 
 export const routes: Routes = [
@@ -16,6 +17,10 @@ export const routes: Routes = [
                 module: UserSettingModule
             }
         ]
+    },
+    {
+        path: 'tokens',
+        module: TokenModule
     },
     {
         path: 'event-groups',
