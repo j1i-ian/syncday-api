@@ -12,7 +12,7 @@ COPY . .
 RUN npm install --ignore-scripts --production
 
 # fixing for bcrypt error
-RUN npm install bcrypt @nestjs/cli
+RUN rm -rf node_modules/bcrypt && npm insatll bcrypt @nestjs/cli
 
 RUN npm run build
 
