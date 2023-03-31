@@ -2,7 +2,7 @@ import * as winston from 'winston';
 import * as WinstonCloudwatch from 'winston-cloudwatch';
 
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModuleAsyncOptions } from '@nestjs/jwt';
+import { JwtModuleAsyncOptions, JwtModuleOptions } from '@nestjs/jwt';
 import { TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { WinstonModuleAsyncOptions } from 'nest-winston';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
@@ -25,21 +25,27 @@ export class AppConfigService {
         return origin;
     }
 
-    static getJwtOptions(): JwtModuleAsyncOptions {
+    static getJwtModuleOptions(): JwtModuleAsyncOptions {
         return {
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => {
-                const jwtSecret = configService.get<string>('JWT_SECRET');
-                const expiresIn = configService.get<string>('JWT_EXPIRED_IN');
+                const jwtOption = AppConfigService.getJwtOptions(configService);
 
-                return {
-                    secret: jwtSecret,
-                    signOptions: {
-                        expiresIn
-                    }
-                };
+                return jwtOption;
             },
             inject: [ConfigService]
+        };
+    }
+
+    static getJwtOptions(configService: ConfigService): JwtModuleOptions {
+        const jwtSecret = configService.get<string>('JWT_SECRET');
+        const expiresIn = configService.get<string>('JWT_EXPIRED_IN');
+
+        return {
+            secret: jwtSecret,
+            signOptions: {
+                expiresIn
+            }
         };
     }
 
@@ -82,6 +88,7 @@ export class AppConfigService {
             inject: [ConfigService]
         };
     }
+
     static getWinstonModuleSetting(): WinstonModuleAsyncOptions {
         return {
             imports: [ConfigModule],

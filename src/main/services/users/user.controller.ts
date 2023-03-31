@@ -30,9 +30,9 @@ export class UserController {
     async createUser(@Body() newUser: CreateUserRequestDto): Promise<CreateUserResponseDto> {
         const createdUser = await this.userService.createUser(newUser);
 
-        return plainToInstance(CreateUserResponseDto, {
-            ...createdUser
-        } as CreateUserResponseDto);
+        return plainToInstance(CreateUserResponseDto, createdUser as CreateUserResponseDto, {
+            excludeExtraneousValues: true
+        });
     }
 
     @Patch(':userId')

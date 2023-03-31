@@ -16,7 +16,7 @@
     "build:docs": "compodoc -p tsconfig.doc.json",
     "postbuild:docs": "cp .docs/report.html docs/additional-documentation/syncday-test-html-report.html",
     "prestart": "npm run build",
-    "start": "nest start --watch",
+    "start": "ENV=local nest start --watch",
     "start:local": "ENV=local nest start --watch",
     "start:local:dev": "ENV=development nest start --watch",
     "start:local:staging": "ENV=staging nest start --watch",

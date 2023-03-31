@@ -1,32 +1,29 @@
-import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as bcryptModule from 'bcrypt';
 import { UserService } from '@services/users/user.service';
 import { User } from '@entity/users/user.entity';
+import { CreateTokenRequestDto } from '../dto/tokens/create-token-request.dto';
+import { CreateTokenResponseDto } from '../dto/tokens/create-token-response.dto';
+import { TokenService } from './token/token.service';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
     let service: AuthService;
 
-    let bcryptCompareSyncStub: sinon.SinonStub;
-
-    let jwtServiceStub: sinon.SinonStubbedInstance<JwtService>;
+    let tokenServiceStub: sinon.SinonStubbedInstance<TokenService>;
 
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
 
     before(async () => {
-        jwtServiceStub = sinon.createStubInstance(JwtService);
+        tokenServiceStub = sinon.createStubInstance(TokenService);
 
         userServiceStub = sinon.createStubInstance(UserService);
-
-        bcryptCompareSyncStub = sinon.stub(bcryptModule, 'compareSync');
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthService,
                 {
-                    provide: JwtService,
-                    useValue: jwtServiceStub
+                    provide: TokenService,
+                    useValue: tokenServiceStub
                 },
                 {
                     provide: UserService,
@@ -42,54 +39,28 @@ describe('AuthService', () => {
         expect(service).ok;
     });
 
-    describe('Test email validation', () => {
-        afterEach(() => {
-            bcryptCompareSyncStub.reset();
-            userServiceStub.findUserByEmail.reset();
-        });
+    it('should authorize user jwt token', async () => {
+        const userStub = stubOne(User);
 
-        it('should be passed email validation when user is exist', async () => {
-            const plainPassword = 'thisisUserPlainPassword';
+        const plainPassword = 'this!sPlainPassw0rd';
+        const fakeSignedToken = 'signedUserTokenJwtTokenEncoded';
+        const createTokenResponseDtoStub: CreateTokenResponseDto = {
+            accessToken: fakeSignedToken,
+            refreshToken: ''
+        };
 
-            const userStub = stubOne(User, {
-                hashedPassword: plainPassword
-            });
+        const createTokenRequestDto: CreateTokenRequestDto = {
+            email: userStub.email,
+            plainPassword
+        };
 
-            bcryptCompareSyncStub.returns(true);
+        userServiceStub.findUserByEmail.resolves(userStub);
+        tokenServiceStub.issueToken.returns(createTokenResponseDtoStub);
 
-            userServiceStub.findUserByEmail.resolves(userStub);
+        const createTokenResponseDto = await service.authorizeUserByEmail(createTokenRequestDto);
 
-            const validationResult = await service.validateEmail(userStub.email, plainPassword);
-
-            bcryptCompareSyncStub.reset();
-
-            expect(validationResult).true;
-        });
-
-        it('should be not passed email validation when user is not exist', async () => {
-            const dummy = 'thisisUserPlainPassword';
-
-            const userStub = stubOne(User);
-
-            bcryptCompareSyncStub.returns(true);
-
-            userServiceStub.findUserByEmail.resolves(null);
-
-            const validationResult = await service.validateEmail(userStub.email, dummy);
-
-            bcryptCompareSyncStub.reset();
-
-            expect(validationResult).false;
-        });
-    });
-
-    it('should be issued jwt token', () => {
-        const userMock = stubOne(User);
-
-        jwtServiceStub.sign.returns('signedUserTokenJwtTokenEncoded');
-
-        const issuedToken = service.issueToken(userMock);
-
-        expect(issuedToken).ok;
+        expect(createTokenResponseDto).ok;
+        expect(createTokenResponseDto.accessToken).ok;
+        expect(createTokenResponseDto.refreshToken).not.ok;
     });
 });

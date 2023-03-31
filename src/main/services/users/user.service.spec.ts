@@ -4,16 +4,20 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { User } from '@entity/users/user.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
+import { TokenService } from '../../auth/token/token.service';
 import { UserService } from './user.service';
 
 describe('Test User Service', () => {
     let module: TestingModule;
 
     let service: UserService;
+    let tokenServiceStub: sinon.SinonStubbedInstance<TokenService>;
 
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
 
     before(async () => {
+        tokenServiceStub = sinon.createStubInstance(TokenService);
+
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
 
         module = await Test.createTestingModule({
@@ -22,6 +26,10 @@ describe('Test User Service', () => {
                 {
                     provide: getRepositoryToken(User),
                     useValue: userRepositoryStub
+                },
+                {
+                    provide: TokenService,
+                    useValue: tokenServiceStub
                 }
             ]
         }).compile();
@@ -78,7 +86,7 @@ describe('Test User Service', () => {
 
             const loadedUser = await service.findUserByEmail(userStub.email);
 
-            expect(loadedUser).null;
+            expect(loadedUser).not.ok;
         });
     });
 
@@ -101,14 +109,18 @@ describe('Test User Service', () => {
         });
 
         it('should be created user with email', async () => {
-            const userStub = stubOne(User);
+            const plainPassword = 'test';
+            const userStub = stubOne(User, {
+                hashedPassword: plainPassword
+            });
 
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
 
-            const createdUser = await service.createUser(
-                userStub as unknown as CreateUserRequestDto
-            );
+            const createdUser = await service.createUser({
+                ...(userStub as unknown as CreateUserRequestDto),
+                plainPassword
+            });
 
             expect(createdUser).ok;
             expect(createdUser.email).ok;
@@ -127,6 +139,69 @@ describe('Test User Service', () => {
             await expect(
                 service.createUser(userStub as unknown as CreateUserRequestDto)
             ).rejectedWith(BadRequestException);
+        });
+    });
+
+    describe('Test email validation', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            serviceSandbox.reset();
+            serviceSandbox.restore();
+            tokenServiceStub.comparePassword.reset();
+        });
+
+        it('should be passed email validation when user is exist', async () => {
+            const plainPassword = 'thisisUserPlainPassword';
+
+            const userStub = stubOne(User, {
+                hashedPassword: plainPassword
+            });
+
+            serviceSandbox.stub(service, 'findUserByEmail').resolves(userStub);
+            tokenServiceStub.comparePassword.resolves(true);
+
+            const validatedUserOrNull = await service.validateEmailAndPassword(
+                userStub.email,
+                plainPassword
+            );
+
+            expect(validatedUserOrNull).ok;
+        });
+
+        it('should be not passed email validation when user is not exist', async () => {
+            const dummy = 'thisisUserPlainPassword';
+
+            const userStub = stubOne(User);
+
+            serviceSandbox.stub(service, 'findUserByEmail').resolves(null);
+
+            const validatedUserOrNull = await service.validateEmailAndPassword(
+                userStub.email,
+                dummy
+            );
+
+            expect(validatedUserOrNull).not.ok;
+        });
+
+        it('should be not passed password validation when user hashed password is not same to requested password', async () => {
+            const dummy = 'thisisUserPlainPassword';
+
+            const userStub = stubOne(User);
+
+            serviceSandbox.stub(service, 'findUserByEmail').resolves(userStub);
+            tokenServiceStub.comparePassword.resolves(false);
+
+            const validatedUserOrNull = await service.validateEmailAndPassword(
+                userStub.email,
+                dummy
+            );
+
+            expect(validatedUserOrNull).not.ok;
         });
     });
 });
