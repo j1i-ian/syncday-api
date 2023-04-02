@@ -29,6 +29,9 @@ init:
   stage: .pre
   script:
     - npm install
+  only:
+    - main
+    - develop
 
 build-production:
   stage: build
@@ -41,6 +44,9 @@ build-production:
     paths:
       - dist/
     expire_in: 1 week
+  only:
+    - main
+    - develop
 
 lint:
   stage: test
@@ -48,6 +54,9 @@ lint:
     - build-production
   script:
     - npm run lint
+  only:
+    - main
+    - develop
 
 test:
   stage: test
@@ -55,6 +64,9 @@ test:
     - build-production
   script:
     - npm run test
+  only:
+    - main
+    - develop
 
 upload-container-repository:
   stage: deploy
