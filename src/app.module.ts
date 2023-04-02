@@ -1,17 +1,18 @@
 import { ClassSerializerInterceptor, Module, ValidationPipe } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE, RouterModule } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE, RouterModule } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WinstonModule } from 'nest-winston';
 import { routes } from '@config/routes';
 import { AppConfigService } from '@config/app-config.service';
 import { UserModule } from '@services/users/user.module';
 import { GlobalExceptionFilter } from '@app/filters/global-exception.filter';
+import { ClusterModule } from '@liaoliaots/nestjs-redis';
+import { AppController } from './app.controller';
 import { AuthModule } from './main/auth/auth.module';
 import { EventGroupsModule } from './main/services/event-groups/event-groups.module';
-import { SchedulesModule } from './main/services/schedules/schedules.module';
 import { PaymentsModule } from './main/services/payments/payments.module';
-import { AppController } from './app.controller';
+import { SchedulesModule } from './main/services/schedules/schedules.module';
 
 @Module({
     imports: [
@@ -21,6 +22,7 @@ import { AppController } from './app.controller';
         RouterModule.register(routes),
         TypeOrmModule.forRootAsync(AppConfigService.getDatabaseConfigs()),
         WinstonModule.forRootAsync(AppConfigService.getWinstonModuleSetting()),
+        ClusterModule.forRootAsync(AppConfigService.getRedisModuleOptions()),
 
         UserModule,
 
