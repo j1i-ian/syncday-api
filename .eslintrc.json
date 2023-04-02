@@ -241,13 +241,19 @@
                         "position": "after"
                     },
                     {
-                        "pattern": "@app/**/*",
+                        "pattern": "@app/**",
                         "group": "internal",
                         "position": "after"
                     },
                     {
-                        "pattern": "./*",
-                        "group": "index"
+                        "pattern": "@*/**",
+                        "group": "index",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": ".*/**",
+                        "group": "index",
+                        "position": "after"
                     }
                 ],
                 "pathGroupsExcludedImportTypes": [
