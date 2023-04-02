@@ -5,7 +5,9 @@ import 'reflect-metadata';
 import { SinonSandbox } from 'sinon';
 
 import { ArgumentsHost } from '@nestjs/common';
-import { faker } from '@faker-js/faker';
+import { plainToInstance } from 'class-transformer';
+import { Verification } from '@entity/verifications/verification.entity';
+import { Faker, faker } from '@faker-js/faker';
 
 export class TestMockUtil {
     static _instance: TestMockUtil;
@@ -20,6 +22,15 @@ export class TestMockUtil {
     }
 
     sandbox: SinonSandbox;
+
+    getVerificationMock(): Verification {
+        const emailMock = faker.internet.email('foo', 'bar');
+
+        return plainToInstance(Verification, {
+            email: emailMock,
+            verificationCode: '1423'
+        });
+    }
 
     getBearerTokenMock(): string {
         // eslint-disable-next-line max-len
@@ -77,5 +88,9 @@ export class TestMockUtil {
         };
 
         return argHostMock;
+    }
+
+    getFaker(): Faker {
+        return faker;
     }
 }

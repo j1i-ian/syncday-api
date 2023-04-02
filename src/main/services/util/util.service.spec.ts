@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { EmailTemplate } from '../../enums/email-template.enum';
+import { Language } from '../../enums/language.enum';
 import { UtilService } from './util.service';
 
 describe('UtilService', () => {
@@ -24,5 +26,12 @@ describe('UtilService', () => {
             .forEach((generatedRandomNumberString) => {
                 expect(generatedRandomNumberString.length).eq(4);
             });
+    });
+
+    it('should be got asset full path', () => {
+        const fullPath = service.getAssetFullPath(EmailTemplate.VERIFICATION, Language.ENGLISH);
+
+        expect(fullPath).ok;
+        expect(fullPath).contains('hbs');
     });
 });

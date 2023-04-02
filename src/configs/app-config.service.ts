@@ -6,10 +6,26 @@ import { JwtModuleAsyncOptions, JwtModuleOptions } from '@nestjs/jwt';
 import { TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { WinstonModuleAsyncOptions } from 'nest-winston';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
+import {
+    AsyncModuleProvider,
+    AwsService,
+    AwsServiceConfigurationOptionsFactory,
+    AwsServiceType,
+    AwsServiceWithServiceOptions
+} from 'nest-aws-sdk';
 import { CloudWatchLogs, CloudWatchLogsClientConfig } from '@aws-sdk/client-cloudwatch-logs';
 import * as ormConfig from '@config/ormconfig.json';
 import { ClusterModuleAsyncOptions } from '@liaoliaots/nestjs-redis';
+
+// eslint-disable-next-line import/no-internal-modules
+import { MailerAsyncOptions } from '@nestjs-modules/mailer/dist/interfaces/mailer-async-options.interface';
+import { MailerOptions } from '@nestjs-modules/mailer';
 import { NodeEnv } from './node-env.enum';
+
+interface AWSSDKOptionType {
+    defaultServiceOptions?: AsyncModuleProvider<AwsServiceConfigurationOptionsFactory>;
+    services?: Array<AwsServiceType<AwsService> | AwsServiceWithServiceOptions>;
+}
 
 export class AppConfigService {
     static getCorsSettingByEnv(): Array<string | RegExp> {
@@ -138,6 +154,58 @@ export class AppConfigService {
                         keyPrefix: `${env}:`
                     }
                 };
+            },
+            inject: [ConfigService]
+        };
+    }
+
+    static getAWSSDKOptions(): AWSSDKOptionType {
+        return {
+            defaultServiceOptions: {
+                imports: [ConfigModule],
+                useFactory: (configService: ConfigService) => {
+                    const region = configService.get<string>('AWS_REGION');
+                    const accessKeyId = configService.get<string>('AWS_S3_ACCESS_KEY');
+                    const secretAccessKey = configService.get<string>('AWS_S3_SECRET_KEY');
+
+                    return {
+                        credentials: {
+                            accessKeyId,
+                            secretAccessKey
+                        },
+                        region
+                    } as AwsServiceConfigurationOptionsFactory;
+                },
+                inject: [ConfigService]
+            }
+        };
+    }
+
+    static getNodeMailerModuleOptions(): MailerAsyncOptions {
+        return {
+            imports: [ConfigModule],
+            useFactory: (configService: ConfigService) => {
+                const emailHost = 'smtp.gmail.com';
+                const emailUser = configService.get<'string'>('EMAIL_USER');
+                const emailUserPassword = configService.get<'string'>('EMAIL_USER_PASSWORD');
+
+                return {
+                    transport: {
+                        host: emailHost,
+                        port: 587,
+                        secure: false,
+                        auth: {
+                            user: emailUser,
+                            pass: emailUserPassword
+                        }
+                    },
+                    defaults: {
+                        from: {
+                            name: 'Syncday',
+                            address: emailUser
+                        }
+                    }
+                } as MailerOptions;
             },
             inject: [ConfigService]
         };
