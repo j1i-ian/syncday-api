@@ -8,6 +8,7 @@ import { WinstonModuleAsyncOptions } from 'nest-winston';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { CloudWatchLogs, CloudWatchLogsClientConfig } from '@aws-sdk/client-cloudwatch-logs';
 import * as ormConfig from '@config/ormconfig.json';
+import { ClusterModuleAsyncOptions } from '@liaoliaots/nestjs-redis';
 import { NodeEnv } from './node-env.enum';
 
 export class AppConfigService {
@@ -117,6 +118,29 @@ export class AppConfigService {
                 };
             }
         } as WinstonModuleAsyncOptions;
+    }
+
+    static getRedisModuleOptions(): ClusterModuleAsyncOptions {
+        return {
+            imports: [ConfigModule],
+            useFactory: (configService: ConfigService) => {
+                const redisHost = configService.get<string>('REDIS_HOST');
+                const env = configService.get<string>('ENV') as string;
+
+                return {
+                    config: {
+                        nodes: [{ host: redisHost, port: 6379 }],
+                        clusterRetryStrategy: (times: number) => {
+                            const delay = Math.min(100 + times * 2, 2000);
+                            return delay;
+                        },
+                        enableReadyCheck: true,
+                        keyPrefix: `${env}:`
+                    }
+                };
+            },
+            inject: [ConfigService]
+        };
     }
 
     private static _getWinstonModuleProductionTransports(
