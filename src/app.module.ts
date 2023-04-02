@@ -14,6 +14,7 @@ import { JwtAuthGuard } from './main/auth/strategy/jwt/jwt-auth.guard';
 import { EventGroupsModule } from './main/services/event-groups/event-groups.module';
 import { PaymentsModule } from './main/services/payments/payments.module';
 import { SchedulesModule } from './main/services/schedules/schedules.module';
+import { UtilModule } from './main/services/util/util.module';
 
 @Module({
     imports: [
@@ -33,7 +34,9 @@ import { SchedulesModule } from './main/services/schedules/schedules.module';
 
         SchedulesModule,
 
-        PaymentsModule
+        PaymentsModule,
+
+        UtilModule
     ],
     controllers: [AppController],
     providers: [
