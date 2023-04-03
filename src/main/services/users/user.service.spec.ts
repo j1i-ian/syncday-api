@@ -140,6 +140,20 @@ describe('Test User Service', () => {
                 service.createUser(userStub as unknown as CreateUserRequestDto)
             ).rejectedWith(BadRequestException);
         });
+
+        // TODO: Breakdown of [should be created user with email] test
+        it.skip('Non-members can register as a member with email, password, and name', () => {
+            expect(false).true;
+        });
+    });
+
+    describe.skip('Test user default setting', () => {
+        it('Users want their base URL to be my email address minus the domain.', () => {
+            expect(false).true;
+        });
+        it('Users want to reflect the country time zone detected based on IP as the users default time zone when signing up.', () => {
+            expect(false).true;
+        });
     });
 
     describe('Test email validation', () => {
