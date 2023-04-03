@@ -1,8 +1,8 @@
-import { Body, Controller, Header, Headers, Patch, Post } from '@nestjs/common';
-import resolveAcceptLanguage from 'resolve-accept-language';
+import { Body, Controller, Header, Patch, Post } from '@nestjs/common';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { UpdateVerificationDto } from '@dto/verifications/update-verification.dto';
 import { Language } from '@app/enums/language.enum';
+import { BCP47AcceptLanguage } from '../../decorators/accept-language.decorator';
 import { AppJwtPayload } from '../strategy/jwt/app-jwt-payload.interface';
 import { Public } from '../strategy/jwt/public.decorator';
 import { VerificationService } from './verification.service';
@@ -15,14 +15,8 @@ export class VerificationController {
     @Header('Content-type', 'application/json')
     create(
         @AuthUser() authUser: AppJwtPayload,
-        @Headers('Accept-Language') acceptLanguageHeader: string
+        @BCP47AcceptLanguage() language: Language
     ): Promise<boolean> {
-        const language = resolveAcceptLanguage(
-            acceptLanguageHeader,
-            Object.values(Language),
-            Language.ENGLISH
-        ) as Language;
-
         return this.verificationService.createVerification(authUser, language);
     }
 
