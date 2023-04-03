@@ -23,18 +23,11 @@ export class IntegrationsService {
 
         const template = Handlebars.compile(source);
 
-        const host = this.configService.get<string>('HOST');
-
-        const data = {
-            host,
-            email: verification.email,
-            verificationCode: verification.verificationCode
-        };
-        const compiled = template(data);
+        const compiled = template(verification);
 
         const sentMessageInfo = await this.mailerService.sendMail({
             to: verification.email,
-            from: 'noreply@sync.day',
+            from: 'sync.day.official@gmail.com',
             subject: 'test subject',
             template: compiled
         });
