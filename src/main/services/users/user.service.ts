@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { User } from '@entity/users/user.entity';
-import { Role } from '@entity/users/role.enum';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { TokenService } from '../../auth/token/token.service';
 
@@ -59,8 +58,7 @@ export class UserService {
 
         const savedUser = await this.userRepository.save({
             ...createdUser,
-            hashedPassword,
-            roles: [Role.NORMAL]
+            hashedPassword
         });
 
         return savedUser;

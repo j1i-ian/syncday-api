@@ -63,4 +63,22 @@ describe('AuthService', () => {
         expect(createTokenResponseDto.accessToken).ok;
         expect(createTokenResponseDto.refreshToken).not.ok;
     });
+
+    /**
+     * TODO: You should test the case below
+     * success case
+     * #1 : Google Sign Up -> Google Log in
+     * #2 : Microsoft Sign Up -> Microsoft Log in
+     * #3 : Local Sign Up -> Local Log in
+     * failure case
+     * #1 : Google Sign Up -> Microsoft Log in
+     * #2 : Google Sign Up -> Local Log in
+     * #3 : Microsoft Sign Up -> Google Log in
+     * #4 : Microsoft Sign Up -> Local Log in
+     * #5 : Local Sign Up -> Microsoft Log in
+     * #6 : Local Sign Up -> Google Log in
+     */
+    it('Authenticate that you are a logged in user with the selected sign-up method.', () => {});
+
+    it('Members can use the service without logging in again for 3 days after logging in once.', () => {});
 });

@@ -49,7 +49,10 @@ export class User {
     })
     profileImage: string | null;
 
-    @Column('simple-array')
+    @Column('simple-array', {
+        select: false,
+        default: JSON.stringify([Role.UNVERIFIED])
+    })
     roles: Role[];
 
     @CreateDateColumn({

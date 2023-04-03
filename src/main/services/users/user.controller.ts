@@ -13,6 +13,7 @@ import { plainToInstance } from 'class-transformer';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
 import { UserFetchResponseDto } from '@dto/users/user-fetch-response.dto';
+import { Public } from '../../auth/strategy/jwt/public.decorator';
 import { UserService } from './user.service';
 
 @Controller()
@@ -27,6 +28,7 @@ export class UserController {
     }
 
     @Post()
+    @Public()
     async createUser(@Body() newUser: CreateUserRequestDto): Promise<CreateUserResponseDto> {
         const createdUser = await this.userService.createUser(newUser);
 

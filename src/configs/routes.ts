@@ -6,6 +6,7 @@ import { UserSettingModule } from '@services/users/user-setting/user-setting.mod
 import { UserModule } from '@services/users/user.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { PaymentsModule } from '../main/services/payments/payments.module';
+import { VerificationModule } from '../main/auth/verification/verification.module';
 
 export const routes: Routes = [
     {
@@ -39,5 +40,9 @@ export const routes: Routes = [
     {
         path: 'payments',
         module: PaymentsModule
+    },
+    {
+        path: 'verifications',
+        module: VerificationModule
     }
 ];

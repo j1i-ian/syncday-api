@@ -49,7 +49,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             }
         }
 
-        this.logger.error(exception);
+        this.logger.error({
+            message: exception.message,
+            stack: exception.stack,
+            name: exception.name
+        });
 
         response.status(status).json({
             statusCode: status,
