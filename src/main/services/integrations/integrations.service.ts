@@ -29,7 +29,7 @@ export class IntegrationsService {
             to: verification.email,
             from: 'sync.day.official@gmail.com',
             subject: 'test subject',
-            template: compiled
+            html: compiled
         });
 
         return !!sentMessageInfo;
