@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 0.0.4
+
+* Implement Email Verification
+
+## 0.0.3
+
+* Implement login
+
+## 0.0.2
+
+* Construct software architecture, design entity schema
+
 ## 0.0.1
 
 * Project Initializing
