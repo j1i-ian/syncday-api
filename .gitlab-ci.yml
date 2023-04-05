@@ -33,7 +33,7 @@ init:
     - main
     - develop
 
-build-production:
+build:
   stage: build
   needs:
     - init
@@ -51,7 +51,7 @@ build-production:
 lint:
   stage: test
   needs:
-    - build-production
+    - build
   script:
     - npm run lint
   only:
@@ -61,7 +61,7 @@ lint:
 test:
   stage: test
   needs:
-    - build-production
+    - build
   script:
     - npm run test
   only:
