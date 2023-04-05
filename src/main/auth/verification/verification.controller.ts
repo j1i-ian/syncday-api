@@ -21,7 +21,7 @@ export class VerificationController {
     }
 
     /**
-     * Verification is processed with email through user email.
+     * Verification is processed with email of user.
      * So when user loaded then rendered page would send ajax
      * transmission to this api only with auth code.
      * Therefore this api should be public.
