@@ -30,7 +30,7 @@ interface AWSSDKOptionType {
 export class AppConfigService {
     static getCorsSettingByEnv(): Array<string | RegExp> {
         let origin = [
-            /((http|https):\/\/)?localhost:3011$/,
+            /((http|https):\/\/)?localhost:3000$/,
             /.*\.?dev.sync.day$/,
             /.*\.?stg.sync.day$/
         ];
