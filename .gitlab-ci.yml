@@ -128,6 +128,6 @@ deploy-to-development:
           ProxyCommand sh -c \"aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters 'portNumber=%p'\"" > $HOME/.ssh/config
     - cp ./.secure_files/syncday.pem ./syncday.pem && chmod 400 syncday.pem
     - cp ./.secure_files/.env.dev ./.env.dev
-    - bash ./scripts/deploy.sh $DEV_EC2_INSTANCE_ID
+    - bash ./scripts/deploy-to-dev.sh $DEV_EC2_INSTANCE_ID
   only:
     - develop
