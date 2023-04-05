@@ -1,6 +1,7 @@
 import { EventGroup } from "@entity/events/evnet-group.entity";
 import { PaymentTransaction } from "@entity/payments/payment-transaction.entity";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, Generated, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, Generated, JoinTable, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { GoogleIntegration } from "../integrations/google/google-integration.entity";
 import { Role } from "./role.enum";
 import { UserSetting } from "./user-setting.entity";
 
@@ -70,10 +71,26 @@ export class User {
     })
     deletedAt: Date;
 
-    @OneToOne(() => UserSetting, {
+    @OneToOne(() => UserSetting, (userSetting) => userSetting.user, {
         cascade: true
     })
     userSetting: UserSetting;
+
+    @ManyToMany(() => GoogleIntegration, (googleIntegration) => googleIntegration.users, {
+        cascade: true
+    })
+    @JoinTable({
+        name: "google_integration_users",
+        joinColumn: {
+            name: "user_id",
+            referencedColumnName: "id"
+        },
+        inverseJoinColumn: {
+            name: "google_integration_id",
+            referencedColumnName: "id"
+        },
+    })
+    googleIntergration: GoogleIntegration;
 
     @OneToMany(() => EventGroup, eventGroup => eventGroup.user)
     eventGroup: EventGroup[];

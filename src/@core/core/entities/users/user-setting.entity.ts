@@ -25,6 +25,6 @@ export class UserSetting {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
     })
-    @JoinColumn()
+    @JoinColumn({name:'user_id'})
     user: User;
 }
