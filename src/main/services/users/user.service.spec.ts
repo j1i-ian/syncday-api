@@ -5,20 +5,24 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 import { User } from '@entity/users/user.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { TokenService } from '../../auth/token/token.service';
+import { UserSetting } from '../../../@core/core/entities/users/user-setting.entity';
 import { UserService } from './user.service';
+import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 
 describe('Test User Service', () => {
     let module: TestingModule;
 
     let service: UserService;
     let tokenServiceStub: sinon.SinonStubbedInstance<TokenService>;
-
+    let googleIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
+    let userSettingRepositoryStub: sinon.SinonStubbedInstance<Repository<UserSetting>>;
 
     before(async () => {
         tokenServiceStub = sinon.createStubInstance(TokenService);
-
+        googleIntegrationServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
+        userSettingRepositoryStub = sinon.createStubInstance<Repository<UserSetting>>(Repository);
 
         module = await Test.createTestingModule({
             providers: [
@@ -30,6 +34,14 @@ describe('Test User Service', () => {
                 {
                     provide: TokenService,
                     useValue: tokenServiceStub
+                },
+                {
+                    provide: GoogleIntegrationsService,
+                    useValue: googleIntegrationServiceStub
+                },
+                {
+                    provide: getRepositoryToken(UserSetting),
+                    useValue: userSettingRepositoryStub
                 }
             ]
         }).compile();
