@@ -24,7 +24,7 @@ import { UserService } from './user.service';
 export class UserController {
     constructor(private readonly userService: UserService) {}
 
-    @Get('\\d(:userId)')
+    @Get(':userId(\\d)')
     async fetchMyInfo(@Param('userId') userId: number): Promise<UserFetchResponseDto> {
         const loadedUser = await this.userService.findUserById(userId);
 
@@ -56,7 +56,7 @@ export class UserController {
         });
     }
 
-    @Delete('\\d(:userId)')
+    @Delete(':userId(\\d)')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteUser(@Param('userId') userId: number): Promise<void> {
         await this.userService.deleteUser(userId);
