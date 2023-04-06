@@ -60,7 +60,7 @@ export class User {
 
     @Column('simple-array', {
         select: false,
-        default: JSON.stringify([Role.UNVERIFIED])
+        default: JSON.stringify([Role.NORMAL])
     })
     roles: Role[];
 
