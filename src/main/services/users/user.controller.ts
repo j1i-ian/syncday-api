@@ -14,12 +14,15 @@ import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
 import { UserFetchResponseDto } from '@dto/users/user-fetch-response.dto';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
+import { AuthUser } from '../../decorators/auth-user.decorator';
+import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
+import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
 import { UserService } from './user.service';
 @Controller()
 export class UserController {
     constructor(private readonly userService: UserService) {}
 
-    @Get(':userId')
+    @Get('\\d(:userId)')
     async fetchMyInfo(@Param('userId') userId: number): Promise<UserFetchResponseDto> {
         const loadedUser = await this.userService.findUserById(userId);
 
@@ -36,13 +39,19 @@ export class UserController {
         });
     }
 
-    @Patch(':userId')
+    @Patch()
     @HttpCode(HttpStatus.NO_CONTENT)
-    async updateUser(@Param('userId') userId: number): Promise<void> {
-        await this.userService.updateUser(userId);
+    updateUser(
+        @AuthUser() authUser: AppJwtPayload,
+        @Body() newUserSetting: UpdateUserSettingRequestDto
+    ): void {
+        this.userService.updateUserSettingWithUserName({
+            userId: authUser.id,
+            updateUserSetting: newUserSetting
+        });
     }
 
-    @Delete(':userId')
+    @Delete('\\d(:userId)')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteUser(@Param('userId') userId: number): Promise<void> {
         await this.userService.deleteUser(userId);

@@ -1,15 +1,24 @@
 import { Injectable } from '@nestjs/common';
+import { Repository, UpdateResult } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
-import { UpdateUserSettingDto } from '@dto/users/user-settings/dto/update-user-setting.dto';
 
 @Injectable()
 export class UserSettingService {
+    constructor(
+        @InjectRepository(UserSetting)
+        private readonly userSettingRepository: Repository<UserSetting>
+    ) {}
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async fetchUserSetting(userId: number): Promise<UserSetting> {
         return Promise.resolve({} as UserSetting);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async update(userId: number, updateUserSettingDto: UpdateUserSettingDto): Promise<boolean> {
-        return Promise.resolve(true);
+    async updateUserSetting(
+        userId: number,
+        newUserSetting: Partial<UserSetting>
+    ): Promise<UpdateResult> {
+        return await this.userSettingRepository.update({ userId }, { ...newUserSetting });
     }
 }

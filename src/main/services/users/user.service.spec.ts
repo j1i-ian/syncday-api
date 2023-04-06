@@ -5,10 +5,10 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 import { User } from '@entity/users/user.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { TokenService } from '../../auth/token/token.service';
-import { UserSetting } from '../../../@core/core/entities/users/user-setting.entity';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { UserService } from './user.service';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
+import { UserSettingService } from './user-setting/user-setting.service';
 
 describe('Test User Service', () => {
     let module: TestingModule;
@@ -17,17 +17,15 @@ describe('Test User Service', () => {
     let tokenServiceStub: sinon.SinonStubbedInstance<TokenService>;
     let googleIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let verificationServiceStub: sinon.SinonStubbedInstance<VerificationService>;
-
+    let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
-    let userSettingRepositoryStub: sinon.SinonStubbedInstance<Repository<UserSetting>>;
 
     before(async () => {
         tokenServiceStub = sinon.createStubInstance(TokenService);
         googleIntegrationServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
         verificationServiceStub = sinon.createStubInstance(VerificationService);
-
+        userSettingServiceStub = sinon.createStubInstance(UserSettingService);
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
-        userSettingRepositoryStub = sinon.createStubInstance<Repository<UserSetting>>(Repository);
 
         module = await Test.createTestingModule({
             providers: [
@@ -37,8 +35,8 @@ describe('Test User Service', () => {
                     useValue: userRepositoryStub
                 },
                 {
-                    provide: getRepositoryToken(UserSetting),
-                    useValue: userSettingRepositoryStub
+                    provide: UserSettingService,
+                    useValue: userSettingServiceStub
                 },
                 {
                     provide: TokenService,
