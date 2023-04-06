@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Repository, UpdateResult } from 'typeorm';
+import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
 
@@ -18,7 +18,12 @@ export class UserSettingService {
     async updateUserSetting(
         userId: number,
         newUserSetting: Partial<UserSetting>
-    ): Promise<UpdateResult> {
-        return await this.userSettingRepository.update({ userId }, { ...newUserSetting });
+    ): Promise<boolean> {
+        const updateResult = await this.userSettingRepository.update(
+            { userId },
+            { ...newUserSetting }
+        );
+
+        return updateResult.affected ? updateResult.affected > 0 : false;
     }
 }
