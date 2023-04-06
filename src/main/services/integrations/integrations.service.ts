@@ -28,7 +28,7 @@ export class IntegrationsService {
         const sentMessageInfo = await this.mailerService.sendMail({
             to: verification.email,
             from: 'sync.day.official@gmail.com',
-            subject: 'test subject',
+            subject: 'Verification Email',
             html: compiled
         });
 
