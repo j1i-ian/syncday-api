@@ -190,7 +190,7 @@ export class UserService {
             preferredDateTimeFormat: dateTimeFormat,
             preferredDateTimeOrderFormat: dateTimeOrderFormat,
             preferredTimezone: timeZone,
-            preferredLanguage: language as Language
+            preferredLanguage: language
         });
         return;
     }
