@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { BadRequestException } from '@nestjs/common';
 import { UserSetting } from '../../../../@core/core/entities/users/user-setting.entity';
+import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { UserSettingService } from './user-setting.service';
 
 describe('UserSettingService', () => {
@@ -9,9 +11,11 @@ describe('UserSettingService', () => {
 
     let service: UserSettingService;
     let userSettingRepositoryStub: sinon.SinonStubbedInstance<Repository<UserSetting>>;
+    let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
 
     beforeEach(async () => {
         userSettingRepositoryStub = sinon.createStubInstance<Repository<UserSetting>>(Repository);
+        syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
 
         module = await Test.createTestingModule({
             providers: [
@@ -19,6 +23,10 @@ describe('UserSettingService', () => {
                 {
                     provide: getRepositoryToken(UserSetting),
                     useValue: userSettingRepositoryStub
+                },
+                {
+                    provide: SyncdayRedisService,
+                    useValue: syncdayRedisServiceStub
                 }
             ]
         }).compile();
@@ -28,5 +36,55 @@ describe('UserSettingService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    describe('Test getting user workspace status', () => {
+        afterEach(() => {
+            syncdayRedisServiceStub.getWorkspaceStatus.reset();
+            syncdayRedisServiceStub.setWorkspaceStatus.reset();
+        });
+
+        it('should be got status of user workspace', async () => {
+            const workspaceMock = 'mysyncdayworkspace';
+            syncdayRedisServiceStub.getWorkspaceStatus.resolves(true);
+            const result = await service.fetchUserWorkspaceStatus(workspaceMock);
+
+            expect(syncdayRedisServiceStub.getWorkspaceStatus.called).true;
+
+            expect(result).true;
+        });
+
+        it('should be not set status when user workspace is already assigned', async () => {
+            const userIdMock = 123;
+            const workspaceMock = 'mysyncdayworkspace';
+
+            syncdayRedisServiceStub.getWorkspaceStatus.resolves(true);
+
+            await expect(service.createUserWorkspaceStatus(userIdMock, workspaceMock)).rejectedWith(
+                BadRequestException,
+                'already used workspace'
+            );
+        });
+
+        it('should be set status of user workspace', async () => {
+            const userIdMock = 123;
+            const workspaceMock = 'mysyncdayworkspace';
+            const userSettingStub = stubOne(UserSetting);
+
+            syncdayRedisServiceStub.getWorkspaceStatus.resolves(false);
+
+            userSettingRepositoryStub.findOneByOrFail.resolves(userSettingStub);
+
+            syncdayRedisServiceStub.setWorkspaceStatus.resolves(true);
+
+            const result = await service.createUserWorkspaceStatus(userIdMock, workspaceMock);
+
+            expect(syncdayRedisServiceStub.deleteWorkspaceStatus.called).true;
+            expect(userSettingRepositoryStub.update.called).true;
+
+            expect(syncdayRedisServiceStub.setWorkspaceStatus.called).true;
+
+            expect(result).true;
+        });
     });
 });

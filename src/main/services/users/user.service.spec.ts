@@ -130,7 +130,6 @@ describe('Test User Service', () => {
             userRepositoryStub.create.reset();
             userRepositoryStub.save.reset();
             verificationServiceStub.isVerifiedUser.reset();
-            verificationServiceStub.fetchUserWorkspaceStatus.reset();
 
             utilServiceStub.getUsetDefaultSetting.reset();
 
@@ -149,7 +148,6 @@ describe('Test User Service', () => {
             const languageDummy = Language.ENGLISH;
 
             verificationServiceStub.isVerifiedUser.resolves(true);
-            verificationServiceStub.fetchUserWorkspaceStatus.resolves(true);
 
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
@@ -197,7 +195,6 @@ describe('Test User Service', () => {
             const languageDummy = Language.ENGLISH;
 
             verificationServiceStub.isVerifiedUser.resolves(false);
-            verificationServiceStub.fetchUserWorkspaceStatus.resolves(true);
 
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
