@@ -91,7 +91,7 @@ export class User {
             referencedColumnName: "id"
         },
     })
-    googleIntergration: GoogleIntegration;
+    googleIntergrations: GoogleIntegration[];
 
     @OneToMany(() => EventGroup, eventGroup => eventGroup.user)
     eventGroup: EventGroup[];

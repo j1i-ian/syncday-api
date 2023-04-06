@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { Equal, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
+import { oauth2_v2 } from 'googleapis';
 import { User } from '@entity/users/user.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { TokenService } from '../../auth/token/token.service';
@@ -10,7 +11,19 @@ import { UserSetting } from '../../../@core/core/entities/users/user-setting.ent
 import { GoogleIntegration } from '../../../@core/core/entities/integrations/google/google-integration.entity';
 import { Role } from '../../../@core/core/entities/users/role.enum';
 import { VerificationService } from '../../auth/verification/verification.service';
+import { Language } from '../../enums/language.enum';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
+
+interface EnsuredGoogleTokenResponse {
+    accessToken: string;
+    refreshToken: string;
+}
+
+type EnsuredGoogleOAuth2User = oauth2_v2.Schema$Userinfo & {
+    email: string;
+    name: string;
+    picture: string;
+};
 
 @Injectable()
 export class UserService {
@@ -31,19 +44,6 @@ export class UserService {
 
     async findUserByEmail(email: string): Promise<User | null> {
         const loadedUser = await this.userRepository.findOneBy({ email });
-
-        return loadedUser;
-    }
-
-    async findUserByEmailWithGoogleIntegration(email: string): Promise<User | null> {
-        const loadedUser = await this.userRepository.findOne({
-            where: {
-                email: Equal(email)
-            },
-            relations: {
-                googleIntergration: true
-            }
-        });
 
         return loadedUser;
     }
@@ -100,51 +100,61 @@ export class UserService {
         const { googleAuthCode, redirectUrl, timeZone } = param;
         this.googleIntegrationService.setOauthClient(redirectUrl);
 
-        const { accessToken, refreshToken } =
-            await this.googleIntegrationService.issueGoogleTokenByAuthorizationCode(googleAuthCode);
-        if (typeof accessToken !== 'string' || typeof refreshToken !== 'string') {
-            throw new BadRequestException('Failed to link with Google');
-        }
+        const { accessToken, refreshToken }: EnsuredGoogleTokenResponse =
+            (await this.googleIntegrationService.issueGoogleTokenByAuthorizationCode(
+                googleAuthCode
+            )) as EnsuredGoogleTokenResponse;
+        const googleUser: EnsuredGoogleOAuth2User =
+            (await this.googleIntegrationService.getGoogleUserInfo(
+                refreshToken
+            )) as EnsuredGoogleOAuth2User;
 
-        const googleUser = await this.googleIntegrationService.getGoogleUserInfo(refreshToken);
-        if (typeof googleUser.email !== 'string') {
-            throw new BadRequestException('Failed to retrieve user information from Google');
-        }
+        let signedUser = await this.userRepository.findOne({
+            where: {
+                email: googleUser.email
+            },
+            relations: {
+                googleIntergrations: true
+            }
+        });
 
-        const alreadySignedUser = await this.findUserByEmailWithGoogleIntegration(googleUser.email);
-
-        let savedUser: User | null;
-        if (alreadySignedUser !== null && alreadySignedUser.googleIntergration === undefined) {
+        const isAlreadySignUpUserOrNoIntegrationUser =
+            signedUser !== null && signedUser.googleIntergrations.length <= 0;
+        if (isAlreadySignUpUserOrNoIntegrationUser) {
+            /**
+             * If there is a host who has already registered as an email member with the email to be linked with Google
+             */
             throw new BadRequestException(
                 'User who signed up with an email address other than Google.'
             );
-        } else {
+        } else if (signedUser === null) {
             const userSetting: UserSetting = new UserSetting();
             /**
              * TODO: Apply after creating link validation util
              */
             userSetting.link = googleUser.email.split('@')[0];
             userSetting.preferredTimezone = timeZone;
-            userSetting.preferredLanguage = googleUser.locale ?? '';
+            userSetting.preferredLanguage = googleUser.locale as Language;
 
             const googleIntegration: GoogleIntegration = new GoogleIntegration();
             googleIntegration.refreshToken = refreshToken;
-            googleIntegration.accessToken = accessToken ?? '';
+            googleIntegration.accessToken = accessToken;
             googleIntegration.email = googleUser.email;
             const savedGoogleIntegration =
                 await this.googleIntegrationService.saveGoogleIntegration(googleIntegration);
 
-            savedUser = await this.userRepository.save({
-                email: googleUser.email,
-                nickname: googleUser.name ?? '',
-                profileImage: googleUser.picture,
-                roles: [Role.NORMAL],
-                userSetting,
-                googleIntegration: [savedGoogleIntegration]
-            });
+            const newUser = new User();
+            newUser.email = googleUser.email;
+            newUser.nickname = googleUser.name;
+            newUser.profileImage = googleUser.picture;
+            newUser.roles = [Role.NORMAL];
+            newUser.googleIntergrations = [savedGoogleIntegration];
+            newUser.userSetting = userSetting;
+
+            signedUser = await this.userRepository.save(newUser);
         }
 
-        return alreadySignedUser ?? savedUser;
+        return signedUser;
     }
 
     async updateUser(userId: number): Promise<boolean> {
