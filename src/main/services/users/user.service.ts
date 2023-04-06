@@ -9,6 +9,7 @@ import { CreateGoogleUserRequest } from '../../dto/users/create-google-user-requ
 import { UserSetting } from '../../../@core/core/entities/users/user-setting.entity';
 import { GoogleIntegration } from '../../../@core/core/entities/integrations/google/google-integration.entity';
 import { Role } from '../../../@core/core/entities/users/role.enum';
+import { VerificationService } from '../../auth/verification/verification.service';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class UserService {
     constructor(
         private readonly tokenService: TokenService,
         private readonly googleIntegrationService: GoogleIntegrationsService,
+        private readonly verificationService: VerificationService,
         @InjectRepository(User) private readonly userRepository: Repository<User>,
         @InjectRepository(UserSetting)
         private readonly userSettingRepository: Repository<UserSetting>
@@ -66,6 +68,15 @@ export class UserService {
     }
 
     async createUser(newUser: CreateUserRequestDto): Promise<User> {
+        /**
+         * TODO: it should be applied Criteria Pattern.
+         */
+        const isVerifiedEmail = await this.verificationService.isVerifiedUser(newUser.email);
+
+        if (isVerifiedEmail !== true) {
+            throw new BadRequestException('Verification is not completed');
+        }
+
         const alreadySignedUser = await this.findUserByEmail(newUser.email);
 
         if (alreadySignedUser) {

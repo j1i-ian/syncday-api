@@ -1,9 +1,8 @@
 import { Body, Controller, Header, Patch, Post } from '@nestjs/common';
-import { AuthUser } from '@decorators/auth-user.decorator';
 import { UpdateVerificationDto } from '@dto/verifications/update-verification.dto';
 import { Language } from '@app/enums/language.enum';
 import { BCP47AcceptLanguage } from '../../decorators/accept-language.decorator';
-import { AppJwtPayload } from '../strategy/jwt/app-jwt-payload.interface';
+import { CreateVerificationDto } from '../../dto/verifications/create-verification.dto';
 import { Public } from '../strategy/jwt/public.decorator';
 import { VerificationService } from './verification.service';
 
@@ -13,11 +12,13 @@ export class VerificationController {
 
     @Post()
     @Header('Content-type', 'application/json')
+    @Public()
     create(
-        @AuthUser() authUser: AppJwtPayload,
+        @Body() createVerificationDto: CreateVerificationDto,
         @BCP47AcceptLanguage() language: Language
     ): Promise<boolean> {
-        return this.verificationService.createVerification(authUser, language);
+        const { email } = createVerificationDto;
+        return this.verificationService.createVerification(email, language);
     }
 
     /**

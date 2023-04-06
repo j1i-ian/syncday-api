@@ -74,6 +74,7 @@
     "rxjs": "^7.2.0",
     "typeorm": "^0.3.12",
     "typeorm-naming-strategies": "^4.1.0",
+    "uuid": "^9.0.0",
     "winston": "^3.8.2",
     "winston-cloudwatch": "^6.1.1"
   },
@@ -95,6 +96,7 @@
     "@types/passport-jwt": "^3.0.8",
     "@types/passport-local": "^1.0.35",
     "@types/sinon": "^10.0.13",
+    "@types/uuid": "^9.0.1",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "chai": "^4.3.7",

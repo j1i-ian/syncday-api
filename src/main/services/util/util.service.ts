@@ -1,9 +1,14 @@
+import { v4 as uuidv4 } from 'uuid';
 import { Injectable } from '@nestjs/common';
 import { EmailTemplate } from '@app/enums/email-template.enum';
 import { Language } from '@app/enums/language.enum';
 
 @Injectable()
 export class UtilService {
+    generateUUID(): string {
+        return uuidv4();
+    }
+
     generateRandomNumberString(digit: number, prefix = '0'): string {
         return String(Math.floor(Math.random() * Math.pow(10, digit))).padStart(digit, prefix);
     }
