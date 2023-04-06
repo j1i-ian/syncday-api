@@ -1,4 +1,4 @@
-import { Body, Controller, Header, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, Patch, Post } from '@nestjs/common';
 import { UpdateVerificationDto } from '@dto/verifications/update-verification.dto';
 import { Language } from '@app/enums/language.enum';
 import { BCP47AcceptLanguage } from '../../decorators/accept-language.decorator';
@@ -9,6 +9,14 @@ import { VerificationService } from './verification.service';
 @Controller()
 export class VerificationController {
     constructor(private readonly verificationService: VerificationService) {}
+
+    @Get(':workspace')
+    @Header('Content-type', 'application/json')
+    fetchUserCustomPath(@Param('workspace') workspace: string): Promise<boolean> {
+        const workspaceStatus = this.verificationService.fetchUserWorkspaceStatus(workspace);
+
+        return workspaceStatus;
+    }
 
     @Post()
     @Header('Content-type', 'application/json')

@@ -8,6 +8,15 @@ import { RedisStores } from './redis-stores.enum';
 export class SyncdayRedisService {
     constructor(@AppInjectCluster() private readonly cluster: Cluster) {}
 
+    async getWorkspaceStatus(workspace: string): Promise<boolean> {
+        const workspaceAssignStatusKey = this.getWorkspaceAssignStatusKey(workspace);
+        const workspaceAssignStatusJsonString = await this.cluster.get(workspaceAssignStatusKey);
+
+        return workspaceAssignStatusJsonString
+            ? (JSON.parse(workspaceAssignStatusJsonString) as boolean)
+            : false;
+    }
+
     async getEmailVerification(email: string): Promise<Verification | null> {
         const emailKey = this.getEmailVerificationKey(email);
         const actualVerificationCodeJsonString = await this.cluster.get(emailKey);
@@ -37,6 +46,10 @@ export class SyncdayRedisService {
         const result = await this.cluster.set(emailVerificationStatusKey, String(statusValue));
 
         return result === 'OK';
+    }
+
+    getWorkspaceAssignStatusKey(workspace: string): RedisKey {
+        return this.getRedisKey(RedisStores.WORKSPACES, [String(workspace)]);
     }
 
     getEmailVerificationKey(email: string): RedisKey {
