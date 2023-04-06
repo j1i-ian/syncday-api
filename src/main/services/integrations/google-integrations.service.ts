@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { google, oauth2_v2, Auth } from 'googleapis';
@@ -20,18 +20,26 @@ export class GoogleIntegrationsService {
         accessToken: string | null | undefined;
         refreshToken: string | null | undefined;
     }> {
-        const { tokens } = await this.oauth2Client.getToken(authorizationCode);
-        return { accessToken: tokens.access_token, refreshToken: tokens.refresh_token };
+        try {
+            const { tokens } = await this.oauth2Client.getToken(authorizationCode);
+            return { accessToken: tokens.access_token, refreshToken: tokens.refresh_token };
+        } catch (error) {
+            throw new BadRequestException('Failed to link with Google');
+        }
     }
 
     async getGoogleUserInfo(refreshToken: string): Promise<oauth2_v2.Schema$Userinfo> {
-        this.oauth2Client.setCredentials({
-            refresh_token: refreshToken
-        });
-        const oauth2 = google.oauth2('v2');
+        try {
+            this.oauth2Client.setCredentials({
+                refresh_token: refreshToken
+            });
+            const oauth2 = google.oauth2('v2');
 
-        const { data } = await oauth2.userinfo.get();
-        return data;
+            const { data } = await oauth2.userinfo.get();
+            return data;
+        } catch (error) {
+            throw new BadRequestException('Failed to retrieve user information from Google');
+        }
     }
 
     setOauthClient(redirectUri: string): void {

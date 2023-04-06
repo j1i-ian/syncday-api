@@ -45,7 +45,7 @@ export class GoogleCalendarService {
 
         const result = await this.googleIntegrationRepository.save(newIntegration);
 
-        return result
+        return result;
     }
 
     private async getTokensByAuthorizationCode(
