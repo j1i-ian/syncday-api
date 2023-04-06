@@ -6,7 +6,6 @@ import { UtilService } from '@services/util/util.service';
 import { IntegrationsService } from '@services/integrations/integrations.service';
 import { Verification } from '@entity/verifications/verification.entity';
 import { Language } from '@app/enums/language.enum';
-import { AppJwtPayload } from '../strategy/jwt/app-jwt-payload.interface';
 
 @Injectable()
 export class VerificationService {
@@ -17,13 +16,15 @@ export class VerificationService {
         @AppInjectCluster() private readonly cluster: Cluster
     ) {}
 
-    async createVerification({ email }: AppJwtPayload, language: Language): Promise<boolean> {
+    async createVerification(email: string, language: Language): Promise<boolean> {
         const emailKey = this.syncdayRedisService.getEmailVerificationKey(email);
 
         const digit = 4;
         const generatedVerificationCode = this.utilService.generateRandomNumberString(digit);
 
+        const generatedUUID = this.utilService.generateUUID();
         const newVerification: Verification = {
+            uuid: generatedUUID,
             email,
             verificationCode: generatedVerificationCode
         };
@@ -45,8 +46,38 @@ export class VerificationService {
     async updateVerificationByEmail(email: string, verificationCode: string): Promise<boolean> {
         const verificationOrNull = await this.syncdayRedisService.getEmailVerification(email);
 
-        return (
-            verificationOrNull !== null && verificationOrNull.verificationCode === verificationCode
-        );
+        const isCodeMatched =
+            verificationOrNull !== null && verificationOrNull.verificationCode === verificationCode;
+
+        let isSuccess = false;
+
+        if (isCodeMatched) {
+            await this.syncdayRedisService.setEmailVerificationStatus(
+                email,
+                verificationOrNull.uuid
+            );
+            isSuccess = true;
+        } else {
+            isSuccess = false;
+        }
+
+        return isSuccess;
+    }
+
+    async isVerifiedUser(email: string): Promise<boolean> {
+        const verificationOrNull = await this.syncdayRedisService.getEmailVerification(email);
+
+        let isVerified = false;
+
+        if (verificationOrNull) {
+            isVerified = await this.syncdayRedisService.getEmailVerificationStatus(
+                email,
+                verificationOrNull.uuid
+            );
+        } else {
+            isVerified = false;
+        }
+
+        return isVerified;
     }
 }

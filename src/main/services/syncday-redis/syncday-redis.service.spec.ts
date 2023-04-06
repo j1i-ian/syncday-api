@@ -50,10 +50,12 @@ describe('Redis Service Test', () => {
         });
 
         afterEach(() => {
+            clusterStub.set.reset();
+            clusterStub.get.reset();
             serviceSandbox.restore();
         });
 
-        it('should be got email verification', () => {
+        it('should be got email verification', async () => {
             const emailMock = testMockUtil.getFaker().internet.email();
 
             const verificationStub = testMockUtil.getVerificationMock();
@@ -62,11 +64,45 @@ describe('Redis Service Test', () => {
             serviceSandbox.stub(service, 'getEmailVerificationKey').returns(emailMock as RedisKey);
             clusterStub.get.resolves(verificationStubString);
 
-            const verification = service.getEmailVerification(emailMock);
+            const verification = await service.getEmailVerification(emailMock);
             expect(verification).ok;
         });
 
-        it('coverage test', () => {
+        it('should be got getEmailVerificationStatus', async () => {
+            const emailMock = testMockUtil.getFaker().internet.email();
+            const uuidMock = testMockUtil.getFaker().datatype.uuid();
+
+            const statusJsonStringStub = 'true';
+
+            const keyStub = `local:alan@sync.day:${uuidMock}`;
+
+            serviceSandbox.stub(service, <any>'getEmailVerificationStatusKey').returns(keyStub);
+
+            clusterStub.get.resolves(statusJsonStringStub);
+
+            const actualStatusJsonString = await service.getEmailVerificationStatus(
+                emailMock,
+                uuidMock
+            );
+
+            expect(actualStatusJsonString).true;
+        });
+
+        it('should be set email verification status', async () => {
+            const emailMock = testMockUtil.getFaker().internet.email();
+            const uuidMock = testMockUtil.getFaker().datatype.uuid();
+
+            serviceSandbox
+                .stub(service, 'getEmailVerificationStatusKey')
+                .returns(emailMock as RedisKey);
+
+            clusterStub.set.resolves('OK');
+
+            const verification = await service.setEmailVerificationStatus(emailMock, uuidMock);
+            expect(verification).true;
+        });
+
+        it('coverage fill', () => {
             const emailMock = testMockUtil.getFaker().internet.email();
 
             serviceSandbox.stub(service, <any>'getRedisKey').returns('local:something:redis:key');
@@ -76,7 +112,18 @@ describe('Redis Service Test', () => {
             expect(result).ok;
         });
 
-        it('coverage test', () => {
+        it('coverage fill', () => {
+            const emailMock = testMockUtil.getFaker().internet.email();
+            const uuid = 'mockuuid';
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns('local:something:redis:key');
+
+            const result = service.getEmailVerificationStatusKey(emailMock, uuid);
+
+            expect(result).ok;
+        });
+
+        it('coverage fill', () => {
             const result = (service as any)['getRedisKey'](RedisStores.TOKENS_USERS, [
                 'test',
                 'test2'

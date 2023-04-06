@@ -17,8 +17,34 @@ export class SyncdayRedisService {
             : null;
     }
 
+    async getEmailVerificationStatus(email: string, uuid: string): Promise<boolean> {
+        const emailVerificationStatusKey = this.getEmailVerificationStatusKey(email, uuid);
+        const actualVerificationStatusJsonString = await this.cluster.get(
+            emailVerificationStatusKey
+        );
+
+        return actualVerificationStatusJsonString
+            ? (JSON.parse(actualVerificationStatusJsonString) as boolean)
+            : false;
+    }
+
+    async setEmailVerificationStatus(
+        email: string,
+        uuid: string,
+        statusValue = true
+    ): Promise<boolean> {
+        const emailVerificationStatusKey = this.getEmailVerificationStatusKey(email, uuid);
+        const result = await this.cluster.set(emailVerificationStatusKey, String(statusValue));
+
+        return result === 'OK';
+    }
+
     getEmailVerificationKey(email: string): RedisKey {
         return this.getRedisKey(RedisStores.VERIFICATIONS_EMAIL, [String(email)]);
+    }
+
+    getEmailVerificationStatusKey(email: string, uuid: string): RedisKey {
+        return this.getRedisKey(RedisStores.VERIFICATIONS_EMAIL, [String(email), uuid]);
     }
 
     private getRedisKey(store: RedisStores, value: string[]): string {
