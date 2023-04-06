@@ -9,6 +9,7 @@ import { VerificationService } from '../../auth/verification/verification.servic
 import { UserService } from './user.service';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
+import { UtilService } from '../util/util.service';
 
 describe('Test User Service', () => {
     let module: TestingModule;
@@ -18,6 +19,8 @@ describe('Test User Service', () => {
     let googleIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let verificationServiceStub: sinon.SinonStubbedInstance<VerificationService>;
     let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
+    let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
+
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
 
     before(async () => {
@@ -25,6 +28,8 @@ describe('Test User Service', () => {
         googleIntegrationServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
         verificationServiceStub = sinon.createStubInstance(VerificationService);
         userSettingServiceStub = sinon.createStubInstance(UserSettingService);
+        utilServiceStub = sinon.createStubInstance(UtilService);
+
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
 
         module = await Test.createTestingModule({
@@ -49,6 +54,10 @@ describe('Test User Service', () => {
                 {
                     provide: VerificationService,
                     useValue: verificationServiceStub
+                },
+                {
+                    provide: UtilService,
+                    useValue: utilServiceStub
                 }
             ]
         }).compile();
@@ -120,6 +129,9 @@ describe('Test User Service', () => {
             userRepositoryStub.create.reset();
             userRepositoryStub.save.reset();
             verificationServiceStub.isVerifiedUser.reset();
+            verificationServiceStub.fetchUserWorkspaceStatus.reset();
+
+            utilServiceStub.getUsetDefaultSetting.reset();
 
             serviceSandbox.reset();
         });
@@ -133,16 +145,23 @@ describe('Test User Service', () => {
             const userStub = stubOne(User, {
                 hashedPassword: plainPassword
             });
+            const languageDummy = Language.ENGLISH;
 
             verificationServiceStub.isVerifiedUser.resolves(true);
+            verificationServiceStub.fetchUserWorkspaceStatus.resolves(true);
 
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
 
-            const createdUser = await service.createUser({
-                ...(userStub as unknown as CreateUserRequestDto),
-                plainPassword
-            });
+            const createdUser = await service.createUser(
+                {
+                    ...(userStub as unknown as CreateUserRequestDto),
+                    plainPassword
+                },
+                languageDummy
+            );
+
+            expect(utilServiceStub.getUsetDefaultSetting.called).true;
 
             expect(createdUser).ok;
             expect(createdUser.email).ok;
@@ -152,6 +171,7 @@ describe('Test User Service', () => {
             const alreadySignedUpUser = stubOne(User, {
                 nickname: 'foo'
             });
+            const languageDummy = Language.ENGLISH;
             serviceSandbox.stub(service, 'findUserByEmail').resolves(alreadySignedUpUser);
 
             const userStub = stubOne(User, {
@@ -159,7 +179,7 @@ describe('Test User Service', () => {
             });
 
             await expect(
-                service.createUser(userStub as unknown as CreateUserRequestDto)
+                service.createUser(userStub as unknown as CreateUserRequestDto, languageDummy)
             ).rejectedWith(BadRequestException);
         });
 
@@ -173,14 +193,16 @@ describe('Test User Service', () => {
             const userStub = stubOne(User, {
                 hashedPassword: plainPassword
             });
+            const languageDummy = Language.ENGLISH;
 
             verificationServiceStub.isVerifiedUser.resolves(false);
+            verificationServiceStub.fetchUserWorkspaceStatus.resolves(true);
 
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
 
             await expect(
-                service.createUser(userStub as unknown as CreateUserRequestDto)
+                service.createUser(userStub as unknown as CreateUserRequestDto, languageDummy)
             ).rejectedWith(BadRequestException, 'Verification is not completed');
         });
     });

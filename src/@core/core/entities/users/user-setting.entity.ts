@@ -1,5 +1,6 @@
 import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "./user.entity";
+import { Language } from "@app/enums/language.enum";
 
 @Entity('user_setting')
 export class UserSetting {
@@ -14,12 +15,14 @@ export class UserSetting {
     link: string;
 
     @Column({
-        length: 100
+        length: 100,
+        nullable: true,
+        default: null
     })
     preferredTimezone: string;
 
     @Column()
-    preferredLanguage: string;
+    preferredLanguage: Language;
 
     @Column('simple-json', { nullable: true, default: null })
     preferredDateTimeFormat: Intl.DateTimeFormatOptions;

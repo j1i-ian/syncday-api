@@ -14,6 +14,7 @@ import { Language } from '../../enums/language.enum';
 import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
+import { UtilService } from '../util/util.service';
 
 interface EnsuredGoogleTokenResponse {
     accessToken: string;
@@ -33,6 +34,7 @@ export class UserService {
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly verificationService: VerificationService,
         private readonly userSettingService: UserSettingService,
+        private readonly utilService: UtilService,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
 
@@ -67,7 +69,7 @@ export class UserService {
         return result ? loadedUser : null;
     }
 
-    async createUser(newUser: CreateUserRequestDto): Promise<User> {
+    async createUser(newUser: CreateUserRequestDto, language: Language): Promise<User> {
         /**
          * TODO: it should be applied Criteria Pattern.
          */
@@ -85,12 +87,22 @@ export class UserService {
 
         const createdUser = this.userRepository.create(newUser);
 
+        const canBeUsedAsWorkspace = await this.verificationService.fetchUserWorkspaceStatus(
+            createdUser.email
+        );
+        const shouldAddRandomSuffix = canBeUsedAsWorkspace;
+
+        const defaultUserSetting = this.utilService.getUsetDefaultSetting(createdUser, language, {
+            randomSuffix: shouldAddRandomSuffix
+        });
+
         const salt = await bcrypt.genSalt(5);
         const hashedPassword = await bcrypt.hash(newUser.plainPassword, salt);
 
         const savedUser = await this.userRepository.save({
             ...createdUser,
-            hashedPassword
+            hashedPassword,
+            userSetting: defaultUserSetting
         });
 
         return savedUser;
