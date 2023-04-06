@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { Repository } from 'typeorm';
 import { oauth2_v2 } from 'googleapis';
+import { Repository } from 'typeorm';
 import { User } from '@entity/users/user.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { TokenService } from '../../auth/token/token.service';
@@ -11,7 +11,9 @@ import { UserSetting } from '../../../@core/core/entities/users/user-setting.ent
 import { GoogleIntegration } from '../../../@core/core/entities/integrations/google/google-integration.entity';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
+import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
+import { UserSettingService } from './user-setting/user-setting.service';
 
 interface EnsuredGoogleTokenResponse {
     accessToken: string;
@@ -30,6 +32,7 @@ export class UserService {
         private readonly tokenService: TokenService,
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly verificationService: VerificationService,
+        private readonly userSettingService: UserSettingService,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
 
@@ -159,5 +162,24 @@ export class UserService {
 
     async deleteUser(userId: number): Promise<boolean> {
         return await Promise.resolve(!!userId);
+    }
+
+    async updateUserSettingWithUserName(param: {
+        userId: number;
+        updateUserSetting: UpdateUserSettingRequestDto;
+    }): Promise<void> {
+        const { userId, updateUserSetting } = param;
+        const { name, greetings, language, dateTimeFormat, timeZone, dateTimeOrderFormat } =
+            updateUserSetting;
+
+        await this.userRepository.update(userId, { nickname: name });
+        await this.userSettingService.updateUserSetting(userId, {
+            greetings,
+            preferredDateTimeFormat: dateTimeFormat,
+            preferredDateTimeOrderFormat: dateTimeOrderFormat,
+            preferredTimezone: timeZone,
+            preferredLanguage: language
+        });
+        return;
     }
 }

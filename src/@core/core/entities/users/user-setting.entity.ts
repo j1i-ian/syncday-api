@@ -21,10 +21,22 @@ export class UserSetting {
     @Column()
     preferredLanguage: string;
 
+    @Column('simple-json', { nullable: true, default: null })
+    preferredDateTimeFormat: Intl.DateTimeFormatOptions;
+
+    @Column({ nullable: true, default: null })
+    preferredDateTimeOrderFormat: string;
+    
+    @Column({ nullable: true, default: null })
+    greetings: string;
+
     @OneToOne(() => User, user => user.userSetting, {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
     })
-    @JoinColumn({name:'user_id'})
+    @JoinColumn({ name:'user_id' })
     user: User;
+
+    @Column({ name: 'user_id' })
+    userId: number;
 }
