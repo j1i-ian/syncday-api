@@ -17,6 +17,20 @@ export class SyncdayRedisService {
             : false;
     }
 
+    async setWorkspaceStatus(workSpace: string): Promise<boolean> {
+        const workspaceAssignStatusKey = this.getWorkspaceAssignStatusKey(workSpace);
+        const result = await this.cluster.set(workspaceAssignStatusKey, String(true));
+
+        return result === 'OK';
+    }
+
+    async deleteWorkspaceStatus(workSpace: string): Promise<boolean> {
+        const workspaceAssignStatusKey = this.getWorkspaceAssignStatusKey(workSpace);
+        const deletedCount = await this.cluster.del(workspaceAssignStatusKey);
+
+        return deletedCount > 0;
+    }
+
     async getEmailVerification(email: string): Promise<Verification | null> {
         const emailKey = this.getEmailVerificationKey(email);
         const actualVerificationCodeJsonString = await this.cluster.get(emailKey);

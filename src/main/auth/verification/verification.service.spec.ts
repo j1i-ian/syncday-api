@@ -54,16 +54,6 @@ describe('VerificationService', () => {
         expect(service).ok;
     });
 
-    describe('Test getting user workspace status', () => {
-        it('should be got status of user workspace', async () => {
-            const workspaceMock = 'mysyncdayworkspace';
-            syncdayRedisServiceStub.getWorkspaceStatus.resolves(true);
-            const result = await service.fetchUserWorkspaceStatus(workspaceMock);
-
-            expect(result).true;
-        });
-    });
-
     describe('Test email verification', () => {
         afterEach(() => {
             clusterStub.set.reset();

@@ -87,7 +87,7 @@ export class UserService {
 
         const createdUser = this.userRepository.create(newUser);
 
-        const canBeUsedAsWorkspace = await this.verificationService.fetchUserWorkspaceStatus(
+        const canBeUsedAsWorkspace = await this.userSettingService.fetchUserWorkspaceStatus(
             createdUser.email
         );
         const shouldAddRandomSuffix = canBeUsedAsWorkspace;

@@ -60,6 +60,8 @@ describe('Redis Service Test', () => {
 
             clusterStub.get.resolves('true');
 
+            serviceSandbox.stub(service, 'getWorkspaceAssignStatusKey').returns('workspaceKeyStub');
+
             const result = await service.getWorkspaceStatus(workspaceMock);
 
             expect(result).true;
@@ -70,9 +72,35 @@ describe('Redis Service Test', () => {
 
             clusterStub.get.resolves('false');
 
+            serviceSandbox.stub(service, 'getWorkspaceAssignStatusKey').returns('workspaceKeyStub');
+
             const result = await service.getWorkspaceStatus(workspaceMock);
 
             expect(result).false;
+        });
+
+        it('should be set true when workspace status is updated', async () => {
+            const workspaceMock = 'thisisworkspacemock';
+
+            serviceSandbox.stub(service, 'getWorkspaceAssignStatusKey').returns('workspaceKeyStub');
+
+            clusterStub.set.resolves('OK');
+
+            const result = await service.setWorkspaceStatus(workspaceMock);
+
+            expect(result).true;
+        });
+
+        it('should be set true when workspace status is deleted', async () => {
+            const workspaceMock = 'thisisworkspacemock';
+
+            clusterStub.del.resolves(1);
+
+            serviceSandbox.stub(service, 'getWorkspaceAssignStatusKey').returns('workspaceKeyStub');
+
+            const result = await service.deleteWorkspaceStatus(workspaceMock);
+
+            expect(result).true;
         });
     });
 
