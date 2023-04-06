@@ -30,9 +30,7 @@ export class UserService {
         private readonly tokenService: TokenService,
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly verificationService: VerificationService,
-        @InjectRepository(User) private readonly userRepository: Repository<User>,
-        @InjectRepository(UserSetting)
-        private readonly userSettingRepository: Repository<UserSetting>
+        @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
 
     async findUserById(userId: number): Promise<User> {
@@ -161,10 +159,5 @@ export class UserService {
 
     async deleteUser(userId: number): Promise<boolean> {
         return await Promise.resolve(!!userId);
-    }
-
-    async createUserSetting(userSetting: UserSetting): Promise<UserSetting> {
-        const savedUserSetting = await this.userSettingRepository.save(userSetting);
-        return savedUserSetting;
     }
 }

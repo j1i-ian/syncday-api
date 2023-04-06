@@ -11,7 +11,7 @@ import { IntegrationsModule } from '../integrations/integrations.module';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([User, UserSetting]),
+        TypeOrmModule.forFeature([User]),
         UserSettingModule,
         VerificationModule,
         forwardRef(() => IntegrationsModule),
