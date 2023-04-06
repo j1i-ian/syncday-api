@@ -16,6 +16,11 @@ export class VerificationService {
         @AppInjectCluster() private readonly cluster: Cluster
     ) {}
 
+    async fetchUserWorkspaceStatus(workspace: string): Promise<boolean> {
+        const workspaceStatus = await this.syncdayRedisService.getWorkspaceStatus(workspace);
+        return workspaceStatus;
+    }
+
     async createVerification(email: string, language: Language): Promise<boolean> {
         const emailKey = this.syncdayRedisService.getEmailVerificationKey(email);
 

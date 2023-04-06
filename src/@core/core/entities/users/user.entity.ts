@@ -51,6 +51,13 @@ export class User {
     })
     profileImage: string | null;
 
+    @Column('varchar', {
+        length: 300,
+        default: null,
+        nullable: true
+    })
+    workspace: string | null;
+
     @Column('simple-array', {
         select: false,
         default: JSON.stringify([Role.UNVERIFIED])

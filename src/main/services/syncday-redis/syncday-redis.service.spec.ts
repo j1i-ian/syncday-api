@@ -42,6 +42,40 @@ describe('Redis Service Test', () => {
         expect(service).ok;
     });
 
+    describe('Test workspace status', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            clusterStub.set.reset();
+            clusterStub.get.reset();
+            serviceSandbox.restore();
+        });
+
+        it('should be got true when workspace is not assigned', async () => {
+            const workspaceMock = 'thisisworkspacemock';
+
+            clusterStub.get.resolves('true');
+
+            const result = await service.getWorkspaceStatus(workspaceMock);
+
+            expect(result).true;
+        });
+
+        it('should be got false when workspace is assigned', async () => {
+            const workspaceMock = 'thisisworkspacemock';
+
+            clusterStub.get.resolves('false');
+
+            const result = await service.getWorkspaceStatus(workspaceMock);
+
+            expect(result).false;
+        });
+    });
+
     describe('Test Email Verification', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
@@ -100,6 +134,16 @@ describe('Redis Service Test', () => {
 
             const verification = await service.setEmailVerificationStatus(emailMock, uuidMock);
             expect(verification).true;
+        });
+
+        it('coverage fill', () => {
+            const emailMock = testMockUtil.getFaker().internet.email();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns('local:workspaces');
+
+            const result = service.getWorkspaceAssignStatusKey(emailMock);
+
+            expect(result).ok;
         });
 
         it('coverage fill', () => {
