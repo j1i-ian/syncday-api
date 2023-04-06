@@ -15,6 +15,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         });
     }
 
+    /**
+     * passport.js 의 default validate 가 실행된 후에 작동되기 때문에
+     * return true 만 해줘도 됨.
+     *
+     * @param appJwtPayload
+     * @returns {AppJwtPayload} AppJwtPayload
+     */
     async validate(appJwtPayload: AppJwtPayload): Promise<AppJwtPayload> {
         return Promise.resolve(appJwtPayload);
     }
