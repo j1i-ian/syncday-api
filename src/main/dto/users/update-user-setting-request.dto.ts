@@ -1,4 +1,5 @@
-import { IsDefined } from 'class-validator';
+import { IsDefined, IsEnum } from 'class-validator';
+import { Language } from '../../enums/language.enum';
 
 export class UpdateUserSettingRequestDto {
     @IsDefined()
@@ -8,7 +9,8 @@ export class UpdateUserSettingRequestDto {
     greetings: string;
 
     @IsDefined()
-    language: string;
+    @IsEnum(Language)
+    language: Language;
 
     @IsDefined()
     dateTimeFormat: Intl.DateTimeFormatOptions;
