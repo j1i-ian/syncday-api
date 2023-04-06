@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, Put } from '@nestjs/common';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
 import { UpdateUserSettingRequestDto } from '@dto/users/update-user-setting-request.dto';
 import { UserSettingService } from './user-setting.service';
@@ -13,6 +13,7 @@ export class UserSettingController {
     }
 
     @Put(':id(\\d)')
+    @Header('Content-type', 'application/json')
     async updateUserSetting(
         @Param('id') id: string,
         @Body() updateUserSettingDto: UpdateUserSettingRequestDto
