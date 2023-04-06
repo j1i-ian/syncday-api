@@ -211,6 +211,16 @@ export class AppConfigService {
         };
     }
 
+    static getGoogleCredentials(configService: ConfigService): {
+        clientId: string;
+        clientSecret: string;
+    } {
+        return {
+            clientId: configService.get<string>('GOOGLE_CLIENT_ID') as string,
+            clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET') as string
+        };
+    }
+
     private static _getWinstonModuleProductionTransports(
         configService: ConfigService
     ): winston.transport {

@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, Generated, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, Generated, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany, OneToOne } from "typeorm";
 import { Integration } from "../integration.entity";
+import { GoogleCalendarIntegration } from "@entity/integrations/google/google-calendar-integration.entity";
 
 @Entity()
 export class GoogleIntegration extends Integration {
@@ -27,4 +28,7 @@ export class GoogleIntegration extends Integration {
         type: "timestamp",
     })
     deletedAt: Date;
+
+    @OneToMany(()=> GoogleCalendarIntegration, (googleCalendarIntegrations)=> googleCalendarIntegrations.googleIntegration)
+    googleCalendarIntegrations: GoogleCalendarIntegration[]
 }
