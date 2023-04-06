@@ -9,7 +9,6 @@ import { TokenService } from '../../auth/token/token.service';
 import { CreateGoogleUserRequest } from '../../dto/users/create-google-user-request.dto';
 import { UserSetting } from '../../../@core/core/entities/users/user-setting.entity';
 import { GoogleIntegration } from '../../../@core/core/entities/integrations/google/google-integration.entity';
-import { Role } from '../../../@core/core/entities/users/role.enum';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
@@ -147,7 +146,6 @@ export class UserService {
             newUser.email = googleUser.email;
             newUser.nickname = googleUser.name;
             newUser.profileImage = googleUser.picture;
-            newUser.roles = [Role.NORMAL];
             newUser.googleIntergrations = [savedGoogleIntegration];
             newUser.userSetting = userSetting;
 
