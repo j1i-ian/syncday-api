@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { User } from '@entity/users/user.entity';
 import { EmailTemplate } from '../../enums/email-template.enum';
 import { Language } from '../../enums/language.enum';
+import { faker } from '@faker-js/faker';
 import { UtilService } from './util.service';
 
 describe('UtilService', () => {
@@ -46,5 +48,72 @@ describe('UtilService', () => {
 
         expect(fullPath).ok;
         expect(fullPath).contains('hbs');
+    });
+
+    describe('Test Getting default user setting', () => {
+        it('should be got default user setting which has workspace name when there is user nickname', () => {
+            const userMock = stubOne(User, {
+                nickname: faker.name.fullName()
+            });
+            const languageMock = Language.ENGLISH;
+
+            const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock);
+
+            expect(defaultUserSetting).ok;
+            expect(defaultUserSetting.link).contains(userMock.nickname);
+            expect(defaultUserSetting.preferredLanguage).equals(languageMock);
+        });
+
+        it('should be got default user setting which has workspace name when there is no user nickname but email prefix', () => {
+            const emailPrefix = 'foobar';
+
+            const userMock = stubOne(User, {
+                nickname: undefined,
+                email: faker.internet.email(emailPrefix)
+            });
+            const languageMock = Language.ENGLISH;
+
+            const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock, {
+                randomSuffix: false
+            });
+
+            expect(defaultUserSetting).ok;
+            expect(defaultUserSetting.link).contains(emailPrefix);
+            expect(defaultUserSetting.preferredLanguage).equals(languageMock);
+        });
+
+        it('should be got default user setting which has workspace name with generated uuid when there is no nickname or email', () => {
+            const userMock = stubOne(User, {
+                email: undefined,
+                nickname: undefined
+            });
+            const languageMock = Language.ENGLISH;
+
+            const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock, {
+                randomSuffix: true
+            });
+
+            expect(defaultUserSetting).ok;
+            expect(defaultUserSetting.link).ok;
+            expect(defaultUserSetting.link).not.contain(userMock.nickname);
+            expect(defaultUserSetting.link).not.contain(userMock.email);
+            expect(defaultUserSetting.preferredLanguage).equals(languageMock);
+        });
+
+        it('should be got default user setting which has workspace name with generated number when option random suffix is enabled', () => {
+            const userMock = stubOne(User, {
+                nickname: faker.name.fullName()
+            });
+            const languageMock = Language.ENGLISH;
+
+            const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock, {
+                randomSuffix: true
+            });
+
+            expect(defaultUserSetting).ok;
+            expect(defaultUserSetting.link).contains(userMock.nickname);
+            expect(defaultUserSetting.link).not.equals(userMock.nickname);
+            expect(defaultUserSetting.preferredLanguage).equals(languageMock);
+        });
     });
 });

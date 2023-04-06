@@ -17,6 +17,8 @@ import { Public } from '../../auth/strategy/jwt/public.decorator';
 import { AuthUser } from '../../decorators/auth-user.decorator';
 import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
 import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
+import { BCP47AcceptLanguage } from '../../decorators/accept-language.decorator';
+import { Language } from '../../enums/language.enum';
 import { UserService } from './user.service';
 @Controller()
 export class UserController {
@@ -31,8 +33,11 @@ export class UserController {
 
     @Post()
     @Public()
-    async createUser(@Body() newUser: CreateUserRequestDto): Promise<CreateUserResponseDto> {
-        const createdUser = await this.userService.createUser(newUser);
+    async createUser(
+        @Body() newUser: CreateUserRequestDto,
+        @BCP47AcceptLanguage() language: Language
+    ): Promise<CreateUserResponseDto> {
+        const createdUser = await this.userService.createUser(newUser, language);
 
         return plainToInstance(CreateUserResponseDto, createdUser as CreateUserResponseDto, {
             excludeExtraneousValues: true
