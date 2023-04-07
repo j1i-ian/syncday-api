@@ -3,14 +3,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { User } from '@entity/users/user.entity';
-import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
+import { TestMockUtil } from '../../../test/test-mock-util';
 import { UserService } from './user.service';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
+import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
+
+const testMockUtil = new TestMockUtil();
 
 describe('Test User Service', () => {
     let module: TestingModule;
@@ -20,6 +23,7 @@ describe('Test User Service', () => {
     let googleIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let verificationServiceStub: sinon.SinonStubbedInstance<VerificationService>;
     let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
+    let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
@@ -29,6 +33,7 @@ describe('Test User Service', () => {
         googleIntegrationServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
         verificationServiceStub = sinon.createStubInstance(VerificationService);
         userSettingServiceStub = sinon.createStubInstance(UserSettingService);
+        syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
@@ -43,6 +48,10 @@ describe('Test User Service', () => {
                 {
                     provide: UserSettingService,
                     useValue: userSettingServiceStub
+                },
+                {
+                    provide: SyncdayRedisService,
+                    useValue: syncdayRedisServiceStub
                 },
                 {
                     provide: TokenService,
@@ -152,13 +161,7 @@ describe('Test User Service', () => {
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
 
-            const createdUser = await service.createUser(
-                {
-                    ...(userStub as unknown as CreateUserRequestDto),
-                    plainPassword
-                },
-                languageDummy
-            );
+            const createdUser = await service.createUser(userStub, plainPassword, languageDummy);
 
             expect(utilServiceStub.getUsetDefaultSetting.called).true;
 
@@ -170,6 +173,7 @@ describe('Test User Service', () => {
             const alreadySignedUpUser = stubOne(User, {
                 nickname: 'foo'
             });
+            const plainPasswordDummy = 'test';
             const languageDummy = Language.ENGLISH;
             serviceSandbox.stub(service, 'findUserByEmail').resolves(alreadySignedUpUser);
 
@@ -178,7 +182,7 @@ describe('Test User Service', () => {
             });
 
             await expect(
-                service.createUser(userStub as unknown as CreateUserRequestDto, languageDummy)
+                service.createUser(userStub, plainPasswordDummy, languageDummy)
             ).rejectedWith(BadRequestException);
         });
 
@@ -192,6 +196,7 @@ describe('Test User Service', () => {
             const userStub = stubOne(User, {
                 hashedPassword: plainPassword
             });
+            const plainPasswordDummy = 'test';
             const languageDummy = Language.ENGLISH;
 
             verificationServiceStub.isVerifiedUser.resolves(false);
@@ -200,8 +205,74 @@ describe('Test User Service', () => {
             userRepositoryStub.save.resolves(userStub);
 
             await expect(
-                service.createUser(userStub as unknown as CreateUserRequestDto, languageDummy)
+                service.createUser(userStub, plainPasswordDummy, languageDummy)
             ).rejectedWith(BadRequestException, 'Verification is not completed');
+        });
+
+        describe('Test update verification by email', () => {
+            let serviceSandbox: sinon.SinonSandbox;
+
+            beforeEach(() => {
+                serviceSandbox = sinon.createSandbox();
+            });
+
+            afterEach(() => {
+                syncdayRedisServiceStub.setEmailVerificationStatus.reset();
+                syncdayRedisServiceStub.getEmailVerification.reset();
+
+                serviceSandbox.reset();
+                serviceSandbox.restore();
+                tokenServiceStub.comparePassword.reset();
+            });
+
+            after(() => {
+                serviceSandbox.restore();
+            });
+
+            it('should be verified when email and verification is matched each other', async () => {
+                const emailMock = testMockUtil.getFaker().internet.email();
+
+                const tempUserStub = testMockUtil.getTemporaryUser();
+                const userStub = stubOne(User);
+
+                const verificationStub = testMockUtil.getVerificationMock();
+                syncdayRedisServiceStub.getEmailVerification.resolves(verificationStub);
+                syncdayRedisServiceStub.getTemporaryUser.resolves(tempUserStub);
+
+                userRepositoryStub.create.returns(userStub);
+                userRepositoryStub.save.resolves(userStub);
+
+                serviceSandbox.stub(service, 'createUser');
+
+                const updateResult = await service.updateVerificationByEmail(
+                    emailMock,
+                    verificationStub.verificationCode
+                );
+
+                expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).true;
+                expect(syncdayRedisServiceStub.getEmailVerification.called).true;
+
+                expect(updateResult).true;
+            });
+
+            it('should be not verified when email and verification is not matched', async () => {
+                const emailMock = testMockUtil.getFaker().internet.email();
+                const verificationCodeMock = '1423';
+
+                syncdayRedisServiceStub.getEmailVerification.resolves(null);
+
+                serviceSandbox.stub(service, 'createUser');
+
+                const updateResult = await service.updateVerificationByEmail(
+                    emailMock,
+                    verificationCodeMock
+                );
+
+                expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).false;
+                expect(syncdayRedisServiceStub.getEmailVerification.called).true;
+
+                expect(updateResult).false;
+            });
         });
     });
 
@@ -217,18 +288,18 @@ describe('Test User Service', () => {
     describe('Test email validation', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
-        before(() => {
+        beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
-        });
-
-        after(() => {
-            serviceSandbox.restore();
         });
 
         afterEach(() => {
             serviceSandbox.reset();
             serviceSandbox.restore();
             tokenServiceStub.comparePassword.reset();
+        });
+
+        after(() => {
+            serviceSandbox.restore();
         });
 
         it('should be passed email validation when user is exist', async () => {

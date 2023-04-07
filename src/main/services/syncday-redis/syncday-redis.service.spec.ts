@@ -2,6 +2,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Cluster, RedisKey } from 'ioredis';
 import { TestMockUtil } from '../../../test/test-mock-util';
+import { TemporaryUser } from '../../../@core/core/entities/users/temporary-user.entity';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { SyncdayRedisService } from './syncday-redis.service';
 import { RedisStores } from './redis-stores.enum';
@@ -53,6 +54,26 @@ describe('Redis Service Test', () => {
             clusterStub.set.reset();
             clusterStub.get.reset();
             serviceSandbox.restore();
+        });
+
+        it('should be saved temporary user', async () => {
+            const tempUserStub = testMockUtil.getTemporaryUser();
+
+            clusterStub.get.resolves(JSON.stringify(tempUserStub));
+
+            const result: TemporaryUser = await service.getTemporaryUser(tempUserStub.email);
+
+            expect(result.email).equals(tempUserStub.email);
+        });
+
+        it('should be got temporary user', async () => {
+            const tempUserStub = testMockUtil.getTemporaryUser();
+
+            clusterStub.set.resolves('OK');
+
+            const result = await service.saveTemporaryUser(tempUserStub);
+
+            expect(result).true;
         });
 
         it('should be got true when workspace is not assigned', async () => {

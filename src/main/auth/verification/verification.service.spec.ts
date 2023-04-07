@@ -105,43 +105,6 @@ describe('VerificationService', () => {
             });
         });
 
-        describe('Test update verification by email', () => {
-            it('should be verified when email and verification is matched each other', async () => {
-                const emailMock = testMockUtil.getFaker().internet.email();
-                const verificationCodeMock = '1423';
-
-                const verificationStub = testMockUtil.getVerificationMock();
-                syncdayRedisServiceStub.getEmailVerification.resolves(verificationStub);
-
-                const updateResult = await service.updateVerificationByEmail(
-                    emailMock,
-                    verificationCodeMock
-                );
-
-                expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).true;
-                expect(syncdayRedisServiceStub.getEmailVerification.called).true;
-
-                expect(updateResult).true;
-            });
-
-            it('should be not verified when email and verification is not matched', async () => {
-                const emailMock = testMockUtil.getFaker().internet.email();
-                const verificationCodeMock = '1423';
-
-                syncdayRedisServiceStub.getEmailVerification.resolves(null);
-
-                const updateResult = await service.updateVerificationByEmail(
-                    emailMock,
-                    verificationCodeMock
-                );
-
-                expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).false;
-                expect(syncdayRedisServiceStub.getEmailVerification.called).true;
-
-                expect(updateResult).false;
-            });
-        });
-
         describe('Test retrieving user verification status', () => {
             afterEach(() => {
                 syncdayRedisServiceStub.getEmailVerification.reset();

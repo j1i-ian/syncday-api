@@ -9,6 +9,7 @@ import { PaymentsModule } from '../main/services/payments/payments.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
 import { CalendarsModule } from '../main/services/integrations/calendars/calendars.module';
+import { TemporaryUsersModule } from '../main/services/users/temporary-users/temporary-users.module';
 
 export const routes: Routes = [
     {
@@ -18,6 +19,10 @@ export const routes: Routes = [
             {
                 path: 'user-settings',
                 module: UserSettingModule
+            },
+            {
+                path: 'temporaries',
+                module: TemporaryUsersModule
             }
         ]
     },

@@ -7,6 +7,8 @@ import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { UserSettingModule } from './user-setting/user-setting.module';
+import { TemporaryUsersModule } from './temporary-users/temporary-users.module';
+import { SyncdayRedisModule } from '../syncday-redis/syncday-redis.module';
 
 @Module({
     imports: [
@@ -14,7 +16,9 @@ import { UserSettingModule } from './user-setting/user-setting.module';
         VerificationModule,
         forwardRef(() => IntegrationsModule),
         forwardRef(() => TokenModule),
-        UserSettingModule
+        UserSettingModule,
+        SyncdayRedisModule,
+        TemporaryUsersModule
     ],
     controllers: [UserController],
     providers: [UserService],
