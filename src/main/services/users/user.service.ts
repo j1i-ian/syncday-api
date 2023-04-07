@@ -247,7 +247,7 @@ export class UserService {
                 dateTimeFormat: userSetting.preferredDateTimeFormat,
                 dateTimeOrderFormat: userSetting.preferredDateTimeOrderFormat,
                 timeZone: userSetting.preferredTimezone,
-                isIntegration
+                integration: isIntegration
             }
         );
         return convertedUserSettingToDto;
