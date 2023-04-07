@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { Repository } from 'typeorm';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { Language } from '@app/enums/language.enum';
+import { GoogleIntegration } from '../../../@core/core/entities/integrations/google/google-integration.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { MailerService } from '@nestjs-modules/mailer';
 import { IntegrationsService } from './integrations.service';
@@ -14,7 +17,7 @@ describe('IntegrationsService', () => {
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let fileUtilsServiceStub: sinon.SinonStubbedInstance<FileUtilsService>;
     let mailerServiceStub: sinon.SinonStubbedInstance<MailerService>;
-
+    let googleIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegration>>;
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         fileUtilsServiceStub = sinon.createStubInstance(FileUtilsService);
@@ -34,6 +37,10 @@ describe('IntegrationsService', () => {
                 {
                     provide: MailerService,
                     useValue: mailerServiceStub
+                },
+                {
+                    provide: getRepositoryToken(GoogleIntegration),
+                    useValue: googleIntegrationRepositoryStub
                 }
             ]
         }).compile();
