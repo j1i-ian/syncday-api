@@ -18,6 +18,7 @@ import { Public } from '../../auth/strategy/jwt/public.decorator';
 import { UpdateVerificationDto } from '../../dto/verifications/update-verification.dto';
 import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
 import { UserService } from './user.service';
+
 @Controller()
 export class UserController {
     constructor(private readonly userService: UserService) {}
