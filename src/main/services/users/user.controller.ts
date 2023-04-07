@@ -10,22 +10,25 @@ import {
     Patch,
     Post
 } from '@nestjs/common';
-import { UserFetchResponseDto } from '@dto/users/user-fetch-response.dto';
+import { plainToInstance } from 'class-transformer';
 import { AuthUser } from '../../decorators/auth-user.decorator';
 import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
 import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
 import { UpdateVerificationDto } from '../../dto/verifications/update-verification.dto';
+import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
 import { UserService } from './user.service';
 @Controller()
 export class UserController {
     constructor(private readonly userService: UserService) {}
 
-    @Get(':userId(\\d)')
-    async fetchMyInfo(@Param('userId') userId: number): Promise<UserFetchResponseDto> {
-        const loadedUser = await this.userService.findUserById(userId);
+    @Get(':userId')
+    async fetchMyInfo(@AuthUser() authUser: AppJwtPayload): Promise<FetchUserInfoResponseDto> {
+        const userInfo = await this.userService.fetchUserInfo(authUser.id);
 
-        return loadedUser;
+        return plainToInstance(FetchUserInfoResponseDto, userInfo, {
+            excludeExtraneousValues: true
+        });
     }
 
     /**

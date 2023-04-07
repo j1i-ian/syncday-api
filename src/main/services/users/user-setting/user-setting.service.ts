@@ -1,5 +1,5 @@
 import { Repository } from 'typeorm';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
@@ -41,9 +41,12 @@ export class UserSettingService {
         return workspaceStatus;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async fetchUserSetting(userId: number): Promise<UserSetting> {
-        return Promise.resolve({} as UserSetting);
+        const loadedUserSetting = await this.userSettingRepository.findOneBy({ userId });
+        if (loadedUserSetting === null) {
+            throw new NotFoundException('User settings do not exist');
+        }
+        return loadedUserSetting;
     }
 
     async updateUserSetting(

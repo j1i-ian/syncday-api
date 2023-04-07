@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { oauth2_v2 } from 'googleapis';
@@ -11,10 +11,12 @@ import { GoogleIntegration } from '../../../@core/core/entities/integrations/goo
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
 import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
+import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
+import { IntegrationsInfo } from './interfaces/integrations-info.interface';
 
 interface EnsuredGoogleTokenResponse {
     accessToken: string;
@@ -232,5 +234,39 @@ export class UserService {
             await this.userRepository.update(userId, { nickname: name });
         }
         await this.userSettingService.updateUserSetting(userId, newUserSetting);
+    }
+
+    async fetchUserInfo(userId: number): Promise<FetchUserInfoResponseDto> {
+        const userSetting = await this.userSettingService.fetchUserSetting(userId);
+        const isIntegration = await this.fetchIsIntegrations(userId);
+        const convertedUserSettingToDto = Object.assign(
+            new FetchUserInfoResponseDto(),
+            userSetting,
+            {
+                language: userSetting.preferredLanguage,
+                dateTimeFormat: userSetting.preferredDateTimeFormat,
+                dateTimeOrderFormat: userSetting.preferredDateTimeOrderFormat,
+                timeZone: userSetting.preferredTimezone,
+                isIntegration
+            }
+        );
+        return convertedUserSettingToDto;
+    }
+
+    async fetchIsIntegrations(userId: number): Promise<IntegrationsInfo> {
+        const loadedUserWithIntegrations = await this.userRepository.findOne({
+            where: { id: userId },
+            relations: { googleIntergrations: true }
+        });
+        if (loadedUserWithIntegrations === null) {
+            throw new NotFoundException('User does not exist');
+        }
+
+        const { googleIntergrations } = loadedUserWithIntegrations;
+        const isIntegrations: IntegrationsInfo = {
+            google: googleIntergrations.length > 0
+        };
+
+        return isIntegrations;
     }
 }
