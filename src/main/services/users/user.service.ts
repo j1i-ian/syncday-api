@@ -209,17 +209,28 @@ export class UserService {
         updateUserSetting: UpdateUserSettingRequestDto;
     }): Promise<void> {
         const { userId, updateUserSetting } = param;
-        const { name, greetings, language, dateTimeFormat, timeZone, dateTimeOrderFormat } =
-            updateUserSetting;
-
-        await this.userRepository.update(userId, { nickname: name });
-        await this.userSettingService.updateUserSetting(userId, {
+        const {
+            name,
             greetings,
-            preferredDateTimeFormat: dateTimeFormat,
-            preferredDateTimeOrderFormat: dateTimeOrderFormat,
-            preferredTimezone: timeZone,
-            preferredLanguage: language
-        });
-        return;
+            language: preferredLanguage,
+            dateTimeFormat: preferredDateTimeFormat,
+            timeZone: preferredTimezone,
+            dateTimeOrderFormat: preferredDateTimeOrderFormat,
+            link
+        } = updateUserSetting;
+
+        const newUserSetting = new UserSetting({
+            link,
+            greetings,
+            preferredDateTimeFormat,
+            preferredDateTimeOrderFormat,
+            preferredTimezone,
+            preferredLanguage
+        } as UserSetting);
+
+        if (name !== undefined) {
+            await this.userRepository.update(userId, { nickname: name });
+        }
+        await this.userSettingService.updateUserSetting(userId, newUserSetting);
     }
 }

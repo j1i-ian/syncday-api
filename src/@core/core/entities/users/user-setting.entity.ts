@@ -5,13 +5,21 @@ import { Language } from "@app/enums/language.enum";
 @Entity('user_setting')
 export class UserSetting {
 
+    constructor(userSetting?: UserSetting) {
+        if (userSetting) {
+            Object.assign(this, userSetting);
+        }
+    }
+
     @PrimaryGeneratedColumn()
     id: number;
 
     /**
      * link for invitee scheduling path
      */
-    @Column()
+    @Column({
+        unique: true,
+    })
     link: string;
 
     @Column({

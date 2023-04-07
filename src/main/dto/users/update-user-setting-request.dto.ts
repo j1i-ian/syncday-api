@@ -1,23 +1,26 @@
-import { IsDefined, IsEnum } from 'class-validator';
+import { IsEnum, IsOptional } from 'class-validator';
 import { Language } from '../../enums/language.enum';
 
 export class UpdateUserSettingRequestDto {
-    @IsDefined()
-    name: string;
+    @IsOptional()
+    name?: string;
 
-    @IsDefined()
-    greetings: string;
+    @IsOptional()
+    link?: string;
 
-    @IsDefined()
+    @IsOptional()
+    greetings?: string;
+
     @IsEnum(Language)
-    language: Language;
+    @IsOptional()
+    language?: Language;
 
-    @IsDefined()
-    dateTimeFormat: Intl.DateTimeFormatOptions;
+    @IsOptional()
+    dateTimeFormat?: Intl.DateTimeFormatOptions;
 
-    @IsDefined()
-    dateTimeOrderFormat: string;
+    @IsOptional()
+    dateTimeOrderFormat?: string;
 
-    @IsDefined()
-    timeZone: string;
+    @IsOptional()
+    timeZone?: string;
 }
