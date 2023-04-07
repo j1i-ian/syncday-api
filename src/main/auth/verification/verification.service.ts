@@ -43,27 +43,6 @@ export class VerificationService {
         return result === 'OK';
     }
 
-    async updateVerificationByEmail(email: string, verificationCode: string): Promise<boolean> {
-        const verificationOrNull = await this.syncdayRedisService.getEmailVerification(email);
-
-        const isCodeMatched =
-            verificationOrNull !== null && verificationOrNull.verificationCode === verificationCode;
-
-        let isSuccess = false;
-
-        if (isCodeMatched) {
-            await this.syncdayRedisService.setEmailVerificationStatus(
-                email,
-                verificationOrNull.uuid
-            );
-            isSuccess = true;
-        } else {
-            isSuccess = false;
-        }
-
-        return isSuccess;
-    }
-
     async isVerifiedUser(email: string): Promise<boolean> {
         const verificationOrNull = await this.syncdayRedisService.getEmailVerification(email);
 

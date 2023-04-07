@@ -4,7 +4,6 @@ import * as bcrypt from 'bcrypt';
 import { oauth2_v2 } from 'googleapis';
 import { Repository } from 'typeorm';
 import { User } from '@entity/users/user.entity';
-import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { TokenService } from '../../auth/token/token.service';
 import { CreateGoogleUserRequest } from '../../dto/users/create-google-user-request.dto';
 import { UserSetting } from '../../../@core/core/entities/users/user-setting.entity';
@@ -15,6 +14,7 @@ import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
+import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
 
 interface EnsuredGoogleTokenResponse {
     accessToken: string;
@@ -34,6 +34,7 @@ export class UserService {
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly verificationService: VerificationService,
         private readonly userSettingService: UserSettingService,
+        private readonly syncdayRedisService: SyncdayRedisService,
         private readonly utilService: UtilService,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
@@ -69,7 +70,34 @@ export class UserService {
         return result ? loadedUser : null;
     }
 
-    async createUser(newUser: CreateUserRequestDto, language: Language): Promise<User> {
+    async updateVerificationByEmail(email: string, verificationCode: string): Promise<boolean> {
+        const verificationOrNull = await this.syncdayRedisService.getEmailVerification(email);
+
+        const isCodeMatched =
+            verificationOrNull !== null && verificationOrNull.verificationCode === verificationCode;
+
+        let isSuccess = false;
+
+        if (isCodeMatched) {
+            await this.syncdayRedisService.setEmailVerificationStatus(
+                email,
+                verificationOrNull.uuid
+            );
+
+            const temporaryUser = await this.syncdayRedisService.getTemporaryUser(email);
+            const newUser = this.userRepository.create(temporaryUser);
+
+            await this.createUser(newUser, temporaryUser.plainPassword, temporaryUser.language);
+
+            isSuccess = true;
+        } else {
+            isSuccess = false;
+        }
+
+        return isSuccess;
+    }
+
+    async createUser(newUser: User, plainPassword: string, language: Language): Promise<User> {
         /**
          * TODO: it should be applied Criteria Pattern.
          */
@@ -97,7 +125,7 @@ export class UserService {
         });
 
         const salt = await bcrypt.genSalt(5);
-        const hashedPassword = await bcrypt.hash(newUser.plainPassword, salt);
+        const hashedPassword = await bcrypt.hash(plainPassword, salt);
 
         const savedUser = await this.userRepository.save({
             ...createdUser,

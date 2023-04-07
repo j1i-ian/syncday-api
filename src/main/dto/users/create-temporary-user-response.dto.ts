@@ -1,12 +1,6 @@
 import { Expose } from 'class-transformer';
 
-export class CreateUserResponseDto {
-    @Expose()
-    id: number;
-
-    @Expose()
-    uuid: string;
-
+export class CreateTemporaryUserResponseDto {
     @Expose()
     email: string;
 

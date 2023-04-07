@@ -3,22 +3,19 @@ import {
     Controller,
     Delete,
     Get,
+    Header,
     HttpCode,
     HttpStatus,
     Param,
     Patch,
     Post
 } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
-import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
-import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
 import { UserFetchResponseDto } from '@dto/users/user-fetch-response.dto';
-import { Public } from '../../auth/strategy/jwt/public.decorator';
 import { AuthUser } from '../../decorators/auth-user.decorator';
 import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
 import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
-import { BCP47AcceptLanguage } from '../../decorators/accept-language.decorator';
-import { Language } from '../../enums/language.enum';
+import { Public } from '../../auth/strategy/jwt/public.decorator';
+import { UpdateVerificationDto } from '../../dto/verifications/update-verification.dto';
 import { UserService } from './user.service';
 @Controller()
 export class UserController {
@@ -31,17 +28,22 @@ export class UserController {
         return loadedUser;
     }
 
+    /**
+     * Verification is processed with email of user.
+     * So when user loaded then rendered page would send ajax
+     * transmission to this api only with auth code.
+     * Therefore this api should be public.
+     *
+     * @param id issued verification id
+     * @param updateVerificationDto
+     * @returns
+     */
     @Post()
     @Public()
-    async createUser(
-        @Body() newUser: CreateUserRequestDto,
-        @BCP47AcceptLanguage() language: Language
-    ): Promise<CreateUserResponseDto> {
-        const createdUser = await this.userService.createUser(newUser, language);
-
-        return plainToInstance(CreateUserResponseDto, createdUser as CreateUserResponseDto, {
-            excludeExtraneousValues: true
-        });
+    @Header('Content-type', 'application/json')
+    update(@Body() updateVerificationDto: UpdateVerificationDto): Promise<boolean> {
+        const { email, verificationCode } = updateVerificationDto;
+        return this.userService.updateVerificationByEmail(email, verificationCode);
     }
 
     @Patch()

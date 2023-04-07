@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
+import { TemporaryUser } from '@entity/users/temporary-user.entity';
 import { Verification } from '../../../@core/core/entities/verifications/verification.entity';
 import { AppInjectCluster } from './app-inject-cluster.decorator';
 import { RedisStores } from './redis-stores.enum';
@@ -7,6 +8,20 @@ import { RedisStores } from './redis-stores.enum';
 @Injectable()
 export class SyncdayRedisService {
     constructor(@AppInjectCluster() private readonly cluster: Cluster) {}
+
+    async getTemporaryUser(email: string): Promise<TemporaryUser> {
+        const temporaryUserKey = this.getTemporaryUserKey(email);
+        const result = await this.cluster.get(temporaryUserKey);
+
+        return result ? JSON.parse(result) : null;
+    }
+
+    async saveTemporaryUser(temporaryUser: TemporaryUser): Promise<boolean> {
+        const temporaryUserKey = this.getTemporaryUserKey(temporaryUser.email);
+        const result = await this.cluster.set(temporaryUserKey, JSON.stringify(temporaryUser));
+
+        return result === 'OK';
+    }
 
     async getWorkspaceStatus(workspace: string): Promise<boolean> {
         const workspaceAssignStatusKey = this.getWorkspaceAssignStatusKey(workspace);
@@ -60,6 +75,10 @@ export class SyncdayRedisService {
         const result = await this.cluster.set(emailVerificationStatusKey, String(statusValue));
 
         return result === 'OK';
+    }
+
+    getTemporaryUserKey(email: string): RedisKey {
+        return this.getRedisKey(RedisStores.TEMPORARY_USER, [String(email)]);
     }
 
     getWorkspaceAssignStatusKey(workspace: string): RedisKey {

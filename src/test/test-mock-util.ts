@@ -8,6 +8,8 @@ import { ArgumentsHost } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Verification } from '@entity/verifications/verification.entity';
 import { Faker, faker } from '@faker-js/faker';
+import { TemporaryUser } from '../@core/core/entities/users/temporary-user.entity';
+import { Language } from '../main/enums/language.enum';
 
 export class TestMockUtil {
     static _instance: TestMockUtil;
@@ -88,6 +90,15 @@ export class TestMockUtil {
         };
 
         return argHostMock;
+    }
+
+    getTemporaryUser(): TemporaryUser {
+        return {
+            email: this.getFaker().internet.email(),
+            nickname: this.getFaker().name.fullName(),
+            plainPassword: this.getFaker().word.noun(),
+            language: Language.ENGLISH
+        };
     }
 
     getFaker(): Faker {
