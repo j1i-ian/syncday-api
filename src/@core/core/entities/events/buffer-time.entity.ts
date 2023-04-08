@@ -1,7 +1,6 @@
-import { Column } from "typeorm";
+import { Column } from 'typeorm';
 
 export class BufferTime {
-
     @Column('timestamp', {
         nullable: true
     })

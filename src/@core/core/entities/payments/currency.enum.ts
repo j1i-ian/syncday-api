@@ -2,7 +2,6 @@
  * currency for payment
  */
 export enum Currency {
-
     /**
      * Korean Won
      */

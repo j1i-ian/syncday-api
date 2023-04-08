@@ -1,14 +1,14 @@
-import { User } from "@entity/users/user.entity";
-import { Column, Generated, JoinTable, ManyToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Generated, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { User } from '@entity/users/user.entity';
 
 export abstract class Integration {
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column({
-        nullable : true,
-        default : null,
-        length : 120
+        nullable: true,
+        default: null,
+        length: 120
     })
     @Generated('uuid')
     uuid: string;

@@ -1,20 +1,31 @@
-import { EventGroup } from "@entity/events/evnet-group.entity";
-import { PaymentTransaction } from "@entity/payments/payment-transaction.entity";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, Generated, JoinTable, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { GoogleIntegration } from "../integrations/google/google-integration.entity";
-import { Role } from "./role.enum";
-import { UserSetting } from "./user-setting.entity";
+import {
+    Column,
+    CreateDateColumn,
+    DeleteDateColumn,
+    Entity,
+    Generated,
+    JoinTable,
+    ManyToMany,
+    OneToMany,
+    OneToOne,
+    PrimaryGeneratedColumn,
+    UpdateDateColumn
+} from 'typeorm';
+import { EventGroup } from '@entity/events/evnet-group.entity';
+import { PaymentTransaction } from '@entity/payments/payment-transaction.entity';
+import { GoogleIntegration } from '../integrations/google/google-integration.entity';
+import { Role } from './role.enum';
+import { UserSetting } from './user-setting.entity';
 
 @Entity('user')
 export class User {
-
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column({
-        nullable : true,
-        default : null,
-        length : 120
+        nullable: true,
+        default: null,
+        length: 120
     })
     @Generated('uuid')
     uuid: string;
@@ -75,7 +86,7 @@ export class User {
     updatedAt: Date;
 
     @DeleteDateColumn({
-        type: "timestamp",
+        type: 'timestamp'
     })
     deletedAt: Date;
 
@@ -88,21 +99,21 @@ export class User {
         cascade: true
     })
     @JoinTable({
-        name: "google_integration_users",
+        name: 'google_integration_users',
         joinColumn: {
-            name: "user_id",
-            referencedColumnName: "id"
+            name: 'user_id',
+            referencedColumnName: 'id'
         },
         inverseJoinColumn: {
-            name: "google_integration_id",
-            referencedColumnName: "id"
-        },
+            name: 'google_integration_id',
+            referencedColumnName: 'id'
+        }
     })
     googleIntergrations: GoogleIntegration[];
 
-    @OneToMany(() => EventGroup, eventGroup => eventGroup.user)
+    @OneToMany(() => EventGroup, (eventGroup) => eventGroup.user)
     eventGroup: EventGroup[];
 
-    @OneToMany(() => PaymentTransaction, payment => payment.user)
+    @OneToMany(() => PaymentTransaction, (payment) => payment.user)
     paymentTransactions: PaymentTransaction[];
 }

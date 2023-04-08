@@ -1,5 +1,13 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, Repository, UpdateDateColumn } from "typeorm";
-import { Subscription } from "../subscription/subscription.entity";
+import {
+    Column,
+    CreateDateColumn,
+    DeleteDateColumn,
+    Entity,
+    OneToMany,
+    PrimaryGeneratedColumn,
+    UpdateDateColumn
+} from 'typeorm';
+import { Subscription } from '../subscription/subscription.entity';
 
 /**
  * subscribe model
@@ -30,6 +38,6 @@ export class SubscriptionPlan {
     })
     deletedAt: Date;
 
-    @OneToMany(() => Subscription, subscription => subscription.plan)
+    @OneToMany(() => Subscription, (subscription) => subscription.plan)
     subscriptions: Subscription[];
 }

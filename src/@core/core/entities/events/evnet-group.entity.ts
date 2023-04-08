@@ -1,10 +1,18 @@
-import { User } from "@entity/users/user.entity";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { Event } from "./event.entity";
+import {
+    Column,
+    CreateDateColumn,
+    DeleteDateColumn,
+    Entity,
+    JoinColumn,
+    ManyToOne,
+    OneToMany,
+    PrimaryGeneratedColumn
+} from 'typeorm';
+import { User } from '@entity/users/user.entity';
+import { Event } from './event.entity';
 
 @Entity()
 export class EventGroup {
-
     @PrimaryGeneratedColumn()
     id: number;
 
@@ -24,10 +32,10 @@ export class EventGroup {
     })
     deletedAt: Date;
 
-    @OneToMany(() => Event, event => event.eventGroup)
+    @OneToMany(() => Event, (event) => event.eventGroup)
     events: Event[];
 
-    @ManyToOne(() => User, user => user.eventGroup)
+    @ManyToOne(() => User, (user) => user.eventGroup)
     @JoinColumn()
     user: User;
 }

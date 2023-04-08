@@ -1,5 +1,4 @@
 export class Verification {
-
     uuid: string;
 
     email: string;

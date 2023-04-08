@@ -5,7 +5,6 @@
  * @property ROUND_ROBIN Good for: distributing incoming sales leads
  */
 export enum EventType {
-
     ONE_ON_ONE = 'one_on_one',
 
     ONE_ON_GROUP = 'one_on_group',

@@ -1,10 +1,9 @@
-import { Language } from "@app/enums/language.enum";
+import { Language } from '@app/enums/language.enum';
 
 /**
  * Temp user
  */
 export class TemporaryUser {
-
     constructor(temporaryUser: Partial<TemporaryUser>) {
         Object.assign(this, temporaryUser);
     }

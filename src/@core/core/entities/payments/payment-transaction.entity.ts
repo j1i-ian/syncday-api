@@ -1,23 +1,32 @@
-import { Subscription } from "@entity/orders/subscription/subscription.entity";
-import { User } from "@entity/users/user.entity";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, Generated, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { Currency } from "./currency.enum";
-import { PaymentGateType } from "./payment-gate-type.enum";
-import { PaymentStatus } from "./payment-status.enum";
+import {
+    Column,
+    CreateDateColumn,
+    DeleteDateColumn,
+    Entity,
+    Generated,
+    JoinColumn,
+    ManyToOne,
+    PrimaryGeneratedColumn,
+    UpdateDateColumn
+} from 'typeorm';
+import { Subscription } from '@entity/orders/subscription/subscription.entity';
+import { User } from '@entity/users/user.entity';
+import { Currency } from './currency.enum';
+import { PaymentGateType } from './payment-gate-type.enum';
+import { PaymentStatus } from './payment-status.enum';
 
 /**
  * @property amount actualy paid dollar
  */
 @Entity()
 export class PaymentTransaction {
-
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column({
-        nullable : true,
-        default : null,
-        length : 120
+        nullable: true,
+        default: null,
+        length: 120
     })
     @Generated('uuid')
     uuid: string;
@@ -60,14 +69,14 @@ export class PaymentTransaction {
     updatedAt: Date;
 
     @DeleteDateColumn({
-        type: "timestamp",
+        type: 'timestamp'
     })
     deletedAt: Date;
 
     @Column('simple-json')
     subscription: Subscription;
 
-    @ManyToOne(() => User, user => user.paymentTransactions, {
+    @ManyToOne(() => User, (user) => user.paymentTransactions, {
         onUpdate: 'RESTRICT',
         onDelete: 'RESTRICT'
     })

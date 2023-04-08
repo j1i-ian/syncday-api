@@ -1,4 +1,4 @@
-import { Column } from "typeorm";
+import { Column } from 'typeorm';
 
 export class IntegrationCalendarSetting {
     @Column()
@@ -6,7 +6,7 @@ export class IntegrationCalendarSetting {
 
     @Column()
     writeSynchronize: boolean;
-    
+
     @Column()
     deleteSynchronize: boolean;
 }

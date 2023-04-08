@@ -1,10 +1,9 @@
-import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "typeorm";
-import { User } from "./user.entity";
-import { Language } from "@app/enums/language.enum";
+import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Language } from '@app/enums/language.enum';
+import { User } from './user.entity';
 
 @Entity('user_setting')
 export class UserSetting {
-
     constructor(userSetting?: UserSetting) {
         if (userSetting) {
             Object.assign(this, userSetting);
@@ -18,7 +17,7 @@ export class UserSetting {
      * link for invitee scheduling path
      */
     @Column({
-        unique: true,
+        unique: true
     })
     link: string;
 
@@ -37,15 +36,15 @@ export class UserSetting {
 
     @Column({ nullable: true, default: null })
     preferredDateTimeOrderFormat: string;
-    
+
     @Column({ nullable: true, default: null })
     greetings: string;
 
-    @OneToOne(() => User, user => user.userSetting, {
+    @OneToOne(() => User, (user) => user.userSetting, {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
     })
-    @JoinColumn({ name:'user_id' })
+    @JoinColumn({ name: 'user_id' })
     user: User;
 
     @Column({ name: 'user_id' })
