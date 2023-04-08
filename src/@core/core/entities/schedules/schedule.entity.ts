@@ -2,6 +2,7 @@ import { Column, Entity, Generated, JoinColumn, ManyToOne, PrimaryGeneratedColum
 import { BufferTime } from '../events/buffer-time.entity';
 import { EventType } from '../events/event-type.entity';
 import { Event } from '../events/event.entity';
+import { TimeRange } from '../events/time-range.entity';
 
 /**
  * schedule is generated from event.
@@ -13,6 +14,9 @@ export class Schedule {
 
     @Generated('uuid')
     uuid: string;
+
+    @Column(() => TimeRange)
+    timeRange: TimeRange;
 
     @Column('enum', {
         enum: EventType

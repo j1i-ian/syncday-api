@@ -1,5 +1,6 @@
-import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { AfterLoad, Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Language } from '@app/enums/language.enum';
+import { IntegrationsInfo } from '../../../../main/services/users/interfaces/integrations-info.interface';
 import { User } from './user.entity';
 
 @Entity('user_setting')
@@ -49,4 +50,16 @@ export class UserSetting {
 
     @Column({ name: 'user_id' })
     userId: number;
+
+    integrationInfo: IntegrationsInfo;
+
+    @AfterLoad()
+    patchIntegrationInfo(): void {
+        if (this.user) {
+            const integratedGoogle = this.user.googleIntergrations.length > 0;
+            this.integrationInfo = {
+                google: integratedGoogle
+            };
+        }
+    }
 }
