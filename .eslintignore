@@ -1,4 +1,3 @@
 jest.config.js
 *.js
-src/@core/**/*.ts
 node_modules
