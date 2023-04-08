@@ -33,6 +33,13 @@ describe('UtilService', () => {
             });
     });
 
+    it('should be hashed for text', () => {
+        const plainText = 'abcd';
+        const bcryptedText = service.hash(plainText);
+
+        expect(bcryptedText).not.eq(plainText);
+    });
+
     it('should be generated with padding', () => {
         const digits = 4;
         Array(10)
@@ -114,6 +121,22 @@ describe('UtilService', () => {
             expect(defaultUserSetting.link).contains(userMock.nickname);
             expect(defaultUserSetting.link).not.equals(userMock.nickname);
             expect(defaultUserSetting.preferredLanguage).equals(languageMock);
+        });
+
+        it('should be got default user setting which has timezone', () => {
+            const userMock = stubOne(User, {
+                nickname: faker.name.fullName()
+            });
+            const timezoneMock = 'thisisTimezone';
+            const languageMock = Language.ENGLISH;
+
+            const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock, {
+                randomSuffix: true,
+                timezone: timezoneMock
+            });
+
+            expect(defaultUserSetting).ok;
+            expect(defaultUserSetting.preferredTimezone).contains(timezoneMock);
         });
     });
 });

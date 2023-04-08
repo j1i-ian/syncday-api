@@ -17,7 +17,8 @@ export class EventGroup {
     id: number;
 
     @Column({
-        default: null,
+        length: 100,
+        default: 'default',
         nullable: true
     })
     name: string;
@@ -32,7 +33,9 @@ export class EventGroup {
     })
     deletedAt: Date;
 
-    @OneToMany(() => Event, (event) => event.eventGroup)
+    @OneToMany(() => Event, (event) => event.eventGroup, {
+        cascade: true
+    })
     events: Event[];
 
     @ManyToOne(() => User, (user) => user.eventGroup)

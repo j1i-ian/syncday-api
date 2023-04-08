@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Injectable } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { EmailTemplate } from '@app/enums/email-template.enum';
 import { Language } from '@app/enums/language.enum';
 import { User } from '../../../@core/core/entities/users/user.entity';
@@ -7,12 +8,20 @@ import { UserSetting } from '../../../@core/core/entities/users/user-setting.ent
 
 interface UserDefaultSettingOption {
     randomSuffix: boolean;
+    timezone?: string;
 }
 
 @Injectable()
 export class UtilService {
     generateUUID(): string {
         return uuidv4();
+    }
+
+    hash(plainText: string): string {
+        const salt = bcrypt.genSaltSync(5);
+        const hashedPassword = bcrypt.hashSync(plainText, salt);
+
+        return hashedPassword;
     }
 
     generateRandomNumberString(digit: number, prefix = '0'): string {
@@ -29,7 +38,10 @@ export class UtilService {
     getUsetDefaultSetting(
         user: Partial<User>,
         language: Language,
-        { randomSuffix }: UserDefaultSettingOption = { randomSuffix: false }
+        { randomSuffix, timezone }: UserDefaultSettingOption = {
+            randomSuffix: false,
+            timezone: undefined
+        }
     ): Partial<UserSetting> {
         let workspaceName = '';
 
@@ -49,7 +61,8 @@ export class UtilService {
 
         return {
             link: workspaceName,
-            preferredLanguage: language
+            preferredLanguage: language,
+            preferredTimezone: timezone
         };
     }
 }

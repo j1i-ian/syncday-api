@@ -1,12 +1,14 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
+import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
 import { User } from '@entity/users/user.entity';
 import { Language } from '@app/enums/language.enum';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { TestMockUtil } from '../../../test/test-mock-util';
+import { EventGroup } from '../../../@core/core/entities/events/evnet-group.entity';
+import { Event } from '../../../@core/core/entities/events/event.entity';
 import { UserService } from './user.service';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
@@ -27,6 +29,16 @@ describe('Test User Service', () => {
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
+    let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
+    let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
+
+    const _getRepository = (EntityClass: new () => any) =>
+        module.get(getRepositoryToken(EntityClass));
+
+    const datasourceMock = {
+        getRepository: _getRepository,
+        transaction: (callback: any) => Promise.resolve(callback({ getRepository: _getRepository }))
+    };
 
     before(async () => {
         tokenServiceStub = sinon.createStubInstance(TokenService);
@@ -37,13 +49,15 @@ describe('Test User Service', () => {
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
+        eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
+        eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
 
         module = await Test.createTestingModule({
             providers: [
                 UserService,
                 {
-                    provide: getRepositoryToken(User),
-                    useValue: userRepositoryStub
+                    provide: getDataSourceToken(),
+                    useValue: datasourceMock
                 },
                 {
                     provide: UserSettingService,
@@ -68,6 +82,18 @@ describe('Test User Service', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
+                },
+                {
+                    provide: getRepositoryToken(User),
+                    useValue: userRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(EventGroup),
+                    useValue: eventGroupRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(Event),
+                    useValue: eventRepositoryStub
                 }
             ]
         }).compile();
@@ -161,7 +187,14 @@ describe('Test User Service', () => {
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
 
-            const createdUser = await service.createUser(userStub, plainPassword, languageDummy);
+            const createdUser = await service._createUser(
+                datasourceMock as EntityManager,
+                userStub,
+                languageDummy,
+                {
+                    plainPassword
+                }
+            );
 
             expect(utilServiceStub.getUsetDefaultSetting.called).true;
 
@@ -182,7 +215,10 @@ describe('Test User Service', () => {
             });
 
             await expect(
-                service.createUser(userStub, plainPasswordDummy, languageDummy)
+                service._createUser(datasourceMock as EntityManager, userStub, languageDummy, {
+                    plainPassword: plainPasswordDummy,
+                    emailVerification: true
+                })
             ).rejectedWith(BadRequestException);
         });
 
@@ -205,7 +241,10 @@ describe('Test User Service', () => {
             userRepositoryStub.save.resolves(userStub);
 
             await expect(
-                service.createUser(userStub, plainPasswordDummy, languageDummy)
+                service._createUser(datasourceMock as EntityManager, userStub, languageDummy, {
+                    plainPassword: plainPasswordDummy,
+                    emailVerification: true
+                })
             ).rejectedWith(BadRequestException, 'Verification is not completed');
         });
 
@@ -242,7 +281,7 @@ describe('Test User Service', () => {
                 userRepositoryStub.create.returns(userStub);
                 userRepositoryStub.save.resolves(userStub);
 
-                serviceSandbox.stub(service, 'createUser');
+                serviceSandbox.stub(service, '_createUser');
 
                 const updateResult = await service.updateVerificationByEmail(
                     emailMock,
@@ -261,7 +300,7 @@ describe('Test User Service', () => {
 
                 syncdayRedisServiceStub.getEmailVerification.resolves(null);
 
-                serviceSandbox.stub(service, 'createUser');
+                serviceSandbox.stub(service, '_createUser');
 
                 const updateResult = await service.updateVerificationByEmail(
                     emailMock,

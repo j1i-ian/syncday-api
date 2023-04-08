@@ -1,13 +1,17 @@
 import { Column } from 'typeorm';
 
+/**
+ * @property {number} before second for unix epoch time
+ * @property {number} after second for unix epoch time
+ */
 export class BufferTime {
-    @Column('timestamp', {
-        nullable: true
+    @Column('time', {
+        default: '00:00:00'
     })
-    before?: Date | null;
+    before: string | number;
 
-    @Column('timestamp', {
-        nullable: true
+    @Column('time', {
+        default: '00:00:00'
     })
-    after?: Date | null;
+    after: string | number;
 }

@@ -24,11 +24,12 @@ export class TokenController {
 
     @Post('google')
     @Public()
-    async loginOrCreateGoogleUser(
-        @Body() newGoogleUser: CreateGoogleUserRequestDto
+    async ensureUserSignInWithGoogle(
+        @Body() createGoogleUserRequestDto: CreateGoogleUserRequestDto
     ): Promise<CreateTokenResponseDto> {
-        const googleUser = await this.userService.getOrCreateGoogleUser(newGoogleUser);
-        const token = this.tokenService.issueToken(googleUser);
-        return token;
+        const createTokenResponseDto = await this.tokenService.issueTokenByGoogleOAuth(
+            createGoogleUserRequestDto
+        );
+        return createTokenResponseDto;
     }
 }

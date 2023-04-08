@@ -25,7 +25,7 @@ export class UserController {
 
     @Get(':userId')
     async fetchMyInfo(@AuthUser() authUser: AppJwtPayload): Promise<FetchUserInfoResponseDto> {
-        const userInfo = await this.userService.fetchUserInfo(authUser.id);
+        const userInfo = await this.userService.fetchUserInfo(authUser.id, authUser.email);
 
         return plainToInstance(FetchUserInfoResponseDto, userInfo, {
             excludeExtraneousValues: true

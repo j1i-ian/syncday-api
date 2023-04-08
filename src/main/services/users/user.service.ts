@@ -1,16 +1,25 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
-import { oauth2_v2 } from 'googleapis';
-import { Repository } from 'typeorm';
+import {
+    BadRequestException,
+    Inject,
+    Injectable,
+    NotFoundException,
+    forwardRef
+} from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+import { plainToInstance } from 'class-transformer';
 import { User } from '@entity/users/user.entity';
-import { TokenService } from '../../auth/token/token.service';
-import { CreateGoogleUserRequest } from '../../dto/users/create-google-user-request.dto';
-import { UserSetting } from '../../../@core/core/entities/users/user-setting.entity';
-import { GoogleIntegration } from '../../../@core/core/entities/integrations/google/google-integration.entity';
+import { BufferTime } from '@entity/events/buffer-time.entity';
+import { EventType } from '@entity/events/event-type.entity';
+import { TimeRange } from '@entity/events/time-range.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { EventGroup } from '@entity/events/evnet-group.entity';
+import { Event } from '@entity/events/event.entity';
+import { EnsuredGoogleOAuth2User, TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
 import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
+import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
 import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
@@ -18,20 +27,17 @@ import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
 import { IntegrationsInfo } from './interfaces/integrations-info.interface';
 
-interface EnsuredGoogleTokenResponse {
-    accessToken: string;
-    refreshToken: string;
+interface CreateUserOptions {
+    plainPassword?: string;
+    emailVerification?: boolean;
+    alreadySignedUpUserCheck?: boolean;
 }
-
-type EnsuredGoogleOAuth2User = oauth2_v2.Schema$Userinfo & {
-    email: string;
-    name: string;
-    picture: string;
-};
 
 @Injectable()
 export class UserService {
     constructor(
+        @InjectDataSource() private datasource: DataSource,
+        @Inject(forwardRef(() => TokenService))
         private readonly tokenService: TokenService,
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly verificationService: VerificationService,
@@ -89,7 +95,19 @@ export class UserService {
             const temporaryUser = await this.syncdayRedisService.getTemporaryUser(email);
             const newUser = this.userRepository.create(temporaryUser);
 
-            await this.createUser(newUser, temporaryUser.plainPassword, temporaryUser.language);
+            await this.datasource.transaction(async (manager: EntityManager) => {
+                const _createdUser = await this._createUser(
+                    manager,
+                    newUser,
+                    temporaryUser.language,
+                    {
+                        plainPassword: temporaryUser.plainPassword,
+                        emailVerification: true
+                    }
+                );
+
+                return _createdUser;
+            });
 
             isSuccess = true;
         } else {
@@ -99,20 +117,33 @@ export class UserService {
         return isSuccess;
     }
 
-    async createUser(newUser: User, plainPassword: string, language: Language): Promise<User> {
+    async _createUser(
+        manager: EntityManager,
+        newUser: User,
+        language: Language,
+        { plainPassword, emailVerification, alreadySignedUpUserCheck }: CreateUserOptions = {
+            plainPassword: undefined,
+            emailVerification: false,
+            alreadySignedUpUserCheck: true
+        }
+    ): Promise<User> {
         /**
          * TODO: it should be applied Criteria Pattern.
          */
-        const isVerifiedEmail = await this.verificationService.isVerifiedUser(newUser.email);
+        if (emailVerification) {
+            const isVerifiedEmail = await this.verificationService.isVerifiedUser(newUser.email);
 
-        if (isVerifiedEmail !== true) {
-            throw new BadRequestException('Verification is not completed');
+            if (isVerifiedEmail !== true) {
+                throw new BadRequestException('Verification is not completed');
+            }
         }
 
-        const alreadySignedUser = await this.findUserByEmail(newUser.email);
+        if (alreadySignedUpUserCheck) {
+            const alreadySignedUser = await this.findUserByEmail(newUser.email);
 
-        if (alreadySignedUser) {
-            throw new BadRequestException('Already signed up email.');
+            if (alreadySignedUser) {
+                throw new AlreadySignedUpEmailException('Already signed up email.');
+            }
         }
 
         const createdUser = this.userRepository.create(newUser);
@@ -126,76 +157,81 @@ export class UserService {
             randomSuffix: shouldAddRandomSuffix
         });
 
-        const salt = await bcrypt.genSalt(5);
-        const hashedPassword = await bcrypt.hash(plainPassword, salt);
+        const userSetting = newUser.userSetting ?? defaultUserSetting;
 
-        const savedUser = await this.userRepository.save({
+        const hashedPassword = plainPassword && this.utilService.hash(plainPassword);
+
+        const _userRepository = manager.getRepository(User);
+
+        const savedUser = await _userRepository.save({
             ...createdUser,
             hashedPassword,
-            userSetting: defaultUserSetting
+            userSetting
         });
+
+        const _5min = '00:05:00';
+        const initialBufferTime = new BufferTime();
+        initialBufferTime.before = _5min;
+        initialBufferTime.after = _5min;
+
+        const initialTimeRange = new TimeRange();
+        initialTimeRange.startTime = _5min;
+        initialTimeRange.endTime = _5min;
+
+        const initialEventGroup = new EventGroup();
+        const initialEvent = new Event({
+            eventType: EventType.ONE_ON_ONE,
+            bufferTime: initialBufferTime,
+            timeRange: initialTimeRange,
+            bookingUrl: 'default',
+            name: 'default'
+        });
+
+        initialEventGroup.events = [initialEvent];
+
+        await manager.getRepository(EventGroup).save(initialEventGroup);
 
         return savedUser;
     }
 
-    async getOrCreateGoogleUser(param: CreateGoogleUserRequest): Promise<User> {
-        const { googleAuthCode, redirectUrl, timeZone } = param;
-        this.googleIntegrationService.setOauthClient(redirectUrl);
-
-        const { accessToken, refreshToken }: EnsuredGoogleTokenResponse =
-            (await this.googleIntegrationService.issueGoogleTokenByAuthorizationCode(
-                googleAuthCode
-            )) as EnsuredGoogleTokenResponse;
-        const googleUser: EnsuredGoogleOAuth2User =
-            (await this.googleIntegrationService.getGoogleUserInfo(
-                refreshToken
-            )) as EnsuredGoogleOAuth2User;
-
-        let signedUser = await this.userRepository.findOne({
-            where: {
-                email: googleUser.email
-            },
-            relations: {
-                googleIntergrations: true
-            }
+    async createUserForGoogle(
+        googleUser: EnsuredGoogleOAuth2User,
+        timezone: string
+    ): Promise<User> {
+        const newUser = this.userRepository.create({
+            email: googleUser.email,
+            nickname: googleUser.name,
+            profileImage: googleUser.picture
         });
 
-        const isAlreadySignUpUserOrNoIntegrationUser =
-            signedUser !== null && signedUser.googleIntergrations.length <= 0;
-        if (isAlreadySignUpUserOrNoIntegrationUser) {
-            /**
-             * If there is a host who has already registered as an email member with the email to be linked with Google
-             */
-            throw new BadRequestException(
-                'User who signed up with an email address other than Google.'
-            );
-        } else if (signedUser === null) {
-            const userSetting: UserSetting = new UserSetting();
-            /**
-             * TODO: Apply after creating link validation util
-             */
-            userSetting.link = googleUser.email.split('@')[0];
-            userSetting.preferredTimezone = timeZone;
-            userSetting.preferredLanguage = googleUser.locale as Language;
-
-            const googleIntegration: GoogleIntegration = new GoogleIntegration();
-            googleIntegration.refreshToken = refreshToken;
-            googleIntegration.accessToken = accessToken;
-            googleIntegration.email = googleUser.email;
+        const createdUser = this.datasource.transaction(async (manager) => {
             const savedGoogleIntegration =
-                await this.googleIntegrationService.saveGoogleIntegration(googleIntegration);
-
-            const newUser = new User();
-            newUser.email = googleUser.email;
-            newUser.nickname = googleUser.name;
-            newUser.profileImage = googleUser.picture;
+                await this.googleIntegrationService.saveGoogleIntegrationForGoogleUser(
+                    manager,
+                    googleUser
+                );
             newUser.googleIntergrations = [savedGoogleIntegration];
-            newUser.userSetting = userSetting;
 
-            signedUser = await this.userRepository.save(newUser);
-        }
+            newUser.userSetting = this.utilService.getUsetDefaultSetting(
+                { email: googleUser.email },
+                googleUser.locale as Language,
+                { randomSuffix: false, timezone }
+            ) as UserSetting;
 
-        return signedUser;
+            const _createdUser = await this._createUser(
+                manager,
+                newUser,
+                googleUser.locale as Language,
+                {
+                    plainPassword: undefined,
+                    alreadySignedUpUserCheck: false,
+                    emailVerification: false
+                }
+            );
+            return _createdUser;
+        });
+
+        return createdUser;
     }
 
     async updateUser(userId: number): Promise<boolean> {
@@ -236,20 +272,22 @@ export class UserService {
         await this.userSettingService.updateUserSetting(userId, newUserSetting);
     }
 
-    async fetchUserInfo(userId: number): Promise<FetchUserInfoResponseDto> {
+    async fetchUserInfo(userId: number, email: string): Promise<FetchUserInfoResponseDto> {
         const userSetting = await this.userSettingService.fetchUserSetting(userId);
-        const isIntegration = await this.fetchIsIntegrations(userId);
-        const convertedUserSettingToDto = Object.assign(
-            new FetchUserInfoResponseDto(),
-            userSetting,
-            {
-                language: userSetting.preferredLanguage,
-                dateTimeFormat: userSetting.preferredDateTimeFormat,
-                dateTimeOrderFormat: userSetting.preferredDateTimeOrderFormat,
-                timeZone: userSetting.preferredTimezone,
-                integration: isIntegration
-            }
+        const loadedIntegrationByUser = await this.googleIntegrationService.loadAlreadySignedUpUser(
+            email
         );
+        const convertedUserSettingToDto = plainToInstance(FetchUserInfoResponseDto, {
+            ...userSetting,
+            language: userSetting.preferredLanguage,
+            dateTimeFormat: userSetting.preferredDateTimeFormat,
+            dateTimeOrderFormat: userSetting.preferredDateTimeOrderFormat,
+            timeZone: userSetting.preferredTimezone,
+            integration: {
+                google: !!loadedIntegrationByUser
+            }
+        });
+
         return convertedUserSettingToDto;
     }
 

@@ -357,7 +357,8 @@
                 "@typescript-eslint/unified-signatures": "off",
                 "@typescript-eslint/unbound-method": "off",
                 "@typescript-eslint/ban-types": "off",
-                "@typescript-eslint/no-explicit-any": "off"
+                "@typescript-eslint/no-explicit-any": "off",
+                "@typescript-eslint/no-unsafe-call": "off"
             }
         }
     ]

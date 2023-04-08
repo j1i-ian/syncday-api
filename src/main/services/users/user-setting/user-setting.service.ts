@@ -42,7 +42,12 @@ export class UserSettingService {
     }
 
     async fetchUserSetting(userId: number): Promise<UserSetting> {
-        const loadedUserSetting = await this.userSettingRepository.findOneBy({ userId });
+        const loadedUserSetting = await this.userSettingRepository.findOne({
+            where: {
+                userId
+            },
+            relations: ['user', 'user.googleIntergrations']
+        });
         if (loadedUserSetting === null) {
             throw new NotFoundException('User settings do not exist');
         }

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Auth } from 'googleapis';
+import { Auth, calendar_v3 } from 'googleapis';
 import { UserService } from '@services/users/user.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
@@ -38,27 +38,27 @@ export class GoogleCalendarIntegrationService {
             requestBody.redirectUri
         );
 
-        const { accessToken, refreshToken } = await this.getTokensByAuthorizationCode(
+        const userInfo = await this.integrationUtilService.getGoogleUserInfo(
             requestBody.authorizationCode,
-            oauthClient
+            requestBody.redirectUri
         );
 
-        const userInfo = await this.integrationUtilService.getGoogleUserInfo(
-            refreshToken as string,
+        const primaryCalendar = await this.integrationUtilService.getGooglePrimaryCalendar(
+            userInfo.refreshToken,
             oauthClient
         );
 
         const newIntegration = new GoogleIntegration();
-        newIntegration.accessToken = accessToken as string;
-        newIntegration.refreshToken = refreshToken as string;
-        newIntegration.email = userInfo.email as string;
+        newIntegration.accessToken = userInfo.accessToken;
+        newIntegration.refreshToken = userInfo.refreshToken;
+        newIntegration.email = userInfo.email;
         newIntegration.users = [user];
 
-        const result = await this.googleIntegrationRepository.save(newIntegration);
+        const savedGoogleIntegration = await this.googleIntegrationRepository.save(newIntegration);
 
-        await this.saveDefaultCalendar(user, result, oauthClient);
+        await this._saveDefaultCalendar(user, savedGoogleIntegration, primaryCalendar);
 
-        return result;
+        return savedGoogleIntegration;
     }
 
     async getCalendarList(
@@ -66,7 +66,7 @@ export class GoogleCalendarIntegrationService {
         integrationId: number,
         query: GetCalendarListSearchOption
     ): Promise<GetIntegrationCalendarListResponseDto> {
-        const googleIntegration = await this.findGoogleIntegrationById(userId, integrationId);
+        const googleIntegration = await this._findGoogleIntegrationById(userId, integrationId);
 
         let calendarSetting: IntegrationCalendarSetting;
 
@@ -98,16 +98,11 @@ export class GoogleCalendarIntegrationService {
         };
     }
 
-    private async saveDefaultCalendar(
+    async _saveDefaultCalendar(
         user: User,
         googleIntegration: GoogleIntegration,
-        oauthClient: Auth.OAuth2Client
+        primaryCalendar: calendar_v3.Schema$Calendar
     ): Promise<void> {
-        const primaryCalendar = await this.integrationUtilService.getGooglePrimaryCalendar(
-            googleIntegration.refreshToken,
-            oauthClient
-        );
-
         const defaultCalendar = this.googleCalnedarIntegrationRepository.create({
             calendarId: primaryCalendar.id as string,
             subject: primaryCalendar.summary as string,
@@ -123,7 +118,7 @@ export class GoogleCalendarIntegrationService {
         await this.googleCalnedarIntegrationRepository.save(defaultCalendar);
     }
 
-    private async getTokensByAuthorizationCode(
+    async _getTokensByAuthorizationCode(
         authorizationCode: string,
         oauthClient: Auth.OAuth2Client
     ): Promise<{
@@ -134,7 +129,7 @@ export class GoogleCalendarIntegrationService {
         return { accessToken: tokens.access_token, refreshToken: tokens.refresh_token };
     }
 
-    private async findGoogleIntegrationById(
+    async _findGoogleIntegrationById(
         userId: number,
         integrationId: number
     ): Promise<GoogleIntegration> {
