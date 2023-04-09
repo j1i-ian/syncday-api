@@ -41,7 +41,7 @@ export class TokenService {
     async issueTokenByGoogleOAuth(
         createGoogleUserRequestDto: CreateGoogleUserRequestDto
     ): Promise<CreateTokenResponseDto> {
-        const { googleAuthCode, redirectUrl, timeZone } = createGoogleUserRequestDto;
+        const { googleAuthCode, redirectUrl, timezone } = createGoogleUserRequestDto;
 
         const googleUser: EnsuredGoogleOAuth2User =
             (await this.integrationUtilService.getGoogleUserInfo(
@@ -55,7 +55,7 @@ export class TokenService {
 
         if (alreadySignedUpUser === null || alreadySignedUpUser === undefined) {
             // sign up
-            alreadySignedUpUser = await this.userService.createUserForGoogle(googleUser, timeZone);
+            alreadySignedUpUser = await this.userService.createUserForGoogle(googleUser, timezone);
         }
 
         const createTokenResponseDto = this.issueToken(alreadySignedUpUser);

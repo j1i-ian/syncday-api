@@ -8,11 +8,11 @@ export class CreateGoogleUserRequestDto {
     googleAuthCode: string;
 
     @IsDefined()
-    timeZone: string;
+    timezone: string;
 }
 
 export interface CreateGoogleUserRequest {
     redirectUrl: string;
     googleAuthCode: string;
-    timeZone: string;
+    timezone: string;
 }

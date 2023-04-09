@@ -22,5 +22,5 @@ export class UpdateUserSettingRequestDto {
     dateTimeOrderFormat?: string;
 
     @IsOptional()
-    timeZone?: string;
+    timezone?: string;
 }

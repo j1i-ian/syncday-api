@@ -34,11 +34,11 @@ export interface MicrosoftCreateCalendarEventResponseDTO {
     };
     start: {
         dateTime: string;
-        timeZone: string;
+        timezone: string;
     };
     end: {
         dateTime: string;
-        timeZone: string;
+        timezone: string;
     };
     location: {
         displayName: string;

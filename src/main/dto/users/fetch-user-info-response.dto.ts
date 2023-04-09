@@ -22,7 +22,7 @@ export class FetchUserInfoResponseDto {
     dateTimeOrderFormat: string;
 
     @Expose()
-    timeZone: string;
+    timezone: string;
 
     @Expose()
     integration: IntegrationsInfo;

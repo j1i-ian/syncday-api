@@ -6,11 +6,11 @@ export interface MicrosoftCreateCalendarEventRequestDTO {
     subject: string;
     start: {
         dateTime: string;
-        timeZone: string;
+        timezone: string;
     };
     end: {
         dateTime: string;
-        timeZone: string;
+        timezone: string;
     };
     body?: {
         contentType: string;

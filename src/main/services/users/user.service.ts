@@ -252,7 +252,7 @@ export class UserService {
             greetings,
             language: preferredLanguage,
             dateTimeFormat: preferredDateTimeFormat,
-            timeZone: preferredTimezone,
+            timezone: preferredTimezone,
             dateTimeOrderFormat: preferredDateTimeOrderFormat,
             link
         } = updateUserSetting;
@@ -282,7 +282,7 @@ export class UserService {
             language: userSetting.preferredLanguage,
             dateTimeFormat: userSetting.preferredDateTimeFormat,
             dateTimeOrderFormat: userSetting.preferredDateTimeOrderFormat,
-            timeZone: userSetting.preferredTimezone,
+            timezone: userSetting.preferredTimezone,
             integration: {
                 google: !!loadedIntegrationByUser
             }
