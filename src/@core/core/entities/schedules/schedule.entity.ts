@@ -18,6 +18,10 @@ export class Schedule {
     @Column(() => TimeRange)
     timeRange: TimeRange;
 
+    // unix epoch time
+    @Column('timestamp')
+    timestamp: number;
+
     @Column('enum', {
         enum: EventType
     })
