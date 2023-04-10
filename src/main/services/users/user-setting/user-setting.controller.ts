@@ -14,7 +14,7 @@ export class UserSettingController {
         return this.userSettingService.fetchUserSetting(userId);
     }
 
-    @Put(':id(\\d)')
+    @Put(':id(\\d+)')
     @Header('Content-type', 'application/json')
     async updateUserSetting(
         @Param('id') id: string,

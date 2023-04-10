@@ -50,7 +50,7 @@ export class UserController {
         return this.userService.updateVerificationByEmail(email, verificationCode);
     }
 
-    @Patch()
+    @Patch(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     updateUser(
         @AuthUser() authUser: AppJwtPayload,
@@ -62,7 +62,7 @@ export class UserController {
         });
     }
 
-    @Delete(':userId(\\d)')
+    @Delete(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteUser(@Param('userId') userId: number): Promise<void> {
         await this.userService.deleteUser(userId);
