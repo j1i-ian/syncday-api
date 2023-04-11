@@ -21,6 +21,7 @@ import { Language } from '../../enums/language.enum';
 import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
 import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
 import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
+import { EventDetail } from '../../../@core/core/entities/events/event-detail.entity';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
@@ -181,12 +182,16 @@ export class UserService {
         const initialEventGroup = new EventGroup();
         const initialEvent = new Event({
             type: EventType.ONE_ON_ONE,
-            bufferTime: initialBufferTime,
-            timeRange: initialTimeRange,
             link: 'default',
             name: 'default'
         });
 
+        const initialEventDetail = new EventDetail({
+            bufferTime: initialBufferTime,
+            timeRange: initialTimeRange
+        });
+
+        initialEvent.eventDetail = initialEventDetail;
         initialEventGroup.events = [initialEvent];
 
         await manager.getRepository(EventGroup).save(initialEventGroup);
