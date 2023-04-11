@@ -95,6 +95,11 @@ export class Schedule {
     @Column({ name: 'event_detail_id' })
     eventDetailId: number;
 
+    @Column('time', {
+        default: '00:00:00'
+    })
+    interval: string | number;
+
     @CreateDateColumn({
         type: 'timestamp'
     })
