@@ -53,6 +53,19 @@ export class GoogleIntegrationsService {
         return savedGoogleIntegration;
     }
 
+    async getGoogleIntegrations(userId: number): Promise<GoogleIntegration[]> {
+        return await this.googleIntegrationRepository.find({
+            relations: {
+                users: true
+            },
+            where: {
+                users: {
+                    id: userId
+                }
+            }
+        });
+    }
+
     _createOAuthClient(redirectUri: string): Auth.OAuth2Client {
         const oauthClient = this.oauth2ClientMap.get(redirectUri);
 
