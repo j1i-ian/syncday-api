@@ -14,6 +14,7 @@ import { BufferTime } from './buffer-time.entity';
 import { EventType } from './event-type.entity';
 import { EventGroup } from './evnet-group.entity';
 import { TimeRange } from './time-range.entity';
+import { EventStatus } from './event-status.enum';
 
 @Entity()
 export class Event {
@@ -30,6 +31,11 @@ export class Event {
         length: 200
     })
     name: string;
+
+    @Column('enum', {
+        enum: EventStatus
+    })
+    status: EventStatus;
 
     @Column('enum', {
         enum: EventType
