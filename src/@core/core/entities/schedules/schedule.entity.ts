@@ -22,6 +22,9 @@ export class Schedule {
     @Column('timestamp')
     timestamp: number;
 
+    @Column({ length: 1000 })
+    meetingNote: string;
+
     @Column('enum', {
         enum: EventType
     })
