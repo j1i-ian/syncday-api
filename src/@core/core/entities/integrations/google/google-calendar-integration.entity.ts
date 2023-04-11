@@ -35,15 +35,16 @@ export class GoogleCalendarIntegration {
     calendarId: string;
 
     @Column({
-        nullable: true
+        nullable: true,
+        type: 'varchar'
     })
-    resourceId: string;
+    resourceId: string | null;
 
     @Column({
         type: 'datetime',
         nullable: true
     })
-    channelExpiration: Date;
+    channelExpiration: Date | null;
 
     @Column(() => IntegrationCalendarSetting)
     settings: IntegrationCalendarSetting;

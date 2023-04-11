@@ -21,7 +21,7 @@ export class GoogleCalendarIntegrationService {
         @InjectRepository(GoogleIntegration)
         private readonly googleIntegrationRepository: Repository<GoogleIntegration>,
         @InjectRepository(GoogleCalendarIntegration)
-        private readonly googleCalnedarIntegrationRepository: Repository<GoogleCalendarIntegration>
+        private readonly googleCalendarIntegrationRepository: Repository<GoogleCalendarIntegration>
     ) {}
 
     /**
@@ -98,12 +98,63 @@ export class GoogleCalendarIntegrationService {
         };
     }
 
+    /**
+     * Parse number string for expiration.
+     * Google calendar channel expiration of result includes milliseconds.
+     * So you need not to update for changing to javascript date object.
+     *
+     * @param googleCalendarId
+     * @param googleCalendarIntegrationId
+     * @param googleIntegration
+     */
+    async subscribeModifingEvents(
+        googleCalendarId: string,
+        googleCalendarIntegrationId: number,
+        googleIntegration: GoogleIntegration
+    ): Promise<void> {
+        const googleCalendarIntegration = await this._findGoogleCalendarIntegrationById(
+            googleCalendarIntegrationId
+        );
+
+        const subscribeResult =
+            await this.integrationUtilService.subscribeGoogleCalendarModifingEvents(
+                googleIntegration,
+                googleCalendarId,
+                googleCalendarIntegration.uuid
+            );
+
+        await this.googleCalendarIntegrationRepository.update(googleCalendarIntegrationId, {
+            resourceId: subscribeResult.resourceId,
+            channelExpiration: new Date(+subscribeResult.expiration)
+        });
+    }
+
+    async unsubscribeModifingEvents(
+        googleIntegration: GoogleIntegration,
+        googleCalendarIntegrationId: number
+    ): Promise<void> {
+        const googleCalendarIntegration = await this._findGoogleCalendarIntegrationById(
+            googleCalendarIntegrationId
+        );
+
+        await this.integrationUtilService.unsubscribeGoogleCalendarModifingEvents(
+            googleIntegration,
+            googleCalendarIntegration.uuid,
+            googleCalendarIntegration.resourceId
+        );
+
+        await this.googleCalendarIntegrationRepository.update(googleCalendarIntegrationId, {
+            channelExpiration: null,
+            resourceId: null
+        });
+    }
+
     async _saveDefaultCalendar(
         user: User,
         googleIntegration: GoogleIntegration,
         primaryCalendar: calendar_v3.Schema$Calendar
     ): Promise<void> {
-        const defaultCalendar = this.googleCalnedarIntegrationRepository.create({
+        const defaultCalendar = this.googleCalendarIntegrationRepository.create({
             calendarId: primaryCalendar.id as string,
             subject: primaryCalendar.summary as string,
             googleIntegration,
@@ -115,7 +166,7 @@ export class GoogleCalendarIntegrationService {
             users: [user]
         });
 
-        await this.googleCalnedarIntegrationRepository.save(defaultCalendar);
+        await this.googleCalendarIntegrationRepository.save(defaultCalendar);
     }
 
     async _getTokensByAuthorizationCode(
@@ -142,6 +193,16 @@ export class GoogleCalendarIntegrationService {
                     id: userId
                 },
                 id: integrationId
+            }
+        });
+    }
+
+    async _findGoogleCalendarIntegrationById(
+        googleCalendarIntegrationId: number
+    ): Promise<GoogleCalendarIntegration> {
+        return await this.googleCalendarIntegrationRepository.findOneOrFail({
+            where: {
+                id: googleCalendarIntegrationId
             }
         });
     }
