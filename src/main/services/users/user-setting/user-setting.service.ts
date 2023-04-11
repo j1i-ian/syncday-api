@@ -30,13 +30,13 @@ export class UserSettingService {
         const loadedUserSetting = await this.userSettingRepository.findOneByOrFail({
             userId
         });
-        const previousWorkspace = loadedUserSetting.link;
+        const previousWorkspace = loadedUserSetting.workspace;
 
         await this.syncdayRedisService.deleteWorkspaceStatus(previousWorkspace);
 
         const workspaceStatus = await this.syncdayRedisService.setWorkspaceStatus(newWorkspace);
 
-        await this.userSettingRepository.update({ userId }, { link: newWorkspace });
+        await this.userSettingRepository.update({ userId }, { workspace: newWorkspace });
 
         return workspaceStatus;
     }

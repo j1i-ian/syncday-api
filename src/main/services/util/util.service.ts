@@ -60,7 +60,7 @@ export class UtilService {
         }
 
         return {
-            link: workspaceName,
+            workspace: workspaceName,
             preferredLanguage: language,
             preferredTimezone: timezone
         };

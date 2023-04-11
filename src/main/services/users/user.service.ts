@@ -258,7 +258,7 @@ export class UserService {
         } = updateUserSetting;
 
         const newUserSetting = new UserSetting({
-            link,
+            workspace: link,
             greetings,
             preferredDateTimeFormat,
             preferredDateTimeOrderFormat,

@@ -20,7 +20,7 @@ export class UserSetting {
     @Column({
         unique: true
     })
-    link: string;
+    workspace: string;
 
     @Column({
         length: 100,

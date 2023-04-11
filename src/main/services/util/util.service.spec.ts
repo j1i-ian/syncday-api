@@ -67,7 +67,7 @@ describe('UtilService', () => {
             const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock);
 
             expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.link).contains(userMock.nickname);
+            expect(defaultUserSetting.workspace).contains(userMock.nickname);
             expect(defaultUserSetting.preferredLanguage).equals(languageMock);
         });
 
@@ -85,7 +85,7 @@ describe('UtilService', () => {
             });
 
             expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.link).contains(emailPrefix);
+            expect(defaultUserSetting.workspace).contains(emailPrefix);
             expect(defaultUserSetting.preferredLanguage).equals(languageMock);
         });
 
@@ -101,9 +101,9 @@ describe('UtilService', () => {
             });
 
             expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.link).ok;
-            expect(defaultUserSetting.link).not.contain(userMock.nickname);
-            expect(defaultUserSetting.link).not.contain(userMock.email);
+            expect(defaultUserSetting.workspace).ok;
+            expect(defaultUserSetting.workspace).not.contain(userMock.nickname);
+            expect(defaultUserSetting.workspace).not.contain(userMock.email);
             expect(defaultUserSetting.preferredLanguage).equals(languageMock);
         });
 
@@ -118,8 +118,8 @@ describe('UtilService', () => {
             });
 
             expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.link).contains(userMock.nickname);
-            expect(defaultUserSetting.link).not.equals(userMock.nickname);
+            expect(defaultUserSetting.workspace).contains(userMock.nickname);
+            expect(defaultUserSetting.workspace).not.equals(userMock.nickname);
             expect(defaultUserSetting.preferredLanguage).equals(languageMock);
         });
 
