@@ -68,7 +68,7 @@ export class Event {
     timeRange: TimeRange;
 
     @Column()
-    bookingUrl: string;
+    link: string;
 
     @CreateDateColumn({
         type: 'timestamp'

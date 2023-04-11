@@ -183,7 +183,7 @@ export class UserService {
             type: EventType.ONE_ON_ONE,
             bufferTime: initialBufferTime,
             timeRange: initialTimeRange,
-            bookingUrl: 'default',
+            link: 'default',
             name: 'default'
         });
 
