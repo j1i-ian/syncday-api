@@ -19,7 +19,7 @@ export class UpdateUserSettingRequestDto {
     dateTimeFormat?: Intl.DateTimeFormatOptions;
 
     @IsOptional()
-    dateTimeOrderFormat?: string;
+    dateTimeOrderFormat?: Array<'year' | 'month' | 'day'>;
 
     @IsOptional()
     timezone?: string;

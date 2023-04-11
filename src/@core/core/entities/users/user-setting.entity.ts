@@ -36,7 +36,7 @@ export class UserSetting {
     preferredDateTimeFormat: Intl.DateTimeFormatOptions;
 
     @Column({ nullable: true, default: null })
-    preferredDateTimeOrderFormat: string;
+    preferredDateTimeOrderFormat: Array<'year' | 'month' | 'day'>;
 
     @Column({ nullable: true, default: null })
     greetings: string;
