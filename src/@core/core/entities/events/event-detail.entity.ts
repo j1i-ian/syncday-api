@@ -5,6 +5,7 @@ import {
     Entity,
     Generated,
     JoinColumn,
+    ManyToOne,
     OneToOne,
     PrimaryGeneratedColumn,
     UpdateDateColumn
@@ -13,6 +14,7 @@ import { BufferTime } from './buffer-time.entity';
 import { TimeRange } from './time-range.entity';
 import { Event } from './event.entity';
 import { Contact } from './contact.entity';
+import { DatetimePreset } from '../datetime-presets/datetime-preset.entity';
 
 @Entity()
 export class EventDetail {
@@ -70,7 +72,17 @@ export class EventDetail {
     @Column({ name: 'event_id' })
     eventId: number;
 
+    @Column({ name: 'datetime_preset_id' })
+    datetimePresetId: number;
+
     @OneToOne(() => Event)
     @JoinColumn({ name: 'event_id' })
     event: Event;
+
+    @ManyToOne(() => DatetimePreset, {
+        onUpdate: 'RESTRICT',
+        onDelete: 'RESTRICT'
+    })
+    @JoinColumn({ name: 'datetime_preset_id' })
+    datetimePreset: DatetimePreset;
 }
