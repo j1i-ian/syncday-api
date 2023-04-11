@@ -15,6 +15,7 @@ import { TimeRange } from './time-range.entity';
 import { Event } from './event.entity';
 import { Contact } from './contact.entity';
 import { DatetimePreset } from '../datetime-presets/datetime-preset.entity';
+import { Reminder } from '../reminders/reminder.entity';
 
 @Entity()
 export class EventDetail {
@@ -34,12 +35,6 @@ export class EventDetail {
     })
     @Generated('uuid')
     uuid: string;
-
-    /**
-     * reminder group uuid
-     */
-    @Generated('uuid')
-    remindersUUID: string;
 
     @Column({ length: 1000 })
     description: string;
@@ -94,4 +89,9 @@ export class EventDetail {
     })
     @JoinColumn({ name: 'datetime_preset_id' })
     datetimePreset: DatetimePreset;
+
+    /**
+     * this objects are patched from redis by logic
+     */
+    reminders: Reminder[];
 }
