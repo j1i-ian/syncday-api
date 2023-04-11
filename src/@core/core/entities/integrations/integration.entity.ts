@@ -1,4 +1,4 @@
-import { Column, Generated, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Generated, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from '@entity/users/user.entity';
 
 export abstract class Integration {
@@ -14,6 +14,5 @@ export abstract class Integration {
     uuid: string;
 
     @ManyToMany(() => User)
-    @JoinTable()
     users: User[];
 }

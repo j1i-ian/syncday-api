@@ -99,15 +99,7 @@ export class User {
         cascade: true
     })
     @JoinTable({
-        name: 'google_integration_users',
-        joinColumn: {
-            name: 'user_id',
-            referencedColumnName: 'id'
-        },
-        inverseJoinColumn: {
-            name: 'google_integration_id',
-            referencedColumnName: 'id'
-        }
+        name: 'google_integration_users'
     })
     googleIntergrations: GoogleIntegration[];
 
