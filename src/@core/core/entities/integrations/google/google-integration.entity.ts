@@ -4,9 +4,11 @@ import {
     DeleteDateColumn,
     Entity,
     UpdateDateColumn,
-    OneToMany
+    OneToMany,
+    ManyToMany
 } from 'typeorm';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { User } from '../../users/user.entity';
 import { Integration } from '../integration.entity';
 
 @Entity()
@@ -40,4 +42,7 @@ export class GoogleIntegration extends Integration {
         (googleCalendarIntegrations) => googleCalendarIntegrations.googleIntegration
     )
     googleCalendarIntegrations: GoogleCalendarIntegration[];
+
+    @ManyToMany(() => User, (user) => user.googleIntergrations)
+    users: User[];
 }
