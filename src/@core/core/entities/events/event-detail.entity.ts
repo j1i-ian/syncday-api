@@ -12,6 +12,7 @@ import {
 import { BufferTime } from './buffer-time.entity';
 import { TimeRange } from './time-range.entity';
 import { Event } from './event.entity';
+import { Contact } from './contact.entity';
 
 @Entity()
 export class EventDetail {
@@ -25,6 +26,14 @@ export class EventDetail {
     })
     @Generated('uuid')
     uuid: string;
+
+    @Column({ length: 1000 })
+    description: string;
+
+    @Column('simple-json', {
+        nullable: false
+    })
+    contacts: Contact[];
 
     @Column(() => BufferTime)
     bufferTime: BufferTime;
