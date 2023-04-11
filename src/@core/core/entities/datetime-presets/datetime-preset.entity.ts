@@ -1,5 +1,7 @@
 import { Column, Entity, Generated, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { EventDetail } from '../events/event-detail.entity';
+import { TimePreset } from './time-preset.entity';
+import { OverridedTimePreset } from './overrided-time-preset.entity';
 
 @Entity()
 export class DatetimePreset {
@@ -16,4 +18,14 @@ export class DatetimePreset {
 
     @OneToMany(() => EventDetail, (eventDetail) => eventDetail.datetimePreset)
     eventDetails: EventDetail[];
+
+    /**
+     * patched from redis
+     */
+    timepreset: TimePreset[];
+
+    /**
+     * patched from redis
+     */
+    overrides: OverridedTimePreset[];
 }
