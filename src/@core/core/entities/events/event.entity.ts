@@ -42,6 +42,11 @@ export class Event {
     })
     eventType: EventType;
 
+    @Column({
+        default: 1
+    })
+    maxParticipants: number;
+
     @Column('time', {
         default: '00:00:00'
     })
