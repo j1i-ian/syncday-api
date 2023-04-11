@@ -37,7 +37,8 @@ export class User {
     email: string;
 
     @Column({
-        nullable: true
+        nullable: true,
+        select: false
     })
     hashedPassword: string;
 
@@ -86,7 +87,8 @@ export class User {
     updatedAt: Date;
 
     @DeleteDateColumn({
-        type: 'timestamp'
+        type: 'timestamp',
+        select: false
     })
     deletedAt: Date;
 
