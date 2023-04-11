@@ -16,6 +16,7 @@ import { Event } from './event.entity';
 import { Contact } from './contact.entity';
 import { DatetimePreset } from '../datetime-presets/datetime-preset.entity';
 import { Reminder } from '../reminders/reminder.entity';
+import { InviteeQuestion } from '../invitee-questions/invitee-question.entity';
 
 @Entity()
 export class EventDetail {
@@ -89,6 +90,11 @@ export class EventDetail {
     })
     @JoinColumn({ name: 'datetime_preset_id' })
     datetimePreset: DatetimePreset;
+
+    /**
+     * this objects are patched from redis by logic
+     */
+    inviteeQuestions: InviteeQuestion[];
 
     /**
      * this objects are patched from redis by logic
