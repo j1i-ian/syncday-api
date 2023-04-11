@@ -17,6 +17,7 @@ import { Contact } from '../events/contact.entity';
 import { ScheduleBufferTime } from './schedule-buffer-time.entity';
 import { InviteeAnswer } from './invitee-answer.entity';
 import { ScheduleTimeset } from './schedule-timeset.entity';
+import { ScheduledReminder } from './scheduled-reminder.entity';
 
 /**
  * schedule is generated from event.
@@ -71,6 +72,9 @@ export class Schedule {
     })
     status: ScheduleStatus;
 
+    @Column()
+    statusDescription: string;
+
     @Column('simple-json', {
         nullable: false
     })
@@ -121,6 +125,11 @@ export class Schedule {
     })
     @JoinColumn({ name: 'event_detail_id' })
     eventDetail: EventDetail;
+
+    /**
+     * patched from redis with schedule UUID
+     */
+    scheduledReminders: ScheduledReminder[];
 
     /**
      * patched from redis with schedule UUID
