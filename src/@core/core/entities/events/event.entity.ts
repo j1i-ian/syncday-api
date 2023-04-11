@@ -49,7 +49,7 @@ export class Event {
     @Column('enum', {
         enum: EventType
     })
-    eventType: EventType;
+    type: EventType;
 
     @Column({
         default: 1

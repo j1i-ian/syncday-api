@@ -180,7 +180,7 @@ export class UserService {
 
         const initialEventGroup = new EventGroup();
         const initialEvent = new Event({
-            eventType: EventType.ONE_ON_ONE,
+            type: EventType.ONE_ON_ONE,
             bufferTime: initialBufferTime,
             timeRange: initialTimeRange,
             bookingUrl: 'default',
