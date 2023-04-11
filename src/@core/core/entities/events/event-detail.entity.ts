@@ -35,6 +35,12 @@ export class EventDetail {
     @Generated('uuid')
     uuid: string;
 
+    /**
+     * reminder group uuid
+     */
+    @Generated('uuid')
+    remindersUUID: string;
+
     @Column({ length: 1000 })
     description: string;
 
