@@ -70,6 +70,11 @@ export class Event {
     @Column()
     link: string;
 
+    @Column({
+        default: true
+    })
+    public: boolean;
+
     @CreateDateColumn({
         type: 'timestamp'
     })

@@ -30,6 +30,11 @@ export class Schedule {
     @Column(() => BufferTime)
     bufferTime: BufferTime;
 
+    @Column({
+        default: true
+    })
+    public: boolean;
+
     @ManyToOne(() => Event, (event) => event.eventGroup, {
         onUpdate: 'NO ACTION',
         onDelete: 'NO ACTION'
