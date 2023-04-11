@@ -20,6 +20,15 @@ type EnsuredGoogleOAuth2User = oauth2_v2.Schema$Userinfo &
         picture: string;
     }>;
 
+type EnsuredGoogleCalendarChannel = {
+    expiration: string;
+    resourceId: string;
+} & calendar_v3.Schema$Channel;
+
+enum GoogleIntegrationClientKey {
+    GOOGLE_CALENDAR_OAUTH_CLIENT_KEY = 'google_calendar_oauth_client_key'
+}
+
 @Injectable()
 export class IntegrationUtilService {
     constructor(
@@ -28,8 +37,6 @@ export class IntegrationUtilService {
     ) {
         this.googleOAauth2ClientMap = new Map<string, Auth.OAuth2Client>();
     }
-
-    GOOGLE_CALENDAR_OAUTH_CLIENT_KEY = 'google_calendar_oauth_client_key';
 
     // <RedirectURI, Auth.OAuth2Client>
     private googleOAauth2ClientMap: Map<string, Auth.OAuth2Client>;
@@ -135,8 +142,57 @@ export class IntegrationUtilService {
         return data;
     }
 
+    /**
+     * 만료기간 1달인 채널을 생성한다.
+     * 캘린더의 이벤트가 변경될 때마다 "address" 에 지정한 웹훅을 호출한다.
+     * ref:  https://developers.google.com/calendar/api/guides/push?hl=ko
+     */
+    async subscribeGoogleCalendarModifingEvents(
+        googleIntegration: GoogleIntegration,
+        googleCalendarId: string,
+        channelId: string
+    ): Promise<EnsuredGoogleCalendarChannel> {
+        const googleCalendarOauthClient = this.getGoogleCalendarOauthClient(googleIntegration);
+
+        const expireOneMonthLaterTimestamp = new Date().setMonth(new Date().getMonth() + 1);
+        const expireOneMonthLater = new Date(expireOneMonthLaterTimestamp);
+
+        const webhookUrl = AppConfigService.getGoogleCalendarWebhookUrl(this.configService);
+
+        const { data } = (await googleCalendarOauthClient.events.watch({
+            calendarId: googleCalendarId,
+            requestBody: {
+                id: channelId,
+                expiration: expireOneMonthLater.getTime().toString(),
+                type: 'webhook',
+                address: webhookUrl
+            }
+        })) as { data: EnsuredGoogleCalendarChannel };
+
+        return data;
+    }
+
+    async unsubscribeGoogleCalendarModifingEvents(
+        googleIntegration: GoogleIntegration,
+        googleChannelId: string | null,
+        googleResourceId: string | null
+    ): Promise<void> {
+        if (!googleChannelId || !googleResourceId) {
+            throw new BadRequestException('Invalid subscription');
+        }
+
+        const googleCalendarOauthClient = this.getGoogleCalendarOauthClient(googleIntegration);
+
+        await googleCalendarOauthClient.channels.stop({
+            requestBody: {
+                id: googleChannelId,
+                resourceId: googleResourceId
+            }
+        });
+    }
+
     getGoogleCalendarOauthClient(googleIntegration: GoogleIntegration): calendar_v3.Calendar {
-        const clientKey = this.GOOGLE_CALENDAR_OAUTH_CLIENT_KEY;
+        const clientKey = GoogleIntegrationClientKey.GOOGLE_CALENDAR_OAUTH_CLIENT_KEY;
         const oauthClient = this.getGoogleOauthClient(clientKey);
         oauthClient.setCredentials({
             refresh_token: googleIntegration.refreshToken
@@ -150,7 +206,7 @@ export class IntegrationUtilService {
         return googleCalendar;
     }
 
-    getGoogleOauthClient(clientKey: string): Auth.OAuth2Client {
+    getGoogleOauthClient(clientKey: string | GoogleIntegrationClientKey): Auth.OAuth2Client {
         const oauthClient = this.googleOAauth2ClientMap.get(clientKey);
 
         let ensuredOAuthClient: Auth.OAuth2Client;

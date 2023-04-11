@@ -221,6 +221,10 @@ export class AppConfigService {
         };
     }
 
+    static getGoogleCalendarWebhookUrl(configService: ConfigService): string {
+        return configService.get<string>('GOOGLE_CALENDAR_WEBHOOK_URL') as string;
+    }
+
     private static _getWinstonModuleProductionTransports(
         configService: ConfigService
     ): winston.transport {
