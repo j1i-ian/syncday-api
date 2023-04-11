@@ -42,6 +42,11 @@ export class Event {
     })
     eventType: EventType;
 
+    @Column('time', {
+        default: '00:00:00'
+    })
+    duration: string | number;
+
     @Column(() => BufferTime)
     bufferTime: BufferTime;
 
