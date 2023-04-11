@@ -1,8 +1,8 @@
 import { Column, Entity, Generated, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { BufferTime } from '../events/buffer-time.entity';
 import { EventType } from '../events/event-type.entity';
-import { Event } from '../events/event.entity';
 import { TimeRange } from '../events/time-range.entity';
+import { EventDetail } from '../events/event-detail.entity';
 
 /**
  * schedule is generated from event.
@@ -35,10 +35,13 @@ export class Schedule {
     })
     public: boolean;
 
-    @ManyToOne(() => Event, (event) => event.eventGroup, {
+    @Column({ name: 'event_detail_id' })
+    eventDetailId: number;
+
+    @ManyToOne(() => EventDetail, (eventDetail) => eventDetail, {
         onUpdate: 'NO ACTION',
         onDelete: 'NO ACTION'
     })
-    @JoinColumn()
-    event: Event;
+    @JoinColumn({ name: 'event_detail_id' })
+    eventDetail: EventDetail;
 }

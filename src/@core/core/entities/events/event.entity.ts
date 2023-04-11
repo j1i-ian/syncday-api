@@ -6,12 +6,10 @@ import {
     Generated,
     JoinColumn,
     ManyToOne,
-    OneToMany,
     OneToOne,
     PrimaryGeneratedColumn,
     UpdateDateColumn
 } from 'typeorm';
-import { Schedule } from '../schedules/schedule.entity';
 import { EventType } from './event-type.entity';
 import { EventGroup } from './evnet-group.entity';
 import { EventStatus } from './event-status.enum';
@@ -92,9 +90,6 @@ export class Event {
 
     @OneToOne(() => EventDetail, { cascade: true })
     eventDetail: EventDetail;
-
-    @OneToMany(() => Schedule, (schedule) => schedule.event)
-    schedule: Schedule[];
 
     @ManyToOne(() => EventGroup, (eventGroup) => eventGroup.events)
     @JoinColumn()

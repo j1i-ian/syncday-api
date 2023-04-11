@@ -6,6 +6,7 @@ import {
     Generated,
     JoinColumn,
     ManyToOne,
+    OneToMany,
     OneToOne,
     PrimaryGeneratedColumn,
     UpdateDateColumn
@@ -17,6 +18,7 @@ import { Contact } from './contact.entity';
 import { DatetimePreset } from '../datetime-presets/datetime-preset.entity';
 import { Reminder } from '../reminders/reminder.entity';
 import { InviteeQuestion } from '../invitee-questions/invitee-question.entity';
+import { Schedule } from '../schedules/schedule.entity';
 
 @Entity()
 export class EventDetail {
@@ -83,6 +85,9 @@ export class EventDetail {
     @OneToOne(() => Event)
     @JoinColumn({ name: 'event_id' })
     event: Event;
+
+    @OneToMany(() => Schedule, (schedule) => schedule.eventDetail)
+    schedules: Schedule;
 
     @ManyToOne(() => DatetimePreset, {
         onUpdate: 'RESTRICT',
