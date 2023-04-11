@@ -269,7 +269,7 @@ export class UserService {
             preferredDateTimeOrderFormat,
             preferredTimezone,
             preferredLanguage
-        } as UserSetting);
+        });
 
         if (name !== undefined) {
             await this.userRepository.update(userId, { nickname: name });

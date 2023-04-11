@@ -5,7 +5,7 @@ import { User } from './user.entity';
 
 @Entity('user_setting')
 export class UserSetting {
-    constructor(userSetting?: UserSetting) {
+    constructor(userSetting?: Partial<UserSetting>) {
         if (userSetting) {
             Object.assign(this, userSetting);
         }
