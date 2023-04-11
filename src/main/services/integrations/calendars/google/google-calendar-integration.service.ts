@@ -1,17 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { Auth, calendar_v3 } from 'googleapis';
 import { UserService } from '@services/users/user.service';
+import { IntegrationUtilService } from '@services/util/integration-util/integraion-util.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
 import { IntegrationCalendarSetting } from '@entity/integrations/google/Integration-calendar-setting.entity';
-import { CreateGoogleIntegrationDto } from '@dto/integrations/create-google-integration-request.dto';
-import { GetIntegrationCalendarListResponseDto } from '@dto/integrations/get-integration-calendar-list-response.dto';
-import { IntegrationUtilService } from '../../util/integration-util/integraion-util.service';
-import { GetCalendarListSearchOption } from '../../../parameters/integrations/get-calendar-list.param';
-import { CalendarSearchOption } from '../../../enums/integrations/calendar-search-option.enum';
+import { CreateGoogleIntegrationDto } from '@dto/integrations/google/create-google-integration-request.dto';
+import { GetIntegrationCalendarListResponseDto } from '@dto/integrations/google/calendars/get-integration-calendar-list-response.dto';
+import { CreateGoogleCalendarIntegrationRequestDto } from '@dto/integrations/google/calendars/create-google-calendar-integration-request.dto';
+import { UpdateGoogleCalendarIntegrationDto } from '@dto/integrations/google/calendars/update-google-calendar-integration-request.dto';
+import { CalendarListSearchOption } from '../../../../parameters/integrations/get-calendar-list.param';
+import { CalendarSearchOption } from '../../../../enums/integrations/calendar-search-option.enum';
 
 @Injectable()
 export class GoogleCalendarIntegrationService {
@@ -64,7 +66,7 @@ export class GoogleCalendarIntegrationService {
     async getCalendarList(
         userId: number,
         integrationId: number,
-        query: GetCalendarListSearchOption
+        query: CalendarListSearchOption
     ): Promise<GetIntegrationCalendarListResponseDto> {
         const googleIntegration = await this._findGoogleIntegrationById(userId, integrationId);
 
@@ -112,7 +114,7 @@ export class GoogleCalendarIntegrationService {
         googleCalendarIntegrationId: number,
         googleIntegration: GoogleIntegration
     ): Promise<void> {
-        const googleCalendarIntegration = await this._findGoogleCalendarIntegrationById(
+        const googleCalendarIntegration = await this._findGoogleCalendarIntegrationDetailById(
             googleCalendarIntegrationId
         );
 
@@ -133,7 +135,7 @@ export class GoogleCalendarIntegrationService {
         googleIntegration: GoogleIntegration,
         googleCalendarIntegrationId: number
     ): Promise<void> {
-        const googleCalendarIntegration = await this._findGoogleCalendarIntegrationById(
+        const googleCalendarIntegration = await this._findGoogleCalendarIntegrationDetailById(
             googleCalendarIntegrationId
         );
 
@@ -147,6 +149,106 @@ export class GoogleCalendarIntegrationService {
             channelExpiration: null,
             resourceId: null
         });
+    }
+
+    async getGoogleCalendarConnections(
+        userId: number,
+        integrationId: number,
+        searchQuery: CalendarListSearchOption
+    ): Promise<GoogleCalendarIntegration[]> {
+        let accessRoleWhereStatement: FindOptionsWhere<IntegrationCalendarSetting> = {
+            readSynchronize: true
+        };
+
+        if (searchQuery.accessRole === CalendarSearchOption.WRITE) {
+            accessRoleWhereStatement = {
+                ...accessRoleWhereStatement,
+                writeSynchronize: true
+            };
+        }
+
+        const result = await this.googleCalendarIntegrationRepository.find({
+            relations: {
+                users: true,
+                googleIntegration: true
+            },
+            where: {
+                users: {
+                    id: userId
+                },
+                googleIntegration: {
+                    id: integrationId
+                },
+                settings: accessRoleWhereStatement
+            }
+        });
+
+        return result;
+    }
+
+    /**
+     * TODO: read, delete가 참일 경우 subscription 생성하기
+     */
+    async createGoogleCalendarConnection(
+        userId: number,
+        createGoogleCalendarIntegrationRequestDto: CreateGoogleCalendarIntegrationRequestDto
+    ): Promise<GoogleCalendarIntegration> {
+        const googleIntegration = await this._findGoogleIntegrationById(
+            userId,
+            createGoogleCalendarIntegrationRequestDto.googleIntegrationId
+        );
+
+        const { calendarId, settings, subject } = createGoogleCalendarIntegrationRequestDto;
+
+        const newGoogleCalendarIntegration = this.googleCalendarIntegrationRepository.create({
+            calendarId,
+            settings,
+            subject,
+            users: googleIntegration.users,
+            googleIntegration
+        });
+
+        return await this.googleCalendarIntegrationRepository.save(newGoogleCalendarIntegration);
+    }
+
+    /**
+     * TODO: subscription 해지하기
+     */
+    async deleteGoogleCalendarConnection(
+        userId: number,
+        googleCalendarIntegrationId: number
+    ): Promise<{ affected: boolean }> {
+        const googleCalendarIntegration = await this.findGoogleCalendarIntegrationDetailById(
+            userId,
+            googleCalendarIntegrationId
+        );
+
+        const removeResult = await this.googleCalendarIntegrationRepository.remove(
+            googleCalendarIntegration
+        );
+
+        return { affected: removeResult ? true : false };
+    }
+
+    /**
+     * TODO: subscription 생성 또는 해지
+     */
+    async updateGoogleCalendarConnection(
+        userId: number,
+        googleCalendarIntegrationId: number,
+        updateGoogleCalendarIntegrationDto: UpdateGoogleCalendarIntegrationDto
+    ): Promise<{ affected?: boolean }> {
+        const googleCalendarIntegration = await this.findGoogleCalendarIntegrationDetailById(
+            userId,
+            googleCalendarIntegrationId
+        );
+
+        const { affected } = await this.googleCalendarIntegrationRepository.update(
+            googleCalendarIntegration.id,
+            updateGoogleCalendarIntegrationDto
+        );
+
+        return { affected: affected && affected > 0 ? true : false };
     }
 
     async _saveDefaultCalendar(
@@ -197,11 +299,29 @@ export class GoogleCalendarIntegrationService {
         });
     }
 
-    async _findGoogleCalendarIntegrationById(
+    async _findGoogleCalendarIntegrationDetailById(
         googleCalendarIntegrationId: number
     ): Promise<GoogleCalendarIntegration> {
         return await this.googleCalendarIntegrationRepository.findOneOrFail({
             where: {
+                id: googleCalendarIntegrationId
+            }
+        });
+    }
+
+    private async findGoogleCalendarIntegrationDetailById(
+        userId: number,
+        googleCalendarIntegrationId: number
+    ): Promise<GoogleCalendarIntegration> {
+        return this.googleCalendarIntegrationRepository.findOneOrFail({
+            relations: {
+                users: true,
+                googleIntegration: true
+            },
+            where: {
+                users: {
+                    id: userId
+                },
                 id: googleCalendarIntegrationId
             }
         });
