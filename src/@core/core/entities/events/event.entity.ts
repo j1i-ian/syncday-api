@@ -7,15 +7,15 @@ import {
     JoinColumn,
     ManyToOne,
     OneToMany,
+    OneToOne,
     PrimaryGeneratedColumn,
     UpdateDateColumn
 } from 'typeorm';
 import { Schedule } from '../schedules/schedule.entity';
-import { BufferTime } from './buffer-time.entity';
 import { EventType } from './event-type.entity';
 import { EventGroup } from './evnet-group.entity';
-import { TimeRange } from './time-range.entity';
 import { EventStatus } from './event-status.enum';
+import { EventDetail } from './event-detail.entity';
 
 @Entity()
 export class Event {
@@ -67,12 +67,6 @@ export class Event {
     })
     duration: string | number;
 
-    @Column(() => BufferTime)
-    bufferTime: BufferTime;
-
-    @Column(() => TimeRange)
-    timeRange: TimeRange;
-
     @Column()
     link: string;
 
@@ -90,6 +84,9 @@ export class Event {
         type: 'timestamp'
     })
     deletedAt: Date;
+
+    @OneToOne(() => EventDetail, { cascade: true })
+    eventDetail: EventDetail;
 
     @OneToMany(() => Schedule, (schedule) => schedule.event)
     schedule: Schedule[];
