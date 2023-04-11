@@ -3,6 +3,7 @@ import {
     CreateDateColumn,
     DeleteDateColumn,
     Entity,
+    Generated,
     JoinColumn,
     ManyToOne,
     OneToMany,
@@ -26,6 +27,14 @@ export class Event {
 
     @PrimaryGeneratedColumn()
     id: number;
+
+    @Column({
+        nullable: true,
+        default: null,
+        length: 120
+    })
+    @Generated('uuid')
+    uuid: string;
 
     @Column({
         length: 200
