@@ -1,9 +1,9 @@
 import { Column } from 'typeorm';
 
 export class ScheduleTimeset {
-    @Column('timestamp')
+    @Column()
     startTimestamp: Date;
 
-    @Column('timestamp')
+    @Column()
     endTimestamp: Date;
 }
