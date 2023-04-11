@@ -6,5 +6,6 @@ export class InviteeQuestion {
     required: boolean;
     answer: string | null;
 
-    eventDetailUUID: string;
+    eventDetailUUID?: string;
+    scheduleUUID?: string;
 }
