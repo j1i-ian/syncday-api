@@ -1,9 +1,9 @@
 import { Column } from 'typeorm';
 
 export class ScheduleBufferTime {
-    @Column()
+    @Column('timestamp')
     startBufferTimestamp: Date;
 
-    @Column()
+    @Column('timestamp')
     endBufferTimestamp: Date;
 }
