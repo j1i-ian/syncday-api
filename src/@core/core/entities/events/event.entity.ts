@@ -41,6 +41,12 @@ export class Event {
     })
     name: string;
 
+    @Column({
+        default: '#000000',
+        length: 10
+    })
+    color: string;
+
     @Column('enum', {
         enum: EventStatus
     })
