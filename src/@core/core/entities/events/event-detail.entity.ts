@@ -38,6 +38,9 @@ export class EventDetail {
     @Column({ length: 1000 })
     description: string;
 
+    @Column({ length: 1000 })
+    meetingNote: string;
+
     @Column('simple-json', {
         nullable: false
     })
