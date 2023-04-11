@@ -16,6 +16,12 @@ import { Contact } from './contact.entity';
 
 @Entity()
 export class EventDetail {
+    constructor(eventDetail?: Partial<EventDetail>) {
+        if (eventDetail) {
+            Object.assign(this, eventDetail);
+        }
+    }
+
     @PrimaryGeneratedColumn()
     id: number;
 
