@@ -35,7 +35,11 @@ export class UserSetting {
     @Column('simple-json', { nullable: true, default: null })
     preferredDateTimeFormat: Intl.DateTimeFormatOptions;
 
-    @Column({ nullable: true, default: null })
+    @Column({
+        type: 'simple-array',
+        nullable: true,
+        default: null
+    })
     preferredDateTimeOrderFormat: Array<'year' | 'month' | 'day'>;
 
     @Column({ nullable: true, default: null })
