@@ -56,7 +56,9 @@ export class UserService {
 
     async findUserByEmail(email: string): Promise<User | null> {
         const loadedUser = await this.userRepository.findOne({
-            relations: ['user-setting'],
+            relations: {
+                userSetting: true
+            },
             select: {
                 id: true,
                 email: true,
