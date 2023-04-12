@@ -1,4 +1,5 @@
 import {
+    AfterLoad,
     Column,
     CreateDateColumn,
     DeleteDateColumn,
@@ -63,13 +64,6 @@ export class User {
     })
     profileImage: string | null;
 
-    @Column('varchar', {
-        length: 300,
-        default: null,
-        nullable: true
-    })
-    workspace: string | null;
-
     @Column('simple-array', {
         select: false,
         default: JSON.stringify([Role.NORMAL])
@@ -110,4 +104,16 @@ export class User {
 
     @OneToMany(() => PaymentTransaction, (payment) => payment.user)
     paymentTransactions: PaymentTransaction[];
+
+    /**
+     * patched from user detail
+     */
+    workspace: string | null;
+
+    @AfterLoad()
+    patchPromotedPropertyFromUserSetting(): void {
+        if (this.userSetting) {
+            this.workspace = this.userSetting.workspace;
+        }
+    }
 }
