@@ -60,6 +60,7 @@ export class UserService {
             select: {
                 id: true,
                 email: true,
+                profileImage: true,
                 hashedPassword: true
             },
             where: {
