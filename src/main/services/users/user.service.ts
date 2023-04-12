@@ -55,7 +55,15 @@ export class UserService {
     }
 
     async findUserByEmail(email: string): Promise<User | null> {
-        const loadedUser = await this.userRepository.findOneBy({ email });
+        const loadedUser = await this.userRepository.findOne({
+            select: {
+                email: true,
+                hashedPassword: true
+            },
+            where: {
+                email
+            }
+        });
 
         return loadedUser;
     }
