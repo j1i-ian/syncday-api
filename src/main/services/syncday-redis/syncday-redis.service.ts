@@ -78,7 +78,7 @@ export class SyncdayRedisService {
     }
 
     getTemporaryUserKey(email: string): RedisKey {
-        return this.getRedisKey(RedisStores.TEMPORARY_USER, [String(email)]);
+        return this.getRedisKey(RedisStores.TEMPORARY_USER, [email]);
     }
 
     getWorkspaceAssignStatusKey(workspace: string): RedisKey {
