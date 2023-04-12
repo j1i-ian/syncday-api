@@ -95,7 +95,7 @@ export class Event {
     })
     deletedAt: Date;
 
-    @OneToOne(() => EventDetail, { cascade: true })
+    @OneToOne(() => EventDetail, (eventDetail) => eventDetail.event, { cascade: true })
     eventDetail: EventDetail;
 
     @ManyToOne(() => EventGroup, (eventGroup) => eventGroup.events)
