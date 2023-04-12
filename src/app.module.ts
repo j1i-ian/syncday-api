@@ -18,6 +18,7 @@ import { PaymentsModule } from './main/services/payments/payments.module';
 import { SchedulesModule } from './main/services/schedules/schedules.module';
 import { UtilModule } from './main/services/util/util.module';
 import { IntegrationsModule } from './main/services/integrations/integrations.module';
+import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
 
 @Module({
     imports: [
@@ -43,7 +44,9 @@ import { IntegrationsModule } from './main/services/integrations/integrations.mo
 
         UtilModule,
 
-        IntegrationsModule
+        IntegrationsModule,
+
+        WorkspacesModule
     ],
     controllers: [AppController],
     providers: [

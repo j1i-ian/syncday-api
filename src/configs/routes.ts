@@ -11,6 +11,7 @@ import { VerificationModule } from '../main/auth/verification/verification.modul
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
 import { CalendarsModule } from '../main/services/integrations/calendars/calendars.module';
 import { TemporaryUsersModule } from '../main/services/users/temporary-users/temporary-users.module';
+import { WorkspacesModule } from '../main/services/workspaces/workspaces.module';
 
 export const routes: Routes = [
     {
@@ -18,14 +19,18 @@ export const routes: Routes = [
         module: UserModule,
         children: [
             {
-                path: 'user-settings',
-                module: UserSettingModule
-            },
-            {
                 path: 'temporaries',
                 module: TemporaryUsersModule
             }
         ]
+    },
+    {
+        path: 'user-settings',
+        module: UserSettingModule
+    },
+    {
+        path: 'workspaces',
+        module: WorkspacesModule
     },
     {
         path: 'tokens',
