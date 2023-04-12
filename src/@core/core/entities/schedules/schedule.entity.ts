@@ -96,9 +96,6 @@ export class Schedule {
     })
     public: boolean;
 
-    @Column({ name: 'event_detail_id' })
-    eventDetailId: number;
-
     @Column('time', {
         default: '00:00:00'
     })
@@ -118,6 +115,9 @@ export class Schedule {
         type: 'timestamp'
     })
     deletedAt: Date;
+
+    @Column({ name: 'event_detail_id' })
+    eventDetailId: number;
 
     @ManyToOne(() => EventDetail, (eventDetail) => eventDetail, {
         onUpdate: 'NO ACTION',
