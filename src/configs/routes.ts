@@ -12,6 +12,8 @@ import { IntegrationsModule } from '../main/services/integrations/integrations.m
 import { CalendarsModule } from '../main/services/integrations/calendars/calendars.module';
 import { TemporaryUsersModule } from '../main/services/users/temporary-users/temporary-users.module';
 import { WorkspacesModule } from '../main/services/workspaces/workspaces.module';
+import { MeetingModule } from '../main/services/integrations/meetings/meetings.module';
+import { ZoomModule } from '../main/services/integrations/meetings/zoom/zoom.module';
 
 export const routes: Routes = [
     {
@@ -69,6 +71,16 @@ export const routes: Routes = [
                     {
                         path: 'google',
                         module: GoogleModule
+                    }
+                ]
+            },
+            {
+                path: 'meetings',
+                module: MeetingModule,
+                children: [
+                    {
+                        path: 'zoom',
+                        module: ZoomModule
                     }
                 ]
             }

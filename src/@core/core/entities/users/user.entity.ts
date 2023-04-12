@@ -17,6 +17,7 @@ import { PaymentTransaction } from '@entity/payments/payment-transaction.entity'
 import { GoogleIntegration } from '../integrations/google/google-integration.entity';
 import { Role } from './role.enum';
 import { UserSetting } from './user-setting.entity';
+import { ZoomMeeting } from '../integrations/zoom/zoom-meeting.entity';
 
 @Entity('user')
 export class User {
@@ -98,6 +99,22 @@ export class User {
         name: 'google_integration_users'
     })
     googleIntergrations: GoogleIntegration[];
+
+    @ManyToMany(() => ZoomMeeting, (zoomMeeting) => zoomMeeting.users, {
+        cascade: true
+    })
+    @JoinTable({
+        name: 'zoom_meeting_users',
+        joinColumn: {
+            name: 'user_id',
+            referencedColumnName: 'id'
+        },
+        inverseJoinColumn: {
+            name: 'zoom_meeting_id',
+            referencedColumnName: 'id'
+        }
+    })
+    zoomMeetings: ZoomMeeting[];
 
     @OneToMany(() => EventGroup, (eventGroup) => eventGroup.user)
     eventGroup: EventGroup[];
