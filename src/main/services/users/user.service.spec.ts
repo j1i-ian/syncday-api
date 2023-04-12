@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
-import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
+import { EntityManager, FindOneOptions, FindOptionsWhere, Repository } from 'typeorm';
 import { User } from '@entity/users/user.entity';
 import { Language } from '@app/enums/language.enum';
 import { TokenService } from '../../auth/token/token.service';
@@ -132,13 +132,16 @@ describe('Test User Service', () => {
         it('should be found user by email', async () => {
             const userStub = stubOne(User);
 
-            userRepositoryStub.findOneBy.resolves(userStub);
+            userRepositoryStub.findOne.resolves(userStub);
 
             const loadedUser = await service.findUserByEmail(userStub.email);
 
-            const actualPassedParam = userRepositoryStub.findOneBy.getCall(0)
-                .args[0] as FindOptionsWhere<User>;
-            expect(actualPassedParam.email).equals(userStub.email);
+            const actualPassedParam: FindOneOptions<User> =
+                userRepositoryStub.findOne.getCall(0).args[0];
+
+            const userFindOneOptionWhere: FindOptionsWhere<User> =
+                actualPassedParam.where as FindOptionsWhere<User>;
+            expect(userFindOneOptionWhere.email).equals(userStub.email);
 
             expect(loadedUser).equal(userStub);
         });
@@ -146,7 +149,7 @@ describe('Test User Service', () => {
         it('should be not found user by email when user is not exist', async () => {
             const userStub = stubOne(User);
 
-            userRepositoryStub.findOneBy.resolves(null);
+            userRepositoryStub.findOne.resolves(null);
 
             const loadedUser = await service.findUserByEmail(userStub.email);
 
