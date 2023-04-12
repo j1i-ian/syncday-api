@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
 import { TemporaryUser } from '@entity/users/temporary-user.entity';
+import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity';
 import { Verification } from '../../../@core/core/entities/verifications/verification.entity';
 import { AppInjectCluster } from './app-inject-cluster.decorator';
 import { RedisStores } from './redis-stores.enum';
@@ -77,6 +78,19 @@ export class SyncdayRedisService {
         return result === 'OK';
     }
 
+    async setDatetimePreset(
+        uuid: string,
+        timePresetRangeInformation: Pick<DatetimePreset, 'timepreset' | 'overrides'>
+    ): Promise<boolean> {
+        const datetimePresetKey = this.getDatetimePresetKey(uuid);
+        const result = await this.cluster.set(
+            datetimePresetKey,
+            JSON.stringify(timePresetRangeInformation)
+        );
+
+        return result === 'OK';
+    }
+
     getTemporaryUserKey(email: string): RedisKey {
         return this.getRedisKey(RedisStores.TEMPORARY_USER, [email]);
     }
@@ -91,6 +105,10 @@ export class SyncdayRedisService {
 
     getEmailVerificationStatusKey(email: string, uuid: string): RedisKey {
         return this.getRedisKey(RedisStores.VERIFICATIONS_EMAIL, [String(email), uuid]);
+    }
+
+    getDatetimePresetKey(uuid: string): RedisKey {
+        return this.getRedisKey(RedisStores.DATETIME_PRESET, [uuid]);
     }
 
     private getRedisKey(store: RedisStores, value: string[]): string {

@@ -2,5 +2,6 @@ export enum RedisStores {
     TOKENS_USERS = 'tokens:users',
     VERIFICATIONS_EMAIL = 'verifications:email',
     WORKSPACES = 'workspaces',
-    TEMPORARY_USER = 'temporary:users'
+    TEMPORARY_USER = 'temporary:users',
+    DATETIME_PRESET = 'datetime-preset'
 }

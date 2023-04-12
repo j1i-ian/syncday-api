@@ -14,6 +14,7 @@ import {
 } from 'typeorm';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { PaymentTransaction } from '@entity/payments/payment-transaction.entity';
+import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity';
 import { GoogleIntegration } from '../integrations/google/google-integration.entity';
 import { Role } from './role.enum';
 import { UserSetting } from './user-setting.entity';
@@ -121,6 +122,9 @@ export class User {
 
     @OneToMany(() => PaymentTransaction, (payment) => payment.user)
     paymentTransactions: PaymentTransaction[];
+
+    @OneToMany(() => DatetimePreset, (datetimePreset) => datetimePreset.user)
+    datetimePresets: DatetimePreset[];
 
     /**
      * patched from user detail
