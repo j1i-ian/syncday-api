@@ -5,6 +5,7 @@ import { SchedulesModule } from '@services/schedules/schedules.module';
 import { UserSettingModule } from '@services/users/user-setting/user-setting.module';
 import { UserModule } from '@services/users/user.module';
 import { GoogleModule } from '@services/integrations/calendars/google/google.module';
+import { DatetimePresetsModule } from '@services/datetime-presets/datetime-presets.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { PaymentsModule } from '../main/services/payments/payments.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
@@ -85,5 +86,9 @@ export const routes: Routes = [
                 ]
             }
         ]
+    },
+    {
+        path: 'datetime-presets',
+        module: DatetimePresetsModule
     }
 ];

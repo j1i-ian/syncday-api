@@ -19,6 +19,7 @@ import { SchedulesModule } from './main/services/schedules/schedules.module';
 import { UtilModule } from './main/services/util/util.module';
 import { IntegrationsModule } from './main/services/integrations/integrations.module';
 import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
+import { DatetimePresetsModule } from './main/services/datetime-presets/datetime-presets.module';
 
 @Module({
     imports: [
@@ -46,7 +47,9 @@ import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
 
         IntegrationsModule,
 
-        WorkspacesModule
+        WorkspacesModule,
+
+        DatetimePresetsModule
     ],
     controllers: [AppController],
     providers: [
