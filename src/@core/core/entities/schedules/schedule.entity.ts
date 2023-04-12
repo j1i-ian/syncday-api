@@ -21,6 +21,8 @@ import { ScheduledReminder } from './scheduled-reminder.entity';
 
 /**
  * schedule is generated from event.
+ *
+ * @see {@link Event}
  */
 @Entity()
 export class Schedule {
