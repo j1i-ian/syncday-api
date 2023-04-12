@@ -22,6 +22,7 @@ import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting
 import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
 import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
 import { EventDetail } from '../../../@core/core/entities/events/event-detail.entity';
+import { DatetimePreset } from '../../../@core/core/entities/datetime-presets/datetime-preset.entity';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
@@ -176,6 +177,7 @@ export class UserService {
         const hashedPassword = plainPassword && this.utilService.hash(plainPassword);
 
         const _userRepository = manager.getRepository(User);
+        const _datetimePresetRepository = manager.getRepository(DatetimePreset);
 
         const savedUser = await _userRepository.save({
             ...createdUser,
@@ -201,10 +203,15 @@ export class UserService {
 
         const initialEventDetail = new EventDetail({
             bufferTime: initialBufferTime,
-            timeRange: initialTimeRange
+            timeRange: initialTimeRange,
+            contacts: [],
+            description: 'default'
         });
 
-        initialEvent.eventDetail = initialEventDetail;
+        const initialDatetimePreset = new DatetimePreset();
+        const savedDatetimePreset = await _datetimePresetRepository.save(initialDatetimePreset);
+
+        initialEventDetail.datetimePresetId = savedDatetimePreset.id;
         initialEventGroup.events = [initialEvent];
 
         await manager.getRepository(EventGroup).save(initialEventGroup);

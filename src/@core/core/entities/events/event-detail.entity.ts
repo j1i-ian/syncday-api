@@ -39,11 +39,11 @@ export class EventDetail {
     @Generated('uuid')
     uuid: string;
 
-    @Column({ length: 1000, default: 'default' })
+    @Column({ length: 1000 })
     description: string;
 
     @Column('simple-json', {
-        nullable: true
+        nullable: false
     })
     contacts: Contact[];
 
@@ -86,7 +86,7 @@ export class EventDetail {
     @OneToMany(() => Schedule, (schedule) => schedule.eventDetail)
     schedules: Schedule;
 
-    @ManyToOne(() => DatetimePreset, {
+    @ManyToOne(() => DatetimePreset, (datetimePreset) => datetimePreset.eventDetails, {
         onUpdate: 'RESTRICT',
         onDelete: 'RESTRICT'
     })
