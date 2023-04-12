@@ -10,7 +10,7 @@ export class ScheduledReminder {
 
     target: ReminderTarget;
 
-    remindBefore: string;
+    remindBefore: Date;
 
     scheduleUUID: string;
 }
