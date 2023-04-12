@@ -39,11 +39,11 @@ export class EventDetail {
     @Generated('uuid')
     uuid: string;
 
-    @Column({ length: 1000 })
+    @Column({ length: 1000, default: 'default' })
     description: string;
 
     @Column('simple-json', {
-        nullable: false
+        nullable: true
     })
     contacts: Contact[];
 
