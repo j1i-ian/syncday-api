@@ -9,6 +9,7 @@ import { VerificationService } from '../../auth/verification/verification.servic
 import { TestMockUtil } from '../../../test/test-mock-util';
 import { EventGroup } from '../../../@core/core/entities/events/evnet-group.entity';
 import { Event } from '../../../@core/core/entities/events/event.entity';
+import { DatetimePreset } from '../../../@core/core/entities/datetime-presets/datetime-preset.entity';
 import { UserService } from './user.service';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
@@ -31,6 +32,7 @@ describe('Test User Service', () => {
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
+    let datetimePresetRepositoryStub: sinon.SinonStubbedInstance<Repository<DatetimePreset>>;
 
     const _getRepository = (EntityClass: new () => any) =>
         module.get(getRepositoryToken(EntityClass));
@@ -51,6 +53,8 @@ describe('Test User Service', () => {
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
+        datetimePresetRepositoryStub =
+            sinon.createStubInstance<Repository<DatetimePreset>>(Repository);
 
         module = await Test.createTestingModule({
             providers: [
@@ -94,6 +98,10 @@ describe('Test User Service', () => {
                 {
                     provide: getRepositoryToken(Event),
                     useValue: eventRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(DatetimePreset),
+                    useValue: datetimePresetRepositoryStub
                 }
             ]
         }).compile();
@@ -168,6 +176,7 @@ describe('Test User Service', () => {
             userRepositoryStub.create.reset();
             userRepositoryStub.save.reset();
             verificationServiceStub.isVerifiedUser.reset();
+            datetimePresetRepositoryStub.save.reset();
 
             utilServiceStub.getUsetDefaultSetting.reset();
 
@@ -184,11 +193,13 @@ describe('Test User Service', () => {
                 hashedPassword: plainPassword
             });
             const languageDummy = Language.ENGLISH;
+            const datetimePresetStub = stubOne(DatetimePreset);
 
             verificationServiceStub.isVerifiedUser.resolves(true);
 
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
+            datetimePresetRepositoryStub.save.resolves(datetimePresetStub);
 
             const createdUser = await service._createUser(
                 datasourceMock as EntityManager,
@@ -200,6 +211,7 @@ describe('Test User Service', () => {
             );
 
             expect(utilServiceStub.getUsetDefaultSetting.called).true;
+            expect(datetimePresetRepositoryStub.save.called).true;
 
             expect(createdUser).ok;
             expect(createdUser.email).ok;
