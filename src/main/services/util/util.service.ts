@@ -35,6 +35,11 @@ export class UtilService {
         return assetFullPath;
     }
 
+    getBasicAuth(clientId: string, secretKey: string): string {
+        const basicAuthValue = clientId + ':' + secretKey;
+        return Buffer.from(basicAuthValue).toString('base64');
+    }
+
     getUsetDefaultSetting(
         user: Partial<User>,
         language: Language,

@@ -222,7 +222,7 @@ export class UserService {
             profileImage: googleUser.picture
         });
 
-        const createdUser = this.datasource.transaction(async (manager) => {
+        const createdUser = await this.datasource.transaction(async (manager) => {
             const savedGoogleIntegration =
                 await this.googleIntegrationService.saveGoogleIntegrationForGoogleUser(
                     manager,

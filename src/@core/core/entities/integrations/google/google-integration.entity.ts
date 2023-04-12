@@ -8,7 +8,7 @@ import {
     ManyToMany
 } from 'typeorm';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { User } from '../../users/user.entity';
+import { User } from '@entity/users/user.entity';
 import { Integration } from '../integration.entity';
 
 @Entity()

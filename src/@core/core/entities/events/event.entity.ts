@@ -10,6 +10,7 @@ import {
     PrimaryGeneratedColumn,
     UpdateDateColumn
 } from 'typeorm';
+import { ContactType } from '@app/services/event-groups/events/enums/contact-type.enum';
 import { EventType } from './event-type.entity';
 import { EventGroup } from './evnet-group.entity';
 import { EventStatus } from './event-status.enum';
@@ -64,6 +65,12 @@ export class Event {
         default: '00:00:00'
     })
     duration: string | number;
+
+    @Column({ type: 'enum', enum: ContactType })
+    contactType: ContactType;
+
+    @Column({ nullable: true, default: null })
+    contact: string;
 
     @Column()
     link: string;
