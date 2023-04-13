@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
@@ -25,6 +25,21 @@ export class ZoomMeetingIntegrationService {
     ) {}
 
     async createIntegration(userId: number, authCode: string): Promise<ZoomMeeting> {
+        const alreadyExistZoomIntegarion = await this.zoomMeetingRepository.findOne({
+            where: {
+                users: {
+                    id: userId
+                }
+            },
+            relations: {
+                users: true
+            }
+        });
+
+        if (alreadyExistZoomIntegarion) {
+            throw new NotFoundException('Unable to link more than one zoom account');
+        }
+
         const { access_token, refresh_token } = await this._getZoomAccessTokenWithAuthCode(
             authCode
         );
@@ -39,6 +54,17 @@ export class ZoomMeetingIntegrationService {
         const addedZoomMeeting = await this.zoomMeetingRepository.save(newZoomMeeting);
 
         return addedZoomMeeting;
+    }
+
+    async disconnectIntegration(zoomMeetingId: number): Promise<void> {
+        const zoomIntegration = await this.zoomMeetingRepository.findOneOrFail({
+            where: {
+                id: zoomMeetingId
+            },
+            relations: { users: true }
+        });
+
+        await this.zoomMeetingRepository.remove(zoomIntegration);
     }
 
     async _getZoomAccessTokenWithAuthCode(authCode: string): Promise<ZoomTokenResponseDTO> {
