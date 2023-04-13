@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Delete, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CreateZoomMeetingIntegrationRequest } from '@dto/integrations/zoom/create-zoom-meeting-integration-request.dto';
 import { AuthUser } from '@app/decorators/auth-user.decorator';
@@ -21,6 +21,16 @@ export class ZoomMeetingController {
             zoomAuthCode
         );
 
-        return plainToInstance(CreateZoomMeetingIntegrationResponse, zoomIntergration);
+        return plainToInstance(CreateZoomMeetingIntegrationResponse, zoomIntergration, {
+            excludeExtraneousValues: true
+        });
+    }
+
+    @Delete(':zoomIntegrationId(\\d+)')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async disconnectZoomMeeting(
+        @Param('zoomIntegrationId') zoomIntegrationId: number
+    ): Promise<void> {
+        await this.zoomMeetingIntegrationService.disconnectIntegration(zoomIntegrationId);
     }
 }
