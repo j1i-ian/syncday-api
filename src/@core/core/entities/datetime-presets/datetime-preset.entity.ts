@@ -4,6 +4,9 @@ import { EventDetail } from '../events/event-detail.entity';
 import { TimePreset } from './time-preset.entity';
 import { OverridedTimePreset } from './overrided-time-preset.entity';
 
+/**
+ * @property default: 디폴트 time preset 유무
+ */
 @Entity()
 export class DatetimePreset {
     @PrimaryGeneratedColumn()
@@ -19,6 +22,17 @@ export class DatetimePreset {
 
     @Column()
     name: string;
+
+    @Column({
+        default: false
+    })
+    default: boolean;
+
+    @Column({
+        nullable: true,
+        default: null
+    })
+    timezone: string;
 
     @OneToMany(() => EventDetail, (eventDetail) => eventDetail.datetimePreset)
     eventDetails: EventDetail[];

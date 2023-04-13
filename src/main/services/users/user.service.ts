@@ -9,6 +9,7 @@ import { TimeRange } from '@entity/events/time-range.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
+import { TimePreset } from '@entity/datetime-presets/time-preset.entity';
 import { EnsuredGoogleOAuth2User, TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
@@ -29,6 +30,11 @@ interface CreateUserOptions {
     emailVerification?: boolean;
     alreadySignedUpUserCheck?: boolean;
 }
+
+const datetimePresetDefaultName = {
+    [Language.ENGLISH]: 'Working hours',
+    [Language.KOREAN]: '근무 시간'
+};
 
 @Injectable()
 export class UserService {
@@ -208,9 +214,31 @@ export class UserService {
             description: 'default'
         });
 
+        // 월 ~ 금, 09:00 ~ 17:00
+        const initialTimePresets = [];
+        for (let dayWeekIndex = 0; dayWeekIndex < 5; dayWeekIndex++) {
+            const initialTimePreset = new TimePreset();
+            initialTimePreset.day = dayWeekIndex;
+            initialTimePreset.timeRanges = [
+                {
+                    startTime: '09:00:00',
+                    endTime: '17:00:00'
+                }
+            ];
+
+            initialTimePresets.push(initialTimePreset);
+        }
+
         const initialDatetimePreset = new DatetimePreset();
-        initialDatetimePreset.name = '근무시간';
+        initialDatetimePreset.default = true;
+        initialDatetimePreset.name = datetimePresetDefaultName[language];
+        initialDatetimePreset.user = savedUser;
+        initialDatetimePreset.timezone = userSetting?.preferredTimezone;
         const savedDatetimePreset = await _datetimePresetRepository.save(initialDatetimePreset);
+        await this.syncdayRedisService.setDatetimePreset(savedDatetimePreset.uuid, {
+            timepreset: initialTimePresets,
+            overrides: []
+        });
 
         initialEventDetail.datetimePresetId = savedDatetimePreset.id;
         initialEventGroup.events = [initialEvent];
