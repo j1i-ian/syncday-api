@@ -21,6 +21,7 @@ import { ClusterModuleAsyncOptions } from '@liaoliaots/nestjs-redis';
 import { MailerAsyncOptions } from '@nestjs-modules/mailer/dist/interfaces/mailer-async-options.interface';
 import { MailerOptions } from '@nestjs-modules/mailer';
 import { NodeEnv } from './node-env.enum';
+import { ZoomBasicAuth } from '../main/services/integrations/interfaces/zoom-basic-auth.interface';
 
 interface AWSSDKOptionType {
     defaultServiceOptions?: AsyncModuleProvider<AwsServiceConfigurationOptionsFactory>;
@@ -223,6 +224,24 @@ export class AppConfigService {
 
     static getGoogleCalendarWebhookUrl(configService: ConfigService): string {
         return configService.get<string>('GOOGLE_CALENDAR_WEBHOOK_URL') as string;
+    }
+
+    static getZoomBasicAuthValue(configService: ConfigService): ZoomBasicAuth {
+        const zoomBasicAuth: ZoomBasicAuth = {
+            clientId: configService.get<string>('ZOOM_CLIENT_ID') as string,
+            clientSecret: configService.get<string>('ZOOM_CLIENT_SECRET') as string
+        };
+        return zoomBasicAuth;
+    }
+
+    static getZoomTokenUrl(configSerivce: ConfigService): string {
+        const zoomTokenUrl = configSerivce.get<string>('ZOOM_GET_TOKEN_URL') as string;
+        return zoomTokenUrl;
+    }
+
+    static getZoomIntegrationRedirectUrl(configSerivce: ConfigService): string {
+        const zoomTokenUrl = configSerivce.get<string>('ZOOM_INTEGRATION_REDIRECT_URL') as string;
+        return zoomTokenUrl;
     }
 
     private static _getWinstonModuleProductionTransports(

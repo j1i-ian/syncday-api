@@ -5,6 +5,7 @@ import { EmailTemplate } from '@app/enums/email-template.enum';
 import { Language } from '@app/enums/language.enum';
 import { User } from '../../../@core/core/entities/users/user.entity';
 import { UserSetting } from '../../../@core/core/entities/users/user-setting.entity';
+import { ZoomBasicAuth } from '../integrations/interfaces/zoom-basic-auth.interface';
 
 interface UserDefaultSettingOption {
     randomSuffix: boolean;
@@ -35,8 +36,9 @@ export class UtilService {
         return assetFullPath;
     }
 
-    getBasicAuth(clientId: string, secretKey: string): string {
-        const basicAuthValue = clientId + ':' + secretKey;
+    getZoomBasicAuth(zoomBasicAuth: ZoomBasicAuth): string {
+        const { clientId, clientSecret } = zoomBasicAuth;
+        const basicAuthValue = clientId + ':' + clientSecret;
         return Buffer.from(basicAuthValue).toString('base64');
     }
 

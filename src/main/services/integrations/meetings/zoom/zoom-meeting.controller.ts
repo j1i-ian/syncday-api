@@ -1,7 +1,9 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { CreateZoomMeetingIntegrationRequest } from '@dto/integrations/zoom/create-zoom-meeting-integration-request.dto';
 import { AuthUser } from '@app/decorators/auth-user.decorator';
 import { AppJwtPayload } from '@app/auth/strategy/jwt/app-jwt-payload.interface';
+import { CreateZoomMeetingIntegrationResponse } from '../../../../dto/integrations/zoom/create-zoom-meeting-integration-response.dto';
 import { ZoomMeetingIntegrationService } from './zoom-meeting-integration.service';
 
 @Controller()
@@ -9,12 +11,16 @@ export class ZoomMeetingController {
     constructor(private readonly zoomMeetingIntegrationService: ZoomMeetingIntegrationService) {}
 
     @Post()
-    @HttpCode(HttpStatus.NO_CONTENT)
     async createZoomMeeting(
         @AuthUser() authUser: AppJwtPayload,
         @Body() requestBody: CreateZoomMeetingIntegrationRequest
-    ): Promise<void> {
+    ): Promise<CreateZoomMeetingIntegrationResponse> {
         const { zoomAuthCode } = requestBody;
-        await this.zoomMeetingIntegrationService.createIntegration(authUser.id, zoomAuthCode);
+        const zoomIntergration = await this.zoomMeetingIntegrationService.createIntegration(
+            authUser.id,
+            zoomAuthCode
+        );
+
+        return plainToInstance(CreateZoomMeetingIntegrationResponse, zoomIntergration);
     }
 }
