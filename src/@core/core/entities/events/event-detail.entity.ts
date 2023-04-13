@@ -39,7 +39,7 @@ export class EventDetail {
     @Generated('uuid')
     uuid: string;
 
-    @Column({ length: 1000 })
+    @Column({ length: 1000, nullable: true, default: null })
     description: string;
 
     @Column('simple-json', {

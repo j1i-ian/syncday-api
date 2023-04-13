@@ -1,5 +1,7 @@
 import { IsEnum, IsOptional } from 'class-validator';
+import { DateTimeOrderFormat } from '../../../@core/core/entities/users/date-time-format-order.enum';
 import { Language } from '../../enums/language.enum';
+import { DateTimeFormatOption } from '../../../@core/core/entities/users/date-time-format-option.type';
 
 export class UpdateUserSettingRequestDto {
     @IsOptional()
@@ -16,10 +18,11 @@ export class UpdateUserSettingRequestDto {
     language?: Language;
 
     @IsOptional()
-    dateTimeFormat?: Intl.DateTimeFormatOptions;
+    dateTimeFormat?: DateTimeFormatOption;
 
     @IsOptional()
-    dateTimeOrderFormat?: Array<'year' | 'month' | 'day'>;
+    @IsEnum(DateTimeOrderFormat)
+    dateTimeOrderFormat?: DateTimeOrderFormat[];
 
     @IsOptional()
     timezone?: string;

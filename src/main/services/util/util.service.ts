@@ -5,11 +5,18 @@ import { EmailTemplate } from '@app/enums/email-template.enum';
 import { Language } from '@app/enums/language.enum';
 import { User } from '../../../@core/core/entities/users/user.entity';
 import { UserSetting } from '../../../@core/core/entities/users/user-setting.entity';
+import { DateTimeOrderFormat } from '../../../@core/core/entities/users/date-time-format-order.enum';
+import { DateTimeFormatOption } from '../../../@core/core/entities/users/date-time-format-option.type';
 import { ZoomBasicAuth } from '../integrations/interfaces/zoom-basic-auth.interface';
 
 interface UserDefaultSettingOption {
     randomSuffix: boolean;
     timezone?: string;
+}
+
+interface DefaultDateTimeFormat {
+    dateTimeFormatOption: DateTimeFormatOption;
+    dateTimeOrderFormat: DateTimeOrderFormat[];
 }
 
 @Injectable()
@@ -66,10 +73,45 @@ export class UtilService {
             workspaceName += randomNumberString;
         }
 
+        const { dateTimeFormatOption, dateTimeOrderFormat } = this.getDefaultDateTimeFormat(
+            language,
+            timezone as string
+        );
+
         return {
             workspace: workspaceName,
             preferredLanguage: language,
-            preferredTimezone: timezone
+            preferredTimezone: timezone,
+            preferredDateTimeOrderFormat: dateTimeOrderFormat,
+            preferredDateTimeFormat: dateTimeFormatOption
         };
+    }
+
+    getDefaultDateTimeFormat(language: Language, timezone: string): DefaultDateTimeFormat {
+        const formatter = new Intl.DateTimeFormat(language, {
+            timeZone: timezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+
+        const dateTimeFormatOrderType = ['year', 'month', 'day'];
+        const dateTimeOrderFormat = formatter
+            .formatToParts()
+            .filter((formatPart) => dateTimeFormatOrderType.includes(formatPart.type))
+            .map((formatPart) => formatPart.type) as DateTimeOrderFormat[];
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { locale, calendar, numberingSystem, timeZone, ...dateTimeFormatOption } =
+            formatter.resolvedOptions();
+
+        const dateTimeFomat: DefaultDateTimeFormat = {
+            dateTimeFormatOption: dateTimeFormatOption as DateTimeFormatOption,
+            dateTimeOrderFormat
+        };
+        return dateTimeFomat;
     }
 }

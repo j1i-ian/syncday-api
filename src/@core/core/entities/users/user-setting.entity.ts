@@ -1,7 +1,9 @@
 import { AfterLoad, Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { DateTimeFormatOption } from '@entity/users/date-time-format-option.type';
 import { Language } from '@app/enums/language.enum';
-import { IntegrationsInfo } from '../../../../main/services/users/interfaces/integrations-info.interface';
+import { IntegrationsInfo } from '@app/services/users/interfaces/integrations-info.interface';
 import { User } from './user.entity';
+import { DateTimeOrderFormat } from './date-time-format-order.enum';
 
 @Entity('user_setting')
 export class UserSetting {
@@ -32,15 +34,13 @@ export class UserSetting {
     @Column()
     preferredLanguage: Language;
 
-    @Column('simple-json', { nullable: true, default: null })
-    preferredDateTimeFormat: Intl.DateTimeFormatOptions;
+    @Column('simple-json')
+    preferredDateTimeFormat: DateTimeFormatOption;
 
     @Column({
-        type: 'simple-array',
-        nullable: true,
-        default: null
+        type: 'simple-array'
     })
-    preferredDateTimeOrderFormat: Array<'year' | 'month' | 'day'>;
+    preferredDateTimeOrderFormat: DateTimeOrderFormat[];
 
     @Column({ nullable: true, default: null })
     greetings: string;
@@ -59,10 +59,13 @@ export class UserSetting {
 
     @AfterLoad()
     patchIntegrationInfo(): void {
-        if (this.user) {
+        if (this.user?.googleIntergrations && this.user?.zoomMeetings) {
             const integratedGoogle = this.user.googleIntergrations.length > 0;
+            const integratedZoom = this.user.zoomMeetings.length > 0;
+
             this.integrationInfo = {
-                google: integratedGoogle
+                google: integratedGoogle,
+                zoom: integratedZoom
             };
         }
     }
