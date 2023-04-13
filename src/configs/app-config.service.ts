@@ -31,9 +31,9 @@ interface AWSSDKOptionType {
 export class AppConfigService {
     static getCorsSettingByEnv(): Array<string | RegExp> {
         let origin = [
-            /((http|https):\/\/)?localhost:3000$/,
-            /.*\.?dev.sync.day$/,
-            /.*\.?stg.sync.day$/
+            /((http|https):\/\/)?localhost:3000$/g,
+            /.*\.?dev.sync.day$/g,
+            /.*\.?stg.sync.day$/g
         ];
 
         if (process.env.ENV === NodeEnv.PRODUCTION) {
