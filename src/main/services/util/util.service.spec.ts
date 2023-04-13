@@ -127,7 +127,7 @@ describe('UtilService', () => {
             const userMock = stubOne(User, {
                 nickname: faker.name.fullName()
             });
-            const timezoneMock = 'thisisTimezone';
+            const timezoneMock = 'America/New_York';
             const languageMock = Language.ENGLISH;
 
             const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock, {

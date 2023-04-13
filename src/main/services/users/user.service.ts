@@ -1,10 +1,4 @@
-import {
-    BadRequestException,
-    Inject,
-    Injectable,
-    NotFoundException,
-    forwardRef
-} from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
@@ -23,11 +17,12 @@ import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-u
 import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
 import { EventDetail } from '../../../@core/core/entities/events/event-detail.entity';
 import { DatetimePreset } from '../../../@core/core/entities/datetime-presets/datetime-preset.entity';
+import { Contact } from '../../../@core/core/entities/events/contact.entity';
+import { ContactType } from '../../../@core/core/entities/events/contact-type.enum';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
-import { IntegrationsInfo } from './interfaces/integrations-info.interface';
 
 interface CreateUserOptions {
     plainPassword?: string;
@@ -201,14 +196,20 @@ export class UserService {
             name: 'default'
         });
 
+        const initialContact = new Contact({
+            contactType: ContactType.OFFLINE,
+            value: 'meeting room'
+        });
+
         const initialEventDetail = new EventDetail({
             bufferTime: initialBufferTime,
             timeRange: initialTimeRange,
-            contacts: [],
+            contacts: [initialContact],
             description: 'default'
         });
 
         const initialDatetimePreset = new DatetimePreset();
+        initialDatetimePreset.name = '근무시간';
         const savedDatetimePreset = await _datetimePresetRepository.save(initialDatetimePreset);
 
         initialEventDetail.datetimePresetId = savedDatetimePreset.id;
@@ -314,22 +315,5 @@ export class UserService {
         });
 
         return convertedUserSettingToDto;
-    }
-
-    async fetchIsIntegrations(userId: number): Promise<IntegrationsInfo> {
-        const loadedUserWithIntegrations = await this.userRepository.findOne({
-            where: { id: userId },
-            relations: { googleIntergrations: true }
-        });
-        if (loadedUserWithIntegrations === null) {
-            throw new NotFoundException('User does not exist');
-        }
-
-        const { googleIntergrations } = loadedUserWithIntegrations;
-        const isIntegrations: IntegrationsInfo = {
-            google: googleIntergrations.length > 0
-        };
-
-        return isIntegrations;
     }
 }
