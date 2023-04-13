@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import { UserService } from '@services/users/user.service';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity';
@@ -11,7 +12,9 @@ export class DatetimePresetsService {
     constructor(
         private readonly dataSource: DataSource,
         private readonly userService: UserService,
-        private readonly syncdayRedisService: SyncdayRedisService
+        private readonly syncdayRedisService: SyncdayRedisService,
+        @InjectRepository(DatetimePreset)
+        private readonly datetimePresetRepository: Repository<DatetimePreset>
     ) {}
 
     async createDatetimePreset(
@@ -37,5 +40,50 @@ export class DatetimePresetsService {
         });
 
         return createdDatetimePreset;
+    }
+
+    async getDatetimePresets(userId: number): Promise<DatetimePreset[]> {
+        const datetimePresets = await this.datetimePresetRepository.find({
+            relations: {
+                user: true
+            },
+            where: {
+                user: {
+                    id: userId
+                }
+            }
+        });
+
+        const datetimePresetWithTimeRange = await Promise.all(
+            datetimePresets.map(async (datetimePreset) => {
+                const datetimeRange = await this.syncdayRedisService.getDatetimePreset(
+                    datetimePreset.uuid
+                );
+
+                return { ...datetimePreset, ...datetimeRange };
+            })
+        );
+
+        return datetimePresetWithTimeRange;
+    }
+
+    async getDatetimePreset(userId: number, datetimePresetId: number): Promise<DatetimePreset> {
+        const datetimePreset = await this.datetimePresetRepository.findOneOrFail({
+            relations: {
+                user: true
+            },
+            where: {
+                user: {
+                    id: userId
+                },
+                id: datetimePresetId
+            }
+        });
+
+        const datetimeRange = await this.syncdayRedisService.getDatetimePreset(datetimePreset.uuid);
+
+        const datetimePresetWithTimeRange = { ...datetimePreset, ...datetimeRange };
+
+        return datetimePresetWithTimeRange;
     }
 }

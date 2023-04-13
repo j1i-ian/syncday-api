@@ -91,6 +91,16 @@ export class SyncdayRedisService {
         return result === 'OK';
     }
 
+    async getDatetimePreset(
+        uuid: string
+    ): Promise<Pick<DatetimePreset, 'timepreset' | 'overrides'>> {
+        const datetimePresetKey = this.getDatetimePresetKey(uuid);
+
+        const timePresetRange = await this.cluster.get(datetimePresetKey);
+
+        return timePresetRange ? JSON.parse(timePresetRange) : null;
+    }
+
     getTemporaryUserKey(email: string): RedisKey {
         return this.getRedisKey(RedisStores.TEMPORARY_USER, [email]);
     }
