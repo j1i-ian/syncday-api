@@ -2,6 +2,7 @@ import {
     All,
     Body,
     Controller,
+    Delete,
     Get,
     NotFoundException,
     Param,
@@ -64,7 +65,7 @@ export class DatetimePresetsController {
     @Get(':datetimePresetId(\\d+)')
     async getDatetimePreset(
         @AuthUser() authUser: AppJwtPayload,
-        @Param('datetimePresetId', ParseIntPipe) datetimePresetId: number
+        @Param('datetimePresetId', new ParseIntPipe()) datetimePresetId: number
     ): Promise<GetDatetimePresetResponseDto> {
         const datetimePreset = await this.datetimePresetsService.getDatetimePreset(
             authUser.id,
@@ -76,7 +77,7 @@ export class DatetimePresetsController {
     @Put(':datetimePresetId(\\d+)')
     async updateDatetimePreset(
         @AuthUser() authUser: AppJwtPayload,
-        @Param('datetimePresetId', ParseIntPipe) datetimePresetId: number,
+        @Param('datetimePresetId', new ParseIntPipe()) datetimePresetId: number,
         @Body() updateDateTimePresetRequestDto: UpdateDatetimePresetRequestDto
     ): Promise<{
         affected: boolean;
@@ -90,10 +91,25 @@ export class DatetimePresetsController {
         return updateResult;
     }
 
+    @Delete(':datetimePresetId(\\d+)')
+    async deleteDatetimePreset(
+        @AuthUser() authUser: AppJwtPayload,
+        @Param('datetimePresetId', new ParseIntPipe()) datetimePresetId: number
+    ): Promise<{
+        affected: boolean;
+    }> {
+        const deleteResult = await this.datetimePresetsService.deleteDatetimePreset(
+            authUser.id,
+            datetimePresetId
+        );
+
+        return deleteResult;
+    }
+
     @All(':datetimePresetId(\\d+)')
     async handleDatetimePresetLink(
         @AuthUser() authUser: AppJwtPayload,
-        @Param('datetimePresetId', ParseIntPipe) datetimePresetId: number,
+        @Param('datetimePresetId', new ParseIntPipe()) datetimePresetId: number,
         @Req() req: Request,
         @LinkHeader() parsedLink: { [key: string]: string[] }
     ): Promise<{ affected: boolean }> {
