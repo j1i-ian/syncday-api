@@ -1,2 +1,5 @@
 *.yml
-node_modules
+**/node_modules
+package.json
+public/
+dist/
