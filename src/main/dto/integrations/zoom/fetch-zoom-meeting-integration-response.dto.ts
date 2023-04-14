@@ -1,6 +1,6 @@
 import { Expose } from 'class-transformer';
 
-export class CreateZoomMeetingIntegrationResponse {
+export class FetchZoomMeetingIntegrationResponse {
     @Expose()
     id: number;
 
