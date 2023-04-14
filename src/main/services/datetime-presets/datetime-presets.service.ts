@@ -119,6 +119,40 @@ export class DatetimePresetsService {
         return { affected: updateResult ? true : false };
     }
 
+    /**
+     *
+     * @description Before delete, update event_detail's datetime_preset_id to default datetime_preset_id
+     * cannot delete default datetime preset
+     */
+    async deleteDatetimePreset(
+        userId: number,
+        datetimePresetId: number
+    ): Promise<{
+        affected: boolean;
+    }> {
+        const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
+        const defaultDatetimePreset = await this.findDefaultDatetimePreset(userId);
+        if (datetimePreset.default) {
+            throw new BadRequestException('cannot delete default datetime preset');
+        } else if (!defaultDatetimePreset) {
+            throw new NotFoundException('cannot find default datetime preset');
+        }
+
+        const removeResult = await this.dataSource.transaction(async (manager) => {
+            const _datetimePresetRepository = manager.getRepository(DatetimePreset);
+
+            defaultDatetimePreset.eventDetails = [
+                ...defaultDatetimePreset.eventDetails,
+                ...datetimePreset.eventDetails
+            ];
+            await _datetimePresetRepository.save(defaultDatetimePreset);
+
+            return await _datetimePresetRepository.remove(datetimePreset);
+        });
+
+        return { affected: removeResult ? true : false };
+    }
+
     async linkDatetimePresetWithEvents(
         userId: number,
         datetimePresetId: number,
