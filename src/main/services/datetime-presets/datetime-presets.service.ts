@@ -1,11 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserService } from '@services/users/user.service';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
+import { EventsService } from '@services/event-groups/events/events.service';
 import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity';
 import { CreateDatetimePresetRequestDto } from '@dto/datetime-presets/create-datetime-preset-request.dto';
+import { UpdateDatetimePresetRequestDto } from '@dto/datetime-presets/update-datetime-preset-request.dto';
+
+/**
+ * relation type naming reference
+ *
+ * @see {@link [RFC8288](https://www.rfc-editor.org/rfc/rfc8288#section-3.3)}
+ *
+ */
+enum LinkHeaderRelation {
+    FOREIGNKEY = 'foreign-key'
+}
 
 @Injectable()
 export class DatetimePresetsService {
@@ -13,6 +25,7 @@ export class DatetimePresetsService {
         private readonly dataSource: DataSource,
         private readonly userService: UserService,
         private readonly syncdayRedisService: SyncdayRedisService,
+        private readonly eventsService: EventsService,
         @InjectRepository(DatetimePreset)
         private readonly datetimePresetRepository: Repository<DatetimePreset>
     ) {}
@@ -68,9 +81,95 @@ export class DatetimePresetsService {
     }
 
     async getDatetimePreset(userId: number, datetimePresetId: number): Promise<DatetimePreset> {
+        const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
+
+        const datetimeRange = await this.syncdayRedisService.getDatetimePreset(datetimePreset.uuid);
+
+        const datetimePresetWithTimeRange = { ...datetimePreset, ...datetimeRange };
+
+        return datetimePresetWithTimeRange;
+    }
+
+    async updateDatetimePreset(
+        userId: number,
+        datetimePresetId: number,
+        updateDateTimePresetRequestDto: UpdateDatetimePresetRequestDto
+    ): Promise<{ affected: boolean }> {
+        const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
+
+        const updateResult = await this.dataSource.transaction(async (manager) => {
+            const _datetimePresetRepository = manager.getRepository(DatetimePreset);
+            const { name, timezone, overrides, timepreset } = updateDateTimePresetRequestDto;
+
+            const updatedDatetimePreset = await _datetimePresetRepository.save({
+                ...datetimePreset,
+                name,
+                timezone,
+                default: updateDateTimePresetRequestDto.default
+            });
+
+            await this.syncdayRedisService.setDatetimePreset(updatedDatetimePreset.uuid, {
+                overrides,
+                timepreset
+            });
+
+            return updatedDatetimePreset;
+        });
+
+        return { affected: updateResult ? true : false };
+    }
+
+    async linkDatetimePresetWithEvents(
+        userId: number,
+        datetimePresetId: number,
+        parsedLink: { [key: string]: string[] }
+    ): Promise<{ affected: boolean }> {
+        const eventIds = this._getEventIdFromHeader(parsedLink);
+        const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
+
+        const eventDetails = await this.eventsService.findEventDetailsByEventIds(userId, eventIds);
+
+        datetimePreset.eventDetails = [...datetimePreset.eventDetails, ...eventDetails];
+
+        const updateResult = await this.datetimePresetRepository.save(datetimePreset);
+
+        return { affected: updateResult ? true : false };
+    }
+
+    async unlinkDatetimePresetWithEvents(
+        userId: number,
+        datetimePresetId: number,
+        parsedLink: { [key: string]: string[] }
+    ): Promise<{ affected: boolean }> {
+        const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
+        const defaultDatetimePreset = await this.findDefaultDatetimePreset(userId);
+        if (datetimePreset.default) {
+            throw new BadRequestException('cannot unlink default datetime preset');
+        } else if (defaultDatetimePreset === null) {
+            throw new NotFoundException('cannot find default datetime preset');
+        }
+
+        const eventIds = this._getEventIdFromHeader(parsedLink);
+        const eventDetails = await this.eventsService.findEventDetailsByEventIds(userId, eventIds);
+
+        defaultDatetimePreset.eventDetails = [
+            ...defaultDatetimePreset.eventDetails,
+            ...eventDetails
+        ];
+
+        const updateResult = await this.datetimePresetRepository.save(defaultDatetimePreset);
+
+        return { affected: updateResult ? true : false };
+    }
+
+    async findDateTimePresetById(
+        userId: number,
+        datetimePresetId: number
+    ): Promise<DatetimePreset> {
         const datetimePreset = await this.datetimePresetRepository.findOneOrFail({
             relations: {
-                user: true
+                user: true,
+                eventDetails: true
             },
             where: {
                 user: {
@@ -80,10 +179,33 @@ export class DatetimePresetsService {
             }
         });
 
-        const datetimeRange = await this.syncdayRedisService.getDatetimePreset(datetimePreset.uuid);
+        return datetimePreset;
+    }
 
-        const datetimePresetWithTimeRange = { ...datetimePreset, ...datetimeRange };
+    async findDefaultDatetimePreset(userId: number): Promise<DatetimePreset | null> {
+        const defaultDatetimePreset = await this.datetimePresetRepository.findOne({
+            relations: {
+                user: true,
+                eventDetails: true
+            },
+            where: {
+                user: {
+                    id: userId
+                },
+                default: true
+            }
+        });
 
-        return datetimePresetWithTimeRange;
+        return defaultDatetimePreset;
+    }
+
+    _getEventIdFromHeader(parsedLinkHeader: { [key: string]: string[] }): number[] {
+        const eventUrls = parsedLinkHeader[LinkHeaderRelation.FOREIGNKEY];
+        const eventIds = eventUrls.map((eventUrl) => {
+            const split = eventUrl.split('/');
+
+            return +split[1];
+        });
+        return eventIds ? eventIds : [];
     }
 }
