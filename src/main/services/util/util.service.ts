@@ -7,6 +7,7 @@ import { User } from '../../../@core/core/entities/users/user.entity';
 import { UserSetting } from '../../../@core/core/entities/users/user-setting.entity';
 import { DateTimeOrderFormat } from '../../../@core/core/entities/users/date-time-format-order.enum';
 import { DateTimeFormatOption } from '../../../@core/core/entities/users/date-time-format-option.type';
+import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { ZoomBasicAuth } from '../integrations/interfaces/zoom-basic-auth.interface';
 
 interface UserDefaultSettingOption {
@@ -105,10 +106,10 @@ export class UtilService {
             hour12: false
         });
 
-        const dateTimeFormatOrderType = ['year', 'month', 'day'];
+        const dateTimeFormatOrderType: DateOrder = ['year', 'month', 'day'];
         const dateTimeOrderFormat = formatter
             .formatToParts()
-            .filter((formatPart) => dateTimeFormatOrderType.includes(formatPart.type))
+            .filter((formatPart) => dateTimeFormatOrderType.includes(formatPart.type as string))
             .map((formatPart) => formatPart.type) as DateTimeOrderFormat[];
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
