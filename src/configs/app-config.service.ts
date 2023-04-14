@@ -235,6 +235,11 @@ export class AppConfigService {
         return zoomTokenUrl;
     }
 
+    static getZoomUserInfoUrl(configSerivce: ConfigService): string {
+        const zoomTokenUrl = configSerivce.get<string>('ZOOM_USER_INFO_URL') as string;
+        return zoomTokenUrl;
+    }
+
     static getZoomIntegrationRedirectUrl(configSerivce: ConfigService): string {
         const zoomTokenUrl = configSerivce.get<string>('ZOOM_INTEGRATION_REDIRECT_URL') as string;
         return zoomTokenUrl;

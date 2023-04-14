@@ -11,6 +11,9 @@ import { Integration } from '../integration.entity';
 
 @Entity()
 export class ZoomMeeting extends Integration {
+    @Column()
+    email: string;
+
     @Column({
         length: 650
     })
