@@ -36,7 +36,7 @@ export class UtilService {
         return String(Math.floor(Math.random() * Math.pow(10, digit))).padStart(digit, prefix);
     }
 
-    getAssetFullPath(emailTemplate: EmailTemplate, language: Language): string {
+    getMailAssetFullPath(emailTemplate: EmailTemplate, language: Language): string {
         const hbsAssetPath = [emailTemplate, language, 'hbs'].join('.');
         const assetFullPath = ['assets', 'mails', hbsAssetPath].join('/');
 
@@ -47,6 +47,13 @@ export class UtilService {
         const { clientId, clientSecret } = zoomBasicAuth;
         const basicAuthValue = clientId + ':' + clientSecret;
         return Buffer.from(basicAuthValue).toString('base64');
+    }
+
+    getMailSubjectsJsonPath(language: Language): string {
+        const emailSubjectFileName = ['email-subjects', language, 'json'].join('.');
+        const emailSubjectPath = ['assets', 'mails', emailSubjectFileName].join('/');
+
+        return emailSubjectPath;
     }
 
     getUsetDefaultSetting(

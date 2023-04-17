@@ -7,6 +7,9 @@ import { Language } from '@app/enums/language.enum';
 import { MailerService } from '@nestjs-modules/mailer';
 import { FileUtilsService } from '../util/file-utils/file-utils.service';
 
+/**
+ * TODO: After the event-related entity is materialized, a method to search for the event-related email subject must be implemented.
+ */
 @Injectable()
 export class IntegrationsService {
     constructor(
@@ -16,24 +19,30 @@ export class IntegrationsService {
     ) {}
 
     async sendVerificationEmail(verification: Verification, language: Language): Promise<boolean> {
-        const source = await this.fileUtilService.getEmailTemplate(
+        const templateSource = await this.fileUtilService.getEmailTemplate(
+            EmailTemplate.VERIFICATION,
+            language
+        );
+        const template = Handlebars.compile(templateSource);
+        const compiledTemplate = template(verification);
+
+        const subject = await this.fileUtilService.getEmailSubject(
             EmailTemplate.VERIFICATION,
             language
         );
 
-        const template = Handlebars.compile(source);
+        const sendMessageInfo = await this.sendEmail(verification.email, subject, compiledTemplate);
+        return sendMessageInfo;
+    }
 
-        const compiled = template(verification);
-
+    async sendEmail(reciever: string, subject: string, content: string): Promise<boolean> {
         const sentMessageInfo = await this.mailerService.sendMail({
-            to: verification.email,
+            to: reciever,
             from: 'sync.day.official@gmail.com',
-            subject: 'Verification Email',
-            html: compiled
+            subject,
+            html: content
         });
 
         return !!sentMessageInfo;
     }
-
-    async sendEmail(): Promise<void> {}
 }
