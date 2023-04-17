@@ -51,7 +51,7 @@ describe('UtilService', () => {
     });
 
     it('should be got asset full path', () => {
-        const fullPath = service.getAssetFullPath(EmailTemplate.VERIFICATION, Language.ENGLISH);
+        const fullPath = service.getMailAssetFullPath(EmailTemplate.VERIFICATION, Language.ENGLISH);
 
         expect(fullPath).ok;
         expect(fullPath).contains('hbs');

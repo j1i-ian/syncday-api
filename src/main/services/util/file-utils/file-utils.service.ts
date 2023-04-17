@@ -2,10 +2,13 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { AwsService, AwsServiceType, InjectAwsService } from 'nest-aws-sdk';
 import { ConfigService } from '@nestjs/config';
 import { GetObjectCommandInput, S3 } from '@aws-sdk/client-s3';
-
 import { Language } from '@app/enums/language.enum';
 import { EmailTemplate } from '@app/enums/email-template.enum';
 import { UtilService } from '../util.service';
+
+type EmailSubject = {
+    [key in EmailTemplate]: string;
+};
 
 @Injectable()
 export class FileUtilsService {
@@ -22,7 +25,7 @@ export class FileUtilsService {
     private __s3BucketName: string;
 
     async getEmailTemplate(emailTemplate: EmailTemplate, language: Language): Promise<string> {
-        const assetFullPath = this.utilService.getAssetFullPath(emailTemplate, language);
+        const assetFullPath = this.utilService.getMailAssetFullPath(emailTemplate, language);
         const params = {
             Bucket: this.__s3BucketName,
             Key: assetFullPath
@@ -37,5 +40,23 @@ export class FileUtilsService {
         const hbsBody = await result.Body.transformToString();
 
         return hbsBody;
+    }
+
+    async getEmailSubject(emailTemplate: EmailTemplate, language: Language): Promise<string> {
+        const emailSubjectFullPath = this.utilService.getMailSubjectsJsonPath(language);
+        const params = {
+            Bucket: this.__s3BucketName,
+            Key: emailSubjectFullPath
+        } as GetObjectCommandInput;
+
+        const result = await this.s3.getObject(params);
+
+        if (!result.Body) {
+            throw new BadRequestException('Cannot found template type email');
+        }
+
+        const emailSubjectJson: EmailSubject = JSON.parse(await result.Body.transformToString());
+        const emailSubject = emailSubjectJson[emailTemplate];
+        return emailSubject;
     }
 }

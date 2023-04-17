@@ -60,10 +60,13 @@ describe('IntegrationsService', () => {
 
         it('should be sent verification email', async () => {
             const emailSourceStub = '{{host}} {{email}} {{verificationCode}}';
+            const emailSubjectSourceStub = '[Sync] 이메일 주소를 확인해주세요';
 
             const verificationMock = testMockUtil.getVerificationMock();
 
             fileUtilsServiceStub.getEmailTemplate.resolves(emailSourceStub);
+            fileUtilsServiceStub.getEmailSubject.resolves(emailSubjectSourceStub);
+
             mailerServiceStub.sendMail.resolves('success');
 
             const result = await service.sendVerificationEmail(verificationMock, Language.ENGLISH);
