@@ -244,7 +244,6 @@ export class AppConfigService {
         const zoomTokenUrl = configSerivce.get<string>('ZOOM_INTEGRATION_REDIRECT_URL') as string;
         return zoomTokenUrl;
     }
-
     private static _getWinstonModuleProductionTransports(
         configService: ConfigService
     ): winston.transport {
