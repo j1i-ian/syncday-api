@@ -4,6 +4,9 @@ import {
     Controller,
     Delete,
     Get,
+    Header,
+    HttpCode,
+    HttpStatus,
     NotFoundException,
     Param,
     ParseIntPipe,
@@ -74,14 +77,13 @@ export class DatetimePresetsController {
         return plainToInstance(GetDatetimePresetResponseDto, datetimePreset);
     }
 
+    @Header('Content-type', 'application/json')
     @Put(':datetimePresetId(\\d+)')
     async updateDatetimePreset(
         @AuthUser() authUser: AppJwtPayload,
         @Param('datetimePresetId', new ParseIntPipe()) datetimePresetId: number,
         @Body() updateDateTimePresetRequestDto: UpdateDatetimePresetRequestDto
-    ): Promise<{
-        affected: boolean;
-    }> {
+    ): Promise<boolean> {
         const updateResult = await this.datetimePresetsService.updateDatetimePreset(
             authUser.id,
             datetimePresetId,
@@ -95,9 +97,7 @@ export class DatetimePresetsController {
     async deleteDatetimePreset(
         @AuthUser() authUser: AppJwtPayload,
         @Param('datetimePresetId', new ParseIntPipe()) datetimePresetId: number
-    ): Promise<{
-        affected: boolean;
-    }> {
+    ): Promise<boolean> {
         const deleteResult = await this.datetimePresetsService.deleteDatetimePreset(
             authUser.id,
             datetimePresetId
@@ -106,13 +106,17 @@ export class DatetimePresetsController {
         return deleteResult;
     }
 
+    @Header('Content-type', 'application/json')
+    @HttpCode(HttpStatus.NO_CONTENT)
     @All(':datetimePresetId(\\d+)')
     async handleDatetimePresetLink(
         @AuthUser() authUser: AppJwtPayload,
         @Param('datetimePresetId', new ParseIntPipe()) datetimePresetId: number,
         @Req() req: Request,
         @LinkHeader() parsedLink: { [key: string]: string[] }
-    ): Promise<{ affected: boolean }> {
+    ): Promise<boolean> {
+        let result: boolean;
+
         switch (req.method) {
             case 'LINK':
                 const linkResult = await this.datetimePresetsService.linkDatetimePresetWithEvents(
@@ -121,7 +125,8 @@ export class DatetimePresetsController {
                     parsedLink
                 );
 
-                return linkResult;
+                result = linkResult;
+                break;
             case 'UNLINK':
                 const unlinkResult =
                     await this.datetimePresetsService.unlinkDatetimePresetWithEvents(
@@ -130,9 +135,12 @@ export class DatetimePresetsController {
                         parsedLink
                     );
 
-                return unlinkResult;
+                result = unlinkResult;
+                break;
             default:
                 throw new NotFoundException(`Cannot ${req.method} ${req.path}`);
         }
+
+        return result;
     }
 }

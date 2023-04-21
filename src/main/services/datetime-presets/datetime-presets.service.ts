@@ -48,8 +48,10 @@ export class DatetimePresetsService {
                 timepreset,
                 overrides
             });
+            createResult.timepreset = timepreset;
+            createResult.overrides = overrides;
 
-            return { ...createResult, timepreset, overrides };
+            return createResult;
         });
 
         return createdDatetimePreset;
@@ -66,16 +68,19 @@ export class DatetimePresetsService {
                 }
             }
         });
+        const uuids = datetimePresets.map((datetimePreset) => datetimePreset.uuid);
+        const datetimePresetTimeRange = await this.syncdayRedisService.getDatetimePresets(uuids);
 
-        const datetimePresetWithTimeRange = await Promise.all(
-            datetimePresets.map(async (datetimePreset) => {
-                const datetimeRange = await this.syncdayRedisService.getDatetimePreset(
-                    datetimePreset.uuid
-                );
+        const datetimePresetWithTimeRange = datetimePresets.map((datetimePreset, index) => {
+            const _datetimePreset = this.datetimePresetRepository.create(datetimePreset);
+            const _datetimePresetTimeRange = datetimePresetTimeRange[index];
+            if (_datetimePresetTimeRange !== null) {
+                _datetimePreset.timepreset = _datetimePresetTimeRange.timepreset;
+                _datetimePreset.overrides = _datetimePresetTimeRange.overrides;
+            }
 
-                return { ...datetimePreset, ...datetimeRange };
-            })
-        );
+            return _datetimePreset;
+        });
 
         return datetimePresetWithTimeRange;
     }
@@ -85,51 +90,71 @@ export class DatetimePresetsService {
 
         const datetimeRange = await this.syncdayRedisService.getDatetimePreset(datetimePreset.uuid);
 
-        const datetimePresetWithTimeRange = { ...datetimePreset, ...datetimeRange };
+        datetimePreset.timepreset = datetimeRange.timepreset;
+        datetimePreset.overrides = datetimeRange.overrides;
 
-        return datetimePresetWithTimeRange;
+        return datetimePreset;
     }
 
+    /**
+     * 새로운 default time preset 을 설정할 경우, 이전 default 설정은 제거한다.
+     */
     async updateDatetimePreset(
         userId: number,
         datetimePresetId: number,
         updateDateTimePresetRequestDto: UpdateDatetimePresetRequestDto
-    ): Promise<{ affected: boolean }> {
+    ): Promise<boolean> {
         const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
+        // User 는 default time preset 을 활성화(true)만 할 수 있고 비활성화(false)는 할 수 없다.
+        const isDisableDefaultTimePresetRequset =
+            datetimePreset.default && updateDateTimePresetRequestDto.default === false;
 
-        const updateResult = await this.dataSource.transaction(async (manager) => {
+        if (isDisableDefaultTimePresetRequset) {
+            throw new BadRequestException('cannot remove default datetime preset setting');
+        }
+
+        const updatedDatetimePreset = await this.dataSource.transaction(async (manager) => {
             const _datetimePresetRepository = manager.getRepository(DatetimePreset);
             const { name, timezone, overrides, timepreset } = updateDateTimePresetRequestDto;
 
-            const updatedDatetimePreset = await _datetimePresetRepository.save({
+            const isEnableDefaultTimePresetRequest =
+                updateDateTimePresetRequestDto.default === true;
+
+            if (isEnableDefaultTimePresetRequest) {
+                await _datetimePresetRepository.update(
+                    {
+                        default: true,
+                        userId
+                    },
+                    {
+                        default: false
+                    }
+                );
+            }
+
+            const _updatedDatetimePreset = await _datetimePresetRepository.save({
                 ...datetimePreset,
                 name,
                 timezone,
                 default: updateDateTimePresetRequestDto.default
             });
 
-            await this.syncdayRedisService.setDatetimePreset(updatedDatetimePreset.uuid, {
+            await this.syncdayRedisService.setDatetimePreset(_updatedDatetimePreset.uuid, {
                 overrides,
                 timepreset
             });
 
-            return updatedDatetimePreset;
+            return _updatedDatetimePreset;
         });
 
-        return { affected: updateResult ? true : false };
+        return updatedDatetimePreset ? true : false;
     }
 
     /**
-     *
-     * @description Before delete, update event_detail's datetime_preset_id to default datetime_preset_id
+     * Before delete, update event_detail's datetime_preset_id to default datetime_preset_id
      * cannot delete default datetime preset
      */
-    async deleteDatetimePreset(
-        userId: number,
-        datetimePresetId: number
-    ): Promise<{
-        affected: boolean;
-    }> {
+    async deleteDatetimePreset(userId: number, datetimePresetId: number): Promise<boolean> {
         const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
         const defaultDatetimePreset = await this.findDefaultDatetimePreset(userId);
         if (datetimePreset.default) {
@@ -140,43 +165,45 @@ export class DatetimePresetsService {
 
         const removeResult = await this.dataSource.transaction(async (manager) => {
             const _datetimePresetRepository = manager.getRepository(DatetimePreset);
+            const beChangedEventIds = datetimePreset.events.map((event) => event.id);
 
-            defaultDatetimePreset.eventDetails = [
-                ...defaultDatetimePreset.eventDetails,
-                ...datetimePreset.eventDetails
-            ];
-            await _datetimePresetRepository.save(defaultDatetimePreset);
+            await this.eventsService.updateDatetimePresetRelation(
+                beChangedEventIds,
+                userId,
+                defaultDatetimePreset.id
+            );
 
             return await _datetimePresetRepository.remove(datetimePreset);
         });
 
-        return { affected: removeResult ? true : false };
+        return removeResult ? true : false;
     }
 
     async linkDatetimePresetWithEvents(
         userId: number,
         datetimePresetId: number,
         parsedLink: { [key: string]: string[] }
-    ): Promise<{ affected: boolean }> {
+    ): Promise<boolean> {
         const eventIds = this._getEventIdFromHeader(parsedLink);
         const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
 
-        const eventDetails = await this.eventsService.findEventDetailsByEventIds(userId, eventIds);
+        const updateResult = await this.eventsService.updateDatetimePresetRelation(
+            eventIds,
+            userId,
+            datetimePreset.id
+        );
 
-        datetimePreset.eventDetails = [...datetimePreset.eventDetails, ...eventDetails];
-
-        const updateResult = await this.datetimePresetRepository.save(datetimePreset);
-
-        return { affected: updateResult ? true : false };
+        return updateResult.affected && updateResult.affected > 0 ? true : false;
     }
 
     async unlinkDatetimePresetWithEvents(
         userId: number,
         datetimePresetId: number,
         parsedLink: { [key: string]: string[] }
-    ): Promise<{ affected: boolean }> {
+    ): Promise<boolean> {
         const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
         const defaultDatetimePreset = await this.findDefaultDatetimePreset(userId);
+
         if (datetimePreset.default) {
             throw new BadRequestException('cannot unlink default datetime preset');
         } else if (defaultDatetimePreset === null) {
@@ -184,16 +211,14 @@ export class DatetimePresetsService {
         }
 
         const eventIds = this._getEventIdFromHeader(parsedLink);
-        const eventDetails = await this.eventsService.findEventDetailsByEventIds(userId, eventIds);
 
-        defaultDatetimePreset.eventDetails = [
-            ...defaultDatetimePreset.eventDetails,
-            ...eventDetails
-        ];
+        const updateResult = await this.eventsService.updateDatetimePresetRelation(
+            eventIds,
+            userId,
+            defaultDatetimePreset.id
+        );
 
-        const updateResult = await this.datetimePresetRepository.save(defaultDatetimePreset);
-
-        return { affected: updateResult ? true : false };
+        return updateResult.affected && updateResult.affected > 0 ? true : false;
     }
 
     async findDateTimePresetById(
@@ -203,7 +228,7 @@ export class DatetimePresetsService {
         const datetimePreset = await this.datetimePresetRepository.findOneOrFail({
             relations: {
                 user: true,
-                eventDetails: true
+                events: true
             },
             where: {
                 user: {
@@ -220,7 +245,7 @@ export class DatetimePresetsService {
         const defaultDatetimePreset = await this.datetimePresetRepository.findOne({
             relations: {
                 user: true,
-                eventDetails: true
+                events: true
             },
             where: {
                 user: {

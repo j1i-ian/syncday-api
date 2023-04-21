@@ -30,12 +30,6 @@ interface CreateUserOptions {
     emailVerification?: boolean;
     alreadySignedUpUserCheck?: boolean;
 }
-
-const datetimePresetDefaultName = {
-    [Language.ENGLISH]: 'Working hours',
-    [Language.KOREAN]: '근무 시간'
-};
-
 @Injectable()
 export class UserService {
     constructor(
@@ -195,13 +189,6 @@ export class UserService {
         initialTimeRange.startTime = _5min;
         initialTimeRange.endTime = _5min;
 
-        const initialEventGroup = new EventGroup();
-        const initialEvent = new Event({
-            type: EventType.ONE_ON_ONE,
-            link: 'default',
-            name: 'default'
-        });
-
         const initialContact = new Contact({
             type: ContactType.OFFLINE,
             value: 'meeting room'
@@ -212,6 +199,14 @@ export class UserService {
             timeRange: initialTimeRange,
             contacts: [initialContact],
             description: 'default'
+        });
+
+        const initialEventGroup = new EventGroup();
+        const initialEvent = new Event({
+            type: EventType.ONE_ON_ONE,
+            link: 'default',
+            name: 'default',
+            eventDetail: initialEventDetail
         });
 
         // 월 ~ 금, 09:00 ~ 17:00
@@ -231,7 +226,7 @@ export class UserService {
 
         const initialDatetimePreset = new DatetimePreset();
         initialDatetimePreset.default = true;
-        initialDatetimePreset.name = datetimePresetDefaultName[language];
+        initialDatetimePreset.name = this.utilService.getDefaultDatetimePresetName(language);
         initialDatetimePreset.user = savedUser;
         initialDatetimePreset.timezone = userSetting?.preferredTimezone;
         const savedDatetimePreset = await _datetimePresetRepository.save(initialDatetimePreset);
@@ -239,7 +234,7 @@ export class UserService {
             timepreset: initialTimePresets,
             overrides: []
         });
-        initialEventDetail.datetimePresetId = savedDatetimePreset.id;
+        initialEvent.datetimePresetId = savedDatetimePreset.id;
 
         initialEvent.eventDetail = initialEventDetail;
         initialEventGroup.events = [initialEvent];
