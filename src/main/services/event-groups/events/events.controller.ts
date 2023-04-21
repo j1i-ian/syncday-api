@@ -6,6 +6,7 @@ import {
     Get,
     NotFoundException,
     Param,
+    ParseIntPipe,
     Patch,
     Post,
     Query,
@@ -61,8 +62,12 @@ export class EventsController {
     }
 
     @Patch(':id')
-    update(@Param('id') id: string, @Body() updateEventDto: UpdateEventRequestDto): boolean {
-        return this.eventsService.update(+id, updateEventDto);
+    async update(
+        @AuthUser() authUser: AppJwtPayload,
+        @Param('id', new ParseIntPipe()) id: number,
+        @Body() updateEventDto: UpdateEventRequestDto
+    ): Promise<boolean> {
+        return await this.eventsService.update(id, authUser.id, updateEventDto);
     }
 
     @Delete(':id')

@@ -2,6 +2,7 @@
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager, UpdateResult } from 'typeorm';
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { RedisKey } from 'ioredis';
 import { Event } from '@entity/events/event.entity';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
@@ -86,8 +87,50 @@ export class EventsService {
         return addedEvent;
     }
 
-    update(id: number, updateEventDto: UpdateEventRequestDto): boolean {
-        return true;
+    async update(
+        id: number,
+        userId: number,
+        updateEventDto: UpdateEventRequestDto
+    ): Promise<boolean> {
+        const event = await this.findEventById(userId, id);
+        const { eventDetail: eventDetailDto, ...eventProperties } = updateEventDto;
+        const validEventDetailDto = eventDetailDto ?? {};
+        const { inviteeQuestions, reminders, ...eventDetailProperties } = validEventDetailDto;
+        const redisPayload: Array<{
+            key: RedisKey;
+            value: string;
+        }> = [];
+
+        if (inviteeQuestions) {
+            const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(event.uuid);
+
+            redisPayload.push({
+                key: inviteeQuestionKey,
+                value: JSON.stringify(inviteeQuestions)
+            });
+        }
+        if (reminders) {
+            const reminderKey = this.syncdayRedisService.getReminderKey(event.uuid);
+
+            redisPayload.push({
+                key: reminderKey,
+                value: JSON.stringify(reminders)
+            });
+        }
+
+        const updateResult = await this.dataSource.transaction(async (manager) => {
+            const _eventRepository = manager.getRepository(Event);
+            const _eventDetailRepository = manager.getRepository(EventDetail);
+
+            await _eventDetailRepository.update(event.eventDetail.id, eventDetailProperties);
+            const _updateResult = await _eventRepository.update(event.id, eventProperties);
+
+            await this.syncdayRedisService.multiSet(redisPayload);
+
+            return _updateResult;
+        });
+
+        return updateResult.affected && updateResult.affected > 0 ? true : false;
     }
 
     remove(id: number): boolean {

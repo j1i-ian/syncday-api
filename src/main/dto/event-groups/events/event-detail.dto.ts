@@ -1,12 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import {
-    IsArray,
-    IsBoolean,
-    IsDefined,
-    IsNumber,
-    IsOptional,
-    ValidateNested
-} from 'class-validator';
+import { IsArray, IsDefined, IsOptional, ValidateNested } from 'class-validator';
 import { TimeRangeDto } from '../../datetime-presets/time-range.dto';
 import { BufferTimeDto } from './buffer-time.dto';
 import { ContactDto } from './contact.dto';
@@ -40,14 +33,6 @@ export class EventDetailDto {
     @Type(() => DateRangeDto)
     @Expose()
     dateRange: DateRangeDto;
-
-    @IsNumber()
-    @Expose()
-    datetimePresetId: number;
-
-    @IsBoolean()
-    @Expose()
-    public: boolean;
 
     @IsDefined()
     @Expose()
