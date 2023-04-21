@@ -12,6 +12,7 @@ import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { InviteeQuestion } from '../../../../@core/core/entities/invitee-questions/invitee-question.entity';
 import { Reminder } from '../../../../@core/core/entities/reminders/reminder.entity';
 import { UtilService } from '../../util/util.service';
+import { GetEventsSearchOptions } from '../../../parameters/event-groups/events/get-events.param';
 import { EventGroupsService } from '../event-groups.service';
 
 @Injectable()
@@ -25,8 +26,16 @@ export class EventsService {
         private readonly eventRepository: Repository<Event>
     ) {}
 
-    findAll(): Event[] {
-        return [] as Event[];
+    async findAll(userId: number, searchOptions: GetEventsSearchOptions): Promise<Event[]> {
+        const sql = this.eventRepository
+            .createQueryBuilder()
+            .leftJoin(EventGroup, 'eventGroup')
+            .where('eventGroup.userId = :userId', { userId });
+        const sqlWithWhereCondition = this._getEventsApplyWhereClause(sql, searchOptions);
+
+        const events = await sqlWithWhereCondition.getMany();
+
+        return events;
     }
 
     findOne(id: number): Event {
@@ -184,5 +193,20 @@ export class EventsService {
         });
 
         return event;
+    }
+
+    _getEventsApplyWhereClause(
+        sql: SelectQueryBuilder<Event>,
+        searchOptions: GetEventsSearchOptions
+    ): SelectQueryBuilder<Event> {
+        const sqlWithWhereClause = sql;
+
+        if (searchOptions.status !== undefined) {
+            sqlWithWhereClause.andWhere('status = :status', {
+                status: searchOptions.status
+            });
+        }
+
+        return sqlWithWhereClause;
     }
 }

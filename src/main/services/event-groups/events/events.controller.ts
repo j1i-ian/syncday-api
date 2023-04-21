@@ -8,18 +8,21 @@ import {
     Param,
     Patch,
     Post,
+    Query,
     Req
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
 import { DestinationPathname } from '@decorators/destination-pathname.decorator';
+import { AuthUser } from '@decorators/auth-user.decorator';
 import { Event } from '@entity/events/event.entity';
 import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-request.dto';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
-import { AuthUser } from '../../../decorators/auth-user.decorator';
+import { EventResponseDto } from '@dto/event-groups/events/event-response.dto';
+import { GetEventsResponseDto } from '@dto/event-groups/events/get-events-response.dto';
 import { AppJwtPayload } from '../../../auth/strategy/jwt/app-jwt-payload.interface';
-import { EventResponseDto } from '../../../dto/event-groups/events/event-response.dto';
 import { HttpMethod } from '../../../enums/http-method.enum';
+import { GetEventsSearchOptions } from '../../../parameters/event-groups/events/get-events.param';
 import { EventsService } from './events.service';
 
 @Controller()
@@ -27,8 +30,15 @@ export class EventsController {
     constructor(private readonly eventsService: EventsService) {}
 
     @Get()
-    findAll(): Event[] {
-        return this.eventsService.findAll();
+    async findAll(
+        @AuthUser() authUser: AppJwtPayload,
+        @Query() getEventsSearchOptions: GetEventsSearchOptions
+    ): Promise<GetEventsResponseDto[]> {
+        const events = await this.eventsService.findAll(authUser.id, getEventsSearchOptions);
+
+        return plainToInstance(GetEventsResponseDto, events, {
+            excludeExtraneousValues: true
+        });
     }
 
     @Get(':id')
