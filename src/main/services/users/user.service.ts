@@ -203,7 +203,7 @@ export class UserService {
         });
 
         const initialContact = new Contact({
-            contactType: ContactType.OFFLINE,
+            type: ContactType.OFFLINE,
             value: 'meeting room'
         });
 
@@ -239,9 +239,11 @@ export class UserService {
             timepreset: initialTimePresets,
             overrides: []
         });
-
         initialEventDetail.datetimePresetId = savedDatetimePreset.id;
+
+        initialEvent.eventDetail = initialEventDetail;
         initialEventGroup.events = [initialEvent];
+        initialEventGroup.user = savedUser;
 
         await manager.getRepository(EventGroup).save(initialEventGroup);
 

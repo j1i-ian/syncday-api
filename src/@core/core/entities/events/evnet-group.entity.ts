@@ -13,6 +13,12 @@ import { Event } from './event.entity';
 
 @Entity()
 export class EventGroup {
+    constructor(eventGroup?: Partial<EventGroup>) {
+        if (eventGroup) {
+            Object.assign(this, eventGroup);
+        }
+    }
+
     @PrimaryGeneratedColumn()
     id: number;
 
@@ -41,4 +47,7 @@ export class EventGroup {
     @ManyToOne(() => User, (user) => user.eventGroup)
     @JoinColumn()
     user: User;
+
+    @Column()
+    userId: number;
 }

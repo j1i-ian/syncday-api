@@ -1,7 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { Event } from '@entity/events/event.entity';
-import { CreateEventDto } from '@dto/event-groups/events/create-event.dto';
-import { UpdateEventDto } from '@dto/event-groups/events/update-event.dto';
+import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-request.dto';
+import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
+import { AuthUser } from '../../../decorators/auth-user.decorator';
+import { AppJwtPayload } from '../../../auth/strategy/jwt/app-jwt-payload.interface';
+import { EventResponseDto } from '../../../dto/event-groups/events/event-response.dto';
 import { EventsService } from './events.service';
 
 @Controller()
@@ -19,12 +23,21 @@ export class EventsController {
     }
 
     @Post()
-    create(@Body() createEventDto: CreateEventDto): Event {
-        return this.eventsService.create(createEventDto);
+    async create(
+        @AuthUser() authUser: AppJwtPayload,
+        @Body() newEvent: CreateEventRequestDto
+    ): Promise<EventResponseDto> {
+        const event = await this.eventsService.create(authUser.id, newEvent);
+
+        const eventResponseDto = plainToInstance(EventResponseDto, event, {
+            excludeExtraneousValues: true
+        });
+
+        return eventResponseDto;
     }
 
     @Patch(':id')
-    update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto): boolean {
+    update(@Param('id') id: string, @Body() updateEventDto: UpdateEventRequestDto): boolean {
         return this.eventsService.update(+id, updateEventDto);
     }
 

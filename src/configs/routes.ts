@@ -1,5 +1,4 @@
 import { Routes } from '@nestjs/core';
-import { EventGroupsModule } from '@services/event-groups/event-groups.module';
 import { EventsModule } from '@services/event-groups/events/events.module';
 import { SchedulesModule } from '@services/schedules/schedules.module';
 import { UserSettingModule } from '@services/users/user-setting/user-setting.module';
@@ -40,14 +39,8 @@ export const routes: Routes = [
         module: TokenModule
     },
     {
-        path: 'event-groups',
-        module: EventGroupsModule,
-        children: [
-            {
-                path: 'events',
-                module: EventsModule
-            }
-        ]
+        path: 'events',
+        module: EventsModule
     },
     {
         path: 'schedules',

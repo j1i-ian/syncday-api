@@ -10,11 +10,11 @@ import {
     PrimaryGeneratedColumn,
     UpdateDateColumn
 } from 'typeorm';
-import { ContactType } from '@app/services/event-groups/events/enums/contact-type.enum';
 import { EventType } from './event-type.entity';
 import { EventGroup } from './evnet-group.entity';
 import { EventStatus } from './event-status.enum';
 import { EventDetail } from './event-detail.entity';
+import { ContactType } from './contact-type.enum';
 
 @Entity()
 export class Event {
@@ -60,6 +60,11 @@ export class Event {
         default: 1
     })
     maxParticipants: number;
+
+    @Column({
+        default: 1
+    })
+    maxDailyScheduleCount: number;
 
     @Column('time', {
         default: '00:00:00'
