@@ -68,7 +68,7 @@ export class TokenService {
                 id: user.id,
                 email: user.email,
                 profileImage: user.profileImage,
-                name: user.nickname
+                nickname: user.nickname
             },
             {
                 secret: this.jwtOption.secret,
