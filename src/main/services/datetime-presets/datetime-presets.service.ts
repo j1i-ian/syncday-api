@@ -8,17 +8,6 @@ import { EventsService } from '@services/event-groups/events/events.service';
 import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity';
 import { CreateDatetimePresetRequestDto } from '@dto/datetime-presets/create-datetime-preset-request.dto';
 import { UpdateDatetimePresetRequestDto } from '@dto/datetime-presets/update-datetime-preset-request.dto';
-
-/**
- * relation type naming reference
- *
- * @see {@link [RFC8288](https://www.rfc-editor.org/rfc/rfc8288#section-3.3)}
- *
- */
-enum LinkHeaderRelation {
-    FOREIGNKEY = 'foreign-key'
-}
-
 @Injectable()
 export class DatetimePresetsService {
     constructor(
@@ -182,9 +171,9 @@ export class DatetimePresetsService {
     async linkDatetimePresetWithEvents(
         userId: number,
         datetimePresetId: number,
-        parsedLink: { [key: string]: string[] }
+        eventIdStrArray: string[]
     ): Promise<boolean> {
-        const eventIds = this._getEventIdFromHeader(parsedLink);
+        const eventIds = eventIdStrArray.map((e) => +e);
         const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
 
         const updateResult = await this.eventsService.updateDatetimePresetRelation(
@@ -199,7 +188,7 @@ export class DatetimePresetsService {
     async unlinkDatetimePresetWithEvents(
         userId: number,
         datetimePresetId: number,
-        parsedLink: { [key: string]: string[] }
+        eventIdStrArray: string[]
     ): Promise<boolean> {
         const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
         const defaultDatetimePreset = await this.findDefaultDatetimePreset(userId);
@@ -210,7 +199,7 @@ export class DatetimePresetsService {
             throw new NotFoundException('cannot find default datetime preset');
         }
 
-        const eventIds = this._getEventIdFromHeader(parsedLink);
+        const eventIds = eventIdStrArray.map((e) => +e);
 
         const updateResult = await this.eventsService.updateDatetimePresetRelation(
             eventIds,
@@ -256,15 +245,5 @@ export class DatetimePresetsService {
         });
 
         return defaultDatetimePreset;
-    }
-
-    _getEventIdFromHeader(parsedLinkHeader: { [key: string]: string[] }): number[] {
-        const eventUrls = parsedLinkHeader[LinkHeaderRelation.FOREIGNKEY];
-        const eventIds = eventUrls.map((eventUrl) => {
-            const split = eventUrl.split('/');
-
-            return +split[1];
-        });
-        return eventIds ? eventIds : [];
     }
 }

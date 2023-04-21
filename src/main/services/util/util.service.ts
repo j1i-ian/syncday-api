@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { EmailTemplate } from '@app/enums/email-template.enum';
 import { Language } from '@app/enums/language.enum';
@@ -130,5 +130,20 @@ export class UtilService {
             default:
                 return 'Working hours';
         }
+    }
+
+    /**
+     * @param pathname /event-groups/1 형태의 문자열
+     */
+    getGroupEventIdFromPath(pathname: string): number {
+        const pathArray = pathname.split('/');
+        const validPath =
+            pathArray[1] === 'event-groups' && !Number.isNaN(+pathArray[2]) && +pathArray[2];
+
+        if (!validPath) {
+            throw new BadRequestException('invalid event group path');
+        }
+
+        return validPath;
     }
 }
