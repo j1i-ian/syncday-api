@@ -5,7 +5,6 @@ import {
     Entity,
     Generated,
     JoinColumn,
-    ManyToOne,
     OneToMany,
     OneToOne,
     PrimaryGeneratedColumn,
@@ -15,7 +14,6 @@ import { BufferTime } from './buffer-time.entity';
 import { TimeRange } from './time-range.entity';
 import { Event } from './event.entity';
 import { Contact } from './contact.entity';
-import { DatetimePreset } from '../datetime-presets/datetime-preset.entity';
 import { Reminder } from '../reminders/reminder.entity';
 import { InviteeQuestion } from '../invitee-questions/invitee-question.entity';
 import { Schedule } from '../schedules/schedule.entity';
@@ -83,23 +81,12 @@ export class EventDetail {
     @Column({ name: 'event_id' })
     eventId: number;
 
-    @Column({ name: 'datetime_preset_id' })
-    datetimePresetId: number;
-
     @OneToOne(() => Event)
     @JoinColumn({ name: 'event_id' })
     event: Event;
 
     @OneToMany(() => Schedule, (schedule) => schedule.eventDetail)
     schedules: Schedule;
-
-    @ManyToOne(() => DatetimePreset, (datetimePreset) => datetimePreset.eventDetails, {
-        onUpdate: 'RESTRICT',
-        onDelete: 'RESTRICT'
-    })
-    @JoinColumn({ name: 'datetime_preset_id' })
-    datetimePreset: DatetimePreset;
-
     /**
      * this objects are patched from redis by logic
      */

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
 import { TemporaryUser } from '@entity/users/temporary-user.entity';
 import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity';
@@ -129,6 +129,32 @@ export class SyncdayRedisService {
         const reminders = await this.cluster.get(reminderKey);
 
         return reminders ? JSON.parse(reminders) : null;
+    }
+
+    async getDatetimePresets(
+        uuids: string[]
+    ): Promise<Array<Pick<DatetimePreset, 'timepreset' | 'overrides'> | null>> {
+        const datetimePresetKeys = uuids.map((uuid) => this.getDatetimePresetKey(uuid));
+        const pipelineCommands = datetimePresetKeys.map((datetimePresetKey) => [
+            'get',
+            datetimePresetKey
+        ]);
+
+        const timepresetRanges = await this.cluster.pipeline(pipelineCommands).exec();
+        if (timepresetRanges === null) {
+            throw new InternalServerErrorException('pipeline execution result is null');
+        }
+
+        const parsedTimepresetRanges = timepresetRanges.map((timepresetRange) => {
+            const redisPipelineError = timepresetRange[0];
+            if (redisPipelineError !== null) {
+                throw redisPipelineError;
+            }
+
+            return timepresetRange ? JSON.parse(timepresetRange[1] as string) : null;
+        });
+
+        return parsedTimepresetRanges;
     }
 
     getTemporaryUserKey(email: string): RedisKey {

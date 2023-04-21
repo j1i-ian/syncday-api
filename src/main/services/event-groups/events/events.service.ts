@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository, UpdateResult, DataSource, EntityManager } from 'typeorm';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
 import { Event } from '@entity/events/event.entity';
+import { User } from '@entity/users/user.entity';
 import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-request.dto';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
 import { EventDetail } from '../../../../@core/core/entities/events/event-detail.entity';
@@ -15,8 +15,8 @@ import { Reminder } from '../../../../@core/core/entities/reminders/reminder.ent
 @Injectable()
 export class EventsService {
     constructor(
-        @InjectRepository(EventDetail)
-        private readonly eventDetailRepository: Repository<EventDetail>,
+        @InjectRepository(Event)
+        private readonly eventRepository: Repository<Event>,
         private readonly dataSource: DataSource,
         private readonly syncdayRedisService: SyncdayRedisService
     ) {}
@@ -78,27 +78,29 @@ export class EventsService {
         return true;
     }
 
-    async findEventDetailsByEventIds(userId: number, eventIds: number[]): Promise<EventDetail[]> {
-        const events = await this.eventDetailRepository.find({
-            relations: {
-                event: {
-                    eventGroup: {
-                        user: true
-                    }
-                }
-            },
-            where: {
-                event: {
-                    id: In(eventIds),
-                    eventGroup: {
-                        user: {
-                            id: userId
-                        }
-                    }
-                }
-            }
-        });
+    async updateDatetimePresetRelation(
+        eventIds: number[],
+        userId: number,
+        datetimePresetId: number
+    ): Promise<UpdateResult> {
+        const getEventIdsSubQuery = this.eventRepository
+            .createQueryBuilder('event')
+            .select('event.id')
+            .leftJoin(EventGroup, 'eventGroup', 'eventGroup.id = event.eventGroupId')
+            .leftJoin(User, 'user')
+            .where('eventGroup.userId = :userId', { userId })
+            .andWhere('event.id IN (:eventIds)', { eventIds });
 
-        return events;
+        const updateResult = await this.eventRepository
+            .createQueryBuilder('event')
+            .update('event')
+            .set({
+                datetimePresetId
+            })
+            .where(`event.id IN (${getEventIdsSubQuery.getQuery()})`)
+            .setParameters(getEventIdsSubQuery.getParameters())
+            .execute();
+
+        return updateResult;
     }
 }

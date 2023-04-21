@@ -121,4 +121,14 @@ export class UtilService {
         };
         return dateTimeFomat;
     }
+
+    getDefaultDatetimePresetName(language: Language): string {
+        switch (language) {
+            case Language.KOREAN:
+                return '근무 시간';
+            case Language.ENGLISH:
+            default:
+                return 'Working hours';
+        }
+    }
 }

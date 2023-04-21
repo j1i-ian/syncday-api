@@ -15,6 +15,7 @@ import { EventGroup } from './evnet-group.entity';
 import { EventStatus } from './event-status.enum';
 import { EventDetail } from './event-detail.entity';
 import { ContactType } from './contact-type.enum';
+import { DatetimePreset } from '../datetime-presets/datetime-preset.entity';
 
 @Entity()
 export class Event {
@@ -106,4 +107,17 @@ export class Event {
     @ManyToOne(() => EventGroup, (eventGroup) => eventGroup.events)
     @JoinColumn()
     eventGroup: EventGroup;
+
+    @Column()
+    eventGroupId: number;
+
+    @ManyToOne(() => DatetimePreset, (datetimePreset) => datetimePreset.events, {
+        onUpdate: 'RESTRICT',
+        onDelete: 'RESTRICT'
+    })
+    @JoinColumn({ name: 'datetime_preset_id' })
+    datetimePreset: DatetimePreset;
+
+    @Column()
+    datetimePresetId: number;
 }
