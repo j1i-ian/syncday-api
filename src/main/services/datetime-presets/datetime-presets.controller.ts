@@ -18,13 +18,14 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
 import { AuthUser } from '@decorators/auth-user.decorator';
-import { LinkHeader } from '@decorators/link-header.decorator';
 import { CreateDatetimePresetRequestDto } from '@dto/datetime-presets/create-datetime-preset-request.dto';
 import { CreateDatetimePresetResponseDto } from '@dto/datetime-presets/create-datetime-preset-response.dto';
 import { GetDatetimePresetsResponseDto } from '@dto/datetime-presets/get-datetime-presets-response.dto';
 import { GetDatetimePresetResponseDto } from '@dto/datetime-presets/get-datetime-preset-response.dto';
 import { UpdateDatetimePresetRequestDto } from '@dto/datetime-presets/update-datetime-preset-request.dto';
 import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
+import { HttpMethod } from '../../enums/http-method.enum';
+import { MatrixParameter } from '../../decorators/matrix-parameter.decorator';
 import { DatetimePresetsService } from './datetime-presets.service';
 
 @Controller()
@@ -108,32 +109,31 @@ export class DatetimePresetsController {
 
     @Header('Content-type', 'application/json')
     @HttpCode(HttpStatus.NO_CONTENT)
-    @All(':datetimePresetId(\\d+)')
-    async handleDatetimePresetLink(
+    @All(':datetimePresetId(\\d+);:matrixVariables((eventId=\\d+;?)+)')
+    async HttpMethodLocator(
         @AuthUser() authUser: AppJwtPayload,
         @Param('datetimePresetId', new ParseIntPipe()) datetimePresetId: number,
-        @Req() req: Request,
-        @LinkHeader() parsedLink: { [key: string]: string[] }
+        @MatrixParameter() matrixParameter: { [key: string]: string[] },
+        @Req() req: Request
     ): Promise<boolean> {
         let result: boolean;
 
         switch (req.method) {
-            case 'LINK':
-                const linkResult = await this.datetimePresetsService.linkDatetimePresetWithEvents(
-                    authUser.id,
+            case HttpMethod.LINK:
+                const linkResult = await this.linkDatetimePresetWithEvents({
+                    userId: authUser.id,
                     datetimePresetId,
-                    parsedLink
-                );
+                    eventIdStrArray: matrixParameter.eventId
+                });
 
                 result = linkResult;
                 break;
-            case 'UNLINK':
-                const unlinkResult =
-                    await this.datetimePresetsService.unlinkDatetimePresetWithEvents(
-                        authUser.id,
-                        datetimePresetId,
-                        parsedLink
-                    );
+            case HttpMethod.UNLINK:
+                const unlinkResult = await this.unlinkDatetimePresetWithEvents({
+                    userId: authUser.id,
+                    datetimePresetId,
+                    eventIdStrArray: matrixParameter.eventId
+                });
 
                 result = unlinkResult;
                 break;
@@ -142,5 +142,41 @@ export class DatetimePresetsController {
         }
 
         return result;
+    }
+
+    async linkDatetimePresetWithEvents({
+        userId,
+        datetimePresetId,
+        eventIdStrArray
+    }: {
+        userId: number;
+        datetimePresetId: number;
+        eventIdStrArray: string[];
+    }): Promise<boolean> {
+        const linkResult = await this.datetimePresetsService.linkDatetimePresetWithEvents(
+            userId,
+            datetimePresetId,
+            eventIdStrArray
+        );
+
+        return linkResult;
+    }
+
+    async unlinkDatetimePresetWithEvents({
+        userId,
+        datetimePresetId,
+        eventIdStrArray
+    }: {
+        userId: number;
+        datetimePresetId: number;
+        eventIdStrArray: string[];
+    }): Promise<boolean> {
+        const unlinkResult = await this.datetimePresetsService.unlinkDatetimePresetWithEvents(
+            userId,
+            datetimePresetId,
+            eventIdStrArray
+        );
+
+        return unlinkResult;
     }
 }

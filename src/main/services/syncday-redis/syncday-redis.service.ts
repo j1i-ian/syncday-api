@@ -157,6 +157,22 @@ export class SyncdayRedisService {
         return parsedTimepresetRanges;
     }
 
+    async multiSet(payloads: Array<{ key: RedisKey; value: string }>): Promise<void> {
+        const pipelineCommands = payloads.map((payload) => ['set', payload.key, payload.value]);
+
+        const result = await this.cluster.pipeline(pipelineCommands).exec();
+
+        if (result === null) {
+            throw new InternalServerErrorException('pipeline execution result is null');
+        }
+        result.map((_result) => {
+            const redisPipelineError = _result[0];
+            if (redisPipelineError !== null) {
+                throw Error;
+            }
+        });
+    }
+
     getTemporaryUserKey(email: string): RedisKey {
         return this.getRedisKey(RedisStores.TEMPORARY_USER, [email]);
     }
