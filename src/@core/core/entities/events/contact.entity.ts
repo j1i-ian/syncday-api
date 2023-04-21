@@ -11,7 +11,7 @@ export class Contact {
     @Column('enum', {
         enum: ContactType
     })
-    contactType: ContactType;
+    type: ContactType;
 
     @Column()
     value: string;

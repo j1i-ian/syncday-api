@@ -49,10 +49,10 @@ export class UserSetting {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
     })
-    @JoinColumn({ name: 'user_id' })
+    @JoinColumn()
     user: User;
 
-    @Column({ name: 'user_id' })
+    @Column()
     userId: number;
 
     integrationInfo: IntegrationsInfo;

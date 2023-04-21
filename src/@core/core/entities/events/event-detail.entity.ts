@@ -19,7 +19,11 @@ import { DatetimePreset } from '../datetime-presets/datetime-preset.entity';
 import { Reminder } from '../reminders/reminder.entity';
 import { InviteeQuestion } from '../invitee-questions/invitee-question.entity';
 import { Schedule } from '../schedules/schedule.entity';
+import { DateRange } from './date-range.entity';
 
+/**
+ * @property {dateRange} After that date invitees can be booked, ex) '2023-01-01'
+ */
 @Entity()
 export class EventDetail {
     constructor(eventDetail?: Partial<EventDetail>) {
@@ -52,6 +56,9 @@ export class EventDetail {
 
     @Column(() => TimeRange)
     timeRange: TimeRange;
+
+    @Column(() => DateRange)
+    dateRange: DateRange;
 
     @Column('time', {
         default: '00:00:00'
