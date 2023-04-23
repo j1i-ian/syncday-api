@@ -109,7 +109,9 @@ export class UtilService {
         const dateTimeFormatOrderType: DateOrder = ['year', 'month', 'day'];
         const dateTimeOrderFormat = formatter
             .formatToParts()
-            .filter((formatPart) => dateTimeFormatOrderType.includes(formatPart.type))
+            .filter((formatPart) =>
+                dateTimeFormatOrderType.includes(formatPart.type as 'year' | 'month' | 'day')
+            )
             .map((formatPart) => formatPart.type) as DateTimeOrderFormat[];
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
