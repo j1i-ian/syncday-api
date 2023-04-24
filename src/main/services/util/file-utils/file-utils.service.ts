@@ -55,7 +55,8 @@ export class FileUtilsService {
             throw new BadRequestException('Cannot found template type email');
         }
 
-        const emailSubjectJson: EmailSubject = JSON.parse(await result.Body.transformToString());
+        const transformedJsonString = await result.Body.transformToString();
+        const emailSubjectJson: EmailSubject = JSON.parse(transformedJsonString);
         const emailSubject = emailSubjectJson[emailTemplate];
         return emailSubject;
     }
