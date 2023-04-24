@@ -1,5 +1,5 @@
 export enum EmailTemplate {
-    VERIFICATION = 'verification',
+    VERIFICATION = 'email-verification',
     PASSWORD_RESET = 'password-reset',
     EMAIL_UPDATE = 'email-update',
     CONFIRMED = 'event-confirmed',
