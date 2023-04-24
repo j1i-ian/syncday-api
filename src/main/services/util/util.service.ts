@@ -51,7 +51,7 @@ export class UtilService {
     }
 
     getMailSubjectsJsonPath(language: Language): string {
-        const emailSubjectFileName = ['email-subjects', language, 'json'].join('.');
+        const emailSubjectFileName = ['email-subject', language, 'json'].join('.');
         const emailSubjectPath = ['assets', 'mails', emailSubjectFileName].join('/');
 
         return emailSubjectPath;
