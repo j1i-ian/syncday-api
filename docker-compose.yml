@@ -75,7 +75,7 @@ services:
     volumes:
       - ./configs/redis/redis.cluster.conf:/usr/local/etc/redis.conf
       - ".docker/redis:/opt/redis-data"
-    command: redis-server --port 6380 --replicaof 127.0.0.1 6379 /usr/local/etc/redis.conf
+    command: redis-server /usr/local/etc/redis.conf --port 6380 --replicaof 127.0.0.1 6379
   redis-cluster-node-3:
     network_mode: "service:redis"
     image: redis:latest
@@ -83,7 +83,7 @@ services:
     volumes:
       - ./configs/redis/redis3.conf:/usr/local/etc/redis.conf
       - ".docker/redis:/opt/redis-data"
-    command: redis-server --port 6381 --replicaof 127.0.0.1 6379 /usr/local/etc/redis.conf
+    command: redis-server /usr/local/etc/redis.conf --port 6381 --replicaof 127.0.0.1 6379
   # Enable cluster mode
   redis-cluster-entry:
     network_mode: "service:redis"
