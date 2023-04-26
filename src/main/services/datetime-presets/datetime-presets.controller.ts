@@ -57,7 +57,10 @@ export class DatetimePresetsController {
     async getDatetimePresets(
         @AuthUser() authUser: AppJwtPayload
     ): Promise<GetDatetimePresetsResponseDto[]> {
-        const datetimePresets = await this.datetimePresetsService.getDatetimePresets(authUser.id);
+        const datetimePresets = await this.datetimePresetsService.getDatetimePresets(
+            authUser.id,
+            authUser.uuid
+        );
 
         return plainToInstance(GetDatetimePresetsResponseDto, datetimePresets);
     }
@@ -73,6 +76,7 @@ export class DatetimePresetsController {
     ): Promise<GetDatetimePresetResponseDto> {
         const datetimePreset = await this.datetimePresetsService.getDatetimePreset(
             authUser.id,
+            authUser.uuid,
             datetimePresetId
         );
         return plainToInstance(GetDatetimePresetResponseDto, datetimePreset);
@@ -87,6 +91,7 @@ export class DatetimePresetsController {
     ): Promise<boolean> {
         const updateResult = await this.datetimePresetsService.updateDatetimePreset(
             authUser.id,
+            authUser.uuid,
             datetimePresetId,
             updateDateTimePresetRequestDto
         );
