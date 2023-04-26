@@ -66,6 +66,7 @@ export class TokenService {
         const signedAccessToken = this.jwtService.sign(
             {
                 id: user.id,
+                uuid: user.uuid,
                 email: user.email,
                 profileImage: user.profileImage,
                 nickname: user.nickname

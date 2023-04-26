@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Test, TestingModule } from '@nestjs/testing';
 import { Cluster, RedisKey } from 'ioredis';
+import { UtilService } from '@services/util/util.service';
 import { TestMockUtil } from '../../../test/test-mock-util';
 import { TemporaryUser } from '../../../@core/core/entities/users/temporary-user.entity';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
@@ -13,15 +14,21 @@ describe('Redis Service Test', () => {
     let service: SyncdayRedisService;
 
     let clusterStub: sinon.SinonStubbedInstance<Cluster>;
+    let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     beforeEach(async () => {
         clusterStub = sinon.createStubInstance(Cluster);
+        utilServiceStub = sinon.createStubInstance(UtilService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 {
                     provide: getClusterToken(DEFAULT_CLUSTER_NAMESPACE),
                     useValue: clusterStub
+                },
+                {
+                    provide: UtilService,
+                    useValue: utilServiceStub
                 },
                 SyncdayRedisService
             ]

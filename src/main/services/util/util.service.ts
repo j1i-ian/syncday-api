@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { ConfigService } from '@nestjs/config';
 import { EmailTemplate } from '@app/enums/email-template.enum';
 import { Language } from '@app/enums/language.enum';
 import { User } from '../../../@core/core/entities/users/user.entity';
@@ -22,6 +23,8 @@ interface DefaultDateTimeFormat {
 
 @Injectable()
 export class UtilService {
+    constructor(private readonly configService: ConfigService) {}
+
     generateUUID(): string {
         return uuidv4();
     }
@@ -148,5 +151,11 @@ export class UtilService {
         }
 
         return validPath;
+    }
+
+    getFullRedisKey(key: string): string {
+        const fullname = `${this.configService.get<string>('ENV') as string}:${key}`;
+
+        return fullname;
     }
 }

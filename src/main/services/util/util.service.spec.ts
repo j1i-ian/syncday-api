@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { User } from '@entity/users/user.entity';
 import { EmailTemplate } from '../../enums/email-template.enum';
 import { Language } from '../../enums/language.enum';
@@ -8,9 +9,19 @@ import { UtilService } from './util.service';
 describe('UtilService', () => {
     let service: UtilService;
 
+    let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
+
     beforeEach(async () => {
+        configServiceStub = sinon.createStubInstance(ConfigService);
+
         const module: TestingModule = await Test.createTestingModule({
-            providers: [UtilService]
+            providers: [
+                UtilService,
+                {
+                    provide: ConfigService,
+                    useValue: configServiceStub
+                }
+            ]
         }).compile();
 
         service = module.get<UtilService>(UtilService);

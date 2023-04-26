@@ -33,7 +33,7 @@ export class DatetimePresetsService {
             const createResult = await manager.save(newDatetimePreset);
             const { timepreset, overrides } = createDatetimePresetRequestDto;
 
-            await this.syncdayRedisService.setDatetimePreset(createResult.uuid, {
+            await this.syncdayRedisService.setDatetimePreset(user.uuid, createResult.uuid, {
                 timepreset,
                 overrides
             });
@@ -46,38 +46,50 @@ export class DatetimePresetsService {
         return createdDatetimePreset;
     }
 
-    async getDatetimePresets(userId: number): Promise<DatetimePreset[]> {
-        const datetimePresets = await this.datetimePresetRepository.find({
-            relations: {
-                user: true
-            },
-            where: {
-                user: {
-                    id: userId
+    async getDatetimePresets(userId: number, userUUID: string): Promise<DatetimePreset[]> {
+        const datetimePresetRecords = await this.syncdayRedisService.getDatetimePresets(userUUID);
+
+        const datetimePresets = await this.datetimePresetRepository
+            .find({
+                relations: {
+                    user: true
+                },
+                where: {
+                    user: {
+                        id: userId
+                    }
                 }
-            }
-        });
-        const uuids = datetimePresets.map((datetimePreset) => datetimePreset.uuid);
-        const datetimePresetTimeRange = await this.syncdayRedisService.getDatetimePresets(uuids);
+            })
+            .then((_datetimePresets) =>
+                _datetimePresets.map((_datetimePreset) => {
+                    const datetimePresetBodyJsonString =
+                        datetimePresetRecords[_datetimePreset.uuid];
 
-        const datetimePresetWithTimeRange = datetimePresets.map((datetimePreset, index) => {
-            const _datetimePreset = this.datetimePresetRepository.create(datetimePreset);
-            const _datetimePresetTimeRange = datetimePresetTimeRange[index];
-            if (_datetimePresetTimeRange !== null) {
-                _datetimePreset.timepreset = _datetimePresetTimeRange.timepreset;
-                _datetimePreset.overrides = _datetimePresetTimeRange.overrides;
-            }
+                    const datetimePresetBody = datetimePresetBodyJsonString
+                        ? JSON.parse(datetimePresetBodyJsonString)
+                        : {};
 
-            return _datetimePreset;
-        });
+                    return {
+                        ..._datetimePreset,
+                        ...datetimePresetBody
+                    };
+                })
+            );
 
-        return datetimePresetWithTimeRange;
+        return datetimePresets;
     }
 
-    async getDatetimePreset(userId: number, datetimePresetId: number): Promise<DatetimePreset> {
+    async getDatetimePreset(
+        userId: number,
+        userUUID: string,
+        datetimePresetId: number
+    ): Promise<DatetimePreset> {
         const datetimePreset = await this.findDateTimePresetById(userId, datetimePresetId);
 
-        const datetimeRange = await this.syncdayRedisService.getDatetimePreset(datetimePreset.uuid);
+        const datetimeRange = await this.syncdayRedisService.getDatetimePreset(
+            userUUID,
+            datetimePreset.uuid
+        );
 
         datetimePreset.timepreset = datetimeRange.timepreset;
         datetimePreset.overrides = datetimeRange.overrides;
@@ -90,6 +102,7 @@ export class DatetimePresetsService {
      */
     async updateDatetimePreset(
         userId: number,
+        userUUID: string,
         datetimePresetId: number,
         updateDateTimePresetRequestDto: UpdateDatetimePresetRequestDto
     ): Promise<boolean> {
@@ -128,10 +141,14 @@ export class DatetimePresetsService {
                 default: updateDateTimePresetRequestDto.default
             });
 
-            await this.syncdayRedisService.setDatetimePreset(_updatedDatetimePreset.uuid, {
-                overrides,
-                timepreset
-            });
+            await this.syncdayRedisService.setDatetimePreset(
+                userUUID,
+                _updatedDatetimePreset.uuid,
+                {
+                    overrides,
+                    timepreset
+                }
+            );
 
             return _updatedDatetimePreset;
         });

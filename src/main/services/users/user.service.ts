@@ -57,6 +57,7 @@ export class UserService {
             },
             select: {
                 id: true,
+                uuid: true,
                 email: true,
                 profileImage: true,
                 hashedPassword: true
@@ -230,7 +231,7 @@ export class UserService {
         initialDatetimePreset.user = savedUser;
         initialDatetimePreset.timezone = userSetting?.preferredTimezone;
         const savedDatetimePreset = await _datetimePresetRepository.save(initialDatetimePreset);
-        await this.syncdayRedisService.setDatetimePreset(savedDatetimePreset.uuid, {
+        await this.syncdayRedisService.setDatetimePreset(savedUser.uuid, savedDatetimePreset.uuid, {
             timepreset: initialTimePresets,
             overrides: []
         });
