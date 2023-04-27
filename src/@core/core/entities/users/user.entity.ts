@@ -131,9 +131,12 @@ export class User {
      */
     workspace: string | null;
 
+    userSettingId: number | null;
+
     @AfterLoad()
     patchPromotedPropertyFromUserSetting(): void {
         if (this.userSetting) {
+            this.userSettingId = this.userSetting.id;
             this.workspace = this.userSetting.workspace;
         }
     }
