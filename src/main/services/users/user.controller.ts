@@ -15,7 +15,7 @@ import { AuthUser } from '../../decorators/auth-user.decorator';
 import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
 import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
-import { UpdateVerificationDto } from '../../dto/verifications/update-verification.dto';
+import { CreateUserWithVerificationDto as CreateUserWithVerificationDto } from '../../dto/verifications/create-user-with-verification.dto';
 import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
 import { UserService } from './user.service';
 
@@ -39,14 +39,14 @@ export class UserController {
      * Therefore this api should be public.
      *
      * @param id issued verification id
-     * @param updateVerificationDto
+     * @param createUserWithVerificationDto
      * @returns
      */
     @Post()
     @Public()
     @Header('Content-type', 'application/json')
-    update(@Body() updateVerificationDto: UpdateVerificationDto): Promise<boolean> {
-        const { email, verificationCode } = updateVerificationDto;
+    update(@Body() createUserWithVerificationDto: CreateUserWithVerificationDto): Promise<boolean> {
+        const { email, verificationCode } = createUserWithVerificationDto;
         return this.userService.updateVerificationByEmail(email, verificationCode);
     }
 
