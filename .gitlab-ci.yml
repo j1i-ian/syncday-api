@@ -117,7 +117,6 @@ deploy-to-development:
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   environment: development
   dependencies:
-    - build
     - lint
     - test
   before_script:
