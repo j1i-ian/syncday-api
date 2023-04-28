@@ -47,7 +47,7 @@ export class UserController {
     @Header('Content-type', 'application/json')
     update(@Body() createUserWithVerificationDto: CreateUserWithVerificationDto): Promise<boolean> {
         const { email, verificationCode } = createUserWithVerificationDto;
-        return this.userService.updateVerificationByEmail(email, verificationCode);
+        return this.userService.createUserWithVerificationByEmail(email, verificationCode);
     }
 
     @Patch(':userId(\\d+)')

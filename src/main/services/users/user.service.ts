@@ -89,7 +89,10 @@ export class UserService {
         return result ? loadedUser : null;
     }
 
-    async updateVerificationByEmail(email: string, verificationCode: string): Promise<boolean> {
+    async createUserWithVerificationByEmail(
+        email: string,
+        verificationCode: string
+    ): Promise<boolean> {
         const verificationOrNull = await this.syncdayRedisService.getEmailVerification(email);
 
         const isCodeMatched =

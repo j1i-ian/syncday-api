@@ -298,7 +298,7 @@ describe('Test User Service', () => {
 
                 serviceSandbox.stub(service, '_createUser');
 
-                const updateResult = await service.updateVerificationByEmail(
+                const updateResult = await service.createUserWithVerificationByEmail(
                     emailMock,
                     verificationStub.verificationCode
                 );
@@ -317,7 +317,7 @@ describe('Test User Service', () => {
 
                 serviceSandbox.stub(service, '_createUser');
 
-                const updateResult = await service.updateVerificationByEmail(
+                const updateResult = await service.createUserWithVerificationByEmail(
                     emailMock,
                     verificationCodeMock
                 );
