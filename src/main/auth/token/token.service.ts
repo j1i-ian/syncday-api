@@ -69,8 +69,9 @@ export class TokenService {
                 uuid: user.uuid,
                 email: user.email,
                 profileImage: user.profileImage,
-                nickname: user.nickname
-            },
+                nickname: user.nickname,
+                userSettingId: user.userSettingId
+            } as Partial<User>,
             {
                 secret: this.jwtOption.secret,
                 expiresIn: this.jwtOption.signOptions?.expiresIn
