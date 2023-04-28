@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { urlencoded, json } from 'body-parser';
 import helmet from 'helmet';
-import { Logger } from '@nestjs/common';
+import { Logger, VERSION_NEUTRAL, VersioningType } from '@nestjs/common';
 import { AppConfigService } from '@config/app-config.service';
 import { AppModule } from './app.module';
 
@@ -29,8 +29,14 @@ async function bootstrap(): Promise<void> {
     app.use(urlencoded({ limit: '20MB', extended: true }));
     app.use(json({ limit: '20MB' }));
 
+    app.enableVersioning({
+        type: VersioningType.URI,
+        defaultVersion: [VERSION_NEUTRAL, '1']
+    });
+
     await app.listen(PORT, () => {
         logger.log(`Server is started with port ${PORT} ✨`);
     });
 }
+
 bootstrap();
