@@ -45,7 +45,9 @@ export class UserController {
     @Post()
     @Public()
     @Header('Content-type', 'application/json')
-    update(@Body() createUserWithVerificationDto: CreateUserWithVerificationDto): Promise<boolean> {
+    createUserWithEmailVerification(
+        @Body() createUserWithVerificationDto: CreateUserWithVerificationDto
+    ): Promise<boolean> {
         const { email, verificationCode } = createUserWithVerificationDto;
         return this.userService.createUserWithVerificationByEmail(email, verificationCode);
     }
