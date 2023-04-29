@@ -31,14 +31,18 @@ interface AWSSDKOptionType {
 
 export class AppConfigService {
     static getGoogleOAuth2Setting(configService: ConfigService): GoogleOAuth2Setting {
-        const redirectURI = configService.get<string>('GOOGLE_REDIRECT_URI') as string;
-        const clientId = configService.get<string>('GOOGLE_CLIENT_ID') as string;
-        const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET') as string;
+        const redirectURI = configService.getOrThrow<string>('GOOGLE_REDIRECT_URI');
+        const clientId = configService.getOrThrow<string>('GOOGLE_CLIENT_ID');
+        const clientSecret = configService.getOrThrow<string>('GOOGLE_CLIENT_SECRET');
+        const googleOAuth2SuccessRedirectURI = configService.getOrThrow<string>(
+            'GOOGLE_OAUTH2_SUCCESS_REDIRECT_URI'
+        );
 
         return {
             redirectURI,
             clientId,
-            clientSecret
+            clientSecret,
+            googleOAuth2SuccessRedirectURI
         };
     }
     static getCorsSettingByEnv(): string[] {
