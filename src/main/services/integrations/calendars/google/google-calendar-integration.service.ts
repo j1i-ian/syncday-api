@@ -36,12 +36,12 @@ export class GoogleCalendarIntegrationService {
         requestBody: CreateGoogleIntegrationDto
     ): Promise<GoogleIntegration> {
         const user = await this.userService.findUserById(userId);
-        const oauthClient = this.integrationUtilService.getGoogleOauthClient(
+        const oauthClient = this.integrationUtilService.generateGoogleOauthClient(
             requestBody.redirectUri
         );
 
         const userInfo = await this.integrationUtilService.getGoogleUserInfo(
-            requestBody.authorizationCode,
+            oauthClient,
             requestBody.redirectUri
         );
 
@@ -53,7 +53,7 @@ export class GoogleCalendarIntegrationService {
         const newIntegration = new GoogleIntegration();
         newIntegration.accessToken = userInfo.accessToken;
         newIntegration.refreshToken = userInfo.refreshToken;
-        newIntegration.email = userInfo.email;
+        // newIntegration.email = userInfo.email;
         newIntegration.users = [user];
 
         const savedGoogleIntegration = await this.googleIntegrationRepository.save(newIntegration);

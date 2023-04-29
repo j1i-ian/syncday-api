@@ -4,5 +4,5 @@ import { IsDefined } from 'class-validator';
 export class DateRangeDto {
     @IsDefined()
     @Expose()
-    before: string;
+    before: number;
 }

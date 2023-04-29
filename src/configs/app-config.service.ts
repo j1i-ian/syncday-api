@@ -22,6 +22,7 @@ import { MailerAsyncOptions } from '@nestjs-modules/mailer/dist/interfaces/maile
 import { MailerOptions } from '@nestjs-modules/mailer';
 import { NodeEnv } from './node-env.enum';
 import { ZoomBasicAuth } from '../main/services/integrations/interfaces/zoom-basic-auth.interface';
+import { GoogleOAuth2Setting } from '../main/interfaces/auth/google-oauth2-setting.interface';
 
 interface AWSSDKOptionType {
     defaultServiceOptions?: AsyncModuleProvider<AwsServiceConfigurationOptionsFactory>;
@@ -29,6 +30,17 @@ interface AWSSDKOptionType {
 }
 
 export class AppConfigService {
+    static getGoogleOAuth2Setting(configService: ConfigService): GoogleOAuth2Setting {
+        const redirectURI = configService.get<string>('GOOGLE_REDIRECT_URI') as string;
+        const clientId = configService.get<string>('GOOGLE_CLIENT_ID') as string;
+        const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET') as string;
+
+        return {
+            redirectURI,
+            clientId,
+            clientSecret
+        };
+    }
     static getCorsSettingByEnv(): string[] {
         let origin = ['https://dev.sync.day', 'https://stg.sync.day', 'https://sync.day'];
 

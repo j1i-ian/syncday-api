@@ -10,7 +10,11 @@ import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
 import { TimePreset } from '@entity/datetime-presets/time-preset.entity';
-import { EnsuredGoogleOAuth2User, TokenService } from '../../auth/token/token.service';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { DateRange } from '@entity/events/date-range.entity';
+import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
+import { OAuthInfo } from '@app/interfaces/auth/oauth-info.interface';
+import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
 import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
@@ -192,6 +196,8 @@ export class UserService {
         const initialTimeRange = new TimeRange();
         initialTimeRange.startTime = _5min;
         initialTimeRange.endTime = _5min;
+        const initialDateRange = new DateRange();
+        initialDateRange.before = 1;
 
         const initialContact = new Contact({
             type: ContactType.OFFLINE,
@@ -201,6 +207,7 @@ export class UserService {
         const initialEventDetail = new EventDetail({
             bufferTime: initialBufferTime,
             timeRange: initialTimeRange,
+            dateRange: initialDateRange,
             contacts: [initialContact],
             description: 'default'
         });
@@ -249,40 +256,34 @@ export class UserService {
         return savedUser;
     }
 
-    async createUserForGoogle(
-        googleUser: EnsuredGoogleOAuth2User,
-        timezone: string
+    async createUserByGoogleOAuth2(
+        createUserRequestDto: CreateUserRequestDto,
+        googleAuthInfo: OAuthInfo,
+        language: Language
     ): Promise<User> {
-        const newUser = this.userRepository.create({
-            email: googleUser.email,
-            nickname: googleUser.name,
-            profileImage: googleUser.picture
-        });
-
         const createdUser = await this.datasource.transaction(async (manager) => {
-            const savedGoogleIntegration =
-                await this.googleIntegrationService.saveGoogleIntegrationForGoogleUser(
-                    manager,
-                    googleUser
-                );
+            const newUser = createUserRequestDto as User;
+
+            const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
+            const savedGoogleIntegration = await _googleIntegrationRepository.save({
+                accessToken: googleAuthInfo.accessToken,
+                refreshToken: googleAuthInfo.refreshToken,
+                email: createUserRequestDto.email
+            });
+
             newUser.googleIntergrations = [savedGoogleIntegration];
 
-            newUser.userSetting = this.utilService.getUsetDefaultSetting(
-                { email: googleUser.email },
-                googleUser.locale as Language,
-                { randomSuffix: false, timezone }
-            ) as UserSetting;
+            newUser.userSetting = this.utilService.getUsetDefaultSetting(newUser, language, {
+                randomSuffix: false,
+                timezone: createUserRequestDto.timezone
+            }) as UserSetting;
 
-            const _createdUser = await this._createUser(
-                manager,
-                newUser,
-                googleUser.locale as Language,
-                {
-                    plainPassword: undefined,
-                    alreadySignedUpUserCheck: false,
-                    emailVerification: false
-                }
-            );
+            const _createdUser = await this._createUser(manager, newUser, language, {
+                plainPassword: undefined,
+                alreadySignedUpUserCheck: false,
+                emailVerification: false
+            });
+
             return _createdUser;
         });
 

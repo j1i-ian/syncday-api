@@ -23,7 +23,7 @@ import { UserService } from './user.service';
 export class UserController {
     constructor(private readonly userService: UserService) {}
 
-    @Get(':userId')
+    @Get(':userId(\\d+)')
     async fetchMyInfo(@AuthUser() authUser: AppJwtPayload): Promise<FetchUserInfoResponseDto> {
         const userInfo = await this.userService.fetchUserInfo(authUser.id, authUser.email);
 
