@@ -1,6 +1,7 @@
 import { URL } from 'url';
 import { Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { User } from '@entity/users/user.entity';
@@ -12,7 +13,10 @@ import { TokenService } from './token.service';
 
 @Controller()
 export class TokenController {
-    constructor(private readonly tokenService: TokenService) {}
+    constructor(
+        private readonly tokenService: TokenService,
+        private readonly configService: ConfigService
+    ) {}
 
     /**
      * Token is issued from google, so this action should be treated as POST action originally.
@@ -60,7 +64,13 @@ export class TokenController {
             language
         );
 
-        const redirectURL = new URL('http://localhost:4200/integrations/google/callback');
+        const syncdayGoogleOAuth2RedirectURI = this.configService.getOrThrow<string>(
+            'GOOGLE_SUCCESS_REDIRECT_URI'
+        );
+
+        const redirectURL = new URL(
+            `${syncdayGoogleOAuth2RedirectURI}/integrations/google/callback`
+        );
         redirectURL.searchParams.append('accessToken', issuedToken.accessToken);
         redirectURL.searchParams.append('refreshToken', issuedToken.refreshToken);
 
