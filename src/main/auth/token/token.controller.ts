@@ -69,9 +69,7 @@ export class TokenController {
             this.configService
         );
 
-        const redirectURL = new URL(
-            `${googleOAuth2SuccessRedirectURI}/integrations/google/callback`
-        );
+        const redirectURL = new URL(googleOAuth2SuccessRedirectURI);
         redirectURL.searchParams.append('accessToken', issuedToken.accessToken);
         redirectURL.searchParams.append('refreshToken', issuedToken.refreshToken);
 
