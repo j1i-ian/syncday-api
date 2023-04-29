@@ -2,10 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { google, Auth } from 'googleapis';
-import { EntityManager, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { GoogleIntegration } from '../../../@core/core/entities/integrations/google/google-integration.entity';
 import { User } from '../../../@core/core/entities/users/user.entity';
-import { EnsuredGoogleOAuth2User } from '../../auth/token/token.service';
 import { IntegrationUtilService } from '../util/integration-util/integraion-util.service';
 
 @Injectable()
@@ -37,20 +36,6 @@ export class GoogleIntegrationsService {
             .getOne();
 
         return loadedGoogleIntegration;
-    }
-
-    async saveGoogleIntegrationForGoogleUser(
-        transactionManager: EntityManager,
-        googleUser: EnsuredGoogleOAuth2User
-    ): Promise<GoogleIntegration> {
-        const googleIntegration: GoogleIntegration = new GoogleIntegration();
-        googleIntegration.refreshToken = googleUser.refreshToken;
-        googleIntegration.accessToken = googleUser.accessToken;
-        googleIntegration.email = googleUser.email;
-
-        const _googleIntegrationRepository = transactionManager.getRepository(GoogleIntegration);
-        const savedGoogleIntegration = await _googleIntegrationRepository.save(googleIntegration);
-        return savedGoogleIntegration;
     }
 
     async getGoogleIntegrations(userId: number): Promise<GoogleIntegration[]> {

@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { google, Auth, oauth2_v2, calendar_v3 } from 'googleapis';
+import { google, Auth, calendar_v3, oauth2_v2 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationCalendarSetting } from '@entity/integrations/google/Integration-calendar-setting.entity';
@@ -34,12 +34,22 @@ export class IntegrationUtilService {
     constructor(
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         private readonly configService: ConfigService
-    ) {
-        this.googleOAauth2ClientMap = new Map<string, Auth.OAuth2Client>();
-    }
+    ) {}
 
-    // <RedirectURI, Auth.OAuth2Client>
-    private googleOAauth2ClientMap: Map<string, Auth.OAuth2Client>;
+    generateGoogleOAuthAuthoizationUrl(): string {
+        const redirectURI = this.configService.get<string>('GOOGLE_REDIRECT_URI') as string;
+
+        const oauthClient = this.generateGoogleOauthClient(redirectURI);
+
+        const authorizationUrl = oauthClient.generateAuthUrl({
+            access_type: 'offline',
+            prompt: 'consent',
+            scope: ['email', 'profile', 'https://www.googleapis.com/auth/calendar'],
+            include_granted_scopes: true
+        });
+
+        return authorizationUrl;
+    }
 
     async issueGoogleTokenByAuthorizationCode(
         oauthClient: Auth.OAuth2Client,
@@ -65,17 +75,10 @@ export class IntegrationUtilService {
     }
 
     async getGoogleUserInfo(
-        authorizationCode: string,
-        redirectUri: string
+        oauthClient: Auth.OAuth2Client,
+        refreshToken: string
     ): Promise<EnsuredGoogleOAuth2User> {
         try {
-            const oauthClient = this.getGoogleOauthClient(redirectUri);
-
-            const { accessToken, refreshToken } = await this.issueGoogleTokenByAuthorizationCode(
-                oauthClient,
-                authorizationCode
-            );
-
             oauthClient.setCredentials({
                 refresh_token: refreshToken
             });
@@ -91,7 +94,6 @@ export class IntegrationUtilService {
 
             return {
                 ...data,
-                accessToken,
                 refreshToken
             } as EnsuredGoogleOAuth2User;
         } catch (error) {
@@ -193,7 +195,7 @@ export class IntegrationUtilService {
 
     getGoogleCalendarOauthClient(googleIntegration: GoogleIntegration): calendar_v3.Calendar {
         const clientKey = GoogleIntegrationClientKey.GOOGLE_CALENDAR_OAUTH_CLIENT_KEY;
-        const oauthClient = this.getGoogleOauthClient(clientKey);
+        const oauthClient = this.generateGoogleOauthClient(clientKey);
         oauthClient.setCredentials({
             refresh_token: googleIntegration.refreshToken
         });
@@ -206,22 +208,17 @@ export class IntegrationUtilService {
         return googleCalendar;
     }
 
-    getGoogleOauthClient(clientKey: string | GoogleIntegrationClientKey): Auth.OAuth2Client {
-        const oauthClient = this.googleOAauth2ClientMap.get(clientKey);
+    generateGoogleOauthClient(
+        redirectURI?: undefined | string | GoogleIntegrationClientKey
+    ): Auth.OAuth2Client {
+        const credentials = AppConfigService.getGoogleCredentials(this.configService);
 
-        let ensuredOAuthClient: Auth.OAuth2Client;
+        const newOAuthClient = new google.auth.OAuth2({
+            clientId: credentials.clientId,
+            clientSecret: credentials.clientSecret,
+            redirectUri: redirectURI
+        });
 
-        if (!oauthClient) {
-            const newOAuthClient = new google.auth.OAuth2({
-                ...AppConfigService.getGoogleCredentials(this.configService),
-                redirectUri: clientKey
-            });
-            this.googleOAauth2ClientMap.set(clientKey, newOAuthClient);
-            ensuredOAuthClient = newOAuthClient;
-        } else {
-            ensuredOAuthClient = oauthClient;
-        }
-
-        return ensuredOAuthClient;
+        return newOAuthClient;
     }
 }

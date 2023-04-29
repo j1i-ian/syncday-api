@@ -7,6 +7,9 @@ export class DateRange {
         }
     }
 
-    @Column({ type: 'date' })
-    before: string;
+    /**
+     * This criteria restricts as condition when schedule should be created how many days before
+     */
+    @Column()
+    before: number;
 }

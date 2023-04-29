@@ -5,10 +5,11 @@ import { compare } from 'bcrypt';
 import { oauth2_v2 } from 'googleapis';
 import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/tokens/create-token-response.dto';
+import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
+import { Language } from '@app/enums/language.enum';
 import { AppConfigService } from '../../../configs/app-config.service';
 import { GoogleIntegrationsService } from '../../services/integrations/google-integrations.service';
 import { UserService } from '../../services/users/user.service';
-import { CreateGoogleUserRequestDto } from '../../dto/users/create-google-user-request.dto';
 import { IntegrationUtilService } from '../../services/util/integration-util/integraion-util.service';
 
 export interface EnsuredGoogleTokenResponse {
@@ -38,28 +39,44 @@ export class TokenService {
 
     jwtOption: JwtModuleOptions;
 
+    generateGoogleOAuthAuthoizationUrl(): string {
+        return this.integrationUtilService.generateGoogleOAuthAuthoizationUrl();
+    }
+
     async issueTokenByGoogleOAuth(
-        createGoogleUserRequestDto: CreateGoogleUserRequestDto
+        authorizationCode: string,
+        language: Language
     ): Promise<CreateTokenResponseDto> {
-        const { googleAuthCode, redirectUrl, timezone } = createGoogleUserRequestDto;
+        const { redirectURI } = AppConfigService.getGoogleOAuth2Setting(this.configService);
 
-        const googleUser: EnsuredGoogleOAuth2User =
-            (await this.integrationUtilService.getGoogleUserInfo(
-                googleAuthCode,
-                redirectUrl
-            )) as EnsuredGoogleOAuth2User;
-
-        let alreadySignedUpUser = await this.googleIntegrationService.loadAlreadySignedUpUser(
-            googleUser.email
+        const oauthClient = this.integrationUtilService.generateGoogleOauthClient(redirectURI);
+        const tokens = await this.integrationUtilService.issueGoogleTokenByAuthorizationCode(
+            oauthClient,
+            authorizationCode
         );
 
-        if (alreadySignedUpUser === null || alreadySignedUpUser === undefined) {
-            // sign up
-            alreadySignedUpUser = await this.userService.createUserForGoogle(googleUser, timezone);
+        const googleUserInfo = await this.integrationUtilService.getGoogleUserInfo(
+            oauthClient,
+            tokens.refreshToken
+        );
+
+        let loadedUserOrNull = await this.userService.findUserByEmail(googleUserInfo.email);
+
+        if (loadedUserOrNull === null || loadedUserOrNull === undefined) {
+            const createUserRequestDto: CreateUserRequestDto = {
+                email: googleUserInfo.email,
+                nickname: googleUserInfo.name as string
+            };
+
+            loadedUserOrNull = await this.userService.createUserByGoogleOAuth2(
+                createUserRequestDto,
+                tokens,
+                language
+            );
         }
 
-        const createTokenResponseDto = this.issueToken(alreadySignedUpUser);
-        return createTokenResponseDto;
+        const issuedToken = this.issueToken(loadedUserOrNull);
+        return issuedToken;
     }
 
     issueToken(user: User): CreateTokenResponseDto {
