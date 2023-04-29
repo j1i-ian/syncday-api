@@ -2,6 +2,7 @@ import { URL } from 'url';
 import { Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { AppConfigService } from '@config/app-config.service';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { User } from '@entity/users/user.entity';
@@ -64,12 +65,12 @@ export class TokenController {
             language
         );
 
-        const syncdayGoogleOAuth2RedirectURI = this.configService.getOrThrow<string>(
-            'GOOGLE_SUCCESS_REDIRECT_URI'
+        const { googleOAuth2SuccessRedirectURI } = AppConfigService.getGoogleOAuth2Setting(
+            this.configService
         );
 
         const redirectURL = new URL(
-            `${syncdayGoogleOAuth2RedirectURI}/integrations/google/callback`
+            `${googleOAuth2SuccessRedirectURI}/integrations/google/callback`
         );
         redirectURL.searchParams.append('accessToken', issuedToken.accessToken);
         redirectURL.searchParams.append('refreshToken', issuedToken.refreshToken);
