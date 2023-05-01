@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { User } from '../../../@core/core/entities/users/user.entity';
+import { User } from '@entity/users/user.entity';
 import { GoogleIntegrationsService } from '../../services/integrations/google-integrations.service';
 import { UserService } from '../../services/users/user.service';
 import { IntegrationUtilService } from '../../services/util/integration-util/integraion-util.service';

@@ -1,7 +1,7 @@
 import { IsEnum, IsOptional } from 'class-validator';
-import { DateTimeOrderFormat } from '../../../@core/core/entities/users/date-time-format-order.enum';
+import { DateTimeOrderFormat } from '@entity/users/date-time-format-order.enum';
+import { DateTimeFormatOption } from '@entity/users/date-time-format-option.type';
 import { Language } from '../../enums/language.enum';
-import { DateTimeFormatOption } from '../../../@core/core/entities/users/date-time-format-option.type';
 
 export class UpdateUserSettingRequestDto {
     @IsOptional()

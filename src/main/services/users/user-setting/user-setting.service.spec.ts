@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
-import { UserSetting } from '../../../../@core/core/entities/users/user-setting.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { UserSettingService } from './user-setting.service';
 

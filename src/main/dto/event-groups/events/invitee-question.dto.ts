@@ -1,6 +1,6 @@
 import { Expose } from 'class-transformer';
 import { IsBoolean, IsDefined, IsEnum } from 'class-validator';
-import { QuestionInputType } from '../../../../@core/core/entities/invitee-questions/question-input-type.enum';
+import { QuestionInputType } from '@entity/invitee-questions/question-input-type.enum';
 
 export class InviteeQuestionDto {
     @IsDefined()

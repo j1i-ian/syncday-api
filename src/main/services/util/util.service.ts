@@ -2,12 +2,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
-import { EmailTemplate } from '@app/enums/email-template.enum';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { User } from '@entity/users/user.entity';
+import { DateTimeOrderFormat } from '@entity/users/date-time-format-order.enum';
+import { DateTimeFormatOption } from '@entity/users/date-time-format-option.type';
 import { Language } from '@app/enums/language.enum';
-import { User } from '../../../@core/core/entities/users/user.entity';
-import { UserSetting } from '../../../@core/core/entities/users/user-setting.entity';
-import { DateTimeOrderFormat } from '../../../@core/core/entities/users/date-time-format-order.enum';
-import { DateTimeFormatOption } from '../../../@core/core/entities/users/date-time-format-option.type';
+import { EmailTemplate } from '@app/enums/email-template.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { ZoomBasicAuth } from '../integrations/interfaces/zoom-basic-auth.interface';
 
@@ -73,6 +73,7 @@ export class UtilService {
         if (user.nickname) {
             workspaceName = user.nickname;
         } else if (user.email) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             const extractedWorkspaceNameFromEmail = user.email.split('@')[0];
             workspaceName = extractedWorkspaceNameFromEmail;
         } else {

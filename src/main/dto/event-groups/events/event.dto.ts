@@ -1,6 +1,6 @@
 import { Expose } from 'class-transformer';
 import { IsDefined, IsEnum, IsNumber, IsOptional } from 'class-validator';
-import { EventType } from '../../../../@core/core/entities/events/event-type.entity';
+import { EventType } from '@entity/events/event-type.entity';
 
 export class EventDto {
     @IsDefined()

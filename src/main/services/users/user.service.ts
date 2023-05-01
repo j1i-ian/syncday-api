@@ -12,6 +12,10 @@ import { Event } from '@entity/events/event.entity';
 import { TimePreset } from '@entity/datetime-presets/time-preset.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { DateRange } from '@entity/events/date-range.entity';
+import { EventDetail } from '@entity/events/event-detail.entity';
+import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity';
+import { Contact } from '@entity/events/contact.entity';
+import { ContactType } from '@entity/events/contact-type.enum';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { OAuthInfo } from '@app/interfaces/auth/oauth-info.interface';
 import { TokenService } from '../../auth/token/token.service';
@@ -20,10 +24,6 @@ import { Language } from '../../enums/language.enum';
 import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
 import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
 import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
-import { EventDetail } from '../../../@core/core/entities/events/event-detail.entity';
-import { DatetimePreset } from '../../../@core/core/entities/datetime-presets/datetime-preset.entity';
-import { Contact } from '../../../@core/core/entities/events/contact.entity';
-import { ContactType } from '../../../@core/core/entities/events/contact-type.enum';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
@@ -276,7 +276,7 @@ export class UserService {
             newUser.userSetting = this.utilService.getUsetDefaultSetting(newUser, language, {
                 randomSuffix: false,
                 timezone: createUserRequestDto.timezone
-            }) as UserSetting;
+            });
 
             const _createdUser = await this._createUser(manager, newUser, language, {
                 plainPassword: undefined,

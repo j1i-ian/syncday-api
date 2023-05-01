@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
-import { Event } from '../../../../@core/core/entities/events/event.entity';
+import { Event } from '@entity/events/event.entity';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { EventsService } from './events.service';
 

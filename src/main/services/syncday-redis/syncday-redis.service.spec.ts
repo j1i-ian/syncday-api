@@ -2,8 +2,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Cluster, RedisKey } from 'ioredis';
 import { UtilService } from '@services/util/util.service';
+import { TemporaryUser } from '@entity/users/temporary-user.entity';
 import { TestMockUtil } from '../../../test/test-mock-util';
-import { TemporaryUser } from '../../../@core/core/entities/users/temporary-user.entity';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { SyncdayRedisService } from './syncday-redis.service';
 import { RedisStores } from './redis-stores.enum';

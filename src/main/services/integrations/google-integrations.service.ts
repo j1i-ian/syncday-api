@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { google, Auth } from 'googleapis';
 import { Repository } from 'typeorm';
-import { GoogleIntegration } from '../../../@core/core/entities/integrations/google/google-integration.entity';
-import { User } from '../../../@core/core/entities/users/user.entity';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { User } from '@entity/users/user.entity';
 import { IntegrationUtilService } from '../util/integration-util/integraion-util.service';
 
 @Injectable()

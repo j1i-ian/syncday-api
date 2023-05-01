@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
 import { IsDefined, IsEnum, IsOptional } from 'class-validator';
-import { ReminderTarget } from '../../../../@core/core/entities/reminders/reminder-target.enum';
-import { ReminderType } from '../../../../@core/core/entities/reminders/reminder-type.enum';
+import { ReminderTarget } from '@entity/reminders/reminder-target.enum';
+import { ReminderType } from '@entity/reminders/reminder-type.enum';
 
 export class ReminderDto {
     @IsOptional()
