@@ -42,7 +42,7 @@
         "src/main/decorators/*",
       ],
       "@interfaces/*": [
-        "src/@core/src/interfaces/*"
+        "@share/interfaces/*"
       ],
       "@entity/*": [
         "src/@core/src/entities/*"
