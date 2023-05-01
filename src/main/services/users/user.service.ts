@@ -276,7 +276,7 @@ export class UserService {
             newUser.userSetting = this.utilService.getUsetDefaultSetting(newUser, language, {
                 randomSuffix: false,
                 timezone: createUserRequestDto.timezone
-            });
+            }) as UserSetting;
 
             const _createdUser = await this._createUser(manager, newUser, language, {
                 plainPassword: undefined,
