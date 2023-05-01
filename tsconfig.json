@@ -28,28 +28,31 @@
     "resolveJsonModule": true,
     "strictPropertyInitialization": false,
     "paths": {
+      "@core/*": [
+        "src/@core/src/*"
+      ],
+      "@share/*": [
+        "src/@core/@share/src/*"
+      ],
       "@config/*": [
         "src/configs/*"
       ],
       "@decorators/*": [
-        "src/@core/core/decorators/*",
+        "src/@core/src/decorators/*",
         "src/main/decorators/*",
       ],
       "@interfaces/*": [
-        "src/@core/core/interfaces/*"
+        "src/@core/src/interfaces/*"
       ],
       "@entity/*": [
-        "src/@core/core/entities/*"
+        "src/@core/src/entities/*"
       ],
       "@dto/*": [
         "src/main/dto/*",
-        "src/@core/core/dto/*"
+        "src/@core/src/dto/*"
       ],
       "@services/*": [
         "src/main/services/*"
-      ],
-      "@core/*": [
-        "src/@core/core/*"
       ],
       "@app/*": [
         "src/main/*"
