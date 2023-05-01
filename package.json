@@ -34,7 +34,8 @@
     "test:failonly": "mocha $npm_package_options_mocha 'src/**/*{.test,.spec}.ts' | grep -B 3 -A 3 -E '\\d)'",
     "test:single": "mocha $npm_package_options_mocha",
     "prune": "bash scripts/prune-merged-branches.sh",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "core": "git submodule update --remote"
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch-logs": "^3.300.0",
