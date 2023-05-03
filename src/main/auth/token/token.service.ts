@@ -73,6 +73,7 @@ export class TokenService {
                 tokens,
                 language
             );
+            loadedUserOrNull.isNewbie = true;
         }
 
         const issuedToken = this.issueToken(loadedUserOrNull);
@@ -87,7 +88,8 @@ export class TokenService {
                 email: user.email,
                 profileImage: user.profileImage,
                 nickname: user.nickname,
-                userSettingId: user.userSettingId
+                userSettingId: user.userSettingId,
+                isNewbie: user.isNewbie
             } as Partial<User>,
             {
                 secret: this.jwtOption.secret,
