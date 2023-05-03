@@ -1,3 +1,3 @@
 #!/bin/bash
 
-git submodule update --remote --init
+git submodule update --checkout --init
