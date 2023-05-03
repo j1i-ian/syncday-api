@@ -5,6 +5,7 @@ cache:
   paths:
     - node_modules/
     - dist/
+    - src/@core
 
 stages:
   - .pre
@@ -37,8 +38,15 @@ build:
   stage: build
   needs:
     - init
-  script:
-    - npm run build
+  script: |
+    apk update
+    apk upgrade
+    apk add bash
+    apk add git
+    git config --system credential.helper store
+    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
+    bash scripts/init.sh
+    npm run build
   artifacts:
     when: on_success
     paths:
