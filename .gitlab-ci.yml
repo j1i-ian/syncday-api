@@ -52,6 +52,10 @@ build:
     paths:
       - dist/
     expire_in: 1 week
+  cache:
+    paths:
+      - node_modules/
+      - dist/
   only:
     - main
     - develop
