@@ -5,6 +5,10 @@ import { UpdateUserSettingRequestDto } from '@dto/users/update-user-setting-requ
 import { PatchUserSettingRequestDto } from '@share/@dto/users/user-settings/patch-user-setting-request.dto';
 import { UserSettingService } from './user-setting.service';
 
+/**
+ * User Setting is created when user signed up.
+ * So there is no api for creating.
+ */
 @Controller()
 export class UserSettingController {
     constructor(private readonly userSettingService: UserSettingService) {}

@@ -28,7 +28,7 @@ export class UserSettingService {
         patchUserSettingRequestDto: PatchUserSettingRequestDto
     ): Promise<boolean> {
         const updateResult = await this.userSettingRepository.update(
-            userId,
+            { userId },
             patchUserSettingRequestDto as Partial<UserSetting>
         );
 

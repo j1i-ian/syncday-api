@@ -72,7 +72,8 @@ import { DatetimePresetsModule } from './main/services/datetime-presets/datetime
                     transform: true,
                     transformOptions: {
                         strategy: 'excludeAll',
-                        excludeExtraneousValues: true
+                        excludeExtraneousValues: true,
+                        exposeUnsetFields: false
                     }
                 })
         }
