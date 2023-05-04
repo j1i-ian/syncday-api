@@ -1,3 +1,3 @@
 #!/bin/bash
 
-git submodule update --checkout --init
+git submodule update --checkout -f --init
