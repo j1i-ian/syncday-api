@@ -67,7 +67,14 @@ import { DatetimePresetsModule } from './main/services/datetime-presets/datetime
         },
         {
             provide: APP_PIPE,
-            useFactory: () => new ValidationPipe({ transform: true })
+            useFactory: () =>
+                new ValidationPipe({
+                    transform: true,
+                    transformOptions: {
+                        strategy: 'excludeAll',
+                        excludeExtraneousValues: true
+                    }
+                })
         }
     ]
 })
