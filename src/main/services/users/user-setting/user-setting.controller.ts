@@ -1,41 +1,34 @@
-import { Body, Controller, Get, Header, Patch, Put } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, HttpStatus, Patch, Put } from '@nestjs/common';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
+import { AuthUser } from '@decorators/auth-user.decorator';
 import { UpdateUserSettingRequestDto } from '@dto/users/update-user-setting-request.dto';
-import { AuthUser } from '../../../decorators/auth-user.decorator';
-import { AppJwtPayload } from '../../../auth/strategy/jwt/app-jwt-payload.interface';
-import { PatchUserSettingRequestDto } from '../../../dto/users/user-settings/update-user-workspace-request.dto';
+import { PatchUserSettingRequestDto } from '@share/@dto/users/user-settings/patch-user-setting-request.dto';
 import { UserSettingService } from './user-setting.service';
 
 @Controller()
 export class UserSettingController {
     constructor(private readonly userSettingService: UserSettingService) {}
 
-    @Get()
-    async fetchUserSetting(@AuthUser() { id: userId }: AppJwtPayload): Promise<UserSetting> {
-        return this.userSettingService.fetchUserSetting(userId);
+    @Get(':userSettingId(\\d+)')
+    fetchUserSettingByUserId(@AuthUser('id') userId: number): Promise<UserSetting> {
+        return this.userSettingService.fetchUserSettingByUserId(userId);
     }
 
-    @Patch(':userId(\\d+)')
-    @Header('Content-type', 'application/json')
-    async updateWorkspace(
-        @Body() putUserSettingRequestDto: PatchUserSettingRequestDto,
-        @AuthUser() { id }: AppJwtPayload
-    ): Promise<boolean> {
-        const { workspace } = putUserSettingRequestDto;
-        const workspaceStatus = await this.userSettingService.createUserWorkspaceStatus(
-            id,
-            workspace
-        );
-
-        return workspaceStatus;
+    @Patch(':userSettingId(\\d+)')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async patchUserSetting(
+        @AuthUser('id') userId: number,
+        @Body() patchUserSettingRequestDto: PatchUserSettingRequestDto
+    ): Promise<void> {
+        await this.userSettingService.patchUserSettingByUserId(userId, patchUserSettingRequestDto);
     }
 
-    @Put(':userId(\\d+)')
+    @Put(':userSettingId(\\d+)')
     @Header('Content-type', 'application/json')
     async updateUserSetting(
-        @AuthUser() { id: userId }: AppJwtPayload,
-        @Body() updateUserSettingDto: UpdateUserSettingRequestDto
+        @AuthUser('id') userId: number,
+        @Body() updateUserSettingRequestDto: UpdateUserSettingRequestDto
     ): Promise<boolean> {
-        return await this.userSettingService.updateUserSetting(+userId, updateUserSettingDto);
+        return await this.userSettingService.updateUserSetting(userId, updateUserSettingRequestDto);
     }
 }

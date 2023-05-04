@@ -329,7 +329,7 @@ export class UserService {
     }
 
     async fetchUserInfo(userId: number, email: string): Promise<FetchUserInfoResponseDto> {
-        const userSetting = await this.userSettingService.fetchUserSetting(userId);
+        const userSetting = await this.userSettingService.fetchUserSettingByUserId(userId);
         const loadedIntegrationByUser = await this.googleIntegrationService.loadAlreadySignedUpUser(
             email
         );
