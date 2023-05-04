@@ -8,7 +8,6 @@ import { CreateTokenResponseDto } from '@dto/tokens/create-token-response.dto';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
 import { AppConfigService } from '../../../configs/app-config.service';
-import { GoogleIntegrationsService } from '../../services/integrations/google-integrations.service';
 import { UserService } from '../../services/users/user.service';
 import { IntegrationUtilService } from '../../services/util/integration-util/integraion-util.service';
 
@@ -31,7 +30,6 @@ export class TokenService {
         private readonly jwtService: JwtService,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
-        private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly integrationUtilService: IntegrationUtilService
     ) {
         this.jwtOption = AppConfigService.getJwtOptions(this.configService);

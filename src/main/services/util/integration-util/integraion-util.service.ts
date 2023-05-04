@@ -25,10 +25,6 @@ type EnsuredGoogleCalendarChannel = {
     resourceId: string;
 } & calendar_v3.Schema$Channel;
 
-enum GoogleIntegrationClientKey {
-    GOOGLE_CALENDAR_OAUTH_CLIENT_KEY = 'google_calendar_oauth_client_key'
-}
-
 @Injectable()
 export class IntegrationUtilService {
     constructor(
@@ -194,8 +190,7 @@ export class IntegrationUtilService {
     }
 
     getGoogleCalendarOauthClient(googleIntegration: GoogleIntegration): calendar_v3.Calendar {
-        const clientKey = GoogleIntegrationClientKey.GOOGLE_CALENDAR_OAUTH_CLIENT_KEY;
-        const oauthClient = this.generateGoogleOauthClient(clientKey);
+        const oauthClient = this.generateGoogleOauthClient();
         oauthClient.setCredentials({
             refresh_token: googleIntegration.refreshToken
         });
@@ -208,9 +203,7 @@ export class IntegrationUtilService {
         return googleCalendar;
     }
 
-    generateGoogleOauthClient(
-        redirectURI?: undefined | string | GoogleIntegrationClientKey
-    ): Auth.OAuth2Client {
+    generateGoogleOauthClient(redirectURI?: undefined | string): Auth.OAuth2Client {
         const credentials = AppConfigService.getGoogleCredentials(this.configService);
 
         const newOAuthClient = new google.auth.OAuth2({

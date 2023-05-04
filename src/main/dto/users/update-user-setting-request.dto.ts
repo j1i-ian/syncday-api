@@ -8,22 +8,22 @@ export class UpdateUserSettingRequestDto {
     name?: string;
 
     @IsOptional()
-    link?: string;
-
-    @IsOptional()
     greetings?: string;
 
     @IsEnum(Language)
     @IsOptional()
-    language?: Language;
+    preferredLanguage?: Language;
 
     @IsOptional()
-    dateTimeFormat?: DateTimeFormatOption;
+    preferredTimezone?: string;
+
+    @IsOptional()
+    preferredDateTimeFormat?: DateTimeFormatOption;
 
     @IsOptional()
     @IsEnum(DateTimeOrderFormat)
-    dateTimeOrderFormat?: DateTimeOrderFormat[];
+    preferredDateTimeOrderFormat?: DateTimeOrderFormat[];
 
     @IsOptional()
-    timezone?: string;
+    workspace?: string;
 }

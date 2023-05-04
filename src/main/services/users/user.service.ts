@@ -306,15 +306,15 @@ export class UserService {
         const {
             name,
             greetings,
-            language: preferredLanguage,
-            dateTimeFormat: preferredDateTimeFormat,
-            timezone: preferredTimezone,
-            dateTimeOrderFormat: preferredDateTimeOrderFormat,
-            link
+            preferredLanguage,
+            preferredDateTimeFormat,
+            preferredTimezone,
+            preferredDateTimeOrderFormat,
+            workspace
         } = updateUserSetting;
 
         const newUserSetting = new UserSetting({
-            workspace: link,
+            workspace,
             greetings,
             preferredDateTimeFormat,
             preferredDateTimeOrderFormat,
