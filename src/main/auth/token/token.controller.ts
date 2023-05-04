@@ -47,7 +47,7 @@ export class TokenController {
     }
 
     /**
-     * Google Callback api. Authorization code is attached as query param.
+     * Google Callback api. Authorization code is attached as query param in request.
      */
     @Get('google/callback')
     @Public()
@@ -60,7 +60,7 @@ export class TokenController {
         const url = new URL(request.url, baseUrl);
         const authorizationCode = url.searchParams.get('code') as string;
 
-        const issuedToken = await this.tokenService.issueTokenByGoogleOAuth(
+        const { issuedToken, isNewbie } = await this.tokenService.issueTokenByGoogleOAuth(
             authorizationCode,
             language
         );
@@ -72,6 +72,7 @@ export class TokenController {
         const redirectURL = new URL(googleOAuth2SuccessRedirectURI);
         redirectURL.searchParams.append('accessToken', issuedToken.accessToken);
         redirectURL.searchParams.append('refreshToken', issuedToken.refreshToken);
+        redirectURL.searchParams.append('newbie', String(isNewbie));
 
         /**
          * TODO: url search param 대신 header 에 넣어서 전달하는 방법이 있는지 찾아봐야한다.

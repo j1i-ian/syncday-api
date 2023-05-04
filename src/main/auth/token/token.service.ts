@@ -44,7 +44,10 @@ export class TokenService {
     async issueTokenByGoogleOAuth(
         authorizationCode: string,
         language: Language
-    ): Promise<CreateTokenResponseDto> {
+    ): Promise<{
+        issuedToken: CreateTokenResponseDto;
+        isNewbie: boolean;
+    }> {
         const { redirectURI } = AppConfigService.getGoogleOAuth2Setting(this.configService);
 
         const oauthClient = this.integrationUtilService.generateGoogleOauthClient(redirectURI);
@@ -58,6 +61,7 @@ export class TokenService {
             tokens.refreshToken
         );
 
+        let isNewbie = false;
         let loadedUserOrNull = await this.userService.findUserByEmail(googleUserInfo.email);
 
         if (loadedUserOrNull === null || loadedUserOrNull === undefined) {
@@ -71,11 +75,11 @@ export class TokenService {
                 tokens,
                 language
             );
-            loadedUserOrNull.isNewbie = true;
+            isNewbie = true;
         }
 
         const issuedToken = this.issueToken(loadedUserOrNull);
-        return issuedToken;
+        return { issuedToken, isNewbie };
     }
 
     issueToken(user: User): CreateTokenResponseDto {
@@ -86,8 +90,7 @@ export class TokenService {
                 email: user.email,
                 profileImage: user.profileImage,
                 nickname: user.nickname,
-                userSettingId: user.userSettingId,
-                isNewbie: user.isNewbie
+                userSettingId: user.userSettingId
             } as Partial<User>,
             {
                 secret: this.jwtOption.secret,

@@ -1,4 +1,4 @@
-import { Controller, Get, SerializeOptions } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { GetGoogleIntegrationsResponseDto } from '@dto/integrations/google/get-google-integrations-response.dto';
@@ -9,10 +9,11 @@ import { GoogleIntegrationsService } from './google-integrations.service';
 export class IntegrationsController {
     constructor(private readonly googleIntegrationsService: GoogleIntegrationsService) {}
 
-    @SerializeOptions({
-        strategy: 'excludeAll',
-        excludeExtraneousValues: true
-    })
+    /**
+     * google callback api is in token controller
+     *
+     * @see {@link src/main/auth/token/token.controller.ts}
+     */
     @Get('google')
     async getGoogleIntegrations(
         @AuthUser() authUser: AppJwtPayload
