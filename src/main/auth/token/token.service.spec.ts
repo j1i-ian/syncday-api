@@ -122,7 +122,7 @@ describe('TokenService', () => {
 
             serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
 
-            const issuedToken = await service.issueTokenByGoogleOAuth(
+            const { issuedToken } = await service.issueTokenByGoogleOAuth(
                 authorizationCodeMock,
                 languageMock
             );
