@@ -6,13 +6,18 @@ import { SinonSandbox } from 'sinon';
 
 import { ArgumentsHost } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { UpdateResult } from 'typeorm';
+import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Verification } from '@entity/verifications/verification.entity';
 import { Faker, faker } from '@faker-js/faker';
-import { TemporaryUser } from '../@core/core/entities/users/temporary-user.entity';
 import { Language } from '../main/enums/language.enum';
 
 export class TestMockUtil {
     static _instance: TestMockUtil;
+
+    static getTypeormUpdateResultMock(affectedNumber = 1): UpdateResult {
+        return { affected: affectedNumber } as UpdateResult;
+    }
 
     constructor() {
         if (!TestMockUtil._instance) {

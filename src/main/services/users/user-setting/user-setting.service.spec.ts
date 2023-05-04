@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
+import { TestMockUtil } from '@test/test-mock-util';
 import { UserSettingService } from './user-setting.service';
 
 describe('UserSettingService', () => {
@@ -36,6 +37,23 @@ describe('UserSettingService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    describe('Test User Setting CRUD', () => {
+        afterEach(() => {
+            userSettingRepositoryStub.update.reset();
+        });
+
+        it('should be patched user setting', async () => {
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            const userSettingMock = stubOne(UserSetting);
+
+            userSettingRepositoryStub.update.resolves(updateResultStub);
+
+            await service.patchUserSettingByUserId(userSettingMock.userId, userSettingMock);
+
+            expect(userSettingRepositoryStub.update.called).true;
+        });
     });
 
     describe('Test getting user workspace status', () => {
