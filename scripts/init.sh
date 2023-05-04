@@ -1,4 +1,3 @@
 #!/bin/bash
 
-git submodule init
-git submodule update --checkout -f
+git submodule update --init --checkout -f
