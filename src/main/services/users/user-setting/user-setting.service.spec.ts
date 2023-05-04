@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
+import { firstValueFrom } from 'rxjs';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { TestMockUtil } from '@test/test-mock-util';
@@ -42,6 +43,33 @@ describe('UserSettingService', () => {
     describe('Test User Setting CRUD', () => {
         afterEach(() => {
             userSettingRepositoryStub.update.reset();
+        });
+
+        [
+            {
+                description: 'should be searched workspace when workspace is actually exist',
+                expectedLength: 1
+            },
+            {
+                description: 'should be searched workspace when workspace is actually exist',
+                expectedLength: 0
+            }
+        ].forEach(({ description, expectedLength }) => {
+            it(description, async () => {
+                const userSettingListStub = stub(UserSetting, expectedLength);
+                const workspaceMock = 'fakeWorkspace';
+
+                userSettingRepositoryStub.findBy.resolves(userSettingListStub);
+
+                const searchedUserSettings = await firstValueFrom(
+                    service.searchUserSettings({
+                        workspace: workspaceMock
+                    })
+                );
+
+                expect(searchedUserSettings).ok;
+                expect(searchedUserSettings.length).equals(expectedLength);
+            });
         });
 
         it('should be patched user setting', async () => {

@@ -1,9 +1,11 @@
 import { Repository } from 'typeorm';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Observable, from } from 'rxjs';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { PatchUserSettingRequestDto } from '@share/@dto/users/user-settings/patch-user-setting-request.dto';
+import { UserSettingSearchOption } from '@share/@interfaces/users/user-settings/user-setting-search-option.interface';
 
 @Injectable()
 export class UserSettingService {
@@ -12,6 +14,12 @@ export class UserSettingService {
         @InjectRepository(UserSetting)
         private readonly userSettingRepository: Repository<UserSetting>
     ) {}
+
+    searchUserSettings(
+        userSettingSearchOption: UserSettingSearchOption
+    ): Observable<UserSetting[]> {
+        return from(this.userSettingRepository.findBy(userSettingSearchOption));
+    }
 
     async fetchUserSettingByUserId(userId: number): Promise<UserSetting> {
         const loadedUserSetting = await this.userSettingRepository.findOneByOrFail({ userId });

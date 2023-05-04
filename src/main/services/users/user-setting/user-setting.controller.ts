@@ -1,8 +1,20 @@
-import { Body, Controller, Get, Header, HttpCode, HttpStatus, Patch, Put } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    Header,
+    HttpCode,
+    HttpStatus,
+    Patch,
+    Put,
+    Query
+} from '@nestjs/common';
+import { Observable, map } from 'rxjs';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { UpdateUserSettingRequestDto } from '@dto/users/update-user-setting-request.dto';
 import { PatchUserSettingRequestDto } from '@share/@dto/users/user-settings/patch-user-setting-request.dto';
+import { UserSettingSearchOption } from '@share/@interfaces/users/user-settings/user-setting-search-option.interface';
 import { UserSettingService } from './user-setting.service';
 
 /**
@@ -12,6 +24,16 @@ import { UserSettingService } from './user-setting.service';
 @Controller()
 export class UserSettingController {
     constructor(private readonly userSettingService: UserSettingService) {}
+
+    @Get()
+    @Header('Content-type', 'application/json')
+    searchUserSettings(@Query('workspace') workspace?: string): Observable<boolean> {
+        return this.userSettingService
+            .searchUserSettings({
+                workspace
+            } as UserSettingSearchOption)
+            .pipe(map((searchedUserSettings) => searchedUserSettings.length > 0));
+    }
 
     @Get(':userSettingId(\\d+)')
     fetchUserSettingByUserId(@AuthUser('id') userId: number): Promise<UserSetting> {
@@ -28,7 +50,7 @@ export class UserSettingController {
     }
 
     @Put(':userSettingId(\\d+)')
-    @Header('Content-type', 'application/json')
+    @HttpCode(HttpStatus.NO_CONTENT)
     async updateUserSetting(
         @AuthUser('id') userId: number,
         @Body() updateUserSettingRequestDto: UpdateUserSettingRequestDto
