@@ -5,7 +5,6 @@ cache:
   paths:
     - node_modules/
     - dist/
-    - src/@core
 
 stages:
   - .pre
@@ -60,8 +59,13 @@ lint:
   stage: test
   needs:
     - build
-  script:
-    - npm run lint
+  script: |
+    apk add bash
+    apk add git
+    git config --system credential.helper store
+    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
+    bash scripts/init.sh
+    npm run lint
   only:
     - main
     - develop
@@ -70,8 +74,13 @@ test:
   stage: test
   needs:
     - build
-  script:
-    - npm run test
+  script: |
+    apk add bash
+    apk add git
+    git config --system credential.helper store
+    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
+    bash scripts/init.sh
+    npm run test
   only:
     - main
     - develop
