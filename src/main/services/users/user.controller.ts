@@ -11,12 +11,12 @@ import {
     Post
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { FetchUserInfoResponseDto } from '@dto/users/fetch-user-info-response.dto';
+import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
+import { UpdateUserSettingRequestDto } from '@dto/users/update-user-setting-request.dto';
 import { AuthUser } from '../../decorators/auth-user.decorator';
 import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
-import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
-import { CreateUserWithVerificationDto as CreateUserWithVerificationDto } from '../../dto/verifications/create-user-with-verification.dto';
-import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
 import { UserService } from './user.service';
 
 @Controller()

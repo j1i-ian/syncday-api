@@ -1,12 +1,8 @@
 import { Routes } from '@nestjs/core';
-import { EventsModule } from '@services/event-groups/events/events.module';
-import { SchedulesModule } from '@services/schedules/schedules.module';
 import { UserSettingModule } from '@services/users/user-setting/user-setting.module';
 import { UserModule } from '@services/users/user.module';
 import { GoogleModule } from '@services/integrations/calendars/google/google.module';
-import { DatetimePresetsModule } from '@services/datetime-presets/datetime-presets.module';
 import { TokenModule } from '../main/auth/token/token.module';
-import { PaymentsModule } from '../main/services/payments/payments.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
 import { CalendarsModule } from '../main/services/integrations/calendars/calendars.module';
@@ -39,18 +35,6 @@ export const routes: Routes = [
         module: TokenModule
     },
     {
-        path: 'events',
-        module: EventsModule
-    },
-    {
-        path: 'schedules',
-        module: SchedulesModule
-    },
-    {
-        path: 'payments',
-        module: PaymentsModule
-    },
-    {
         path: 'verifications',
         module: VerificationModule
     },
@@ -79,9 +63,5 @@ export const routes: Routes = [
                 ]
             }
         ]
-    },
-    {
-        path: 'datetime-presets',
-        module: DatetimePresetsModule
     }
 ];

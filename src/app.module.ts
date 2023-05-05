@@ -13,13 +13,9 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { AppController } from './app.controller';
 import { AuthModule } from './main/auth/auth.module';
 import { JwtAuthGuard } from './main/auth/strategy/jwt/jwt-auth.guard';
-import { EventGroupsModule } from './main/services/event-groups/event-groups.module';
-import { PaymentsModule } from './main/services/payments/payments.module';
-import { SchedulesModule } from './main/services/schedules/schedules.module';
 import { UtilModule } from './main/services/util/util.module';
 import { IntegrationsModule } from './main/services/integrations/integrations.module';
 import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
-import { DatetimePresetsModule } from './main/services/datetime-presets/datetime-presets.module';
 
 @Module({
     imports: [
@@ -37,19 +33,11 @@ import { DatetimePresetsModule } from './main/services/datetime-presets/datetime
 
         AuthModule,
 
-        EventGroupsModule,
-
-        SchedulesModule,
-
-        PaymentsModule,
-
         UtilModule,
 
         IntegrationsModule,
 
-        WorkspacesModule,
-
-        DatetimePresetsModule
+        WorkspacesModule
     ],
     controllers: [AppController],
     providers: [

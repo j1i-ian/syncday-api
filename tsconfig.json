@@ -31,9 +31,6 @@
       "@core/*": [
         "src/@core/src/*"
       ],
-      "@share/*": [
-        "src/@core/@share/src/*"
-      ],
       "@config/*": [
         "src/configs/*"
       ],
@@ -44,12 +41,11 @@
       "@interfaces/*": [
         "src/@core/@share/src/@interfaces/*"
       ],
+      "@dto/*": [
+        "src/@core/@share/src/@dto/*"
+      ],
       "@entity/*": [
         "src/@core/src/entities/*"
-      ],
-      "@dto/*": [
-        "src/main/dto/*",
-        "src/@core/src/dto/*"
       ],
       "@services/*": [
         "src/main/services/*"
@@ -59,6 +55,9 @@
       ],
       "@test/*": [
         "src/test/*"
+      ],
+      "@share/*": [
+        "src/@core/@share/src/*"
       ],
       "*": [
         "node_modules/*"

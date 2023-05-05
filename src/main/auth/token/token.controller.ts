@@ -6,7 +6,7 @@ import { AppConfigService } from '@config/app-config.service';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { User } from '@entity/users/user.entity';
-import { CreateTokenResponseDto } from '@dto/tokens/create-token-response.dto';
+import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { Language } from '@app/enums/language.enum';
 import { Public } from '../strategy/jwt/public.decorator';
 import { LocalAuthGuard } from '../strategy/local/local-auth.guard';
