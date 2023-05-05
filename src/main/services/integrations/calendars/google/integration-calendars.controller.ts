@@ -108,7 +108,7 @@ export class GoogleCalendarsController {
     @Delete('google-calendar-integrations/:googleCalendarIntegrationId(\\d+)')
     async deleteGoogleCalendarConnection(
         @AuthUser() authUser: AppJwtPayload,
-        @Param('googleCalendarIntegrationId', new ParseIntPipe())
+        @Param('googleCalendarIntegrationId', ParseIntPipe)
         googleCalendarIntegrationId: number
     ): Promise<{ affected: boolean }> {
         const result = await this.googleCalendarIntegrationService.deleteGoogleCalendarConnection(
@@ -122,7 +122,7 @@ export class GoogleCalendarsController {
     @Patch('google-calendar-integrations/:googleCalendarIntegrationId(\\d+)')
     async updateGoogleCalendarConnection(
         @AuthUser() authUser: AppJwtPayload,
-        @Param('googleCalendarIntegrationId', new ParseIntPipe())
+        @Param('googleCalendarIntegrationId', ParseIntPipe)
         googleCalendarIntegrationId: number,
         @Body() body: UpdateGoogleCalendarIntegrationDto
     ): Promise<{ affected?: boolean }> {

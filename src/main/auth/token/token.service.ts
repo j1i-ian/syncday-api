@@ -4,7 +4,7 @@ import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { compare } from 'bcrypt';
 import { oauth2_v2 } from 'googleapis';
 import { User } from '@entity/users/user.entity';
-import { CreateTokenResponseDto } from '@dto/tokens/create-token-response.dto';
+import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
 import { AppConfigService } from '../../../configs/app-config.service';
