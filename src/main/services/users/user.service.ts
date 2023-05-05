@@ -17,13 +17,13 @@ import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity'
 import { Contact } from '@entity/events/contact.entity';
 import { ContactType } from '@entity/events/contact-type.enum';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
+import { UpdateUserSettingRequestDto } from '@dto/users/update-user-setting-request.dto';
+import { FetchUserInfoResponseDto } from '@dto/users/fetch-user-info-response.dto';
 import { OAuthInfo } from '@app/interfaces/auth/oauth-info.interface';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
-import { UpdateUserSettingRequestDto } from '../../dto/users/update-user-setting-request.dto';
 import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
-import { FetchUserInfoResponseDto } from '../../dto/users/fetch-user-info-response.dto';
 import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
