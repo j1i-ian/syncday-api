@@ -38,8 +38,6 @@ build:
   needs:
     - init
   script: |
-    apk update
-    apk upgrade
     apk add bash
     apk add git
     git config --system credential.helper store
