@@ -1,7 +1,6 @@
 import { BadRequestException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { plainToInstance } from 'class-transformer';
 import { User } from '@entity/users/user.entity';
 import { BufferTime } from '@entity/events/buffer-time.entity';
 import { EventType } from '@entity/events/event-type.entity';
@@ -17,8 +16,6 @@ import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity'
 import { Contact } from '@entity/events/contact.entity';
 import { ContactType } from '@entity/events/contact-type.enum';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
-import { UpdateUserSettingRequestDto } from '@dto/users/update-user-setting-request.dto';
-import { FetchUserInfoResponseDto } from '@dto/users/fetch-user-info-response.dto';
 import { OAuthInfo } from '@app/interfaces/auth/oauth-info.interface';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
@@ -49,7 +46,14 @@ export class UserService {
     ) {}
 
     async findUserById(userId: number): Promise<User> {
-        const loadedUser = await this.userRepository.findOneByOrFail({ id: userId });
+        const loadedUser = await this.userRepository.findOneOrFail({
+            where: {
+                id: userId
+            },
+            relations: {
+                userSetting: true
+            }
+        });
 
         return loadedUser;
     }
@@ -113,18 +117,11 @@ export class UserService {
             const temporaryUser = await this.syncdayRedisService.getTemporaryUser(email);
             const newUser = this.userRepository.create(temporaryUser);
 
-            await this.datasource.transaction(async (manager: EntityManager) => {
-                const _createdUser = await this._createUser(
-                    manager,
-                    newUser,
-                    temporaryUser.language,
-                    {
-                        plainPassword: temporaryUser.plainPassword,
-                        emailVerification: true
-                    }
-                );
+            const manager = this.userRepository.manager;
 
-                return _createdUser;
+            await this._createUser(manager, newUser, temporaryUser.language, {
+                plainPassword: temporaryUser.plainPassword,
+                emailVerification: true
             });
 
             isSuccess = true;
@@ -290,60 +287,17 @@ export class UserService {
         return createdUser;
     }
 
+    async patch(userId: number, partialUser: Partial<User>): Promise<boolean> {
+        const updateResult = await this.userRepository.update(userId, partialUser);
+
+        return updateResult.affected ? updateResult.affected > 0 : false;
+    }
+
     async updateUser(userId: number): Promise<boolean> {
         return await Promise.resolve(!!userId);
     }
 
     async deleteUser(userId: number): Promise<boolean> {
         return await Promise.resolve(!!userId);
-    }
-
-    async updateUserSettingWithUserName(param: {
-        userId: number;
-        updateUserSetting: UpdateUserSettingRequestDto;
-    }): Promise<void> {
-        const { userId, updateUserSetting } = param;
-        const {
-            name,
-            greetings,
-            preferredLanguage,
-            preferredDateTimeFormat,
-            preferredTimezone,
-            preferredDateTimeOrderFormat,
-            workspace
-        } = updateUserSetting;
-
-        const newUserSetting = new UserSetting({
-            workspace,
-            greetings,
-            preferredDateTimeFormat,
-            preferredDateTimeOrderFormat,
-            preferredTimezone,
-            preferredLanguage
-        });
-
-        if (name !== undefined) {
-            await this.userRepository.update(userId, { nickname: name });
-        }
-        await this.userSettingService.updateUserSetting(userId, newUserSetting);
-    }
-
-    async fetchUserInfo(userId: number, email: string): Promise<FetchUserInfoResponseDto> {
-        const userSetting = await this.userSettingService.fetchUserSettingByUserId(userId);
-        const loadedIntegrationByUser = await this.googleIntegrationService.loadAlreadySignedUpUser(
-            email
-        );
-        const convertedUserSettingToDto = plainToInstance(FetchUserInfoResponseDto, {
-            ...userSetting,
-            language: userSetting.preferredLanguage,
-            dateTimeFormat: userSetting.preferredDateTimeFormat,
-            dateTimeOrderFormat: userSetting.preferredDateTimeOrderFormat,
-            timezone: userSetting.preferredTimezone,
-            integration: {
-                google: !!loadedIntegrationByUser
-            }
-        });
-
-        return convertedUserSettingToDto;
     }
 }
