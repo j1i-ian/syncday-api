@@ -2,10 +2,10 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, FindOneOptions, FindOptionsWhere, Repository } from 'typeorm';
+import { Availability } from '@core/entities/availability/availability.entity';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
-import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity';
 import { Language } from '@app/enums/language.enum';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
@@ -32,7 +32,7 @@ describe('Test User Service', () => {
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
-    let datetimePresetRepositoryStub: sinon.SinonStubbedInstance<Repository<DatetimePreset>>;
+    let availabilityRepositoryStub: sinon.SinonStubbedInstance<Repository<Availability>>;
 
     const _getRepository = (EntityClass: new () => any) =>
         module.get(getRepositoryToken(EntityClass));
@@ -53,8 +53,7 @@ describe('Test User Service', () => {
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
-        datetimePresetRepositoryStub =
-            sinon.createStubInstance<Repository<DatetimePreset>>(Repository);
+        availabilityRepositoryStub = sinon.createStubInstance<Repository<Availability>>(Repository);
 
         module = await Test.createTestingModule({
             providers: [
@@ -100,8 +99,8 @@ describe('Test User Service', () => {
                     useValue: eventRepositoryStub
                 },
                 {
-                    provide: getRepositoryToken(DatetimePreset),
-                    useValue: datetimePresetRepositoryStub
+                    provide: getRepositoryToken(Availability),
+                    useValue: availabilityRepositoryStub
                 }
             ]
         }).compile();
@@ -175,7 +174,7 @@ describe('Test User Service', () => {
             userRepositoryStub.create.reset();
             userRepositoryStub.save.reset();
             verificationServiceStub.isVerifiedUser.reset();
-            datetimePresetRepositoryStub.save.reset();
+            availabilityRepositoryStub.save.reset();
 
             utilServiceStub.getUsetDefaultSetting.reset();
 
@@ -192,13 +191,13 @@ describe('Test User Service', () => {
                 hashedPassword: plainPassword
             });
             const languageDummy = Language.ENGLISH;
-            const datetimePresetStub = stubOne(DatetimePreset);
+            const datetimePresetStub = stubOne(Availability);
 
             verificationServiceStub.isVerifiedUser.resolves(true);
 
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
-            datetimePresetRepositoryStub.save.resolves(datetimePresetStub);
+            availabilityRepositoryStub.save.resolves(datetimePresetStub);
 
             const createdUser = await service._createUser(
                 datasourceMock as EntityManager,
@@ -210,7 +209,7 @@ describe('Test User Service', () => {
             );
 
             expect(utilServiceStub.getUsetDefaultSetting.called).true;
-            expect(datetimePresetRepositoryStub.save.called).true;
+            expect(availabilityRepositoryStub.save.called).true;
 
             expect(createdUser).ok;
             expect(createdUser.email).ok;
@@ -218,14 +217,14 @@ describe('Test User Service', () => {
 
         it('should be not created user with email when user is already exist', async () => {
             const alreadySignedUpUser = stubOne(User, {
-                nickname: 'foo'
+                name: 'foo'
             });
             const plainPasswordDummy = 'test';
             const languageDummy = Language.ENGLISH;
             serviceSandbox.stub(service, 'findUserByEmail').resolves(alreadySignedUpUser);
 
             const userStub = stubOne(User, {
-                nickname: 'bar'
+                name: 'bar'
             });
 
             await expect(

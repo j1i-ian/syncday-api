@@ -70,8 +70,8 @@ export class UtilService {
     ): Partial<UserSetting> {
         let workspaceName = '';
 
-        if (user.nickname) {
-            workspaceName = user.nickname;
+        if (user.name) {
+            workspaceName = user.name;
         } else if (user.email) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             const extractedWorkspaceNameFromEmail = user.email.split('@')[0];

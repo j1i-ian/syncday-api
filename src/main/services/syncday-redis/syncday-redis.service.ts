@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
+import { Availability } from '@core/entities/availability/availability.entity';
 import { UtilService } from '@services/util/util.service';
 import { TemporaryUser } from '@entity/users/temporary-user.entity';
-import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity';
 import { Verification } from '@entity/verifications/verification.entity';
 import { AppInjectCluster } from './app-inject-cluster.decorator';
 import { RedisStores } from './redis-stores.enum';
@@ -85,7 +85,7 @@ export class SyncdayRedisService {
     async setDatetimePreset(
         userUUID: string,
         datetimePresetUUID: string,
-        timePresetWithOverrides: Pick<DatetimePreset, 'timepreset' | 'overrides'>
+        timePresetWithOverrides: Pick<Availability, 'availableTimes' | 'overrides'>
     ): Promise<boolean> {
         const datetimePresetUserKey = this.getDatetimePresetHashMapKey(userUUID);
         const result = await this.cluster.hmset(
@@ -100,7 +100,7 @@ export class SyncdayRedisService {
     async getDatetimePreset(
         userUUID: string,
         datetimePresetUUID: string
-    ): Promise<Pick<DatetimePreset, 'timepreset' | 'overrides'>> {
+    ): Promise<Pick<Availability, 'availableTimes' | 'overrides'>> {
         const datetimePresetUserKey = this.getDatetimePresetHashMapKey(userUUID);
 
         const timePresetRangeJsonString = await this.cluster.hmget(
@@ -137,7 +137,7 @@ export class SyncdayRedisService {
     }
 
     getDatetimePresetHashMapKey(userUUID: string): RedisKey {
-        return this.getRedisKey(RedisStores.DATETIME_PRESET, [userUUID]);
+        return this.getRedisKey(RedisStores.AVAILABILITY, [userUUID]);
     }
 
     private getRedisKey(store: RedisStores, value: string[]): string {

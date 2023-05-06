@@ -67,7 +67,7 @@ export class TokenService {
         if (loadedUserOrNull === null || loadedUserOrNull === undefined) {
             const createUserRequestDto: CreateUserRequestDto = {
                 email: googleUserInfo.email,
-                nickname: googleUserInfo.name as string
+                name: googleUserInfo.name as string
             };
 
             loadedUserOrNull = await this.userService.createUserByGoogleOAuth2(
@@ -89,7 +89,7 @@ export class TokenService {
                 uuid: user.uuid,
                 email: user.email,
                 profileImage: user.profileImage,
-                nickname: user.nickname,
+                name: user.name,
                 userSettingId: user.userSettingId
             } as Partial<User>,
             {

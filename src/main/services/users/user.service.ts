@@ -1,6 +1,8 @@
 import { BadRequestException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
+import { Availability } from '@core/entities/availability/availability.entity';
+import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { User } from '@entity/users/user.entity';
 import { BufferTime } from '@entity/events/buffer-time.entity';
 import { EventType } from '@entity/events/event-type.entity';
@@ -8,11 +10,9 @@ import { TimeRange } from '@entity/events/time-range.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
-import { TimePreset } from '@entity/datetime-presets/time-preset.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { DateRange } from '@entity/events/date-range.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
-import { DatetimePreset } from '@entity/datetime-presets/datetime-preset.entity';
 import { Contact } from '@entity/events/contact.entity';
 import { ContactType } from '@entity/events/contact-type.enum';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
@@ -177,7 +177,7 @@ export class UserService {
         const hashedPassword = plainPassword && this.utilService.hash(plainPassword);
 
         const _userRepository = manager.getRepository(User);
-        const _datetimePresetRepository = manager.getRepository(DatetimePreset);
+        const _availabilityRepository = manager.getRepository(Availability);
 
         const savedUser = await _userRepository.save({
             ...createdUser,
@@ -218,31 +218,31 @@ export class UserService {
         });
 
         // 월 ~ 금, 09:00 ~ 17:00
-        const initialTimePresets = [];
+        const availableTimes = [];
         for (let dayWeekIndex = 0; dayWeekIndex < 5; dayWeekIndex++) {
-            const initialTimePreset = new TimePreset();
-            initialTimePreset.day = dayWeekIndex;
-            initialTimePreset.timeRanges = [
+            const initialAvailableTime = new AvailableTime();
+            initialAvailableTime.day = dayWeekIndex;
+            initialAvailableTime.timeRanges = [
                 {
                     startTime: '09:00:00',
                     endTime: '17:00:00'
                 }
             ];
 
-            initialTimePresets.push(initialTimePreset);
+            availableTimes.push(initialAvailableTime);
         }
 
-        const initialDatetimePreset = new DatetimePreset();
-        initialDatetimePreset.default = true;
-        initialDatetimePreset.name = this.utilService.getDefaultDatetimePresetName(language);
-        initialDatetimePreset.user = savedUser;
-        initialDatetimePreset.timezone = userSetting?.preferredTimezone;
-        const savedDatetimePreset = await _datetimePresetRepository.save(initialDatetimePreset);
-        await this.syncdayRedisService.setDatetimePreset(savedUser.uuid, savedDatetimePreset.uuid, {
-            timepreset: initialTimePresets,
+        const initialAvailability = new Availability();
+        initialAvailability.default = true;
+        initialAvailability.name = this.utilService.getDefaultDatetimePresetName(language);
+        initialAvailability.user = savedUser;
+        initialAvailability.timezone = userSetting?.preferredTimezone;
+        const savedAvailability = await _availabilityRepository.save(initialAvailability);
+        await this.syncdayRedisService.setDatetimePreset(savedUser.uuid, savedAvailability.uuid, {
+            availableTimes,
             overrides: []
         });
-        initialEvent.datetimePresetId = savedDatetimePreset.id;
+        initialEvent.availabilityId = savedAvailability.id;
 
         initialEvent.eventDetail = initialEventDetail;
         initialEventGroup.events = [initialEvent];
