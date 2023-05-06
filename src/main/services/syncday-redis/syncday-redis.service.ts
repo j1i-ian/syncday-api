@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
 import { Availability } from '@core/entities/availability/availability.entity';
-import { UtilService } from '@services/util/util.service';
 import { TemporaryUser } from '@entity/users/temporary-user.entity';
 import { Verification } from '@entity/verifications/verification.entity';
 import { AppInjectCluster } from './app-inject-cluster.decorator';
@@ -9,10 +8,7 @@ import { RedisStores } from './redis-stores.enum';
 
 @Injectable()
 export class SyncdayRedisService {
-    constructor(
-        @AppInjectCluster() private readonly cluster: Cluster,
-        private readonly utilService: UtilService
-    ) {}
+    constructor(@AppInjectCluster() private readonly cluster: Cluster) {}
 
     async getTemporaryUser(email: string): Promise<TemporaryUser> {
         const temporaryUserKey = this.getTemporaryUserKey(email);
