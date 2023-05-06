@@ -119,20 +119,19 @@ describe('Test User Service', () => {
 
     describe('Test user finding', () => {
         afterEach(() => {
-            userRepositoryStub.findOneByOrFail.reset();
+            userRepositoryStub.findOneOrFail.reset();
             userRepositoryStub.findOneBy.reset();
         });
 
         it('should be found user by user id', async () => {
             const userStub = stubOne(User);
 
-            userRepositoryStub.findOneByOrFail.resolves(userStub);
+            userRepositoryStub.findOneOrFail.resolves(userStub);
 
             const loadedUser = await service.findUserById(userStub.id);
 
-            const actualPassedParam = userRepositoryStub.findOneByOrFail.getCall(0)
-                .args[0] as FindOptionsWhere<User>;
-            expect(actualPassedParam.id).equals(userStub.id);
+            const actualPassedParam = userRepositoryStub.findOneOrFail.getCall(0).args[0];
+            expect((actualPassedParam.where as FindOptionsWhere<User>).id).equals(userStub.id);
 
             expect(loadedUser).equal(userStub);
         });

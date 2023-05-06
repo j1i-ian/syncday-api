@@ -1,18 +1,7 @@
-import {
-    Body,
-    Controller,
-    Get,
-    Header,
-    HttpCode,
-    HttpStatus,
-    Patch,
-    Put,
-    Query
-} from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, HttpStatus, Patch, Query } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
 import { AuthUser } from '@decorators/auth-user.decorator';
-import { UpdateUserSettingRequestDto } from '@dto/users/update-user-setting-request.dto';
 import { PatchUserSettingRequestDto } from '@share/@dto/users/user-settings/patch-user-setting-request.dto';
 import { UserSettingSearchOption } from '@share/@interfaces/users/user-settings/user-setting-search-option.interface';
 import { UserSettingService } from './user-setting.service';
@@ -47,14 +36,5 @@ export class UserSettingController {
         @Body() patchUserSettingRequestDto: PatchUserSettingRequestDto
     ): Promise<void> {
         await this.userSettingService.patchUserSettingByUserId(userId, patchUserSettingRequestDto);
-    }
-
-    @Put(':userSettingId(\\d+)')
-    @HttpCode(HttpStatus.NO_CONTENT)
-    async updateUserSetting(
-        @AuthUser('id') userId: number,
-        @Body() updateUserSettingRequestDto: UpdateUserSettingRequestDto
-    ): Promise<boolean> {
-        return await this.userSettingService.updateUserSetting(userId, updateUserSettingRequestDto);
     }
 }

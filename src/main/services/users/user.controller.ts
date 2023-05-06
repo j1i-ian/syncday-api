@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     Body,
     Controller,
     Delete,
@@ -10,10 +11,9 @@ import {
     Patch,
     Post
 } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
-import { FetchUserInfoResponseDto } from '@dto/users/fetch-user-info-response.dto';
+import { User } from '@core/entities/users/user.entity';
 import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
-import { UpdateUserSettingRequestDto } from '@dto/users/update-user-setting-request.dto';
+import { PatchUserRequestDto } from '@dto/users/patch-user-request.dto';
 import { AuthUser } from '../../decorators/auth-user.decorator';
 import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
@@ -24,12 +24,10 @@ export class UserController {
     constructor(private readonly userService: UserService) {}
 
     @Get(':userId(\\d+)')
-    async fetchMyInfo(@AuthUser() authUser: AppJwtPayload): Promise<FetchUserInfoResponseDto> {
-        const userInfo = await this.userService.fetchUserInfo(authUser.id, authUser.email);
+    async fetchUser(@AuthUser() authUser: AppJwtPayload): Promise<User> {
+        const loadedUser = await this.userService.findUserById(authUser.id);
 
-        return plainToInstance(FetchUserInfoResponseDto, userInfo, {
-            excludeExtraneousValues: true
-        });
+        return loadedUser;
     }
 
     /**
@@ -54,14 +52,17 @@ export class UserController {
 
     @Patch(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
-    updateUser(
+    async patchUser(
         @AuthUser() authUser: AppJwtPayload,
-        @Body() newUserSetting: UpdateUserSettingRequestDto
-    ): void {
-        this.userService.updateUserSettingWithUserName({
-            userId: authUser.id,
-            updateUserSetting: newUserSetting
+        @Body() patchUserBody: PatchUserRequestDto
+    ): Promise<void> {
+        const result = await this.userService.patch(authUser.id, {
+            nickname: patchUserBody.name
         });
+
+        if (result === false) {
+            throw new BadRequestException('Cannot update user data');
+        }
     }
 
     @Delete(':userId(\\d+)')
