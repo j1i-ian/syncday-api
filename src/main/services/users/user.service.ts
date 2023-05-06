@@ -100,13 +100,13 @@ export class UserService {
     async createUserWithVerificationByEmail(
         email: string,
         verificationCode: string
-    ): Promise<boolean> {
+    ): Promise<User | null> {
         const verificationOrNull = await this.syncdayRedisService.getEmailVerification(email);
 
         const isCodeMatched =
             verificationOrNull !== null && verificationOrNull.verificationCode === verificationCode;
 
-        let isSuccess = false;
+        let createdUser = null;
 
         if (isCodeMatched) {
             await this.syncdayRedisService.setEmailVerificationStatus(
@@ -119,17 +119,15 @@ export class UserService {
 
             const manager = this.userRepository.manager;
 
-            await this._createUser(manager, newUser, temporaryUser.language, {
+            createdUser = await this._createUser(manager, newUser, temporaryUser.language, {
                 plainPassword: temporaryUser.plainPassword,
                 emailVerification: true
             });
-
-            isSuccess = true;
         } else {
-            isSuccess = false;
+            createdUser = null;
         }
 
-        return isSuccess;
+        return createdUser;
     }
 
     async _createUser(

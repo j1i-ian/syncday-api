@@ -294,17 +294,18 @@ describe('Test User Service', () => {
                 userRepositoryStub.create.returns(userStub);
                 userRepositoryStub.save.resolves(userStub);
 
-                serviceSandbox.stub(service, '_createUser');
+                serviceSandbox.stub(service, '_createUser').resolves(userStub);
 
-                const updateResult = await service.createUserWithVerificationByEmail(
+                const createdUser = (await service.createUserWithVerificationByEmail(
                     emailMock,
                     verificationStub.verificationCode
-                );
+                )) as User;
 
                 expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).true;
                 expect(syncdayRedisServiceStub.getEmailVerification.called).true;
 
-                expect(updateResult).true;
+                expect(createdUser).ok;
+                expect(createdUser.id).equals(userStub.id);
             });
 
             it('should be not verified when email and verification is not matched', async () => {
@@ -315,7 +316,7 @@ describe('Test User Service', () => {
 
                 serviceSandbox.stub(service, '_createUser');
 
-                const updateResult = await service.createUserWithVerificationByEmail(
+                const createdUser = await service.createUserWithVerificationByEmail(
                     emailMock,
                     verificationCodeMock
                 );
@@ -323,7 +324,7 @@ describe('Test User Service', () => {
                 expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).false;
                 expect(syncdayRedisServiceStub.getEmailVerification.called).true;
 
-                expect(updateResult).false;
+                expect(createdUser).null;
             });
         });
     });

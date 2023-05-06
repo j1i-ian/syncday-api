@@ -11,9 +11,11 @@ import {
     Patch,
     Post
 } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { User } from '@core/entities/users/user.entity';
 import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
 import { PatchUserRequestDto } from '@dto/users/patch-user-request.dto';
+import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
 import { AuthUser } from '../../decorators/auth-user.decorator';
 import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
@@ -43,11 +45,18 @@ export class UserController {
     @Post()
     @Public()
     @Header('Content-type', 'application/json')
-    createUserWithEmailVerification(
+    async createUserWithEmailVerification(
         @Body() createUserWithVerificationDto: CreateUserWithVerificationDto
-    ): Promise<boolean> {
+    ): Promise<CreateUserResponseDto> {
         const { email, verificationCode } = createUserWithVerificationDto;
-        return this.userService.createUserWithVerificationByEmail(email, verificationCode);
+        const createdUser = await this.userService.createUserWithVerificationByEmail(
+            email,
+            verificationCode
+        );
+
+        return plainToInstance(CreateUserResponseDto, createdUser, {
+            excludeExtraneousValues: true
+        });
     }
 
     @Patch(':userId(\\d+)')
