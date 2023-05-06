@@ -57,7 +57,7 @@ export class UserController {
         @Body() patchUserBody: PatchUserRequestDto
     ): Promise<void> {
         const result = await this.userService.patch(authUser.id, {
-            nickname: patchUserBody.name
+            name: patchUserBody.name
         });
 
         if (result === false) {

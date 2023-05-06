@@ -100,7 +100,7 @@ export class TestMockUtil {
     getTemporaryUser(): TemporaryUser {
         return {
             email: this.getFaker().internet.email(),
-            nickname: this.getFaker().name.fullName(),
+            name: this.getFaker().name.fullName(),
             plainPassword: this.getFaker().word.noun(),
             language: Language.ENGLISH
         };
