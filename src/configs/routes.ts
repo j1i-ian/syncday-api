@@ -2,6 +2,7 @@ import { Routes } from '@nestjs/core';
 import { UserSettingModule } from '@services/users/user-setting/user-setting.module';
 import { UserModule } from '@services/users/user.module';
 import { GoogleModule } from '@services/integrations/calendars/google/google.module';
+import { AvailabilityModule } from '@services/availability/availability.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
@@ -37,6 +38,10 @@ export const routes: Routes = [
     {
         path: 'verifications',
         module: VerificationModule
+    },
+    {
+        path: 'availabilities',
+        module: AvailabilityModule
     },
     {
         path: 'integrations',

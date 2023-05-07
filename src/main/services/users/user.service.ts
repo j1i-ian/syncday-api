@@ -232,11 +232,11 @@ export class UserService {
 
         const initialAvailability = new Availability();
         initialAvailability.default = true;
-        initialAvailability.name = this.utilService.getDefaultDatetimePresetName(language);
+        initialAvailability.name = this.utilService.getDefaultAvailabilityName(language);
         initialAvailability.user = savedUser;
         initialAvailability.timezone = userSetting?.preferredTimezone;
         const savedAvailability = await _availabilityRepository.save(initialAvailability);
-        await this.syncdayRedisService.setDatetimePreset(savedUser.uuid, savedAvailability.uuid, {
+        await this.syncdayRedisService.setAvailability(savedAvailability.uuid, savedUser.uuid, {
             availableTimes,
             overrides: []
         });
