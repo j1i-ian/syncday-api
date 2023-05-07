@@ -129,14 +129,19 @@ export class UtilService {
         return dateTimeFomat;
     }
 
-    getDefaultDatetimePresetName(language: Language): string {
+    getDefaultAvailabilityName(language: Language): string {
+        let defaultWorkingHoursText = 'Working hours';
+
         switch (language) {
             case Language.KOREAN:
-                return '근무 시간';
+                defaultWorkingHoursText = '근무 시간';
+                break;
             case Language.ENGLISH:
             default:
-                return 'Working hours';
+                defaultWorkingHoursText = 'Working hours';
         }
+
+        return defaultWorkingHoursText;
     }
 
     /**

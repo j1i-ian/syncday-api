@@ -8,7 +8,9 @@ import { ArgumentsHost } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { UpdateResult } from 'typeorm';
 import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
+import { Availability } from '@core/entities/availability/availability.entity';
 import { Verification } from '@entity/verifications/verification.entity';
+import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { Faker, faker } from '@faker-js/faker';
 import { Language } from '../main/enums/language.enum';
 
@@ -42,6 +44,35 @@ export class TestMockUtil {
     getBearerTokenMock(): string {
         // eslint-disable-next-line max-len
         return 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImppaGFuLmxlZTIiLCJzdWIiOiJqaWhhbi5sZWUyK0UwMTY3OEY3LTI4NUYtNDQ4MC1BMDA2LUIzOUY1NjJBMThBOSIsImlhdCI6MTY1MTE5OTAxMSwiZXhwIjoxNjUxODAzODExfQ.umhNz65cHTMgC_05gxqTqWVdSmxZYQviV3Lb_Mw9P34';
+    }
+
+    getAvailabilityBodyRecordMocks(
+        availabilityStubs?: Availability[]
+    ): Record<string, AvailabilityBody> {
+        if (!availabilityStubs) {
+            availabilityStubs = stub(Availability);
+        }
+
+        return Object.fromEntries(
+            availabilityStubs.map((availabilityStub: Availability) => [
+                availabilityStub.uuid,
+                {
+                    availableTimes: [],
+                    overrides: []
+                } as AvailabilityBody
+            ])
+        ) as Record<string, AvailabilityBody>;
+    }
+
+    getAvailabilityBodyMock(availability?: Availability): AvailabilityBody {
+        if (!availability) {
+            availability = stubOne(Availability);
+        }
+
+        return {
+            availableTimes: [],
+            overrides: []
+        } as AvailabilityBody;
     }
 
     /**

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
-import { Availability } from '@core/entities/availability/availability.entity';
 import { TemporaryUser } from '@entity/users/temporary-user.entity';
 import { Verification } from '@entity/verifications/verification.entity';
+import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { AppInjectCluster } from './app-inject-cluster.decorator';
 import { RedisStores } from './redis-stores.enum';
 
@@ -78,30 +78,27 @@ export class SyncdayRedisService {
         return result === 'OK';
     }
 
-    async setDatetimePreset(
+    async setAvailability(
+        availabilityUUID: string,
         userUUID: string,
-        datetimePresetUUID: string,
-        timePresetWithOverrides: Pick<Availability, 'availableTimes' | 'overrides'>
+        availabilityBody: AvailabilityBody
     ): Promise<boolean> {
-        const datetimePresetUserKey = this.getDatetimePresetHashMapKey(userUUID);
-        const result = await this.cluster.hmset(
-            datetimePresetUserKey,
-            datetimePresetUUID,
-            JSON.stringify(timePresetWithOverrides)
+        const availabilityUserKey = this._getAvailabilityHashMapKey(userUUID);
+        const updatedHashFields = await this.cluster.hset(
+            availabilityUserKey,
+            availabilityUUID,
+            JSON.stringify(availabilityBody)
         );
 
-        return result === 'OK';
+        return updatedHashFields === 1;
     }
 
-    async getDatetimePreset(
-        userUUID: string,
-        datetimePresetUUID: string
-    ): Promise<Pick<Availability, 'availableTimes' | 'overrides'>> {
-        const datetimePresetUserKey = this.getDatetimePresetHashMapKey(userUUID);
+    async getAvailability(availabilityUUID: string, userUUID: string): Promise<AvailabilityBody> {
+        const availabilityUserKey = this._getAvailabilityHashMapKey(userUUID);
 
-        const timePresetRangeJsonString = await this.cluster.hmget(
-            datetimePresetUserKey,
-            datetimePresetUUID
+        const timePresetRangeJsonString = await this.cluster.hget(
+            availabilityUserKey,
+            availabilityUUID
         );
 
         return timePresetRangeJsonString
@@ -109,11 +106,21 @@ export class SyncdayRedisService {
             : null;
     }
 
-    async getDatetimePresets(userUUID: string): Promise<Record<string, string>> {
-        const datetimePresetListKey = this.getDatetimePresetHashMapKey(userUUID);
-        const datetimePresetUUIDRecords = await this.cluster.hgetall(datetimePresetListKey);
+    async deleteAvailability(availabilityUUID: string, userUUID: string): Promise<boolean> {
+        const availabilityUserKey = this._getAvailabilityHashMapKey(userUUID);
+        const deleteCount = await this.cluster.hdel(availabilityUserKey, availabilityUUID);
 
-        return datetimePresetUUIDRecords;
+        return deleteCount === 1;
+    }
+
+    async getAvailabilityBodyRecord(userUUID: string): Promise<Record<string, AvailabilityBody>> {
+        const availabilityListKey = this._getAvailabilityHashMapKey(userUUID);
+        const availabilityUUIDRecords = await this.cluster.hgetall(availabilityListKey);
+
+        const parsedAvailabilityBodies =
+            this.__parseHashmapRecords<AvailabilityBody>(availabilityUUIDRecords);
+
+        return parsedAvailabilityBodies;
     }
 
     getTemporaryUserKey(email: string): RedisKey {
@@ -132,8 +139,20 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.VERIFICATIONS_EMAIL, [String(email), uuid]);
     }
 
-    getDatetimePresetHashMapKey(userUUID: string): RedisKey {
+    _getAvailabilityHashMapKey(userUUID: string): RedisKey {
         return this.getRedisKey(RedisStores.AVAILABILITY, [userUUID]);
+    }
+
+    __parseHashmapRecords<T>(hashmapRecords: Record<string, string>): Record<string, T> {
+        const entries = Object.entries(hashmapRecords).reduce<Record<string, T>>(
+            (acc, [key, value]) => ({
+                ...acc,
+                [key]: JSON.parse(value)
+            }),
+            {}
+        );
+
+        return entries;
     }
 
     private getRedisKey(store: RedisStores, value: string[]): string {

@@ -191,13 +191,13 @@ describe('Test User Service', () => {
                 hashedPassword: plainPassword
             });
             const languageDummy = Language.ENGLISH;
-            const datetimePresetStub = stubOne(Availability);
+            const availabilityStub = stubOne(Availability);
 
             verificationServiceStub.isVerifiedUser.resolves(true);
 
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
-            availabilityRepositoryStub.save.resolves(datetimePresetStub);
+            availabilityRepositoryStub.save.resolves(availabilityStub);
 
             const createdUser = await service._createUser(
                 datasourceMock as EntityManager,

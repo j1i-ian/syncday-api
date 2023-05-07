@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Cluster, RedisKey } from 'ioredis';
 import { UtilService } from '@services/util/util.service';
 import { TemporaryUser } from '@entity/users/temporary-user.entity';
+import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { TestMockUtil } from '../../../test/test-mock-util';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { SyncdayRedisService } from './syncday-redis.service';
@@ -192,7 +193,71 @@ describe('Redis Service Test', () => {
             expect(verification).true;
         });
 
-        it('coverage fill', () => {
+        it('coverage fill: setAvailability', async () => {
+            const uuidKey = '';
+            const updatedHashFieldStub = 1;
+
+            serviceSandbox.stub(service, '_getAvailabilityHashMapKey').returns(uuidKey);
+
+            clusterStub.hset.resolves(updatedHashFieldStub);
+
+            const verification = await service.setAvailability(
+                uuidKey,
+                uuidKey,
+                {} as AvailabilityBody
+            );
+            expect(verification).true;
+        });
+
+        it('should be got parsed availability body: getAvailability', async () => {
+            const uuidKey = '';
+
+            serviceSandbox.stub(service, '_getAvailabilityHashMapKey').returns(uuidKey);
+
+            clusterStub.hget.resolves('{}');
+
+            const verification = await service.getAvailability(uuidKey, uuidKey);
+            expect(verification).ok;
+        });
+
+        it('should be removed availability body by hash field: deleteAvailability', async () => {
+            const uuidKey = 'ABCDFF';
+            const deleteCountStub = 1;
+
+            serviceSandbox.stub(service, '_getAvailabilityHashMapKey').returns(uuidKey);
+
+            clusterStub.hdel.resolves(deleteCountStub);
+
+            const deleteSuccess = await service.deleteAvailability(uuidKey, uuidKey);
+            expect(deleteSuccess).true;
+        });
+
+        it('should be got parsed availability bodies with getAvailabilityBodyRecord', async () => {
+            const uuidKey = '';
+
+            serviceSandbox.stub(service, '_getAvailabilityHashMapKey').returns(uuidKey);
+            const __parseHashmapRecordsStub = serviceSandbox.stub(service, '__parseHashmapRecords');
+
+            clusterStub.hget.resolves('{}');
+            __parseHashmapRecordsStub.returns({});
+
+            const loadedAvailabilityBodyRecord = await service.getAvailabilityBodyRecord(uuidKey);
+
+            expect(__parseHashmapRecordsStub.called).true;
+            expect(loadedAvailabilityBodyRecord).ok;
+        });
+
+        it('coverage fill: getTemporaryUserKey', () => {
+            const emailMock = testMockUtil.getFaker().internet.email();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns('local:workspaces');
+
+            const result = service.getTemporaryUserKey(emailMock);
+
+            expect(result).ok;
+        });
+
+        it('coverage fill: getWorkspaceAssignStatusKey', () => {
             const emailMock = testMockUtil.getFaker().internet.email();
 
             serviceSandbox.stub(service, <any>'getRedisKey').returns('local:workspaces');
@@ -202,7 +267,7 @@ describe('Redis Service Test', () => {
             expect(result).ok;
         });
 
-        it('coverage fill', () => {
+        it('coverage fill: getEmailVerificationKey', () => {
             const emailMock = testMockUtil.getFaker().internet.email();
 
             serviceSandbox.stub(service, <any>'getRedisKey').returns('local:something:redis:key');
@@ -212,7 +277,7 @@ describe('Redis Service Test', () => {
             expect(result).ok;
         });
 
-        it('coverage fill', () => {
+        it('coverage fill: getEmailVerificationStatusKey', () => {
             const emailMock = testMockUtil.getFaker().internet.email();
             const uuid = 'mockuuid';
 
@@ -223,13 +288,75 @@ describe('Redis Service Test', () => {
             expect(result).ok;
         });
 
-        it('coverage fill', () => {
+        it('coverage fill: getRedisKey', () => {
             const result = (service as any)['getRedisKey'](RedisStores.TOKENS_USERS, [
                 'test',
                 'test2'
             ]);
 
             expect(result).ok;
+        });
+    });
+
+    describe('Test __parseHashmapRecords', () => {
+        it('should be parsed for availability body', () => {
+            const uuid = 'c77d4357-74b8-45c0-8b15-c2318f96cb4d';
+            const uuid2 = 'c77d4357-64b8-45c0-8b15-c2318f96cb4d';
+            const availabilityBodyMock = {
+                // after redis loading, the json body would be stringified already.
+                [uuid]: JSON.stringify({
+                    availableTimes: [
+                        {
+                            day: 3,
+                            timeRanges: [{ startTime: '09:00:00', endTime: '17:00:00' }]
+                        },
+                        {
+                            day: 4,
+                            timeRanges: [{ startTime: '09:00:00', endTime: '17:00:00' }]
+                        }
+                    ],
+                    overrides: [
+                        {
+                            targetDate: new Date(),
+                            timeRanges: [{ startTime: '09:00:00', endTime: '12:00:00' }]
+                        }
+                    ]
+                } as AvailabilityBody),
+                [uuid2]: JSON.stringify({
+                    availableTimes: [
+                        {
+                            day: 5,
+                            timeRanges: [{ startTime: '09:00:00', endTime: '18:00:00' }]
+                        },
+                        {
+                            day: 6,
+                            timeRanges: [{ startTime: '09:00:00', endTime: '19:10:00' }]
+                        }
+                    ],
+                    overrides: [
+                        {
+                            targetDate: new Date(),
+                            timeRanges: [{ startTime: '09:00:00', endTime: '12:00:00' }]
+                        }
+                    ]
+                } as AvailabilityBody)
+            } as Record<string, string>;
+
+            const parsed = service.__parseHashmapRecords(availabilityBodyMock);
+
+            expect(parsed).ok;
+
+            const parsedBody = parsed[uuid] as AvailabilityBody;
+            expect(parsedBody).ok;
+            expect(parsedBody.availableTimes).ok;
+            expect(parsedBody.availableTimes.length).greaterThan(0);
+            expect(parsedBody.overrides).ok;
+
+            const parsedSecondBody = parsed[uuid] as AvailabilityBody;
+            expect(parsedSecondBody).ok;
+            expect(parsedSecondBody.availableTimes).ok;
+            expect(parsedSecondBody.availableTimes.length).greaterThan(0);
+            expect(parsedSecondBody.overrides).ok;
         });
     });
 });

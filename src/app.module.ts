@@ -16,6 +16,7 @@ import { JwtAuthGuard } from './main/auth/strategy/jwt/jwt-auth.guard';
 import { UtilModule } from './main/services/util/util.module';
 import { IntegrationsModule } from './main/services/integrations/integrations.module';
 import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
+import { AvailabilityModule } from './main/services/availability/availability.module';
 
 @Module({
     imports: [
@@ -37,7 +38,9 @@ import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
 
         IntegrationsModule,
 
-        WorkspacesModule
+        WorkspacesModule,
+
+        AvailabilityModule
     ],
     controllers: [AppController],
     providers: [
