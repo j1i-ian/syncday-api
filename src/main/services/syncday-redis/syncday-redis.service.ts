@@ -96,13 +96,13 @@ export class SyncdayRedisService {
     async getAvailability(availabilityUUID: string, userUUID: string): Promise<AvailabilityBody> {
         const availabilityUserKey = this._getAvailabilityHashMapKey(userUUID);
 
-        const timePresetRangeJsonString = await this.cluster.hget(
+        const availabilityBodyJsonString = await this.cluster.hget(
             availabilityUserKey,
             availabilityUUID
         );
 
-        return timePresetRangeJsonString
-            ? JSON.parse(timePresetRangeJsonString as unknown as string)
+        return availabilityBodyJsonString
+            ? JSON.parse(availabilityBodyJsonString as unknown as string)
             : null;
     }
 
