@@ -39,11 +39,9 @@ export class AvailabilityController {
             })
             .pipe(
                 map((loadedAvailabilities) =>
-                    loadedAvailabilities.map((_loadedAvailability) =>
-                        plainToInstance(GetAvailabilityResponseDto, _loadedAvailability, {
-                            excludeExtraneousValues: true
-                        })
-                    )
+                    plainToInstance(GetAvailabilityResponseDto, loadedAvailabilities, {
+                        excludeExtraneousValues: true
+                    })
                 )
             );
     }
