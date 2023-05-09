@@ -17,6 +17,7 @@ import { UtilModule } from './main/services/util/util.module';
 import { IntegrationsModule } from './main/services/integrations/integrations.module';
 import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
 import { AvailabilityModule } from './main/services/availability/availability.module';
+import { EventsModule } from './main/services/events/events.module';
 
 @Module({
     imports: [
@@ -40,7 +41,9 @@ import { AvailabilityModule } from './main/services/availability/availability.mo
 
         WorkspacesModule,
 
-        AvailabilityModule
+        AvailabilityModule,
+
+        EventsModule
     ],
     controllers: [AppController],
     providers: [

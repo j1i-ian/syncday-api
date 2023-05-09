@@ -139,6 +139,17 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.VERIFICATIONS_EMAIL, [String(email), uuid]);
     }
 
+    getInviteeQuestionKey(eventDetailUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.EVENT_DETAIL, [
+            eventDetailUUID,
+            RedisStores.INVITEE_QUESTION
+        ]);
+    }
+
+    getRemindersKey(eventDetailUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.REMINDER]);
+    }
+
     _getAvailabilityHashMapKey(userUUID: string): RedisKey {
         return this.getRedisKey(RedisStores.AVAILABILITY, [userUUID]);
     }
