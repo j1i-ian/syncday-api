@@ -9,6 +9,11 @@ import { plainToInstance } from 'class-transformer';
 import { UpdateResult } from 'typeorm';
 import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
+import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
+import { QuestionInputType } from '@core/entities/invitee-questions/question-input-type.enum';
+import { Reminder } from '@core/entities/reminders/reminder.entity';
+import { ReminderType } from '@core/entities/reminders/reminder-type.enum';
+import { ReminderTarget } from '@core/entities/reminders/reminder-target.enum';
 import { Verification } from '@entity/verifications/verification.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { Faker, faker } from '@faker-js/faker';
@@ -73,6 +78,30 @@ export class TestMockUtil {
             availableTimes: [],
             overrides: []
         } as AvailabilityBody;
+    }
+
+    getInviteeQuestionMock(
+        eventDetailUUID?: string,
+        inviteeQuestion?: Partial<InviteeQuestion>
+    ): InviteeQuestion {
+        return {
+            eventDetailUUID: eventDetailUUID || 'DEFAULT_EVENT_DETAIL_UUID',
+            name: this.getFaker().name.jobTitle(),
+            inputType: QuestionInputType.TEXT,
+            required: false,
+            ...inviteeQuestion
+        };
+    }
+
+    getReminderMock(eventDetailUUID?: string, reminder?: Partial<Reminder>): Reminder {
+        return {
+            eventDetailUUID: eventDetailUUID || 'DEFAULT_EVENT_DETAIL_UUID',
+            remindBefore: '10',
+            target: ReminderTarget.HOST,
+            type: ReminderType.EMAIL,
+            uuid: this.getFaker().datatype.uuid(),
+            ...reminder
+        };
     }
 
     /**
