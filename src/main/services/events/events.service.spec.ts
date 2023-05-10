@@ -97,6 +97,7 @@ describe('EventsService', () => {
             eventRedisRepositoryStub.save.reset();
             eventRedisRepositoryStub.remove.reset();
 
+            eventDetailRepositoryStub.save.reset();
             eventDetailRepositoryStub.delete.reset();
         });
 
@@ -259,6 +260,36 @@ describe('EventsService', () => {
             expect(eventsValidatorStub.validate.called).true;
             expect(eventRepositoryStub.delete.called).true;
             expect(eventDetailRepositoryStub.delete.called).true;
+            expect(eventRedisRepositoryStub.remove.called).false;
+        });
+
+        it('should be cloned event', async () => {
+            const userMock = stubOne(User);
+
+            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
+            const reminderStubs = [testMockUtil.getReminderMock()];
+
+            const eventDetailBodyStub = {
+                inviteeQuestions: inviteeQuestionStubs,
+                reminders: reminderStubs
+            } as EventsDetailBody;
+
+            const [sourceEventDetailStub, clonedEventDetailStub] = stub(EventDetail, 2, {
+                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
+                reminders: eventDetailBodyStub.reminders
+            });
+            const [sourceEventStub, clonedEventStub] = stub(Event, 2);
+            sourceEventStub.eventDetail = sourceEventDetailStub;
+            clonedEventStub.eventDetail = clonedEventDetailStub;
+
+            eventsValidatorStub.validate.resolves(sourceEventStub);
+            eventRepositoryStub.save.resolves(clonedEventStub);
+
+            const clonedEvent = await service.clone(sourceEventDetailStub.id, userMock.id);
+            expect(clonedEvent).ok;
+
+            expect(eventsValidatorStub.validate.called).true;
+            expect(eventRepositoryStub.save.called).true;
             expect(eventRedisRepositoryStub.remove.called).false;
         });
     });
