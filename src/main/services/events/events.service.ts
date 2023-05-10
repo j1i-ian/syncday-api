@@ -5,8 +5,8 @@ import { Repository } from 'typeorm';
 import { Event } from '@core/entities/events/event.entity';
 import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
-import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-request.dto';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
+import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 
 @Injectable()
 export class EventsService {
@@ -87,10 +87,24 @@ export class EventsService {
         return savedEvent;
     }
 
-    update(eventId: number, updateEventDto: UpdateEventRequestDto): Promise<boolean> {
-        console.log(eventId);
-        console.log(updateEventDto);
-        return Promise.resolve(true);
+    async update(eventId: number, userId: number, updateEvent: Partial<Event>): Promise<boolean> {
+        const loadedEvent = await this.eventRepository.findOne({
+            relations: ['eventGroup'],
+            where: {
+                id: eventId,
+                eventGroup: {
+                    userId
+                }
+            }
+        });
+
+        if (loadedEvent) {
+            const updateResult = await this.eventRepository.update(eventId, updateEvent);
+
+            return (updateResult && updateResult.affected && updateResult.affected > 0) === true;
+        } else {
+            throw new NotAnOwnerException('requested event is not owned with requester');
+        }
     }
 
     async remove(eventId: number): Promise<boolean> {

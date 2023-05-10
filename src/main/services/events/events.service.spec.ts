@@ -9,6 +9,7 @@ import { User } from '@core/entities/users/user.entity';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
+import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { EventsService } from './events.service';
 
@@ -64,6 +65,7 @@ describe('EventsService', () => {
             eventRepositoryStub.find.reset();
             eventRepositoryStub.findOneOrFail.reset();
             eventRepositoryStub.save.reset();
+            eventRepositoryStub.update.reset();
 
             eventRedisRepositoryStub.getInviteeQuestions.reset();
             eventRedisRepositoryStub.getReminders.reset();
@@ -145,6 +147,35 @@ describe('EventsService', () => {
             expect(eventGroupRepositoryStub.findOneByOrFail.called).true;
             expect(eventRepositoryStub.save.called).true;
             expect(eventRedisRepositoryStub.save.called).true;
+        });
+
+        it('should be updated event when user has target event', async () => {
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            const userMock = stubOne(User);
+            const eventMock = stubOne(Event);
+
+            eventRepositoryStub.findOne.resolves(eventMock);
+            eventRepositoryStub.update.resolves(updateResultStub);
+
+            const updateResult = await service.update(eventMock.id, userMock.id, eventMock);
+
+            expect(updateResult).true;
+            expect(eventRepositoryStub.findOne.called).true;
+            expect(eventRepositoryStub.update.called).true;
+        });
+
+        it('should be not updated event when user has not target event', async () => {
+            const userMock = stubOne(User);
+            const eventMock = stubOne(Event);
+
+            eventRepositoryStub.findOne.resolves(null);
+
+            await expect(service.update(eventMock.id, userMock.id, eventMock)).rejectedWith(
+                NotAnOwnerException
+            );
+
+            expect(eventRepositoryStub.findOne.called).true;
         });
     });
 });
