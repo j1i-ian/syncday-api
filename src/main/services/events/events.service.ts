@@ -129,4 +129,37 @@ export class EventsService {
 
         return deleteSuccess;
     }
+
+    async clone(eventId: number, userId: number): Promise<Event> {
+        const validatedEvent = await this.eventsValidator.validate(userId, eventId, Event);
+
+        /* eslint-disable @typescript-eslint/no-unused-vars */
+        const {
+            id: _eventId,
+            uuid: _eventUUID,
+            createdAt: _eventCreatedAt,
+            ...newEventBody
+        } = validatedEvent;
+
+        const {
+            id,
+            eventId: _eventIdInEventDetail,
+            uuid,
+            ...newEventDetailBody
+        } = newEventBody.eventDetail;
+        /* eslint-enable @typescript-eslint/no-unused-vars */
+
+        newEventBody.eventDetail = newEventDetailBody as EventDetail;
+
+        const clonedEvent = await this.eventRepository.save(newEventBody);
+        const clonedEvnetDetail = clonedEvent.eventDetail;
+
+        await this.eventRedisRepository.save(
+            clonedEvnetDetail.uuid,
+            newEventDetailBody.inviteeQuestions,
+            newEventDetailBody.reminders
+        );
+
+        return clonedEvent;
+    }
 }
