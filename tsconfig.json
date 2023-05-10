@@ -28,11 +28,11 @@
     "resolveJsonModule": true,
     "strictPropertyInitialization": false,
     "paths": {
-      "@core/*": [
-        "src/@core/src/*"
-      ],
       "@config/*": [
         "src/configs/*"
+      ],
+      "@criteria/*": [
+        "src/main/criteria/*",
       ],
       "@decorators/*": [
         "src/@core/src/decorators/*",
@@ -58,6 +58,9 @@
       ],
       "@share/*": [
         "src/@core/@share/src/*"
+      ],
+      "@core/*": [
+        "src/@core/src/*"
       ],
       "*": [
         "node_modules/*"

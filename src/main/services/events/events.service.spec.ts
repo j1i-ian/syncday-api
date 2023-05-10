@@ -9,8 +9,8 @@ import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { User } from '@core/entities/users/user.entity';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
+import { EventsValidator } from '@services/events/events.validator';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
-import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { EventsService } from './events.service';
 
@@ -22,14 +22,18 @@ describe('EventsService', () => {
     let module: TestingModule;
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
+    let eventsValidatorStub: sinon.SinonStubbedInstance<EventsValidator>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
+
     let eventRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
     let eventDetailRepositoryStub: sinon.SinonStubbedInstance<Repository<EventDetail>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
 
     before(async () => {
+        eventsValidatorStub = sinon.createStubInstance(EventsValidator);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
+
         eventRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
         eventDetailRepositoryStub = sinon.createStubInstance<Repository<EventDetail>>(Repository);
@@ -41,6 +45,10 @@ describe('EventsService', () => {
                 {
                     provide: getDataSourceToken(),
                     useValue: datasourceMock
+                },
+                {
+                    provide: EventsValidator,
+                    useValue: eventsValidatorStub
                 },
                 {
                     provide: SyncdayRedisService,
@@ -74,6 +82,8 @@ describe('EventsService', () => {
 
     describe('Test Event CRUD', () => {
         afterEach(() => {
+            eventsValidatorStub.validate.reset();
+
             eventGroupRepositoryStub.findOneByOrFail.reset();
 
             eventRepositoryStub.find.reset();
@@ -167,36 +177,22 @@ describe('EventsService', () => {
             expect(eventRedisRepositoryStub.save.called).true;
         });
 
-        it('should be updated event when user has target event', async () => {
+        it('should be updated event', async () => {
             const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
             const userMock = stubOne(User);
             const eventMock = stubOne(Event);
 
-            eventRepositoryStub.findOne.resolves(eventMock);
             eventRepositoryStub.update.resolves(updateResultStub);
 
             const updateResult = await service.update(eventMock.id, userMock.id, eventMock);
 
             expect(updateResult).true;
-            expect(eventRepositoryStub.findOne.called).true;
+            expect(eventsValidatorStub.validate.called).true;
             expect(eventRepositoryStub.update.called).true;
         });
 
-        it('should be not updated event when user has not target event', async () => {
-            const userMock = stubOne(User);
-            const eventMock = stubOne(Event);
-
-            eventRepositoryStub.findOne.resolves(null);
-
-            await expect(service.update(eventMock.id, userMock.id, eventMock)).rejectedWith(
-                NotAnOwnerException
-            );
-
-            expect(eventRepositoryStub.findOne.called).true;
-        });
-
-        it('should be removed event when user has target event', async () => {
+        it('should be removed event', async () => {
             const userMock = stubOne(User);
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
@@ -217,14 +213,15 @@ describe('EventsService', () => {
 
             const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-            eventRepositoryStub.findOne.resolves(eventMock);
+            eventsValidatorStub.validate.resolves(eventMock);
+
             eventRepositoryStub.delete.resolves(deleteResultStub);
             eventDetailRepositoryStub.delete.resolves(deleteResultStub);
 
             const deleteResult = await service.remove(eventMock.id, userMock.id);
 
             expect(deleteResult).true;
-            expect(eventRepositoryStub.findOne.called).true;
+            expect(eventsValidatorStub.validate.called).true;
             expect(eventRepositoryStub.delete.called).true;
             expect(eventDetailRepositoryStub.delete.called).true;
             expect(eventRedisRepositoryStub.remove.called).true;
@@ -251,7 +248,7 @@ describe('EventsService', () => {
 
             const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock(0);
 
-            eventRepositoryStub.findOne.resolves(eventMock);
+            eventsValidatorStub.validate.resolves(eventMock);
             eventRepositoryStub.delete.resolves(deleteResultStub);
             eventDetailRepositoryStub.delete.resolves(deleteResultStub);
 
@@ -259,25 +256,9 @@ describe('EventsService', () => {
                 InternalServerErrorException
             );
 
-            expect(eventRepositoryStub.findOne.called).true;
+            expect(eventsValidatorStub.validate.called).true;
             expect(eventRepositoryStub.delete.called).true;
             expect(eventDetailRepositoryStub.delete.called).true;
-            expect(eventRedisRepositoryStub.remove.called).false;
-        });
-
-        it('should be not removed event when user has not target event', async () => {
-            const userMock = stubOne(User);
-            const eventMock = stubOne(Event);
-
-            eventRepositoryStub.findOne.resolves(null);
-
-            await expect(service.remove(eventMock.id, userMock.id)).rejectedWith(
-                NotAnOwnerException
-            );
-
-            expect(eventRepositoryStub.findOne.called).true;
-            expect(eventRepositoryStub.delete.called).false;
-            expect(eventDetailRepositoryStub.delete.called).false;
             expect(eventRedisRepositoryStub.remove.called).false;
         });
     });
