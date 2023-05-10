@@ -76,4 +76,14 @@ export class EventsRedisRepository {
             throw new InviteeQuestionsOrRemindersSaveFailException();
         }
     }
+
+    async remove(eventDetailUUID: string): Promise<boolean> {
+        const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID);
+        const reminderKey = this.syncdayRedisService.getRemindersKey(eventDetailUUID);
+
+        const deletedInviteeQuestionNode = await this.cluster.del(inviteeQuestionKey);
+        const deletedReminderNode = await this.cluster.del(reminderKey);
+
+        return deletedInviteeQuestionNode > 0 && deletedReminderNode > 0;
+    }
 }

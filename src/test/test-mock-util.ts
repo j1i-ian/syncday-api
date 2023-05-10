@@ -7,6 +7,8 @@ import { SinonSandbox } from 'sinon';
 import { ArgumentsHost } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { UpdateResult } from 'typeorm';
+import { TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -17,6 +19,7 @@ import { ReminderTarget } from '@core/entities/reminders/reminder-target.enum';
 import { Verification } from '@entity/verifications/verification.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { Faker, faker } from '@faker-js/faker';
+import { DataSourceMock } from '@test/datasource-mock.interface';
 import { Language } from '../main/enums/language.enum';
 
 export class TestMockUtil {
@@ -24,6 +27,19 @@ export class TestMockUtil {
 
     static getTypeormUpdateResultMock(affectedNumber = 1): UpdateResult {
         return { affected: affectedNumber } as UpdateResult;
+    }
+
+    static getDataSourceMock(getNestTestingModuleCallback: () => TestingModule): DataSourceMock {
+        const _getRepository = (EntityClass: new () => any) =>
+            getNestTestingModuleCallback().get(getRepositoryToken(EntityClass));
+
+        const datasourceMock = {
+            getRepository: _getRepository,
+            transaction: (callback: any) =>
+                Promise.resolve(callback({ getRepository: _getRepository }))
+        };
+
+        return datasourceMock;
     }
 
     constructor() {
