@@ -54,10 +54,11 @@ export class EventsController {
     @Patch(':eventId')
     @HttpCode(HttpStatus.NO_CONTENT)
     async update(
-        @Param('eventId') eventId: string,
-        @Body() updateEventDto: UpdateEventRequestDto
+        @AuthUser('id') userId: number,
+        @Param('eventId', ParseIntPipe) eventId: number,
+        @Body() updateEventRequestDto: UpdateEventRequestDto
     ): Promise<void> {
-        await this.eventsService.update(+eventId, updateEventDto);
+        await this.eventsService.update(eventId, userId, updateEventRequestDto as Partial<Event>);
     }
 
     @Delete(':eventId')
