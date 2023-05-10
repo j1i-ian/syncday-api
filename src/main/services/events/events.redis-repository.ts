@@ -13,7 +13,7 @@ import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.servi
  * but I have no time for study for MVP release.
  */
 @Injectable()
-export class EventRedisRepository {
+export class EventsRedisRepository {
     constructor(
         private readonly syncdayRedisService: SyncdayRedisService,
         @AppInjectCluster() private readonly cluster: Cluster

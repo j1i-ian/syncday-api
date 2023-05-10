@@ -3,15 +3,14 @@ import { Observable, forkJoin, from, map, mergeMap, of } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event } from '@core/entities/events/event.entity';
-import { EventRedisRepository } from '@services/events/event.redis-repository';
+import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-request.dto';
-import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
 
 @Injectable()
 export class EventsService {
     constructor(
-        private readonly eventRedisRepository: EventRedisRepository,
+        private readonly eventRedisRepository: EventsRedisRepository,
         @InjectRepository(Event) private readonly eventRepository: Repository<Event>
     ) {}
 
@@ -58,11 +57,6 @@ export class EventsService {
                 );
             })
         );
-    }
-
-    create(createEventDto: CreateEventRequestDto): Promise<Event> {
-        console.log(createEventDto);
-        return Promise.resolve({} as Event);
     }
 
     update(eventId: number, updateEventDto: UpdateEventRequestDto): Promise<boolean> {

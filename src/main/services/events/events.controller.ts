@@ -45,7 +45,7 @@ export class EventsController {
 
     @Post()
     create(@Body() createEventDto: CreateEventRequestDto): Promise<Event> {
-        return this.eventsService.create(createEventDto);
+        return this.eventsService.create(createEventDto as Event);
     }
 
     @Patch(':eventId')

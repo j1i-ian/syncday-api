@@ -5,7 +5,7 @@ import { firstValueFrom, from } from 'rxjs';
 import { Event } from '@core/entities/events/event.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
-import { EventRedisRepository } from '@services/events/event.redis-repository';
+import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { TestMockUtil } from '@test/test-mock-util';
 import { EventsService } from './events.service';
 
@@ -15,12 +15,12 @@ describe('EventsService', () => {
     let service: EventsService;
 
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
-    let eventRedisRepositoryStub: sinon.SinonStubbedInstance<EventRedisRepository>;
+    let eventRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
 
     before(async () => {
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
-        eventRedisRepositoryStub = sinon.createStubInstance(EventRedisRepository);
+        eventRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -31,7 +31,7 @@ describe('EventsService', () => {
                     useValue: syncdayRedisServiceStub
                 },
                 {
-                    provide: EventRedisRepository,
+                    provide: EventsRedisRepository,
                     useValue: eventRedisRepositoryStub
                 },
                 {
