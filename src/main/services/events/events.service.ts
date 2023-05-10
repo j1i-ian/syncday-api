@@ -6,12 +6,13 @@ import { Event } from '@core/entities/events/event.entity';
 import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
+import { EventsValidator } from '@services/events/events.validator';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
-import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 
 @Injectable()
 export class EventsService {
     constructor(
+        private readonly eventsValidator: EventsValidator,
         private readonly eventRedisRepository: EventsRedisRepository,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(EventGroup) private readonly eventGroupRepository: Repository<EventGroup>,
@@ -90,68 +91,42 @@ export class EventsService {
     }
 
     async update(eventId: number, userId: number, updateEvent: Partial<Event>): Promise<boolean> {
-        const loadedEvent = await this.eventRepository.findOne({
-            relations: ['eventGroup'],
-            where: {
-                id: eventId,
-                eventGroup: {
-                    userId
-                }
-            }
-        });
+        await this.eventsValidator.validate(userId, eventId);
 
-        if (loadedEvent) {
-            const updateResult = await this.eventRepository.update(eventId, updateEvent);
+        const updateResult = await this.eventRepository.update(eventId, updateEvent);
 
-            const updateSuccess =
-                updateResult && updateResult.affected && updateResult.affected > 0;
-            return updateSuccess === true;
-        } else {
-            throw new NotAnOwnerException('requested event is not owned with requester');
-        }
+        const updateSuccess = updateResult && updateResult.affected && updateResult.affected > 0;
+
+        return updateSuccess === true;
     }
 
     async remove(eventId: number, userId: number): Promise<boolean> {
-        const loadedEvent = await this.eventRepository.findOne({
-            relations: ['eventGroup', 'eventDetail'],
-            where: {
-                id: eventId,
-                eventGroup: {
-                    userId
-                }
+        const validatedEvent = await this.eventsValidator.validate(userId, eventId, Event);
+
+        const eventDetail = validatedEvent.eventDetail;
+
+        const deleteSuccess = await this.datasource.transaction(async (transactionManager) => {
+            const _eventRepository = transactionManager.getRepository(Event);
+            const _eventDetailRepository = transactionManager.getRepository(EventDetail);
+
+            const _deleteEventDetailResult = await _eventDetailRepository.delete(eventDetail.id);
+            const _deleteEventResult = await _eventRepository.delete(eventId);
+
+            const _isDeleteEventDetailSuccess =
+                (_deleteEventDetailResult.affected && _deleteEventDetailResult.affected > 0) ===
+                true;
+            const _isDeleteEventSuccess =
+                (_deleteEventResult.affected && _deleteEventResult.affected > 0) === true;
+
+            if (_isDeleteEventDetailSuccess === false || _isDeleteEventSuccess === false) {
+                throw new InternalServerErrorException('Delete event detail or event is failed');
             }
+
+            await this.eventRedisRepository.remove(eventDetail.uuid);
+
+            return _isDeleteEventDetailSuccess && _isDeleteEventSuccess;
         });
 
-        if (loadedEvent && loadedEvent.eventDetail) {
-            const deleteSuccess = await this.datasource.transaction(async (transactionManager) => {
-                const _eventRepository = transactionManager.getRepository(Event);
-                const _eventDetailRepository = transactionManager.getRepository(EventDetail);
-
-                const _deleteEventDetailResult = await _eventDetailRepository.delete(
-                    loadedEvent.eventDetail.id
-                );
-                const _deleteEventResult = await _eventRepository.delete(eventId);
-
-                const _isDeleteEventDetailSuccess =
-                    (_deleteEventDetailResult.affected && _deleteEventDetailResult.affected > 0) ===
-                    true;
-                const _isDeleteEventSuccess =
-                    (_deleteEventResult.affected && _deleteEventResult.affected > 0) === true;
-
-                if (_isDeleteEventDetailSuccess === false || _isDeleteEventSuccess === false) {
-                    throw new InternalServerErrorException(
-                        'Delete event detail or event is failed'
-                    );
-                }
-
-                await this.eventRedisRepository.remove(loadedEvent.eventDetail.uuid);
-
-                return _isDeleteEventDetailSuccess && _isDeleteEventSuccess;
-            });
-
-            return deleteSuccess;
-        } else {
-            throw new NotAnOwnerException('requested event is not owned with requester');
-        }
+        return deleteSuccess;
     }
 }
