@@ -63,7 +63,10 @@ export class EventsController {
 
     @Delete(':eventId')
     @HttpCode(HttpStatus.NO_CONTENT)
-    async remove(@Param('eventId') eventId: string): Promise<void> {
-        await this.eventsService.remove(+eventId);
+    async remove(
+        @AuthUser('id') userId: number,
+        @Param('eventId', ParseIntPipe) eventId: number
+    ): Promise<void> {
+        await this.eventsService.remove(eventId, userId);
     }
 }
