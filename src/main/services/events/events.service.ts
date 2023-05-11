@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { Observable, forkJoin, from, map, mergeMap, of } from 'rxjs';
+import { Observable, firstValueFrom, forkJoin, from, map, mergeMap, of } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Event } from '@core/entities/events/event.entity';
@@ -144,7 +144,7 @@ export class EventsService {
         const {
             id,
             eventId: _eventIdInEventDetail,
-            uuid,
+            uuid: eventDetailUUID,
             ...newEventDetailBody
         } = newEventBody.eventDetail;
         /* eslint-enable @typescript-eslint/no-unused-vars */
@@ -152,13 +152,13 @@ export class EventsService {
         newEventBody.eventDetail = newEventDetailBody as EventDetail;
 
         const clonedEvent = await this.eventRepository.save(newEventBody);
-        const clonedEvnetDetail = clonedEvent.eventDetail;
 
-        await this.eventRedisRepository.save(
-            clonedEvnetDetail.uuid,
-            newEventDetailBody.inviteeQuestions,
-            newEventDetailBody.reminders
+        const clonedEventDetailBody = await firstValueFrom(
+            this.eventRedisRepository.clone(eventDetailUUID, clonedEvent.eventDetail.uuid)
         );
+
+        clonedEvent.eventDetail.inviteeQuestions = clonedEventDetailBody.inviteeQuestions;
+        clonedEvent.eventDetail.reminders = clonedEventDetailBody.reminders;
 
         return clonedEvent;
     }
