@@ -9,9 +9,10 @@ import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { User } from '@core/entities/users/user.entity';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
-import { EventsValidator } from '@services/events/events.validator';
+import { Availability } from '@entity/availability/availability.entity';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
 import { TestMockUtil } from '@test/test-mock-util';
+import { Validator } from '@criteria/validator';
 import { EventsService } from './events.service';
 
 const testMockUtil = new TestMockUtil();
@@ -22,7 +23,7 @@ describe('EventsService', () => {
     let module: TestingModule;
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
-    let eventsValidatorStub: sinon.SinonStubbedInstance<EventsValidator>;
+    let validatorStub: sinon.SinonStubbedInstance<Validator>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
 
     let eventRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
@@ -31,7 +32,7 @@ describe('EventsService', () => {
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
 
     before(async () => {
-        eventsValidatorStub = sinon.createStubInstance(EventsValidator);
+        validatorStub = sinon.createStubInstance(Validator);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
 
         eventRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
@@ -47,8 +48,8 @@ describe('EventsService', () => {
                     useValue: datasourceMock
                 },
                 {
-                    provide: EventsValidator,
-                    useValue: eventsValidatorStub
+                    provide: Validator,
+                    useValue: validatorStub
                 },
                 {
                     provide: SyncdayRedisService,
@@ -82,7 +83,7 @@ describe('EventsService', () => {
 
     describe('Test Event CRUD', () => {
         afterEach(() => {
-            eventsValidatorStub.validate.reset();
+            validatorStub.validate.reset();
 
             eventGroupRepositoryStub.findOneByOrFail.reset();
 
@@ -190,7 +191,7 @@ describe('EventsService', () => {
             const updateResult = await service.update(eventMock.id, userMock.id, eventMock);
 
             expect(updateResult).true;
-            expect(eventsValidatorStub.validate.called).true;
+            expect(validatorStub.validate.called).true;
             expect(eventRepositoryStub.update.called).true;
         });
 
@@ -215,7 +216,7 @@ describe('EventsService', () => {
 
             const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-            eventsValidatorStub.validate.resolves(eventMock);
+            validatorStub.validate.resolves(eventMock);
 
             eventRepositoryStub.delete.resolves(deleteResultStub);
             eventDetailRepositoryStub.delete.resolves(deleteResultStub);
@@ -223,7 +224,7 @@ describe('EventsService', () => {
             const deleteResult = await service.remove(eventMock.id, userMock.id);
 
             expect(deleteResult).true;
-            expect(eventsValidatorStub.validate.called).true;
+            expect(validatorStub.validate.called).true;
             expect(eventRepositoryStub.delete.called).true;
             expect(eventDetailRepositoryStub.delete.called).true;
             expect(eventRedisRepositoryStub.remove.called).true;
@@ -250,7 +251,7 @@ describe('EventsService', () => {
 
             const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock(0);
 
-            eventsValidatorStub.validate.resolves(eventMock);
+            validatorStub.validate.resolves(eventMock);
             eventRepositoryStub.delete.resolves(deleteResultStub);
             eventDetailRepositoryStub.delete.resolves(deleteResultStub);
 
@@ -258,7 +259,7 @@ describe('EventsService', () => {
                 InternalServerErrorException
             );
 
-            expect(eventsValidatorStub.validate.called).true;
+            expect(validatorStub.validate.called).true;
             expect(eventRepositoryStub.delete.called).true;
             expect(eventDetailRepositoryStub.delete.called).true;
             expect(eventRedisRepositoryStub.remove.called).false;
@@ -283,16 +284,27 @@ describe('EventsService', () => {
             sourceEventStub.eventDetail = sourceEventDetailStub;
             clonedEventStub.eventDetail = clonedEventDetailStub;
 
-            eventsValidatorStub.validate.resolves(sourceEventStub);
+            validatorStub.validate.resolves(sourceEventStub);
             eventRepositoryStub.save.resolves(clonedEventStub);
             eventRedisRepositoryStub.clone.returns(of(eventDetailBodyStub));
 
             const clonedEvent = await service.clone(sourceEventDetailStub.id, userMock.id);
             expect(clonedEvent).ok;
 
-            expect(eventsValidatorStub.validate.called).true;
+            expect(validatorStub.validate.called).true;
             expect(eventRepositoryStub.save.called).true;
             expect(eventRedisRepositoryStub.clone.called).true;
+        });
+
+        it('should be connected to availability for event', async () => {
+            const userIdMock = stubOne(User).id;
+            const eventIdMock = stubOne(Event).id;
+            const availabilityIdMock = stubOne(Availability).id;
+
+            await service.connectToAvailability(userIdMock, eventIdMock, availabilityIdMock);
+
+            expect(validatorStub.validate.calledTwice).true;
+            expect(eventRepositoryStub.update.called).true;
         });
     });
 });

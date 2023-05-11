@@ -11,13 +11,15 @@ import {
     ParseIntPipe,
     All,
     Req,
-    NotFoundException
+    NotFoundException,
+    Res
 } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { Event } from '@core/entities/events/event.entity';
 import { AuthUser } from '@decorators/auth-user.decorator';
+import { Matrix } from '@decorators/matrix.decorator';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
 import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-request.dto';
 import { GetEventResponseDto } from '@dto/event-groups/events/get-event-response.dto';
@@ -74,8 +76,16 @@ export class EventsController {
         await this.eventsService.remove(eventId, userId);
     }
 
-    async clone(userId: number, eventId: number): Promise<Event> {
-        return await this.eventsService.clone(eventId, userId);
+    clone(userId: number, eventId: number): Promise<Event> {
+        return this.eventsService.clone(eventId, userId);
+    }
+
+    connectToAvailability(
+        userId: number,
+        eventId: number,
+        availabilityId: number
+    ): Promise<boolean> {
+        return this.eventsService.connectToAvailability(userId, eventId, availabilityId);
     }
 
     /**
@@ -84,19 +94,41 @@ export class EventsController {
      * @see {@link [related stackoverflow thread](https://stackoverflow.com/questions/75513412/how-to-handle-http-copy-link-methods-in-nestjs-controller)}
      */
     @All(['', ':eventId'])
-    async others(@Req() req: Request, @AuthUser('id') userId: number | null): Promise<unknown> {
+    async others(
+        @Req() req: Request,
+        @Res() response: Response,
+        @AuthUser('id') userId: number,
+        @Matrix({
+            key: 'availabilityId',
+            parseInt: true,
+            firstOne: true
+        })
+        availabilityId: number
+    ): Promise<void> {
         let responseBody;
+        let statusCode = 500;
+
+        const { eventId } = req.params;
+        const ensuredEventId = eventId.split(';').shift() as string;
+        const parsedEventId = +ensuredEventId;
 
         switch (req.method) {
             case 'COPY':
-                if (userId) {
-                    responseBody = await this.clone(userId, +req.params.eventId);
-                }
+                responseBody = await this.clone(userId, parsedEventId);
+                statusCode = HttpStatus.CREATED;
+                break;
+            case 'LINK':
+                await this.connectToAvailability(userId, parsedEventId, availabilityId);
+                statusCode = HttpStatus.NO_CONTENT;
                 break;
             default:
                 throw new NotFoundException('Cannot found mapped method');
         }
 
-        return responseBody;
+        response.status(statusCode);
+        if (responseBody) {
+            response.json(responseBody);
+        }
+        response.end();
     }
 }
