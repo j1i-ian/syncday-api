@@ -1,6 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Observable, firstValueFrom } from 'rxjs';
-import { Event } from '@entity/events/event.entity';
 import { UserOwnCriteria } from '@criteria/user-own.criteria';
 import { ValidationCriteria } from '@criteria/validation-criteria.interface';
 import { UserResourceEntity } from '@criteria/user-resource-entity.type';
@@ -9,7 +8,7 @@ import { UserResourceEntity } from '@criteria/user-resource-entity.type';
  * TODO: Should be written Test
  */
 @Injectable()
-export class EventsValidator {
+export class Validator {
     constructor(private readonly userOwnCriteria: UserOwnCriteria) {
         this.validationCriteriaArray = [this.userOwnCriteria];
     }
@@ -19,12 +18,12 @@ export class EventsValidator {
     async validate<T>(
         userId: number,
         resourceId: number,
-        DesiredReturnEntityClassOrNull?: new () => T | null
+        ResourceEntityClass: new () => T extends UserResourceEntity ? T : never
     ): Promise<T> {
         const filteredList = await Promise.all(
             this.validationCriteriaArray.map(async (validationCriteria) => {
                 const _filterPromiseOrObservable = validationCriteria.filter(
-                    Event,
+                    ResourceEntityClass,
                     userId,
                     resourceId
                 );
@@ -43,18 +42,14 @@ export class EventsValidator {
             })
         );
 
-        let returnFilteredEntityInstance: T | null = null;
+        const returnFilteredEntityInstance = (filteredList.find(
+            (filtered) => filtered && filtered instanceof ResourceEntityClass
+        ) ?? null) as T | null;
 
-        if (DesiredReturnEntityClassOrNull) {
-            returnFilteredEntityInstance = (filteredList.find(
-                (filtered) => filtered && filtered instanceof DesiredReturnEntityClassOrNull
-            ) ?? null) as T | null;
-
-            if (returnFilteredEntityInstance === null) {
-                throw new InternalServerErrorException(
-                    'Cannot Find given UserResourceEntity instance while validation criteria is executed'
-                );
-            }
+        if (returnFilteredEntityInstance === null) {
+            throw new InternalServerErrorException(
+                'Cannot Find given UserResourceEntity instance while validation criteria is executed'
+            );
         }
 
         return returnFilteredEntityInstance as T;

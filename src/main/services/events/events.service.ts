@@ -6,13 +6,14 @@ import { Event } from '@core/entities/events/event.entity';
 import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
-import { EventsValidator } from '@services/events/events.validator';
+import { Availability } from '@entity/availability/availability.entity';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
+import { Validator } from '@criteria/validator';
 
 @Injectable()
 export class EventsService {
     constructor(
-        private readonly eventsValidator: EventsValidator,
+        private readonly validator: Validator,
         private readonly eventRedisRepository: EventsRedisRepository,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(EventGroup) private readonly eventGroupRepository: Repository<EventGroup>,
@@ -91,7 +92,7 @@ export class EventsService {
     }
 
     async update(eventId: number, userId: number, updateEvent: Partial<Event>): Promise<boolean> {
-        await this.eventsValidator.validate(userId, eventId);
+        await this.validator.validate(userId, eventId, Event);
 
         const updateResult = await this.eventRepository.update(eventId, updateEvent);
 
@@ -101,7 +102,7 @@ export class EventsService {
     }
 
     async remove(eventId: number, userId: number): Promise<boolean> {
-        const validatedEvent = await this.eventsValidator.validate(userId, eventId, Event);
+        const validatedEvent = await this.validator.validate(userId, eventId, Event);
 
         const eventDetail = validatedEvent.eventDetail;
 
@@ -131,7 +132,7 @@ export class EventsService {
     }
 
     async clone(eventId: number, userId: number): Promise<Event> {
-        const validatedEvent = await this.eventsValidator.validate(userId, eventId, Event);
+        const validatedEvent = await this.validator.validate(userId, eventId, Event);
 
         /* eslint-disable @typescript-eslint/no-unused-vars */
         const {
@@ -161,5 +162,20 @@ export class EventsService {
         clonedEvent.eventDetail.reminders = clonedEventDetailBody.reminders;
 
         return clonedEvent;
+    }
+
+    async connectToAvailability(
+        userId: number,
+        eventId: number,
+        availabilityId: number
+    ): Promise<boolean> {
+        await this.validator.validate(userId, eventId, Event);
+        await this.validator.validate(userId, availabilityId, Availability);
+
+        await this.eventRepository.update(eventId, {
+            availabilityId
+        });
+
+        return true;
     }
 }
