@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
-import { firstValueFrom, from } from 'rxjs';
+import { firstValueFrom, from, of } from 'rxjs';
 import { InternalServerErrorException } from '@nestjs/common';
 import { Event } from '@core/entities/events/event.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
@@ -96,6 +96,7 @@ describe('EventsService', () => {
             eventRedisRepositoryStub.getReminders.reset();
             eventRedisRepositoryStub.save.reset();
             eventRedisRepositoryStub.remove.reset();
+            eventRedisRepositoryStub.clone.reset();
 
             eventDetailRepositoryStub.save.reset();
             eventDetailRepositoryStub.delete.reset();
@@ -284,13 +285,14 @@ describe('EventsService', () => {
 
             eventsValidatorStub.validate.resolves(sourceEventStub);
             eventRepositoryStub.save.resolves(clonedEventStub);
+            eventRedisRepositoryStub.clone.returns(of(eventDetailBodyStub));
 
             const clonedEvent = await service.clone(sourceEventDetailStub.id, userMock.id);
             expect(clonedEvent).ok;
 
             expect(eventsValidatorStub.validate.called).true;
             expect(eventRepositoryStub.save.called).true;
-            expect(eventRedisRepositoryStub.remove.called).false;
+            expect(eventRedisRepositoryStub.clone.called).true;
         });
     });
 });

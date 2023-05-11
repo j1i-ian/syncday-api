@@ -1,4 +1,4 @@
-import { Observable, from, iif, of, switchMap } from 'rxjs';
+import { Observable, forkJoin, from, iif, of, switchMap } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster } from 'ioredis';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -85,5 +85,16 @@ export class EventsRedisRepository {
         const deletedReminderNode = await this.cluster.del(reminderKey);
 
         return deletedInviteeQuestionNode > 0 && deletedReminderNode > 0;
+    }
+
+    clone(sourceEventDetailUUID: string, newEventDetailUUID: string): Observable<EventsDetailBody> {
+        return forkJoin({
+            sourceInviteeQuestions: this.getInviteeQuestions(sourceEventDetailUUID),
+            sourceReminders: this.getReminders(sourceEventDetailUUID)
+        }).pipe(
+            switchMap(({ sourceInviteeQuestions, sourceReminders }) =>
+                this.save(newEventDetailUUID, sourceInviteeQuestions, sourceReminders)
+            )
+        );
     }
 }
