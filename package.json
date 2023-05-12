@@ -35,7 +35,8 @@
     "test:single": "mocha $npm_package_options_mocha",
     "prune": "bash scripts/prune-merged-branches.sh",
     "prepare": "husky install",
-    "core": "git submodule update --remote"
+    "core": "git submodule update --remote",
+    "core:checkout": "git submodule update --checkout"
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch-logs": "^3.300.0",
