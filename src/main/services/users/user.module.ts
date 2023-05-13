@@ -5,7 +5,6 @@ import { VerificationModule } from '../../auth/verification/verification.module'
 import { TokenModule } from '../../auth/token/token.module';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
-import { IntegrationsModule } from '../integrations/integrations.module';
 import { UserSettingModule } from './user-setting/user-setting.module';
 import { TemporaryUsersModule } from './temporary-users/temporary-users.module';
 import { SyncdayRedisModule } from '../syncday-redis/syncday-redis.module';
@@ -14,7 +13,6 @@ import { SyncdayRedisModule } from '../syncday-redis/syncday-redis.module';
     imports: [
         TypeOrmModule.forFeature([User]),
         VerificationModule,
-        forwardRef(() => IntegrationsModule),
         forwardRef(() => TokenModule),
         UserSettingModule,
         SyncdayRedisModule,

@@ -147,7 +147,7 @@ describe('Redis Service Test', () => {
         });
 
         it('should be got email verification', async () => {
-            const emailMock = testMockUtil.getFaker().internet.email();
+            const emailMock = TestMockUtil.faker.internet.email();
 
             const verificationStub = testMockUtil.getVerificationMock();
             const verificationStubString = JSON.stringify(verificationStub);
@@ -160,8 +160,8 @@ describe('Redis Service Test', () => {
         });
 
         it('should be got getEmailVerificationStatus', async () => {
-            const emailMock = testMockUtil.getFaker().internet.email();
-            const uuidMock = testMockUtil.getFaker().datatype.uuid();
+            const emailMock = TestMockUtil.faker.internet.email();
+            const uuidMock = TestMockUtil.faker.datatype.uuid();
 
             const statusJsonStringStub = 'true';
 
@@ -180,8 +180,8 @@ describe('Redis Service Test', () => {
         });
 
         it('should be set email verification status', async () => {
-            const emailMock = testMockUtil.getFaker().internet.email();
-            const uuidMock = testMockUtil.getFaker().datatype.uuid();
+            const emailMock = TestMockUtil.faker.internet.email();
+            const uuidMock = TestMockUtil.faker.datatype.uuid();
 
             serviceSandbox
                 .stub(service, 'getEmailVerificationStatusKey')
@@ -248,7 +248,7 @@ describe('Redis Service Test', () => {
         });
 
         it('coverage fill: getTemporaryUserKey', () => {
-            const emailMock = testMockUtil.getFaker().internet.email();
+            const emailMock = TestMockUtil.faker.internet.email();
 
             serviceSandbox.stub(service, <any>'getRedisKey').returns('local:workspaces');
 
@@ -258,7 +258,7 @@ describe('Redis Service Test', () => {
         });
 
         it('coverage fill: getWorkspaceAssignStatusKey', () => {
-            const emailMock = testMockUtil.getFaker().internet.email();
+            const emailMock = TestMockUtil.faker.internet.email();
 
             serviceSandbox.stub(service, <any>'getRedisKey').returns('local:workspaces');
 
@@ -268,7 +268,7 @@ describe('Redis Service Test', () => {
         });
 
         it('coverage fill: getEmailVerificationKey', () => {
-            const emailMock = testMockUtil.getFaker().internet.email();
+            const emailMock = TestMockUtil.faker.internet.email();
 
             serviceSandbox.stub(service, <any>'getRedisKey').returns('local:something:redis:key');
 
@@ -278,7 +278,7 @@ describe('Redis Service Test', () => {
         });
 
         it('coverage fill: getEmailVerificationStatusKey', () => {
-            const emailMock = testMockUtil.getFaker().internet.email();
+            const emailMock = TestMockUtil.faker.internet.email();
             const uuid = 'mockuuid';
 
             serviceSandbox.stub(service, <any>'getRedisKey').returns('local:something:redis:key');

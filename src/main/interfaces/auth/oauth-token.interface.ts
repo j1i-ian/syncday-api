@@ -1,4 +1,4 @@
-export interface GoogleToken {
+export interface OAuthToken {
     accessToken: string;
     refreshToken: string;
 }

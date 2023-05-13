@@ -9,7 +9,7 @@ import { DateTimeFormatOption } from '@entity/users/date-time-format-option.type
 import { Language } from '@app/enums/language.enum';
 import { EmailTemplate } from '@app/enums/email-template.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
-import { ZoomBasicAuth } from '../integrations/interfaces/zoom-basic-auth.interface';
+import { ZoomBasicAuth } from '../../interfaces/zoom-basic-auth.interface';
 
 interface UserDefaultSettingOption {
     randomSuffix: boolean;

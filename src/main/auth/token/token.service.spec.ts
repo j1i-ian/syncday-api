@@ -1,15 +1,15 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Auth } from 'googleapis';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
+import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
+import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { User } from '@entity/users/user.entity';
-import { CreateTokenResponseDto } from '@dto/tokens/create-token-response.dto';
-import { GoogleIntegrationsService } from '../../services/integrations/google-integrations.service';
+import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
+import { GoogleOAuth2UserWithToken } from '@app/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { UserService } from '../../services/users/user.service';
-import { IntegrationUtilService } from '../../services/util/integration-util/integraion-util.service';
 import { faker } from '@faker-js/faker';
-import { EnsuredGoogleOAuth2User, TokenService } from './token.service';
+import { TokenService } from './token.service';
 
 describe('TokenService', () => {
     let service: TokenService;
@@ -17,15 +17,15 @@ describe('TokenService', () => {
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let jwtServiceStub: sinon.SinonStubbedInstance<JwtService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
-    let googleIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
-    let integrationUtilServiceStub: sinon.SinonStubbedInstance<IntegrationUtilService>;
+    let googleIntegrationFacadeStub: sinon.SinonStubbedInstance<GoogleIntegrationFacade>;
+    let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
 
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         jwtServiceStub = sinon.createStubInstance(JwtService);
         userServiceStub = sinon.createStubInstance(UserService);
-        googleIntegrationServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
-        integrationUtilServiceStub = sinon.createStubInstance(IntegrationUtilService);
+        googleIntegrationFacadeStub = sinon.createStubInstance(GoogleIntegrationFacade);
+        googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -43,12 +43,12 @@ describe('TokenService', () => {
                     useValue: userServiceStub
                 },
                 {
-                    provide: GoogleIntegrationsService,
-                    useValue: googleIntegrationServiceStub
+                    provide: GoogleIntegrationFacade,
+                    useValue: googleIntegrationFacadeStub
                 },
                 {
-                    provide: IntegrationUtilService,
-                    useValue: integrationUtilServiceStub
+                    provide: GoogleConverterService,
+                    useValue: googleConverterServiceStub
                 }
             ]
         }).compile();
@@ -85,11 +85,11 @@ describe('TokenService', () => {
         });
 
         afterEach(() => {
-            integrationUtilServiceStub.generateGoogleOauthClient.reset();
-            integrationUtilServiceStub.issueGoogleTokenByAuthorizationCode.reset();
-            integrationUtilServiceStub.getGoogleUserInfo.reset();
+            googleIntegrationFacadeStub.fetchGoogleUsersWithToken.reset();
             userServiceStub.findUserByEmail.reset();
             userServiceStub.createUserByGoogleOAuth2.reset();
+
+            googleConverterServiceStub.convertToGoogleCalendarIntegration.reset();
         });
 
         it('should be issued token for google oauth which newbie is true', async () => {
@@ -98,27 +98,22 @@ describe('TokenService', () => {
             const languageMock = userSettingMock.preferredLanguage;
             const authorizationCodeMock = faker.datatype.uuid();
 
-            const fakeOAuthClient = {} as Auth.OAuth2Client;
-            const googleTokenStub: CreateTokenResponseDto = {
-                accessToken: 'fakeGoogleAuthKey',
-                refreshToken: 'fakeGoogleAuthRefreshKey'
-            };
             const googleUserStub = {
                 email: 'fakeEmail',
                 name: 'fakeName'
-            } as EnsuredGoogleOAuth2User;
+            };
+
+            googleIntegrationFacadeStub.fetchGoogleUsersWithToken.resolves({
+                googleUser: googleUserStub
+            } as GoogleOAuth2UserWithToken);
+
+            userServiceStub.findUserByEmail.resolves(null);
+            userServiceStub.createUserByGoogleOAuth2.resolves(userStub);
+
             const issuedTokenStub: CreateTokenResponseDto = {
                 accessToken: 'fakeJwtToken',
                 refreshToken: 'fakeRefreshToken'
             };
-
-            integrationUtilServiceStub.generateGoogleOauthClient.returns(fakeOAuthClient);
-            integrationUtilServiceStub.issueGoogleTokenByAuthorizationCode.resolves(
-                googleTokenStub
-            );
-            integrationUtilServiceStub.getGoogleUserInfo.resolves(googleUserStub);
-            userServiceStub.findUserByEmail.resolves(null);
-            userServiceStub.createUserByGoogleOAuth2.resolves(userStub);
 
             serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
 
@@ -129,11 +124,10 @@ describe('TokenService', () => {
 
             expect(issuedToken).ok;
 
-            expect(integrationUtilServiceStub.generateGoogleOauthClient.called).true;
-            expect(integrationUtilServiceStub.issueGoogleTokenByAuthorizationCode.called).true;
-            expect(integrationUtilServiceStub.getGoogleUserInfo.called).true;
+            expect(googleIntegrationFacadeStub.fetchGoogleUsersWithToken.called).true;
             expect(userServiceStub.findUserByEmail.called).true;
             expect(userServiceStub.createUserByGoogleOAuth2.called).true;
+            expect(googleConverterServiceStub.convertToGoogleCalendarIntegration.called).true;
         });
     });
 });

@@ -4,12 +4,11 @@ import { AwsSdkModule, AwsService, AwsServiceType } from 'nest-aws-sdk';
 import { S3 } from '@aws-sdk/client-s3';
 import { UtilService } from './util.service';
 import { FileUtilsService } from './file-utils/file-utils.service';
-import { IntegrationUtilService } from './integration-util/integraion-util.service';
 
 @Global()
 @Module({
     imports: [ConfigModule, AwsSdkModule.forFeatures([S3 as AwsServiceType<AwsService>])],
-    providers: [UtilService, FileUtilsService, IntegrationUtilService],
-    exports: [UtilService, FileUtilsService, IntegrationUtilService]
+    providers: [UtilService, FileUtilsService],
+    exports: [UtilService, FileUtilsService]
 })
 export class UtilModule {}

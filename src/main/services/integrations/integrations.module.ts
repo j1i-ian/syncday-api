@@ -1,22 +1,19 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
-import { GoogleIntegrationsService } from './google-integrations.service';
 import { IntegrationsService } from './integrations.service';
-import { CalendarsModule } from './calendars/calendars.module';
-import { IntegrationsController } from './integrations.controller';
 import { MeetingModule } from './meetings/meetings.module';
+import { IntegrationsController } from './integrations.controller';
+import { GoogleIntegrationModule } from './google-integration/google-integration.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([GoogleIntegration]),
-        ConfigModule,
-        CalendarsModule,
-        MeetingModule
+        MeetingModule,
+        GoogleIntegrationModule
     ],
     controllers: [IntegrationsController],
-    providers: [IntegrationsService, GoogleIntegrationsService],
-    exports: [IntegrationsService, GoogleIntegrationsService]
+    providers: [IntegrationsService],
+    exports: [IntegrationsService]
 })
 export class IntegrationsModule {}
