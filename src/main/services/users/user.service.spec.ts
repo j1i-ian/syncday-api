@@ -11,7 +11,6 @@ import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { TestMockUtil } from '../../../test/test-mock-util';
 import { UserService } from './user.service';
-import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
@@ -23,7 +22,6 @@ describe('Test User Service', () => {
 
     let service: UserService;
     let tokenServiceStub: sinon.SinonStubbedInstance<TokenService>;
-    let googleIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let verificationServiceStub: sinon.SinonStubbedInstance<VerificationService>;
     let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
@@ -44,7 +42,6 @@ describe('Test User Service', () => {
 
     before(async () => {
         tokenServiceStub = sinon.createStubInstance(TokenService);
-        googleIntegrationServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
         verificationServiceStub = sinon.createStubInstance(VerificationService);
         userSettingServiceStub = sinon.createStubInstance(UserSettingService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
@@ -73,10 +70,6 @@ describe('Test User Service', () => {
                 {
                     provide: TokenService,
                     useValue: tokenServiceStub
-                },
-                {
-                    provide: GoogleIntegrationsService,
-                    useValue: googleIntegrationServiceStub
                 },
                 {
                     provide: VerificationService,
@@ -282,7 +275,7 @@ describe('Test User Service', () => {
             });
 
             it('should be verified when email and verification is matched each other', async () => {
-                const emailMock = testMockUtil.getFaker().internet.email();
+                const emailMock = TestMockUtil.faker.internet.email();
 
                 const tempUserStub = testMockUtil.getTemporaryUser();
                 const userStub = stubOne(User);
@@ -309,7 +302,7 @@ describe('Test User Service', () => {
             });
 
             it('should be not verified when email and verification is not matched', async () => {
-                const emailMock = testMockUtil.getFaker().internet.email();
+                const emailMock = TestMockUtil.faker.internet.email();
                 const verificationCodeMock = '1423';
 
                 syncdayRedisServiceStub.getEmailVerification.resolves(null);

@@ -9,6 +9,7 @@ import { plainToInstance } from 'class-transformer';
 import { UpdateResult } from 'typeorm';
 import { TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { calendar_v3 } from 'googleapis';
 import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -16,6 +17,7 @@ import { QuestionInputType } from '@core/entities/invitee-questions/question-inp
 import { Reminder } from '@core/entities/reminders/reminder.entity';
 import { ReminderType } from '@core/entities/reminders/reminder-type.enum';
 import { ReminderTarget } from '@core/entities/reminders/reminder-target.enum';
+import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
 import { Verification } from '@entity/verifications/verification.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { Faker, faker } from '@faker-js/faker';
@@ -40,6 +42,10 @@ export class TestMockUtil {
         };
 
         return datasourceMock;
+    }
+
+    static get faker(): Faker {
+        return faker;
     }
 
     constructor() {
@@ -102,7 +108,7 @@ export class TestMockUtil {
     ): InviteeQuestion {
         return {
             eventDetailUUID: eventDetailUUID || 'DEFAULT_EVENT_DETAIL_UUID',
-            name: this.getFaker().name.jobTitle(),
+            name: faker.name.jobTitle(),
             inputType: QuestionInputType.TEXT,
             required: false,
             ...inviteeQuestion
@@ -115,8 +121,21 @@ export class TestMockUtil {
             remindBefore: '10',
             target: ReminderTarget.HOST,
             type: ReminderType.EMAIL,
-            uuid: this.getFaker().datatype.uuid(),
+            uuid: faker.datatype.uuid(),
             ...reminder
+        };
+    }
+
+    getGoogleCalendarMock(): calendar_v3.Schema$CalendarList {
+        return {
+            nextSyncToken: faker.datatype.uuid(),
+            items: [
+                {
+                    accessRole: GoogleCalendarAccessRole.OWNER,
+                    primary: true,
+                    description: 'testDescription'
+                }
+            ]
         };
     }
 
@@ -175,14 +194,10 @@ export class TestMockUtil {
 
     getTemporaryUser(): TemporaryUser {
         return {
-            email: this.getFaker().internet.email(),
-            name: this.getFaker().name.fullName(),
-            plainPassword: this.getFaker().word.noun(),
+            email: faker.internet.email(),
+            name: faker.name.fullName(),
+            plainPassword: faker.word.noun(),
             language: Language.ENGLISH
         };
-    }
-
-    getFaker(): Faker {
-        return faker;
     }
 }

@@ -1,12 +1,10 @@
 import { Routes } from '@nestjs/core';
 import { UserSettingModule } from '@services/users/user-setting/user-setting.module';
 import { UserModule } from '@services/users/user.module';
-import { GoogleModule } from '@services/integrations/calendars/google/google.module';
 import { AvailabilityModule } from '@services/availability/availability.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
-import { CalendarsModule } from '../main/services/integrations/calendars/calendars.module';
 import { TemporaryUsersModule } from '../main/services/users/temporary-users/temporary-users.module';
 import { WorkspacesModule } from '../main/services/workspaces/workspaces.module';
 import { MeetingModule } from '../main/services/integrations/meetings/meetings.module';
@@ -47,16 +45,6 @@ export const routes: Routes = [
         path: 'integrations',
         module: IntegrationsModule,
         children: [
-            {
-                path: 'calendars',
-                module: CalendarsModule,
-                children: [
-                    {
-                        path: 'google',
-                        module: GoogleModule
-                    }
-                ]
-            },
             {
                 path: 'meetings',
                 module: MeetingModule,

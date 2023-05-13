@@ -3,13 +3,14 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { compare } from 'bcrypt';
 import { oauth2_v2 } from 'googleapis';
+import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
+import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
 import { AppConfigService } from '../../../configs/app-config.service';
 import { UserService } from '../../services/users/user.service';
-import { IntegrationUtilService } from '../../services/util/integration-util/integraion-util.service';
 
 export interface EnsuredGoogleTokenResponse {
     accessToken: string;
@@ -30,7 +31,8 @@ export class TokenService {
         private readonly jwtService: JwtService,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
-        private readonly integrationUtilService: IntegrationUtilService
+        private readonly googleIntegrationFacade: GoogleIntegrationFacade,
+        private readonly googleConverterService: GoogleConverterService
     ) {
         this.jwtOption = AppConfigService.getJwtOptions(this.configService);
     }
@@ -38,7 +40,7 @@ export class TokenService {
     jwtOption: JwtModuleOptions;
 
     generateGoogleOAuthAuthoizationUrl(): string {
-        return this.integrationUtilService.generateGoogleOAuthAuthoizationUrl();
+        return this.googleIntegrationFacade.generateGoogleOAuthAuthoizationUrl();
     }
 
     async issueTokenByGoogleOAuth(
@@ -48,31 +50,25 @@ export class TokenService {
         issuedToken: CreateTokenResponseDto;
         isNewbie: boolean;
     }> {
-        const { redirectURI } = AppConfigService.getGoogleOAuth2Setting(this.configService);
-
-        const oauthClient = this.integrationUtilService.generateGoogleOauthClient(redirectURI);
-        const tokens = await this.integrationUtilService.issueGoogleTokenByAuthorizationCode(
-            oauthClient,
-            authorizationCode
-        );
-
-        const googleUserInfo = await this.integrationUtilService.getGoogleUserInfo(
-            oauthClient,
-            tokens.refreshToken
-        );
+        const { googleUser, calendars, tokens } =
+            await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode);
 
         let isNewbie = false;
-        let loadedUserOrNull = await this.userService.findUserByEmail(googleUserInfo.email);
+        let loadedUserOrNull = await this.userService.findUserByEmail(googleUser.email);
 
         if (loadedUserOrNull === null || loadedUserOrNull === undefined) {
             const createUserRequestDto: CreateUserRequestDto = {
-                email: googleUserInfo.email,
-                name: googleUserInfo.name as string
+                email: googleUser.email,
+                name: googleUser.name
             };
+
+            const newGoogleCalendarIntegrations =
+                this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
 
             loadedUserOrNull = await this.userService.createUserByGoogleOAuth2(
                 createUserRequestDto,
                 tokens,
+                newGoogleCalendarIntegrations,
                 language
             );
             isNewbie = true;

@@ -15,13 +15,14 @@ import {
 } from 'nest-aws-sdk';
 import { CloudWatchLogs, CloudWatchLogsClientConfig } from '@aws-sdk/client-cloudwatch-logs';
 import * as ormConfig from '@config/ormconfig.json';
+import { GoogleCredentials } from '@app/interfaces/integrations/google/google-credential.interface';
 import { ClusterModuleAsyncOptions } from '@liaoliaots/nestjs-redis';
 
 // eslint-disable-next-line import/no-internal-modules
 import { MailerAsyncOptions } from '@nestjs-modules/mailer/dist/interfaces/mailer-async-options.interface';
 import { MailerOptions } from '@nestjs-modules/mailer';
 import { NodeEnv } from './node-env.enum';
-import { ZoomBasicAuth } from '../main/services/integrations/interfaces/zoom-basic-auth.interface';
+import { ZoomBasicAuth } from '../main/interfaces/zoom-basic-auth.interface';
 import { GoogleOAuth2Setting } from '../main/interfaces/auth/google-oauth2-setting.interface';
 
 interface AWSSDKOptionType {
@@ -224,10 +225,7 @@ export class AppConfigService {
         };
     }
 
-    static getGoogleCredentials(configService: ConfigService): {
-        clientId: string;
-        clientSecret: string;
-    } {
+    static getGoogleCredentials(configService: ConfigService): GoogleCredentials {
         return {
             clientId: configService.get<string>('GOOGLE_CLIENT_ID') as string,
             clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET') as string

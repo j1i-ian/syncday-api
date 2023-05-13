@@ -15,13 +15,13 @@ import { DateRange } from '@entity/events/date-range.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Contact } from '@entity/events/contact.entity';
 import { ContactType } from '@entity/events/contact-type.enum';
+import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
-import { OAuthInfo } from '@app/interfaces/auth/oauth-info.interface';
+import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
 import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
-import { GoogleIntegrationsService } from '../integrations/google-integrations.service';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
@@ -37,7 +37,6 @@ export class UserService {
         @InjectDataSource() private datasource: DataSource,
         @Inject(forwardRef(() => TokenService))
         private readonly tokenService: TokenService,
-        private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly verificationService: VerificationService,
         private readonly userSettingService: UserSettingService,
         private readonly syncdayRedisService: SyncdayRedisService,
@@ -253,7 +252,8 @@ export class UserService {
 
     async createUserByGoogleOAuth2(
         createUserRequestDto: CreateUserRequestDto,
-        googleAuthInfo: OAuthInfo,
+        googleAuthToken: OAuthToken,
+        googleCalendarIntegrations: GoogleCalendarIntegration[],
         language: Language
     ): Promise<User> {
         const createdUser = await this.datasource.transaction(async (manager) => {
@@ -261,9 +261,10 @@ export class UserService {
 
             const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
             const savedGoogleIntegration = await _googleIntegrationRepository.save({
-                accessToken: googleAuthInfo.accessToken,
-                refreshToken: googleAuthInfo.refreshToken,
-                email: createUserRequestDto.email
+                accessToken: googleAuthToken.accessToken,
+                refreshToken: googleAuthToken.refreshToken,
+                email: createUserRequestDto.email,
+                googleCalendarIntegrations
             });
 
             newUser.googleIntergrations = [savedGoogleIntegration];

@@ -9,8 +9,6 @@ import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-r
 import { TestMockUtil } from '@test/test-mock-util';
 import { VerificationService } from './verification.service';
 
-const testMockUtil = new TestMockUtil();
-
 describe('VerificationService', () => {
     let service: VerificationService;
 
@@ -68,7 +66,7 @@ describe('VerificationService', () => {
             const fakeEmailKey = 'local:verifications:email:alan@sync.day';
 
             it('should be created email verification when cluster saving is success', async () => {
-                const emailMock = testMockUtil.getFaker().internet.email();
+                const emailMock = TestMockUtil.faker.internet.email();
 
                 syncdayRedisServiceStub.getEmailVerificationKey.returns(fakeEmailKey);
                 utilServiceStub.generateRandomNumberString.returns('0123');
@@ -86,7 +84,7 @@ describe('VerificationService', () => {
             });
 
             it('should be not created email verification when cluster saving is failed', async () => {
-                const emailMock = testMockUtil.getFaker().internet.email();
+                const emailMock = TestMockUtil.faker.internet.email();
 
                 syncdayRedisServiceStub.getEmailVerificationKey.returns(fakeEmailKey);
 
@@ -112,7 +110,7 @@ describe('VerificationService', () => {
             });
 
             it('should be got true when user verification status is true', async () => {
-                const emailMock = testMockUtil.getFaker().internet.email();
+                const emailMock = TestMockUtil.faker.internet.email();
 
                 const verificationStub = stubOne(Verification);
 
@@ -128,7 +126,7 @@ describe('VerificationService', () => {
             });
 
             it('should be got false when user verification status is false', async () => {
-                const emailMock = testMockUtil.getFaker().internet.email();
+                const emailMock = TestMockUtil.faker.internet.email();
 
                 const verificationStub = stubOne(Verification);
 
