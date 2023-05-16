@@ -276,6 +276,7 @@ export class UserService {
                 accessToken: googleAuthToken.accessToken,
                 refreshToken: googleAuthToken.refreshToken,
                 email: createUserRequestDto.email,
+                users: [_createdUser],
                 googleCalendarIntegrations: googleCalendarIntegrations.map((calendar) => {
                     calendar.users = [_createdUser];
                     return calendar;
