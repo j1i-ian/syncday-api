@@ -42,6 +42,7 @@ describe('UserSettingService', () => {
 
     describe('Test User Setting CRUD', () => {
         afterEach(() => {
+            userSettingRepositoryStub.findOneOrFail.reset();
             userSettingRepositoryStub.update.reset();
         });
 
@@ -70,6 +71,16 @@ describe('UserSettingService', () => {
                 expect(searchedUserSettings).ok;
                 expect(searchedUserSettings.length).equals(expectedLength);
             });
+        });
+
+        it('should be fetched user setting by user id', async () => {
+            const userSettingStub = stubOne(UserSetting);
+
+            userSettingRepositoryStub.findOneOrFail.resolves(userSettingStub);
+
+            await service.fetchUserSettingByUserId(userSettingStub.userId);
+
+            expect(userSettingRepositoryStub.findOneOrFail.called).true;
         });
 
         it('should be patched user setting', async () => {
