@@ -1,4 +1,5 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { URLSearchParams } from 'url';
+import { createParamDecorator, ExecutionContext, RequestMethod } from '@nestjs/common';
 import { Request } from 'express';
 import { AdditionalHttpMethod } from '@app/enums/additional-http-method.enum';
 
@@ -30,6 +31,13 @@ interface MatrixOption {
     firstOne?: boolean | undefined;
 }
 
+interface MatrixMergeOption {
+    /**
+     * merge all object entries. default true
+     */
+    array?: boolean;
+}
+
 const stringType = typeof '';
 const objectType = typeof {};
 
@@ -39,7 +47,10 @@ const objectType = typeof {};
  * @return { { matrixKey: string[], ... } }
  */
 export const Matrix = createParamDecorator(
-    (keyOrOptions: string | MatrixOption | null = null, ctx: ExecutionContext) => {
+    (
+        keyOrOptions: string | MatrixOption | MatrixMergeOption | null = null,
+        ctx: ExecutionContext
+    ) => {
         if (
             __isMatrixParamUseHttpMethod(
                 ctx.switchToHttp().getRequest().method as AdditionalHttpMethod
@@ -53,31 +64,50 @@ export const Matrix = createParamDecorator(
 
         matrixParamTokens.shift(); // skip url
 
-        const consistedMap = matrixParamTokens.reduce((_map, token) => {
-            const [tokenKey, tokenValue] = token.split('=');
-            const previousValue: string[] = _map.get(tokenKey) ?? [];
+        const matrixSearchParams = matrixParamTokens.map((_token) => new URLSearchParams(_token));
 
-            _map.set(tokenKey, previousValue.concat(tokenValue));
+        if (keyOrOptions && (keyOrOptions as MatrixMergeOption).array === true) {
+            const entries = matrixSearchParams.map((_matrixSearchParam) =>
+                Object.fromEntries(_matrixSearchParam.entries())
+            );
+            return entries;
+        }
 
-            return _map;
-        }, new Map<string, string[]>());
+        const matrixParam = matrixSearchParams.reduce((_matrixParam, _searchParam) => {
+            const entries = _searchParam.entries();
 
-        const matrixParam = Object.fromEntries(consistedMap.entries());
-        const result = __parseByOption(matrixParam, keyOrOptions);
+            for (const [key, value] of entries) {
+                if (_matrixParam[key]) {
+                    const _matrixParamValue = _matrixParam[key];
+                    _matrixParamValue.concat(value);
+                    _matrixParam[key] = _matrixParamValue;
+                } else {
+                    _matrixParam[key] = [value];
+                }
+            }
+
+            return _matrixParam;
+        }, {} as ObjectEntry);
+
+        const result = __parseByOption(matrixParam, keyOrOptions as string | MatrixOption | null);
 
         return result;
     }
 );
 
-const __isMatrixParamUseHttpMethod = (httpMethod: AdditionalHttpMethod): boolean => {
+const __isMatrixParamUseHttpMethod = (
+    httpMethod: RequestMethod | AdditionalHttpMethod
+): boolean => {
     let shouldTransform = false;
 
     switch (httpMethod) {
         case AdditionalHttpMethod.LINK:
         case AdditionalHttpMethod.UNLINK:
+        case RequestMethod[RequestMethod.PATCH]:
             shouldTransform = true;
             break;
         default:
+        case AdditionalHttpMethod.COPY:
             shouldTransform = false;
     }
     return shouldTransform;

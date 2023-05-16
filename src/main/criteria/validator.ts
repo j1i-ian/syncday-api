@@ -6,6 +6,8 @@ import { UserResourceEntity } from '@criteria/user-resource-entity.type';
 
 /**
  * TODO: Should be written Test
+ *
+ * should support resource id array
  */
 @Injectable()
 export class Validator {

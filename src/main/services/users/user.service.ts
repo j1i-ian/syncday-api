@@ -260,14 +260,6 @@ export class UserService {
             const newUser = createUserRequestDto as User;
 
             const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
-            const savedGoogleIntegration = await _googleIntegrationRepository.save({
-                accessToken: googleAuthToken.accessToken,
-                refreshToken: googleAuthToken.refreshToken,
-                email: createUserRequestDto.email,
-                googleCalendarIntegrations
-            });
-
-            newUser.googleIntergrations = [savedGoogleIntegration];
 
             newUser.userSetting = this.utilService.getUsetDefaultSetting(newUser, language, {
                 randomSuffix: false,
@@ -278,6 +270,16 @@ export class UserService {
                 plainPassword: undefined,
                 alreadySignedUpUserCheck: false,
                 emailVerification: false
+            });
+
+            await _googleIntegrationRepository.save({
+                accessToken: googleAuthToken.accessToken,
+                refreshToken: googleAuthToken.refreshToken,
+                email: createUserRequestDto.email,
+                googleCalendarIntegrations: googleCalendarIntegrations.map((calendar) => {
+                    calendar.users = [_createdUser];
+                    return calendar;
+                })
             });
 
             return _createdUser;
