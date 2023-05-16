@@ -5,12 +5,14 @@ import { IntegrationsService } from './integrations.service';
 import { MeetingModule } from './meetings/meetings.module';
 import { IntegrationsController } from './integrations.controller';
 import { GoogleIntegrationModule } from './google-integration/google-integration.module';
+import { CalendarIntegrationsModule } from './calendar-integrations/calendar-integrations.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([GoogleIntegration]),
         MeetingModule,
-        GoogleIntegrationModule
+        GoogleIntegrationModule,
+        CalendarIntegrationsModule
     ],
     controllers: [IntegrationsController],
     providers: [IntegrationsService],
