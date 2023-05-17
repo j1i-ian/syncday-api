@@ -5,6 +5,7 @@ cache:
   paths:
     - node_modules/
     - dist/
+    - docs/
 
 stages:
   - .pre
@@ -79,6 +80,38 @@ test:
     echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
     bash scripts/init.sh
     npm run test
+  only:
+    - main
+    - develop
+
+build-docs-with-coverage:
+  stage: deploy
+  needs:
+    - lint
+    - test
+  script: |
+    apk add bash
+    apk add git
+    git config --system credential.helper store
+    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
+    bash scripts/init.sh
+    npm i -D @compodoc/compodoc
+    npm i -D nyc
+    yarn run test:coverage
+    yarn run build:docs
+  only:
+    - main
+    - develop
+
+deploy-docs-to-s3:
+  stage: deploy
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
+  needs:
+    - build-docs-with-coverage
+  script: |
+    aws s3 sync ./docs s3://$S3_BUCKET --delete --acl public-read
+  variables:
+    S3_BUCKET: "docs.sync.day"
   only:
     - main
     - develop
