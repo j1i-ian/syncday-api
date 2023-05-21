@@ -9,7 +9,8 @@ import {
     HttpCode,
     HttpStatus,
     Put,
-    Delete
+    Delete,
+    Patch
 } from '@nestjs/common';
 import { Observable, from, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
@@ -18,6 +19,7 @@ import { CreateAvailabilityRequestDto } from '@dto/availability/create-availabil
 import { UpdateAvailabilityRequestDto } from '@dto/availability/update-availability-request.dto';
 import { CreateAvailabilityResponseDto } from '@dto/availability/create-availability-response.dto';
 import { GetAvailabilityResponseDto } from '@dto/availability/get-availability-response.dto';
+import { PatchAvailabilityRequestDto } from '@dto/availability/patch-availability-request.dto';
 import { AvailabilitySearchOption } from '@app/interfaces/availability/availability-search-option.interface';
 import { AvailabilityService } from './availability.service';
 
@@ -85,6 +87,19 @@ export class AvailabilityController {
     ): Observable<boolean> {
         return from(
             this.availabilityService.update(availabilityId, userUUID, updateAvailabilityDto)
+        );
+    }
+
+    @Patch(':availabilityId')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    patch(
+        @Param('availabilityId', ParseIntPipe) availabilityId: number,
+        @AuthUser('id') userId: number,
+        @AuthUser('uuid') userUUID: string,
+        @Body() patchAvailabilityDto: PatchAvailabilityRequestDto
+    ): Observable<boolean> {
+        return from(
+            this.availabilityService.patch(availabilityId, userId, userUUID, patchAvailabilityDto)
         );
     }
 
