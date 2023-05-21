@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { InternalServerErrorException } from '@nestjs/common';
@@ -7,6 +7,7 @@ import { Availability } from '@core/entities/availability/availability.entity';
 import { User } from '@core/entities/users/user.entity';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
+import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { AvailabilityService } from './availability.service';
 
@@ -14,6 +15,9 @@ const testMockUtil = new TestMockUtil();
 
 describe('AvailabilityService', () => {
     let service: AvailabilityService;
+
+    let module: TestingModule;
+    const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
 
@@ -24,9 +28,13 @@ describe('AvailabilityService', () => {
 
         availabilityRepositoryStub = sinon.createStubInstance<Repository<Availability>>(Repository);
 
-        const module: TestingModule = await Test.createTestingModule({
+        module = await Test.createTestingModule({
             providers: [
                 AvailabilityService,
+                {
+                    provide: getDataSourceToken(),
+                    useValue: datasourceMock
+                },
                 {
                     provide: SyncdayRedisService,
                     useValue: syncdayRedisServiceStub
@@ -170,6 +178,167 @@ describe('AvailabilityService', () => {
             expect(availabilityRepositoryStub.findOneByOrFail.called).true;
             expect(availabilityRepositoryStub.update.called).true;
             expect(syncdayRedisServiceStub.setAvailability.called).false;
+        });
+
+        describe('Test availability patch', () => {
+            afterEach(() => {
+                availabilityRepositoryStub.update.reset();
+                availabilityRepositoryStub.findOneByOrFail.reset();
+                syncdayRedisServiceStub.getAvailabilityBodyRecord.reset();
+                syncdayRedisServiceStub.getAvailability.reset();
+                syncdayRedisServiceStub.setAvailability.reset();
+            });
+
+            it('should be patched default as true and previous default availability should be patched default as false ', async () => {
+                const userStub = stubOne(User);
+                const availabilityStub = stubOne(Availability, {
+                    default: false
+                });
+
+                availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
+
+                const patchResult = await service.patch(
+                    availabilityStub.id,
+                    userStub.id,
+                    userStub.uuid,
+                    {
+                        ...availabilityStub,
+                        default: true
+                    }
+                );
+
+                expect(patchResult).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
+                expect(availabilityRepositoryStub.update.calledTwice).true;
+                expect(syncdayRedisServiceStub.setAvailability.called).false;
+            });
+
+            it('should be patched default as true with name, timezone and previous default availability should be patched default as false ', async () => {
+                const userStub = stubOne(User);
+                const availabilityStub = stubOne(Availability, {
+                    default: false
+                });
+
+                const newTimezone = 'newTimezone';
+
+                expect(newTimezone).not.equals(availabilityStub.timezone);
+
+                availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
+
+                const patchResult = await service.patch(
+                    availabilityStub.id,
+                    userStub.id,
+                    userStub.uuid,
+                    {
+                        ...availabilityStub,
+                        default: true
+                    }
+                );
+
+                expect(patchResult).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
+                expect(availabilityRepositoryStub.update.calledTwice).true;
+                expect(syncdayRedisServiceStub.setAvailability.called).false;
+            });
+
+            it('should be threw error when default request value is false if that target availability is default', async () => {
+                const userStub = stubOne(User);
+                const availabilityStub = stubOne(Availability, {
+                    default: true
+                });
+
+                const newTimezone = 'newTimezone';
+
+                expect(newTimezone).not.equals(availabilityStub.timezone);
+
+                availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
+
+                await expect(
+                    service.patch(availabilityStub.id, userStub.id, userStub.uuid, {
+                        ...availabilityStub,
+                        default: false
+                    })
+                ).rejectedWith(NoDefaultAvailabilityException);
+
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
+                expect(availabilityRepositoryStub.update.called).false;
+                expect(availabilityRepositoryStub.update.calledTwice).false;
+                expect(syncdayRedisServiceStub.setAvailability.called).false;
+            });
+
+            it('should be patched name, timezone when patching default request value is false', async () => {
+                const userStub = stubOne(User);
+                const availabilityStub = stubOne(Availability, {
+                    default: false
+                });
+
+                const newTimezone = 'newTimezone';
+
+                expect(newTimezone).not.equals(availabilityStub.timezone);
+
+                availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
+
+                const patchResult = await service.patch(
+                    availabilityStub.id,
+                    userStub.id,
+                    userStub.uuid,
+                    availabilityStub
+                );
+
+                expect(patchResult).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
+                expect(availabilityRepositoryStub.update.called).true;
+                expect(availabilityRepositoryStub.update.calledTwice).false;
+                expect(syncdayRedisServiceStub.setAvailability.called).false;
+            });
+
+            it('should be patched availableTimes with overrides', async () => {
+                const userStub = stubOne(User);
+                const availabilityStub = stubOne(Availability, {
+                    default: false
+                });
+                const patchAvailabilityRequestDtoMock =
+                    testMockUtil.getAvailabilityBodyMock(availabilityStub);
+
+                availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
+
+                const patchResult = await service.patch(
+                    availabilityStub.id,
+                    userStub.id,
+                    userStub.uuid,
+                    patchAvailabilityRequestDtoMock
+                );
+
+                expect(patchResult).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
+                expect(availabilityRepositoryStub.update.called).false;
+                expect(availabilityRepositoryStub.update.calledTwice).false;
+                expect(syncdayRedisServiceStub.setAvailability.called).true;
+            });
+
+            it('should be not patched when dto has only availableTimes, not include overrides', async () => {
+                const userStub = stubOne(User);
+                const availabilityStub = stubOne(Availability, {
+                    default: false
+                });
+                const patchAvailabilityRequestDtoMock =
+                    testMockUtil.getAvailabilityBodyMock(availabilityStub);
+
+                availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
+
+                const patchResult = await service.patch(
+                    availabilityStub.id,
+                    userStub.id,
+                    userStub.uuid,
+                    patchAvailabilityRequestDtoMock
+                );
+
+                expect(patchResult).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
+                expect(availabilityRepositoryStub.update.called).false;
+                expect(availabilityRepositoryStub.update.calledTwice).false;
+                expect(syncdayRedisServiceStub.setAvailability.called).true;
+            });
         });
     });
 });

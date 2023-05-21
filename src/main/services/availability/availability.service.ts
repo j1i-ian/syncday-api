@@ -1,20 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
 import { Observable, forkJoin, from, map, mergeMap } from 'rxjs';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
 import { UpdateAvailabilityRequestDto } from '@dto/availability/update-availability-request.dto';
+import { PatchAvailabilityRequestDto } from '@dto/availability/patch-availability-request.dto';
 import { AvailabilitySearchOption } from '@app/interfaces/availability/availability-search-option.interface';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { AvailabilityUpdateFailByEntityException } from '@app/exceptions/availability-update-fail-by-entity.exception';
+import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 
 @Injectable()
 export class AvailabilityService {
     constructor(
         private readonly syncdayRedisService: SyncdayRedisService,
+        @InjectDataSource() private datasource: DataSource,
         @InjectRepository(Availability)
         private readonly availabilityRepository: Repository<Availability>
     ) {}
@@ -130,6 +133,74 @@ export class AvailabilityService {
             throw new AvailabilityUpdateFailByEntityException(
                 `Cannot update availability: ${availabilityId}`
             );
+        }
+
+        return true;
+    }
+
+    async patch(
+        availabilityId: number,
+        userId: number,
+        userUUID: string,
+        patchAvailabilityDto: PatchAvailabilityRequestDto
+    ): Promise<boolean> {
+        const {
+            default: isDefault,
+            name,
+            timezone,
+            availableTimes,
+            overrides
+        } = patchAvailabilityDto;
+
+        const availability = await this.availabilityRepository.findOneByOrFail({
+            id: availabilityId
+        });
+
+        const isNoDefaultAvailabilityRequest =
+            availability.default === true && patchAvailabilityDto.default === false;
+        const shouldRDBUpdate = isDefault !== undefined || name || timezone;
+
+        // validation
+        if (isNoDefaultAvailabilityRequest) {
+            throw new NoDefaultAvailabilityException(
+                'Default availability cannot set default as false'
+            );
+        }
+
+        if (shouldRDBUpdate) {
+            const patchedAvailability = Object.assign(availability, patchAvailabilityDto);
+
+            await this.datasource.transaction(async (transactionManager) => {
+                const _availabilityRepository = transactionManager.getRepository(Availability);
+
+                if (availability.default) {
+                    await _availabilityRepository.update(
+                        {
+                            userId
+                        },
+                        {
+                            default: false
+                        }
+                    );
+                }
+
+                await _availabilityRepository.update(availabilityId, {
+                    default: patchedAvailability.default,
+                    name: patchedAvailability.name,
+                    timezone: patchedAvailability.timezone
+                });
+            });
+        }
+
+        /**
+         * TDDO: it should be split into another api.
+         * Notice availability uuid is fetched from rdb
+         */
+        if (availableTimes && overrides) {
+            await this.syncdayRedisService.setAvailability(availability.uuid, userUUID, {
+                availableTimes,
+                overrides
+            });
         }
 
         return true;
