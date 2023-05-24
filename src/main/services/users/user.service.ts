@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
+import { plainToInstance } from 'class-transformer';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { User } from '@entity/users/user.entity';
@@ -176,11 +177,11 @@ export class UserService {
         const _userRepository = manager.getRepository(User);
         const _availabilityRepository = manager.getRepository(Availability);
 
-        const savedUser = await _userRepository.save({
+        const savedUser = await _userRepository.save<User>({
             ...createdUser,
             hashedPassword,
             userSetting
-        });
+        } as User);
 
         const _5min = '00:05:00';
         const initialBufferTime = new BufferTime();
@@ -247,7 +248,7 @@ export class UserService {
 
         await manager.getRepository(EventGroup).save(initialEventGroup);
 
-        return savedUser;
+        return plainToInstance(User, savedUser);
     }
 
     async createUserByGoogleOAuth2(
@@ -271,6 +272,8 @@ export class UserService {
                 alreadySignedUpUserCheck: false,
                 emailVerification: false
             });
+
+            _createdUser.patchPromotedPropertyFromUserSetting();
 
             await _googleIntegrationRepository.save({
                 accessToken: googleAuthToken.accessToken,
