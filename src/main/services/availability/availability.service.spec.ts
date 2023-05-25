@@ -8,6 +8,7 @@ import { User } from '@core/entities/users/user.entity';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
+import { CannotDeleteDefaultAvailabilityException } from '@app/exceptions/availability/cannot-delete-default-availability.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { AvailabilityService } from './availability.service';
 
@@ -56,11 +57,14 @@ describe('AvailabilityService', () => {
     describe('Test Availability CRUD', () => {
         afterEach(() => {
             availabilityRepositoryStub.find.reset();
-            availabilityRepositoryStub.update.reset();
+            availabilityRepositoryStub.findOne.reset();
             availabilityRepositoryStub.findOneByOrFail.reset();
+            availabilityRepositoryStub.update.reset();
+            availabilityRepositoryStub.delete.reset();
             syncdayRedisServiceStub.getAvailabilityBodyRecord.reset();
             syncdayRedisServiceStub.getAvailability.reset();
             syncdayRedisServiceStub.setAvailability.reset();
+            syncdayRedisServiceStub.deleteAvailability.reset();
         });
 
         it('should be fetched availability list', async () => {
@@ -338,6 +342,49 @@ describe('AvailabilityService', () => {
                 expect(availabilityRepositoryStub.update.called).false;
                 expect(availabilityRepositoryStub.update.calledTwice).false;
                 expect(syncdayRedisServiceStub.setAvailability.called).true;
+            });
+        });
+
+        describe('Test availability delete', () => {
+            it('should be removed availability which is not default', async () => {
+                const availabilityStub = stubOne(Availability, {
+                    default: false
+                });
+                const userStub = stubOne(User);
+                const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+                availabilityRepositoryStub.findOne.resolves(availabilityStub);
+                availabilityRepositoryStub.delete.resolves(deleteResultStub);
+
+                const result = await service.remove(
+                    availabilityStub.id,
+                    userStub.id,
+                    userStub.uuid
+                );
+
+                expect(result).true;
+                expect(availabilityRepositoryStub.findOne.called).true;
+                expect(availabilityRepositoryStub.delete.called).true;
+                expect(syncdayRedisServiceStub.deleteAvailability.called).true;
+            });
+
+            it('should be not removed availability which is default', async () => {
+                const availabilityStub = stubOne(Availability, {
+                    default: true
+                });
+                const userStub = stubOne(User);
+                const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+                availabilityRepositoryStub.findOne.resolves(availabilityStub);
+                availabilityRepositoryStub.delete.resolves(deleteResultStub);
+
+                await expect(
+                    service.remove(availabilityStub.id, userStub.id, userStub.uuid)
+                ).rejectedWith(CannotDeleteDefaultAvailabilityException);
+
+                expect(availabilityRepositoryStub.findOne.called).true;
+                expect(availabilityRepositoryStub.delete.called).false;
+                expect(syncdayRedisServiceStub.deleteAvailability.called).false;
             });
         });
     });
