@@ -201,11 +201,10 @@ describe('Redis Service Test', () => {
 
             clusterStub.hset.resolves(updatedHashFieldStub);
 
-            const verification = await service.setAvailability(
-                uuidKey,
-                uuidKey,
-                {} as AvailabilityBody
-            );
+            const verification = await service.setAvailability(uuidKey, uuidKey, {
+                availableTimes: [],
+                overrides: []
+            } as AvailabilityBody);
             expect(verification).true;
         });
 

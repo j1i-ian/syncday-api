@@ -83,6 +83,19 @@ export class SyncdayRedisService {
         userUUID: string,
         availabilityBody: AvailabilityBody
     ): Promise<boolean> {
+        availabilityBody.availableTimes = availabilityBody.availableTimes.sort(
+            (availableTimeA, availableTimeB) => availableTimeA.day - availableTimeB.day
+        );
+
+        // ascending
+        availabilityBody.overrides = availabilityBody.overrides
+            .filter((override) => new Date(override.targetDate).getTime() > Date.now())
+            .sort(
+                (overrideA, overrideB) =>
+                    new Date(overrideB.targetDate).getTime() -
+                    new Date(overrideA.targetDate).getTime()
+            );
+
         const availabilityUserKey = this._getAvailabilityHashMapKey(userUUID);
         const updatedHashFields = await this.cluster.hset(
             availabilityUserKey,
