@@ -10,11 +10,17 @@ import {
     HttpStatus,
     Put,
     Delete,
-    Patch
+    Patch,
+    All,
+    Req,
+    Res,
+    NotImplementedException
 } from '@nestjs/common';
 import { Observable, from, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
+import { Request, Response } from 'express';
 import { AuthUser } from '@decorators/auth-user.decorator';
+import { Availability } from '@entity/availability/availability.entity';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
 import { UpdateAvailabilityRequestDto } from '@dto/availability/update-availability-request.dto';
 import { CreateAvailabilityResponseDto } from '@dto/availability/create-availability-response.dto';
@@ -111,5 +117,48 @@ export class AvailabilityController {
         @AuthUser('uuid') userUUID: string
     ): Observable<boolean> {
         return from(this.availabilityService.remove(availabilityId, userId, userUUID));
+    }
+
+    clone(availabilityId: number, userId: number, userUUID: string): Promise<Availability> {
+        return this.availabilityService.clone(availabilityId, userId, userUUID);
+    }
+
+    /**
+     * Accept http method which is not officially supported by Nest.js
+     *
+     * @see {@link [related stackoverflow thread](https://stackoverflow.com/questions/75513412/how-to-handle-http-copy-link-methods-in-nestjs-controller)}
+     */
+    @All(['', ':availabilityId'])
+    async others(
+        @Req() req: Request,
+        @Res() response: Response,
+        @AuthUser('id') userId: number,
+        @AuthUser('uuid') userUUID: string
+    ): Promise<void> {
+        let responseBody;
+        let statusCode = 500;
+
+        const { availabilityId } = req.params;
+        const ensuredAvailabilityId = availabilityId.split(';').shift() as string;
+        const parsedAvailabilityId = +ensuredAvailabilityId;
+
+        switch (req.method) {
+            case 'COPY':
+                responseBody = await this.clone(parsedAvailabilityId, userId, userUUID);
+                statusCode = HttpStatus.CREATED;
+                break;
+            case 'LINK':
+                break;
+            case 'UNLINK':
+                break;
+            default:
+                throw new NotImplementedException('Cannot found mapped method');
+        }
+
+        response.status(statusCode);
+        if (responseBody) {
+            response.json(responseBody);
+        }
+        response.end();
     }
 }
