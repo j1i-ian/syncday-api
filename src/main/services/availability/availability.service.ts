@@ -34,6 +34,7 @@ export class AvailabilityService {
         return forkJoin({
             availabilityEntities: from(
                 this.availabilityRepository.find({
+                    relations: ['events'],
                     where: {
                         userId: searchOption.userId
                     },
