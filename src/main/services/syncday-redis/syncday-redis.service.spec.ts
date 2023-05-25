@@ -193,59 +193,6 @@ describe('Redis Service Test', () => {
             expect(verification).true;
         });
 
-        it('coverage fill: setAvailability', async () => {
-            const uuidKey = '';
-            const updatedHashFieldStub = 1;
-
-            serviceSandbox.stub(service, '_getAvailabilityHashMapKey').returns(uuidKey);
-
-            clusterStub.hset.resolves(updatedHashFieldStub);
-
-            const verification = await service.setAvailability(uuidKey, uuidKey, {
-                availableTimes: [],
-                overrides: []
-            } as AvailabilityBody);
-            expect(verification).true;
-        });
-
-        it('should be got parsed availability body: getAvailability', async () => {
-            const uuidKey = '';
-
-            serviceSandbox.stub(service, '_getAvailabilityHashMapKey').returns(uuidKey);
-
-            clusterStub.hget.resolves('{}');
-
-            const verification = await service.getAvailability(uuidKey, uuidKey);
-            expect(verification).ok;
-        });
-
-        it('should be removed availability body by hash field: deleteAvailability', async () => {
-            const uuidKey = 'ABCDFF';
-            const deleteCountStub = 1;
-
-            serviceSandbox.stub(service, '_getAvailabilityHashMapKey').returns(uuidKey);
-
-            clusterStub.hdel.resolves(deleteCountStub);
-
-            const deleteSuccess = await service.deleteAvailability(uuidKey, uuidKey);
-            expect(deleteSuccess).true;
-        });
-
-        it('should be got parsed availability bodies with getAvailabilityBodyRecord', async () => {
-            const uuidKey = '';
-
-            serviceSandbox.stub(service, '_getAvailabilityHashMapKey').returns(uuidKey);
-            const __parseHashmapRecordsStub = serviceSandbox.stub(service, '__parseHashmapRecords');
-
-            clusterStub.hget.resolves('{}');
-            __parseHashmapRecordsStub.returns({});
-
-            const loadedAvailabilityBodyRecord = await service.getAvailabilityBodyRecord(uuidKey);
-
-            expect(__parseHashmapRecordsStub.called).true;
-            expect(loadedAvailabilityBodyRecord).ok;
-        });
-
         it('coverage fill: getTemporaryUserKey', () => {
             const emailMock = TestMockUtil.faker.internet.email();
 

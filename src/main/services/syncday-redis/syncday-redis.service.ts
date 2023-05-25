@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
 import { TemporaryUser } from '@entity/users/temporary-user.entity';
 import { Verification } from '@entity/verifications/verification.entity';
-import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { AppInjectCluster } from './app-inject-cluster.decorator';
 import { RedisStores } from './redis-stores.enum';
 
@@ -76,64 +75,6 @@ export class SyncdayRedisService {
         const result = await this.cluster.set(emailVerificationStatusKey, String(statusValue));
 
         return result === 'OK';
-    }
-
-    async setAvailability(
-        availabilityUUID: string,
-        userUUID: string,
-        availabilityBody: AvailabilityBody
-    ): Promise<boolean> {
-        availabilityBody.availableTimes = availabilityBody.availableTimes.sort(
-            (availableTimeA, availableTimeB) => availableTimeA.day - availableTimeB.day
-        );
-
-        // ascending
-        availabilityBody.overrides = availabilityBody.overrides
-            .filter((override) => new Date(override.targetDate).getTime() > Date.now())
-            .sort(
-                (overrideA, overrideB) =>
-                    new Date(overrideB.targetDate).getTime() -
-                    new Date(overrideA.targetDate).getTime()
-            );
-
-        const availabilityUserKey = this._getAvailabilityHashMapKey(userUUID);
-        const updatedHashFields = await this.cluster.hset(
-            availabilityUserKey,
-            availabilityUUID,
-            JSON.stringify(availabilityBody)
-        );
-
-        return updatedHashFields === 1;
-    }
-
-    async getAvailability(availabilityUUID: string, userUUID: string): Promise<AvailabilityBody> {
-        const availabilityUserKey = this._getAvailabilityHashMapKey(userUUID);
-
-        const availabilityBodyJsonString = await this.cluster.hget(
-            availabilityUserKey,
-            availabilityUUID
-        );
-
-        return availabilityBodyJsonString
-            ? JSON.parse(availabilityBodyJsonString as unknown as string)
-            : null;
-    }
-
-    async deleteAvailability(availabilityUUID: string, userUUID: string): Promise<boolean> {
-        const availabilityUserKey = this._getAvailabilityHashMapKey(userUUID);
-        const deleteCount = await this.cluster.hdel(availabilityUserKey, availabilityUUID);
-
-        return deleteCount === 1;
-    }
-
-    async getAvailabilityBodyRecord(userUUID: string): Promise<Record<string, AvailabilityBody>> {
-        const availabilityListKey = this._getAvailabilityHashMapKey(userUUID);
-        const availabilityUUIDRecords = await this.cluster.hgetall(availabilityListKey);
-
-        const parsedAvailabilityBodies =
-            this.__parseHashmapRecords<AvailabilityBody>(availabilityUUIDRecords);
-
-        return parsedAvailabilityBodies;
     }
 
     getTemporaryUserKey(email: string): RedisKey {

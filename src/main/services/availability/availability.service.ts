@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
-import { Observable, forkJoin, from, map, mergeMap } from 'rxjs';
+import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
 import { DataSource, Repository } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
-import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
+import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
 import { UpdateAvailabilityRequestDto } from '@dto/availability/update-availability-request.dto';
 import { PatchAvailabilityRequestDto } from '@dto/availability/patch-availability-request.dto';
@@ -13,11 +13,13 @@ import { AvailabilityBody } from '@app/interfaces/availability/availability-body
 import { AvailabilityUpdateFailByEntityException } from '@app/exceptions/availability-update-fail-by-entity.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { CannotDeleteDefaultAvailabilityException } from '@app/exceptions/availability/cannot-delete-default-availability.exception';
+import { Validator } from '@criteria/validator';
 
 @Injectable()
 export class AvailabilityService {
     constructor(
-        private readonly syncdayRedisService: SyncdayRedisService,
+        private readonly validator: Validator,
+        private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(Availability)
         private readonly availabilityRepository: Repository<Availability>
@@ -41,7 +43,7 @@ export class AvailabilityService {
                 })
             ),
             availabilityBodyRecord: from(
-                this.syncdayRedisService.getAvailabilityBodyRecord(searchOption.userUUID)
+                this.availabilityRedisRepository.getAvailabilityBodyRecord(searchOption.userUUID)
             )
         }).pipe(
             map(({ availabilityEntities, availabilityBodyRecord }) =>
@@ -69,7 +71,12 @@ export class AvailabilityService {
             })
         ).pipe(
             mergeMap((availability) =>
-                from(this.syncdayRedisService.getAvailability(availability.uuid, userUUID)).pipe(
+                from(
+                    this.availabilityRedisRepository.getAvailabilityBody(
+                        availability.uuid,
+                        userUUID
+                    )
+                ).pipe(
                     map((availabilityBody) => {
                         availability.availableTimes = availabilityBody.availableTimes;
                         availability.overrides = availabilityBody.overrides;
@@ -95,7 +102,7 @@ export class AvailabilityService {
             name
         });
 
-        await this.syncdayRedisService.setAvailability(
+        await this.availabilityRedisRepository.save(
             savedAvailability.uuid,
             userUUID,
             newAvailabilityBody
@@ -131,7 +138,7 @@ export class AvailabilityService {
         });
 
         if (updateResult.affected && updateResult.affected > 0) {
-            await this.syncdayRedisService.setAvailability(availability.uuid, userUUID, {
+            await this.availabilityRedisRepository.save(availability.uuid, userUUID, {
                 availableTimes,
                 overrides
             });
@@ -203,7 +210,7 @@ export class AvailabilityService {
          * Notice availability uuid is fetched from rdb
          */
         if (availableTimes && overrides) {
-            await this.syncdayRedisService.setAvailability(availability.uuid, userUUID, {
+            await this.availabilityRedisRepository.save(availability.uuid, userUUID, {
                 availableTimes,
                 overrides
             });
@@ -227,9 +234,39 @@ export class AvailabilityService {
         const deleteResult = await this.availabilityRepository.delete(availabilityId);
 
         if (loadedAvailability && deleteResult.affected && deleteResult.affected > 0) {
-            await this.syncdayRedisService.deleteAvailability(loadedAvailability.uuid, userUUID);
+            await this.availabilityRedisRepository.deleteAvailabilityBody(
+                loadedAvailability.uuid,
+                userUUID
+            );
         }
 
         return true;
+    }
+
+    async clone(availabilityId: number, userId: number, userUUID: string): Promise<Availability> {
+        const validatedAvailability = await this.validator.validate(
+            userId,
+            availabilityId,
+            Availability
+        );
+
+        const { id: _eventId, uuid: _eventUUID, ...newAvailability } = validatedAvailability;
+
+        newAvailability.default = false;
+
+        const clonedAvailability = await this.availabilityRepository.save(newAvailability);
+
+        const clonedAvailabilityBody = await firstValueFrom(
+            this.availabilityRedisRepository.clone(
+                userUUID,
+                validatedAvailability.uuid,
+                clonedAvailability.uuid
+            )
+        );
+
+        clonedAvailability.availableTimes = clonedAvailabilityBody.availableTimes;
+        clonedAvailability.overrides = clonedAvailabilityBody.overrides;
+
+        return clonedAvailability;
     }
 }

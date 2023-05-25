@@ -4,6 +4,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
+import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { BufferTime } from '@entity/events/buffer-time.entity';
 import { EventType } from '@entity/events/event-type.entity';
@@ -43,6 +44,7 @@ export class UserService {
         private readonly verificationService: VerificationService,
         private readonly userSettingService: UserSettingService,
         private readonly syncdayRedisService: SyncdayRedisService,
+        private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         private readonly utilService: UtilService,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
@@ -248,7 +250,7 @@ export class UserService {
         initialAvailability.timezone = userSetting?.preferredTimezone;
 
         const savedAvailability = await _availabilityRepository.save(initialAvailability);
-        await this.syncdayRedisService.setAvailability(savedAvailability.uuid, savedUser.uuid, {
+        await this.availabilityRedisRepository.save(savedAvailability.uuid, savedUser.uuid, {
             availableTimes,
             overrides: []
         });

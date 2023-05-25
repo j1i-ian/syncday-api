@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, FindOneOptions, FindOptionsWhere, Repository } from 'typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
+import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
@@ -27,6 +28,7 @@ describe('Test User Service', () => {
     let verificationServiceStub: sinon.SinonStubbedInstance<VerificationService>;
     let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
+    let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
@@ -47,6 +49,7 @@ describe('Test User Service', () => {
         verificationServiceStub = sinon.createStubInstance(VerificationService);
         userSettingServiceStub = sinon.createStubInstance(UserSettingService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
+        availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
@@ -68,6 +71,10 @@ describe('Test User Service', () => {
                 {
                     provide: SyncdayRedisService,
                     useValue: syncdayRedisServiceStub
+                },
+                {
+                    provide: AvailabilityRedisRepository,
+                    useValue: availabilityRedisRepositoryStub
                 },
                 {
                     provide: TokenService,

@@ -11,8 +11,8 @@ import {
     ParseIntPipe,
     All,
     Req,
-    NotFoundException,
-    Res
+    Res,
+    NotImplementedException
 } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
@@ -122,7 +122,7 @@ export class EventsController {
                 statusCode = HttpStatus.NO_CONTENT;
                 break;
             default:
-                throw new NotFoundException('Cannot found mapped method');
+                throw new NotImplementedException('Not yet implemented method');
         }
 
         response.status(statusCode);
