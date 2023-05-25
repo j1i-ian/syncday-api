@@ -29,13 +29,18 @@ export class AvailabilityService {
         }
     ): Observable<Availability[]> {
         return forkJoin({
-            availabilityEntities: this.availabilityRepository.find({
-                where: {
-                    userId: searchOption.userId
-                }
-            }),
-            availabilityBodyRecord: this.syncdayRedisService.getAvailabilityBodyRecord(
-                searchOption.userUUID
+            availabilityEntities: from(
+                this.availabilityRepository.find({
+                    where: {
+                        userId: searchOption.userId
+                    },
+                    order: {
+                        default: 'DESC'
+                    }
+                })
+            ),
+            availabilityBodyRecord: from(
+                this.syncdayRedisService.getAvailabilityBodyRecord(searchOption.userUUID)
             )
         }).pipe(
             map(({ availabilityEntities, availabilityBodyRecord }) =>
