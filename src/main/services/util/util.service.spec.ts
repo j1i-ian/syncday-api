@@ -75,7 +75,7 @@ describe('UtilService', () => {
             });
             const languageMock = Language.ENGLISH;
 
-            const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock);
+            const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock);
 
             expect(defaultUserSetting).ok;
             expect(defaultUserSetting.workspace).contains(userMock.name);
@@ -91,7 +91,7 @@ describe('UtilService', () => {
             });
             const languageMock = Language.ENGLISH;
 
-            const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock, {
+            const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock, {
                 randomSuffix: false
             });
 
@@ -107,7 +107,7 @@ describe('UtilService', () => {
             });
             const languageMock = Language.ENGLISH;
 
-            const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock, {
+            const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock, {
                 randomSuffix: true
             });
 
@@ -124,7 +124,7 @@ describe('UtilService', () => {
             });
             const languageMock = Language.ENGLISH;
 
-            const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock, {
+            const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock, {
                 randomSuffix: true
             });
 
@@ -141,7 +141,7 @@ describe('UtilService', () => {
             const timezoneMock = 'America/New_York';
             const languageMock = Language.ENGLISH;
 
-            const defaultUserSetting = service.getUsetDefaultSetting(userMock, languageMock, {
+            const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock, {
                 randomSuffix: true,
                 timezone: timezoneMock
             });

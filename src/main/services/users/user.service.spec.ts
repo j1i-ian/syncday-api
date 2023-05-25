@@ -169,7 +169,7 @@ describe('Test User Service', () => {
             verificationServiceStub.isVerifiedUser.reset();
             availabilityRepositoryStub.save.reset();
 
-            utilServiceStub.getUsetDefaultSetting.reset();
+            utilServiceStub.getUserDefaultSetting.reset();
 
             serviceSandbox.reset();
         });
@@ -201,7 +201,7 @@ describe('Test User Service', () => {
                 }
             );
 
-            expect(utilServiceStub.getUsetDefaultSetting.called).true;
+            expect(utilServiceStub.getUserDefaultSetting.called).true;
             expect(availabilityRepositoryStub.save.called).true;
 
             expect(createdUser).ok;

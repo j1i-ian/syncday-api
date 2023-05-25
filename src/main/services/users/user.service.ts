@@ -166,7 +166,7 @@ export class UserService {
         );
         const shouldAddRandomSuffix = canBeUsedAsWorkspace;
 
-        const defaultUserSetting = this.utilService.getUsetDefaultSetting(createdUser, language, {
+        const defaultUserSetting = this.utilService.getUserDefaultSetting(createdUser, language, {
             randomSuffix: shouldAddRandomSuffix
         });
 
@@ -262,7 +262,7 @@ export class UserService {
 
             const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
 
-            newUser.userSetting = this.utilService.getUsetDefaultSetting(newUser, language, {
+            newUser.userSetting = this.utilService.getUserDefaultSetting(newUser, language, {
                 randomSuffix: false,
                 timezone: createUserRequestDto.timezone
             }) as UserSetting;

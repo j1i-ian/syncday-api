@@ -60,7 +60,7 @@ export class UtilService {
         return emailSubjectPath;
     }
 
-    getUsetDefaultSetting(
+    getUserDefaultSetting(
         user: Partial<User>,
         language: Language,
         { randomSuffix, timezone }: UserDefaultSettingOption = {
