@@ -17,8 +17,10 @@ import { EventDetail } from '@entity/events/event-detail.entity';
 import { Contact } from '@entity/events/contact.entity';
 import { ContactType } from '@entity/events/contact-type.enum';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { Weekday } from '@entity/availability/weekday.enum';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
+import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
@@ -123,8 +125,13 @@ export class UserService {
                 plainPassword: temporaryUser.plainPassword,
                 emailVerification: true
             });
+
+            await this.userSettingService.createUserWorkspaceStatus(
+                createdUser.id,
+                createdUser.userSetting.workspace
+            );
         } else {
-            createdUser = null;
+            throw new EmailVertificationFailException();
         }
 
         return createdUser;
@@ -161,8 +168,10 @@ export class UserService {
 
         const createdUser = this.userRepository.create(newUser);
 
+        const emailId = createdUser.email.split('@').shift();
+
         const canBeUsedAsWorkspace = await this.userSettingService.fetchUserWorkspaceStatus(
-            createdUser.email
+            emailId || newUser.name
         );
         const shouldAddRandomSuffix = canBeUsedAsWorkspace;
 
@@ -184,6 +193,7 @@ export class UserService {
         } as User);
 
         const _5min = '00:05:00';
+
         const initialBufferTime = new BufferTime();
         initialBufferTime.before = _5min;
         initialBufferTime.after = _5min;
@@ -191,6 +201,7 @@ export class UserService {
         const initialTimeRange = new TimeRange();
         initialTimeRange.startTime = _5min;
         initialTimeRange.endTime = _5min;
+
         const initialDateRange = new DateRange();
         initialDateRange.before = 1;
 
@@ -215,11 +226,11 @@ export class UserService {
             eventDetail: initialEventDetail
         });
 
-        // 월 ~ 금, 09:00 ~ 17:00
-        const availableTimes = [];
-        for (let dayWeekIndex = 0; dayWeekIndex < 5; dayWeekIndex++) {
+        const availableTimes: AvailableTime[] = [];
+
+        for (let weekdayIndex = Weekday.MONDAY; weekdayIndex <= Weekday.FRIDAY; weekdayIndex++) {
             const initialAvailableTime = new AvailableTime();
-            initialAvailableTime.day = dayWeekIndex;
+            initialAvailableTime.day = weekdayIndex;
             initialAvailableTime.timeRanges = [
                 {
                     startTime: '09:00:00',
@@ -235,14 +246,16 @@ export class UserService {
         initialAvailability.name = this.utilService.getDefaultAvailabilityName(language);
         initialAvailability.user = savedUser;
         initialAvailability.timezone = userSetting?.preferredTimezone;
+
         const savedAvailability = await _availabilityRepository.save(initialAvailability);
         await this.syncdayRedisService.setAvailability(savedAvailability.uuid, savedUser.uuid, {
             availableTimes,
             overrides: []
         });
-        initialEvent.availabilityId = savedAvailability.id;
 
+        initialEvent.availabilityId = savedAvailability.id;
         initialEvent.eventDetail = initialEventDetail;
+
         initialEventGroup.events = [initialEvent];
         initialEventGroup.user = savedUser;
 
@@ -288,6 +301,11 @@ export class UserService {
 
             return _createdUser;
         });
+
+        await this.userSettingService.createUserWorkspaceStatus(
+            createdUser.id,
+            createdUser.userSetting.workspace
+        );
 
         return createdUser;
     }

@@ -36,7 +36,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         if (status / 100 === 5) {
             message = 'Server error happend.';
         } else if (exception instanceof UnauthorizedException) {
-            message = 'Unauthoized Information.';
+            message = exception.message || 'Unauthoized Information.';
         }
 
         this.logger.error({

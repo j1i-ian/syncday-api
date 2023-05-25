@@ -6,7 +6,9 @@ import { Availability } from '@core/entities/availability/availability.entity';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { Language } from '@app/enums/language.enum';
+import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { TestMockUtil } from '../../../test/test-mock-util';
@@ -278,7 +280,10 @@ describe('Test User Service', () => {
                 const emailMock = TestMockUtil.faker.internet.email();
 
                 const tempUserStub = testMockUtil.getTemporaryUser();
-                const userStub = stubOne(User);
+                const userSettingStub = stubOne(UserSetting);
+                const userStub = stubOne(User, {
+                    userSetting: userSettingStub
+                });
 
                 const verificationStub = testMockUtil.getVerificationMock();
                 syncdayRedisServiceStub.getEmailVerification.resolves(verificationStub);
@@ -309,15 +314,12 @@ describe('Test User Service', () => {
 
                 serviceSandbox.stub(service, '_createUser');
 
-                const createdUser = await service.createUserWithVerificationByEmail(
-                    emailMock,
-                    verificationCodeMock
-                );
+                await expect(
+                    service.createUserWithVerificationByEmail(emailMock, verificationCodeMock)
+                ).rejectedWith(EmailVertificationFailException);
 
-                expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).false;
                 expect(syncdayRedisServiceStub.getEmailVerification.called).true;
-
-                expect(createdUser).null;
+                expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).false;
             });
         });
     });
