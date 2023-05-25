@@ -12,6 +12,7 @@ import { AvailabilitySearchOption } from '@app/interfaces/availability/availabil
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { AvailabilityUpdateFailByEntityException } from '@app/exceptions/availability-update-fail-by-entity.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
+import { CannotDeleteDefaultAvailabilityException } from '@app/exceptions/availability/cannot-delete-default-availability.exception';
 
 @Injectable()
 export class AvailabilityService {
@@ -218,6 +219,10 @@ export class AvailabilityService {
                 id: availabilityId
             }
         });
+
+        if (loadedAvailability?.default) {
+            throw new CannotDeleteDefaultAvailabilityException();
+        }
 
         const deleteResult = await this.availabilityRepository.delete(availabilityId);
 
