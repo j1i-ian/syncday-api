@@ -20,6 +20,7 @@ import { Observable, from, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { Request, Response } from 'express';
 import { AuthUser } from '@decorators/auth-user.decorator';
+import { Matrix } from '@decorators/matrix.decorator';
 import { Availability } from '@entity/availability/availability.entity';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
 import { UpdateAvailabilityRequestDto } from '@dto/availability/update-availability-request.dto';
@@ -123,6 +124,14 @@ export class AvailabilityController {
         return this.availabilityService.clone(availabilityId, userId, userUUID);
     }
 
+    linkToEvents(userId: number, availabilityId: number, eventIds: number[]): Promise<boolean> {
+        return this.availabilityService.linkToEvents(userId, availabilityId, eventIds);
+    }
+
+    unlinkToEvents(userId: number, availabilityId: number): Promise<boolean> {
+        return this.availabilityService.unlinkToEvents(userId, availabilityId);
+    }
+
     /**
      * Accept http method which is not officially supported by Nest.js
      *
@@ -133,7 +142,12 @@ export class AvailabilityController {
         @Req() req: Request,
         @Res() response: Response,
         @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string
+        @AuthUser('uuid') userUUID: string,
+        @Matrix({
+            key: 'eventId',
+            parseInt: true
+        })
+        eventIds?: number[]
     ): Promise<void> {
         let responseBody;
         let statusCode = 500;
@@ -148,8 +162,16 @@ export class AvailabilityController {
                 statusCode = HttpStatus.CREATED;
                 break;
             case 'LINK':
+                responseBody = await this.linkToEvents(
+                    userId,
+                    parsedAvailabilityId,
+                    eventIds as number[]
+                );
+                statusCode = HttpStatus.NO_CONTENT;
                 break;
             case 'UNLINK':
+                await this.unlinkToEvents(userId, parsedAvailabilityId);
+                statusCode = HttpStatus.NO_CONTENT;
                 break;
             default:
                 throw new NotImplementedException('Cannot found mapped method');

@@ -85,7 +85,7 @@ export class EventsController {
         eventId: number,
         availabilityId: number
     ): Promise<boolean> {
-        return this.eventsService.connectToAvailability(userId, eventId, availabilityId);
+        return this.eventsService.linkToAvailability(userId, eventId, availabilityId);
     }
 
     /**

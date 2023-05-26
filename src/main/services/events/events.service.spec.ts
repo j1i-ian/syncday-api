@@ -11,6 +11,7 @@ import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.servi
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { Availability } from '@entity/availability/availability.entity';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
+import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { Validator } from '@criteria/validator';
 import { EventsService } from './events.service';
@@ -296,15 +297,215 @@ describe('EventsService', () => {
             expect(eventRedisRepositoryStub.clone.called).true;
         });
 
-        it('should be connected to availability for event', async () => {
+        it('should be linked to availability for event', async () => {
             const userIdMock = stubOne(User).id;
             const eventIdMock = stubOne(Event).id;
             const availabilityIdMock = stubOne(Availability).id;
 
-            await service.connectToAvailability(userIdMock, eventIdMock, availabilityIdMock);
+            await service.linkToAvailability(userIdMock, eventIdMock, availabilityIdMock);
 
             expect(validatorStub.validate.calledTwice).true;
             expect(eventRepositoryStub.update.called).true;
+        });
+    });
+
+    describe('Test Link / Unlink with availability', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            serviceSandbox.restore();
+
+            eventRepositoryStub.update.reset();
+        });
+
+        [
+            {
+                message:
+                    'should be linked to availability which is not default and then unlink exclusive events',
+                eventIdMocks: stub(Event).map((_event) => _event.id),
+                availabilityIdMock: stubOne(Availability).id,
+                defaultAvailabilityIdMock: stubOne(Availability).id,
+                linkedEventsWithAvailabilityStubs: stub(Event),
+
+                expectedEventRepositoryUpdateCallCount: 2
+            },
+            {
+                message:
+                    'should be linked to availability which is default and then no exclusive events',
+                eventIdMocks: stub(Event).map((_event) => _event.id),
+                availabilityIdMock: 1,
+                defaultAvailabilityIdMock: 1,
+                linkedEventsWithAvailabilityStubs: stub(Event),
+
+                expectedEventRepositoryUpdateCallCount: 1
+            },
+            {
+                message: 'should be linked to availability which is default and has no any events',
+                eventIdMocks: stub(Event).map((_event) => _event.id),
+                availabilityIdMock: stubOne(Availability).id,
+                defaultAvailabilityIdMock: stubOne(Availability).id,
+                linkedEventsWithAvailabilityStubs: [],
+
+                expectedEventRepositoryUpdateCallCount: 1
+            }
+        ].forEach(function ({
+            message,
+            eventIdMocks,
+            availabilityIdMock,
+            defaultAvailabilityIdMock,
+            linkedEventsWithAvailabilityStubs,
+            expectedEventRepositoryUpdateCallCount
+        }) {
+            it(message, async () => {
+                const userIdMock = stubOne(User).id;
+                const searchStub = serviceSandbox.stub(service, 'search');
+                searchStub.returns(of(linkedEventsWithAvailabilityStubs));
+
+                const exclusiveEventsUpdateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+                const eventsUpdateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+
+                eventRepositoryStub.update
+                    .onFirstCall()
+                    .resolves(exclusiveEventsUpdateResultMock)
+                    .onSecondCall()
+                    .resolves(eventsUpdateResultMock);
+
+                eventRepositoryStub.update.resolves(eventsUpdateResultMock);
+
+                const result = await service.linksToAvailability(
+                    userIdMock,
+                    eventIdMocks,
+                    availabilityIdMock,
+                    defaultAvailabilityIdMock
+                );
+
+                expect(result).true;
+                expect(searchStub.called).true;
+                expect(eventRepositoryStub.update.called).true;
+                expect(eventRepositoryStub.update.callCount).equals(
+                    expectedEventRepositoryUpdateCallCount
+                );
+            });
+        });
+
+        it('should be unlinked from availability then linked to default availability', async () => {
+            const availabilityIdMock = stubOne(Availability).id;
+            const defaultAvailabilityIdMock = stubOne(Availability).id;
+
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            eventRepositoryStub.update.resolves(updateResultStub);
+
+            const result = await service.unlinksToAvailability(
+                availabilityIdMock,
+                defaultAvailabilityIdMock
+            );
+
+            expect(result).true;
+            expect(eventRepositoryStub.update.called).true;
+        });
+    });
+
+    describe('Test validations', () => {
+        afterEach(() => {
+            eventRepositoryStub.find.reset();
+        });
+
+        it('should be return true if user has owned events correctly: hasOwnEvents', async () => {
+            const userIdMock = stubOne(User).id;
+            const eventStubs = stub(Event);
+
+            const eventStubIds = eventStubs.map((event) => event.id);
+
+            eventRepositoryStub.find.resolves(
+                eventStubs.sort((eventA, eventB) => eventA.id - eventB.id)
+            );
+
+            const result = await service.hasOwnEvents(userIdMock, eventStubIds);
+
+            expect(result).true;
+            expect(eventRepositoryStub.find.called).true;
+        });
+
+        it('should be return true if user has owned events correctly without sorting status: hasOwnEvents', async () => {
+            const userIdMock = stubOne(User).id;
+            const eventStubs = stub(Event);
+            eventStubs[0].id = 5;
+            eventStubs[1].id = 1;
+            eventStubs[2].id = 3;
+
+            const eventStubIds = eventStubs.map((event) => event.id);
+
+            eventRepositoryStub.find.resolves(
+                eventStubs.slice().sort((eventA, eventB) => eventA.id - eventB.id)
+            );
+
+            const result = await service.hasOwnEvents(userIdMock, eventStubIds);
+
+            expect(result).true;
+            expect(eventRepositoryStub.find.called).true;
+        });
+
+        it('should be return false user has owned events particially, not all: hasOwnEvents', async () => {
+            const userIdMock = stubOne(User).id;
+            const eventStubs = stub(Event);
+
+            const eventStubIds = eventStubs.map((event) => event.id);
+
+            eventRepositoryStub.find.resolves(eventStubs);
+
+            const result = await service.hasOwnEvents(userIdMock, eventStubIds);
+
+            expect(result).false;
+            expect(eventRepositoryStub.find.called).true;
+        });
+
+        it('should be return false user has not owned any events: hasOwnEvents', async () => {
+            const userIdMock = stubOne(User).id;
+            const eventIdMocks = stub(Event).map((event) => event.id);
+
+            eventRepositoryStub.find.resolves([]);
+
+            const result = await service.hasOwnEvents(userIdMock, eventIdMocks);
+
+            expect(result).false;
+            expect(eventRepositoryStub.find.called).true;
+        });
+    });
+
+    describe('Test Validation or throw error', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            serviceSandbox.restore();
+        });
+
+        it('should be threw error if hasOwnEvents returns false: hasOwnEventsOrThrow', async () => {
+            const userIdMock = stubOne(User).id;
+            const eventIdMocks = stub(Event).map((event) => event.id);
+
+            serviceSandbox.stub(service, 'hasOwnEvents').resolves(false);
+
+            await expect(service.hasOwnEventsOrThrow(userIdMock, eventIdMocks)).rejectedWith(
+                NotAnOwnerException
+            );
+        });
+
+        it('should be not threw error if hasOwnEvents returns true: hasOwnEventsOrThrow', async () => {
+            const userIdMock = stubOne(User).id;
+            const eventIdMocks = stub(Event).map((event) => event.id);
+
+            serviceSandbox.stub(service, 'hasOwnEvents').resolves(true);
+
+            await expect(service.hasOwnEventsOrThrow(userIdMock, eventIdMocks)).fulfilled;
         });
     });
 });

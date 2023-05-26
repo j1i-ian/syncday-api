@@ -6,9 +6,12 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { User } from '@core/entities/users/user.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
+import { EventsService } from '@services/events/events.service';
+import { Event } from '@entity/events/event.entity';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { CannotDeleteDefaultAvailabilityException } from '@app/exceptions/availability/cannot-delete-default-availability.exception';
+import { CannotUnlinkDefaultAvailabilityException } from '@app/exceptions/availability/cannot-unlink-default-availability.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { Validator } from '@criteria/validator';
 import { AvailabilityService } from './availability.service';
@@ -21,12 +24,14 @@ describe('AvailabilityService', () => {
     let module: TestingModule;
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
+    let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
     let validatorStub: sinon.SinonStubbedInstance<Validator>;
 
     let availabilityRepositoryStub: sinon.SinonStubbedInstance<Repository<Availability>>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
 
     before(async () => {
+        eventsServiceStub = sinon.createStubInstance(EventsService);
         validatorStub = sinon.createStubInstance(Validator);
         availabilityRepositoryStub = sinon.createStubInstance<Repository<Availability>>(Repository);
         availabilityRedisRepositoryStub = sinon.createStubInstance<AvailabilityRedisRepository>(
@@ -36,6 +41,10 @@ describe('AvailabilityService', () => {
         module = await Test.createTestingModule({
             providers: [
                 AvailabilityService,
+                {
+                    provide: EventsService,
+                    useValue: eventsServiceStub
+                },
                 {
                     provide: Validator,
                     useValue: validatorStub
@@ -466,6 +475,74 @@ describe('AvailabilityService', () => {
                 expect(availabilityRepositoryStub.save.called).true;
                 expect(availabilityRepositoryStub.save.getCall(0).args[0].default).false;
                 expect(availabilityRedisRepositoryStub.clone.called).true;
+            });
+        });
+
+        describe('Test availability link', () => {
+            afterEach(() => {
+                validatorStub.validate.reset();
+                eventsServiceStub.hasOwnEventsOrThrow.reset();
+                availabilityRepositoryStub.findOneByOrFail.reset();
+                eventsServiceStub.linksToAvailability.reset();
+            });
+
+            it('should be linked with events', async () => {
+                const userIdMock = stubOne(User).id;
+                const availabilityIdMock = stubOne(Availability).id;
+                const eventIdMocks = stub(Event).map((_event) => _event.id);
+                const defaultAvailabilityStub = stubOne(Availability, {
+                    default: true
+                });
+
+                availabilityRepositoryStub.findOneByOrFail.resolves(defaultAvailabilityStub);
+
+                await service.linkToEvents(userIdMock, availabilityIdMock, eventIdMocks);
+
+                expect(validatorStub.validate.called).true;
+                expect(eventsServiceStub.hasOwnEventsOrThrow.called).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
+                expect(eventsServiceStub.linksToAvailability.called).true;
+            });
+        });
+
+        describe('Test availability unlink', () => {
+            afterEach(() => {
+                validatorStub.validate.reset();
+                availabilityRepositoryStub.findOneByOrFail.reset();
+                eventsServiceStub.unlinksToAvailability.reset();
+            });
+
+            it('should be unlinked from availability', async () => {
+                const userIdMock = stubOne(User).id;
+                const availabilityIdMock = stubOne(Availability).id;
+                const defaultAvailabilityStub = stubOne(Availability, {
+                    default: true
+                });
+
+                availabilityRepositoryStub.findOneByOrFail.resolves(defaultAvailabilityStub);
+
+                await service.unlinkToEvents(userIdMock, availabilityIdMock);
+
+                expect(validatorStub.validate.called).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
+                expect(eventsServiceStub.unlinksToAvailability.called).true;
+            });
+
+            it('should be not unlinked from default availability', async () => {
+                const userIdMock = stubOne(User).id;
+                const defaultAvailabilityStub = stubOne(Availability, {
+                    default: true
+                });
+
+                availabilityRepositoryStub.findOneByOrFail.resolves(defaultAvailabilityStub);
+
+                await expect(
+                    service.unlinkToEvents(userIdMock, defaultAvailabilityStub.id)
+                ).rejectedWith(CannotUnlinkDefaultAvailabilityException);
+
+                expect(validatorStub.validate.called).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
+                expect(eventsServiceStub.unlinksToAvailability.called).false;
             });
         });
     });
