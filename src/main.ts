@@ -19,7 +19,7 @@ async function bootstrap(): Promise<void> {
     app.use(helmet());
     app.enableCors({
         origin,
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'COPY', 'LINK', 'UNLINK'],
         preflightContinue: false,
         optionsSuccessStatus: 204
     });
