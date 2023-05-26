@@ -5,6 +5,7 @@ import { DataSource, Repository } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
+import { EventsService } from '@services/events/events.service';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
 import { UpdateAvailabilityRequestDto } from '@dto/availability/update-availability-request.dto';
 import { PatchAvailabilityRequestDto } from '@dto/availability/patch-availability-request.dto';
@@ -13,12 +14,14 @@ import { AvailabilityBody } from '@app/interfaces/availability/availability-body
 import { AvailabilityUpdateFailByEntityException } from '@app/exceptions/availability-update-fail-by-entity.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { CannotDeleteDefaultAvailabilityException } from '@app/exceptions/availability/cannot-delete-default-availability.exception';
+import { CannotUnlinkDefaultAvailabilityException } from '@app/exceptions/availability/cannot-unlink-default-availability.exception';
 import { Validator } from '@criteria/validator';
 
 @Injectable()
 export class AvailabilityService {
     constructor(
         private readonly validator: Validator,
+        private readonly eventsService: EventsService,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(Availability)
@@ -269,5 +272,51 @@ export class AvailabilityService {
         clonedAvailability.overrides = clonedAvailabilityBody.overrides;
 
         return clonedAvailability;
+    }
+
+    async linkToEvents(
+        userId: number,
+        availabilityId: number,
+        eventIds: number[]
+    ): Promise<boolean> {
+        // validate owner
+        await this.validator.validate(userId, availabilityId, Availability);
+
+        await this.eventsService.hasOwnEventsOrThrow(userId, eventIds);
+
+        const defaultAvailability = await this.availabilityRepository.findOneByOrFail({
+            userId,
+            default: true
+        });
+
+        await this.eventsService.linksToAvailability(
+            userId,
+            eventIds,
+            availabilityId,
+            defaultAvailability.id
+        );
+
+        return false;
+    }
+
+    async unlinkToEvents(userId: number, availabilityId: number): Promise<boolean> {
+        // validate owner
+        await this.validator.validate(userId, availabilityId, Availability);
+
+        const defaultAvailability = await this.availabilityRepository.findOneByOrFail({
+            userId,
+            default: true
+        });
+
+        if (defaultAvailability.id === availabilityId) {
+            throw new CannotUnlinkDefaultAvailabilityException();
+        }
+
+        const result = await this.eventsService.unlinksToAvailability(
+            availabilityId,
+            defaultAvailability.id
+        );
+
+        return result;
     }
 }

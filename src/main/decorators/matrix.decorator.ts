@@ -31,13 +31,6 @@ interface MatrixOption {
     firstOne?: boolean | undefined;
 }
 
-interface MatrixMergeOption {
-    /**
-     * merge all object entries. default true
-     */
-    array?: boolean;
-}
-
 const stringType = typeof '';
 const objectType = typeof {};
 
@@ -47,10 +40,7 @@ const objectType = typeof {};
  * @return { { matrixKey: string[], ... } }
  */
 export const Matrix = createParamDecorator(
-    (
-        keyOrOptions: string | MatrixOption | MatrixMergeOption | null = null,
-        ctx: ExecutionContext
-    ) => {
+    (keyOrOptions: string | MatrixOption | null = null, ctx: ExecutionContext) => {
         if (
             __isMatrixParamUseHttpMethod(
                 ctx.switchToHttp().getRequest().method as AdditionalHttpMethod
@@ -64,14 +54,11 @@ export const Matrix = createParamDecorator(
 
         matrixParamTokens.shift(); // skip url
 
-        const matrixSearchParams = matrixParamTokens.map((_token) => new URLSearchParams(_token));
-
-        if (keyOrOptions && (keyOrOptions as MatrixMergeOption).array === true) {
-            const entries = matrixSearchParams.map((_matrixSearchParam) =>
-                Object.fromEntries(_matrixSearchParam.entries())
-            );
-            return entries;
+        if (matrixParamTokens.length <= 0) {
+            return;
         }
+
+        const matrixSearchParams = matrixParamTokens.map((_token) => new URLSearchParams(_token));
 
         const matrixParam = matrixSearchParams.reduce((_matrixParam, _searchParam) => {
             const entries = _searchParam.entries();
@@ -79,7 +66,7 @@ export const Matrix = createParamDecorator(
             for (const [key, value] of entries) {
                 if (_matrixParam[key]) {
                     const _matrixParamValue = _matrixParam[key];
-                    _matrixParamValue.concat(value);
+                    _matrixParamValue.push(value);
                     _matrixParam[key] = _matrixParamValue;
                 } else {
                     _matrixParam[key] = [value];
@@ -89,7 +76,7 @@ export const Matrix = createParamDecorator(
             return _matrixParam;
         }, {} as ObjectEntry);
 
-        const result = __parseByOption(matrixParam, keyOrOptions as string | MatrixOption | null);
+        const result = __parseByOption(matrixParam, keyOrOptions);
 
         return result;
     }

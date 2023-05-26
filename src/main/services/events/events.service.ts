@@ -1,13 +1,14 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Observable, firstValueFrom, forkJoin, from, map, mergeMap, of } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Event } from '@core/entities/events/event.entity';
 import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { Availability } from '@entity/availability/availability.entity';
-import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
+import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
+import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { Validator } from '@criteria/validator';
 
 @Injectable()
@@ -20,14 +21,15 @@ export class EventsService {
         @InjectRepository(Event) private readonly eventRepository: Repository<Event>
     ) {}
 
-    search(searchOption: SearchByUserOption): Observable<Event[]> {
+    search(searchOption: EventsSearchOption): Observable<Event[]> {
         return from(
             this.eventRepository.find({
                 relations: ['eventGroup'],
                 where: {
                     eventGroup: {
                         userId: searchOption.userId
-                    }
+                    },
+                    availabilityId: searchOption.availabilityId
                 },
                 order: {
                     priority: 'DESC'
@@ -164,7 +166,7 @@ export class EventsService {
         return clonedEvent;
     }
 
-    async connectToAvailability(
+    async linkToAvailability(
         userId: number,
         eventId: number,
         availabilityId: number
@@ -177,5 +179,117 @@ export class EventsService {
         });
 
         return true;
+    }
+
+    async linksToAvailability(
+        userId: number,
+        eventIds: number[],
+        availabilityId: number,
+        defaultAvailabilityId: number
+    ): Promise<boolean> {
+        const isDefaultAvailabilityLink = availabilityId === defaultAvailabilityId;
+
+        const linkedEventsWithAvailability = await firstValueFrom(
+            this.search({
+                userId,
+                availabilityId
+            })
+        );
+
+        const exclusiveEventIds = linkedEventsWithAvailability
+            .filter((_event) => eventIds.includes(_event.id) === false)
+            .map((_event) => _event.id);
+
+        const linkResult = await this.datasource.transaction(async (transactionManager) => {
+            const _eventRepository = transactionManager.getRepository(Event);
+
+            let isExclusiveEventsUpdateSuccess = false;
+
+            const shouldUnlinkRestEvents =
+                exclusiveEventIds.length > 0 && isDefaultAvailabilityLink === false;
+
+            if (shouldUnlinkRestEvents) {
+                const exclusiveEventsUpdateResult = await _eventRepository.update(
+                    exclusiveEventIds,
+                    {
+                        availabilityId: defaultAvailabilityId
+                    }
+                );
+
+                isExclusiveEventsUpdateSuccess =
+                    !!exclusiveEventsUpdateResult.affected &&
+                    exclusiveEventsUpdateResult.affected > 0;
+            } else {
+                isExclusiveEventsUpdateSuccess = true;
+            }
+
+            const eventsUpdateResult = await _eventRepository.update(eventIds, {
+                availabilityId
+            });
+            const isEventsUpdateSuccess: boolean =
+                !!eventsUpdateResult.affected && eventsUpdateResult.affected > 0;
+
+            return isExclusiveEventsUpdateSuccess && isEventsUpdateSuccess;
+        });
+
+        return linkResult;
+    }
+
+    async unlinksToAvailability(
+        availabilityId: number,
+        defaultAvailabilityId: number
+    ): Promise<boolean> {
+        const updateResult = await this.eventRepository.update(
+            {
+                availabilityId
+            },
+            {
+                availabilityId: defaultAvailabilityId
+            }
+        );
+
+        return updateResult.affected ? updateResult.affected > 0 : false;
+    }
+
+    async hasOwnEvents(userId: number, eventIds: number[]): Promise<boolean> {
+        const loadedEvents = await this.eventRepository.find({
+            select: {
+                id: true
+            },
+            relations: ['eventGroup'],
+            where: {
+                id: In(eventIds),
+                eventGroup: {
+                    userId
+                }
+            },
+            order: {
+                id: 'ASC'
+            }
+        });
+
+        const requestEventIdList = eventIds.sort((eventIdA, eventIdB) => eventIdA - eventIdB);
+
+        const isSameContent =
+            JSON.stringify(requestEventIdList) ===
+            JSON.stringify(loadedEvents.map((_event) => _event.id));
+
+        const isSamaLength = loadedEvents.length === eventIds.length;
+
+        let areAllOwnEvents = false;
+
+        if (isSamaLength && isSameContent) {
+            areAllOwnEvents = true;
+        }
+
+        return areAllOwnEvents;
+    }
+
+    async hasOwnEventsOrThrow(userId: number, eventIds: number[]): Promise<void> {
+        const hasAllOwnedEvents = await this.hasOwnEvents(userId, eventIds);
+
+        if (hasAllOwnedEvents === false) {
+            throw new NotAnOwnerException('Some event id in requested list is not owned');
+        }
     }
 }
