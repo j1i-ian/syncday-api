@@ -48,8 +48,8 @@ export class AvailabilityRedisRepository {
     }
 
     async save(
-        userUUID: string,
         availabilityUUID: string,
+        userUUID: string,
         availabilityBody: AvailabilityBody
     ): Promise<AvailabilityBody> {
         availabilityBody.availableTimes = availabilityBody.availableTimes.sort(
