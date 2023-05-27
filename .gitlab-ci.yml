@@ -50,9 +50,8 @@ build:
     paths:
       - dist/
     expire_in: 1 week
-  only:
-    - main
-    - develop
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "main" || $CI_COMMIT_REF_NAME == "develop"'
 
 lint:
   stage: test
