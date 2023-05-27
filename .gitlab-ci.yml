@@ -120,9 +120,7 @@ deploy-docs-to-s3:
 upload-container-repository:
   <<: *resolve-submodule
   stage: deploy
-  image:
-    name: amazon/aws-cli
-    entrypoint: [""]
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   needs:
     - lint
     - test
@@ -132,14 +130,12 @@ upload-container-repository:
     name: production
   before_script:
     - |
-      # Install git
-      yum install -y git
-      # Install docker
+      # Install git aws-extra
+      yum install -y git amazon-linux-extras
       amazon-linux-extras install docker
       aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
     - !reference [.resolve-core, before_script]
   script: |
-    yum install -y curl
     curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     cp ./.secure_files/.env.production ./.env.production
     docker build -t $APP_NAME .
