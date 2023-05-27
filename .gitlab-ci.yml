@@ -137,7 +137,7 @@ upload-container-repository:
         yum install git
         # Install docker
         amazon-linux-extras install docker
-      aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
+        aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
   script: |
     git config --system credential.helper store
     echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
