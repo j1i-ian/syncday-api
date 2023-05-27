@@ -110,8 +110,11 @@ deploy-docs-to-s3:
     - develop
 
 upload-container-repository:
+  <<: *resolve-submodule
   stage: deploy
-  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
+  image:
+    name: amazon/aws-cli
+    entrypoint: [""]
   needs:
     - lint
     - test
@@ -119,7 +122,9 @@ upload-container-repository:
     - docker:dind
   environment:
     name: production
-  before_script: |
+  before_script:
+    - !reference [.resolve-submodule, script]
+    - |
     amazon-linux-extras install docker
     aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
   script: |
