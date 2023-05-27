@@ -36,6 +36,7 @@ init:
 
 build:
   stage: build
+  image: node:19-alpine
   needs:
     - init
   script: |
@@ -55,6 +56,7 @@ build:
 
 lint:
   stage: test
+  image: node:19-alpine
   needs:
     - build
   script: |
@@ -70,6 +72,7 @@ lint:
 
 test:
   stage: test
+  image: node:19-alpine
   needs:
     - build
   script: |
@@ -85,6 +88,7 @@ test:
 
 build-docs-with-coverage:
   stage: deploy
+  image: node:19-alpine
   needs:
     - lint
     - test
