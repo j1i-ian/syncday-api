@@ -144,6 +144,7 @@ upload-container-repository:
     bash scripts/init.sh
     echo "Upload container image to AWS ECR repository"
 
+    # Secret Resolving
     curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash  #download secure files(https://docs.gitlab.com/ee/ci/secure_files/index.html)
     cp ./.secure_files/.env.production ./.env.production
     docker build -t $APP_NAME .
