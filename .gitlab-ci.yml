@@ -147,8 +147,7 @@ upload-container-repository:
     docker build -t $APP_NAME .
     docker tag $APP_NAME:latest $ECR_REPOSITORY_URL/$APP_NAME:latest
     docker push $ECR_REPOSITORY_URL/$APP_NAME:latest
-  after_script:
-    - docker logout
+    docker logout
   only:
     - main
 
