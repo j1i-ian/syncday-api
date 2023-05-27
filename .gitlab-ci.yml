@@ -130,9 +130,12 @@ upload-container-repository:
     name: production
   before_script:
     - |
-      # Install git aws-extra
-      yum install -y git amazon-linux-extras
-      amazon-linux-extras install docker
+      apt-get update && apt-get install -y git
+      # Install Docker
+      curl -fsSL https://get.docker.com -o get-docker.sh
+      sh get-docker.sh
+      # Install AWS CLI
+      apt-get install -y awscli
       aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
     - !reference [.resolve-core, before_script]
   script: |
