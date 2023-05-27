@@ -142,6 +142,10 @@ deploy-to-production:
     - lint
     - test
     - upload-container-repository
+  needs:
+    - lint
+    - test
+    - upload-container-repository
   environment:
     name: production
     url: https://api.sync.day
