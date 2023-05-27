@@ -151,10 +151,10 @@ deploy-to-production:
   environment:
     name: production
     url: https://api.sync.day
-  only:
-    - main
   script:
     - echo "Deploy to production"
+  only:
+    - main
 include:
   - template: AWS/Deploy-ECS.gitlab-ci.yml
     rules:
