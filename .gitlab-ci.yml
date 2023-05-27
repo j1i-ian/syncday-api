@@ -20,14 +20,23 @@ stages:
   - production
   - cleanup
 
-.resolve-submodule: &resolve-submodule
+.resolve-bash-git-for-alpine: &resolve-alpine
   image: node:19-alpine
-  before_script: |
+  before_script:
+  - |
     apk add bash
     apk add git
+
+.resolve-core: &resolve-core
+  before_script: |
     git config --system credential.helper store
     echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
     bash scripts/init.sh
+
+.resolve-submodule: &resolve-submodule
+  before_script:
+    - !reference [.resolve-alpine, before_script]
+    - !reference [.resolve-core, before_script]
 
 variables:
   APP_NAME: syncday-api
@@ -123,10 +132,10 @@ upload-container-repository:
   environment:
     name: production
   before_script:
-    - !reference [.resolve-submodule, script]
+    - !reference [.resolve-submodule, before_script]
     - |
-    amazon-linux-extras install docker
-    aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
+      amazon-linux-extras install docker
+      aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
   script: |
     git config --system credential.helper store
     echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
