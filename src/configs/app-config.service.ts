@@ -47,7 +47,12 @@ export class AppConfigService {
         };
     }
     static getCorsSettingByEnv(): string[] {
-        let origin = ['https://dev.sync.day', 'https://stg.sync.day', 'https://sync.day'];
+        let origin = [
+            'https://dev.sync.day',
+            'https://stg.sync.day',
+            'https://www.sync.day',
+            'https://sync.day'
+        ];
 
         if (process.env.ENV === NodeEnv.PRODUCTION) {
             origin = ['https://sync.day'];
