@@ -1,3 +1,5 @@
+syncday.pem
+
 # generated docs
 .docs/*
 !.docs/summary.json

@@ -1,8 +1,9 @@
 export interface AppJwtPayload {
     id: number;
+    uuid: string;
     email: string;
     profileImage: string | null;
-    nickname: string;
+    name: string;
     iat: number;
     exp: number;
 }

@@ -1,0 +1,18 @@
+{
+    "apps": [
+        {
+            "name": "dev-syncday-api",
+            "script": "./dist/main.js",
+            "instances": 1,
+            "max_memory_restart": "4G",
+            "exec_mode": "fork",
+            "log_date_format": "YYYY-MM-DD HH:mm Z",
+            "env_dev": {
+                "NODE_ENV": "development",
+                "ENV": "development"
+            },
+            "interpreter": "node",
+            "error_file": "/dev/null"
+        }
+    ]
+}

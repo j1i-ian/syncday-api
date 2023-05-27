@@ -1,8 +1,10 @@
 import {
+    BadRequestException,
     Body,
     Controller,
     Delete,
     Get,
+    Header,
     HttpCode,
     HttpStatus,
     Param,
@@ -10,9 +12,12 @@ import {
     Post
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
+import { User } from '@core/entities/users/user.entity';
+import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
+import { PatchUserRequestDto } from '@dto/users/patch-user-request.dto';
 import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
-import { UserFetchResponseDto } from '@dto/users/user-fetch-response.dto';
+import { AuthUser } from '../../decorators/auth-user.decorator';
+import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
 import { UserService } from './user.service';
 
@@ -20,30 +25,56 @@ import { UserService } from './user.service';
 export class UserController {
     constructor(private readonly userService: UserService) {}
 
-    @Get(':userId')
-    async fetchMyInfo(@Param('userId') userId: number): Promise<UserFetchResponseDto> {
-        const loadedUser = await this.userService.findUserById(userId);
+    @Get(':userId(\\d+)')
+    async fetchUser(@AuthUser() authUser: AppJwtPayload): Promise<User> {
+        const loadedUser = await this.userService.findUserById(authUser.id);
 
         return loadedUser;
     }
 
+    /**
+     * Verification is processed with email of user.
+     * So when user loaded then rendered page would send ajax
+     * transmission to this api only with auth code.
+     * Therefore this api should be public.
+     *
+     * @param id issued verification id
+     * @param createUserWithVerificationDto
+     * @returns
+     */
     @Post()
     @Public()
-    async createUser(@Body() newUser: CreateUserRequestDto): Promise<CreateUserResponseDto> {
-        const createdUser = await this.userService.createUser(newUser);
+    @Header('Content-type', 'application/json')
+    async createUserWithEmailVerification(
+        @Body() createUserWithVerificationDto: CreateUserWithVerificationDto
+    ): Promise<CreateUserResponseDto> {
+        const { email, verificationCode } = createUserWithVerificationDto;
+        const createdUser = await this.userService.createUserWithVerificationByEmail(
+            email,
+            verificationCode
+        );
 
-        return plainToInstance(CreateUserResponseDto, createdUser as CreateUserResponseDto, {
+        return plainToInstance(CreateUserResponseDto, createdUser, {
             excludeExtraneousValues: true
         });
     }
 
-    @Patch(':userId')
+    @Patch(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
-    async updateUser(@Param('userId') userId: number): Promise<void> {
-        await this.userService.updateUser(userId);
+    async patchUser(
+        @AuthUser() authUser: AppJwtPayload,
+        @Body() patchUserBody: PatchUserRequestDto
+    ): Promise<void> {
+        const result = await this.userService.patch(authUser.id, {
+            name: patchUserBody.name
+        });
+
+        if (result === false) {
+            throw new BadRequestException('Cannot update user data');
+        }
     }
 
-    @Delete(':userId')
+    @Delete(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteUser(@Param('userId') userId: number): Promise<void> {
         await this.userService.deleteUser(userId);

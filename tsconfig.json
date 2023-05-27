@@ -31,31 +31,36 @@
       "@config/*": [
         "src/configs/*"
       ],
+      "@criteria/*": [
+        "src/main/criteria/*",
+      ],
       "@decorators/*": [
-        "src/@core/core/decorators/*",
+        "src/@core/src/decorators/*",
         "src/main/decorators/*",
       ],
       "@interfaces/*": [
-        "src/@core/core/interfaces/*"
-      ],
-      "@entity/*": [
-        "src/@core/core/entities/*"
+        "src/@core/@share/src/@interfaces/*"
       ],
       "@dto/*": [
-        "src/main/dto/*",
-        "src/@core/core/dto/*"
+        "src/@core/@share/src/@dto/*"
+      ],
+      "@entity/*": [
+        "src/@core/src/entities/*"
       ],
       "@services/*": [
         "src/main/services/*"
-      ],
-      "@core/*": [
-        "src/@core/core/*"
       ],
       "@app/*": [
         "src/main/*"
       ],
       "@test/*": [
         "src/test/*"
+      ],
+      "@share/*": [
+        "src/@core/@share/src/*"
+      ],
+      "@core/*": [
+        "src/@core/src/*"
       ],
       "*": [
         "node_modules/*"
@@ -73,5 +78,8 @@
       "test",
       "typeorm-faker"
     ]
-  }
+  },
+  "exclude": [
+    "node_modules"
+  ]
 }

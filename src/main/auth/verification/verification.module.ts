@@ -7,6 +7,7 @@ import { VerificationService } from './verification.service';
 @Module({
     imports: [SyncdayRedisModule, IntegrationsModule],
     controllers: [VerificationController],
-    providers: [VerificationService]
+    providers: [VerificationService],
+    exports: [VerificationService]
 })
 export class VerificationModule {}

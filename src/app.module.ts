@@ -13,11 +13,11 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { AppController } from './app.controller';
 import { AuthModule } from './main/auth/auth.module';
 import { JwtAuthGuard } from './main/auth/strategy/jwt/jwt-auth.guard';
-import { EventGroupsModule } from './main/services/event-groups/event-groups.module';
-import { PaymentsModule } from './main/services/payments/payments.module';
-import { SchedulesModule } from './main/services/schedules/schedules.module';
 import { UtilModule } from './main/services/util/util.module';
 import { IntegrationsModule } from './main/services/integrations/integrations.module';
+import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
+import { AvailabilityModule } from './main/services/availability/availability.module';
+import { EventsModule } from './main/services/events/events.module';
 
 @Module({
     imports: [
@@ -35,15 +35,15 @@ import { IntegrationsModule } from './main/services/integrations/integrations.mo
 
         AuthModule,
 
-        EventGroupsModule,
-
-        SchedulesModule,
-
-        PaymentsModule,
-
         UtilModule,
 
-        IntegrationsModule
+        IntegrationsModule,
+
+        WorkspacesModule,
+
+        AvailabilityModule,
+
+        EventsModule
     ],
     controllers: [AppController],
     providers: [
@@ -61,7 +61,15 @@ import { IntegrationsModule } from './main/services/integrations/integrations.mo
         },
         {
             provide: APP_PIPE,
-            useFactory: () => new ValidationPipe({ transform: true })
+            useFactory: () =>
+                new ValidationPipe({
+                    transform: true,
+                    transformOptions: {
+                        strategy: 'excludeAll',
+                        excludeExtraneousValues: true,
+                        exposeUnsetFields: false
+                    }
+                })
         }
     ]
 })

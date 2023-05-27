@@ -4,19 +4,19 @@
     "logger": "file",
     "timezone": "+09:00",
     "entities": [
-        "dist/@core/core/entities/**/*{.ts,.js}"
+        "dist/@core/src/entities/**/*{.ts,.js}"
     ],
     "migrations": [
-        "dist/migrations/**/*{.ts,.js}"
+        "dist/@core/src/migrations/**/*{.ts,.js}"
     ],
     "subscribers": [
-        "dist/subscriber/**/*{.ts,.js}"
+        "dist/@core/src/subscriber/**/*{.ts,.js}"
     ],
     "cli": {
         "entitiesDir": [
-            "dist/@core/core/entities"
+            "dist/@core/src/entities"
         ],
-        "migrationsDir": "dist/migration",
-        "subscribersDir": "dist/subscriber"
+        "migrationsDir": "dist/migrations",
+        "subscribersDir": "dist/subscribers"
     }
 }

@@ -51,7 +51,7 @@ describe('File Util Service Test', () => {
     });
 
     it('should got email template', async () => {
-        utilServiceStub.getAssetFullPath.returns('fakeFullPath');
+        utilServiceStub.getMailAssetFullPath.returns('fakeFullPath');
 
         const transformToStringSpy = sinon.spy();
         const getObjectCommandOutputStub = {

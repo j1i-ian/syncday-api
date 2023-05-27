@@ -6,11 +6,13 @@ export const BCP47AcceptLanguage = createParamDecorator(
     (_data: string, ctx: ExecutionContext): Language => {
         const request = ctx.switchToHttp().getRequest();
 
-        const acceptLanguageHeader = request.headers['accept-language'] as string;
+        const acceptLanguageHeader = (request.headers['accept-language'] as string) || '';
+
+        const supportedLanguage = Object.values(Language);
 
         const language = resolveAcceptLanguage(
             acceptLanguageHeader,
-            Object.values(Language),
+            supportedLanguage,
             Language.ENGLISH
         ) as Language;
 

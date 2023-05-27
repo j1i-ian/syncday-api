@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { Repository } from 'typeorm';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Language } from '@app/enums/language.enum';
 import { TestMockUtil } from '@test/test-mock-util';
 import { MailerService } from '@nestjs-modules/mailer';
@@ -14,7 +17,7 @@ describe('IntegrationsService', () => {
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let fileUtilsServiceStub: sinon.SinonStubbedInstance<FileUtilsService>;
     let mailerServiceStub: sinon.SinonStubbedInstance<MailerService>;
-
+    let googleIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegration>>;
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         fileUtilsServiceStub = sinon.createStubInstance(FileUtilsService);
@@ -34,6 +37,10 @@ describe('IntegrationsService', () => {
                 {
                     provide: MailerService,
                     useValue: mailerServiceStub
+                },
+                {
+                    provide: getRepositoryToken(GoogleIntegration),
+                    useValue: googleIntegrationRepositoryStub
                 }
             ]
         }).compile();
@@ -53,10 +60,13 @@ describe('IntegrationsService', () => {
 
         it('should be sent verification email', async () => {
             const emailSourceStub = '{{host}} {{email}} {{verificationCode}}';
+            const emailSubjectSourceStub = '[Sync] 이메일 주소를 확인해주세요';
 
             const verificationMock = testMockUtil.getVerificationMock();
 
             fileUtilsServiceStub.getEmailTemplate.resolves(emailSourceStub);
+            fileUtilsServiceStub.getEmailSubject.resolves(emailSubjectSourceStub);
+
             mailerServiceStub.sendMail.resolves('success');
 
             const result = await service.sendVerificationEmail(verificationMock, Language.ENGLISH);

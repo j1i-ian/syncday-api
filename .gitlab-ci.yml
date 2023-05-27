@@ -5,6 +5,7 @@ cache:
   paths:
     - node_modules/
     - dist/
+    - docs/
 
 stages:
   - .pre
@@ -33,12 +34,17 @@ init:
     - main
     - develop
 
-build-production:
+build:
   stage: build
   needs:
     - init
-  script:
-    - npm run build
+  script: |
+    apk add bash
+    apk add git
+    git config --system credential.helper store
+    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
+    bash scripts/init.sh
+    npm run build
   artifacts:
     when: on_success
     paths:
@@ -51,9 +57,14 @@ build-production:
 lint:
   stage: test
   needs:
-    - build-production
-  script:
-    - npm run lint
+    - build
+  script: |
+    apk add bash
+    apk add git
+    git config --system credential.helper store
+    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
+    bash scripts/init.sh
+    npm run lint
   only:
     - main
     - develop
@@ -61,9 +72,46 @@ lint:
 test:
   stage: test
   needs:
-    - build-production
-  script:
-    - npm run test
+    - build
+  script: |
+    apk add bash
+    apk add git
+    git config --system credential.helper store
+    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
+    bash scripts/init.sh
+    npm run test
+  only:
+    - main
+    - develop
+
+build-docs-with-coverage:
+  stage: deploy
+  needs:
+    - lint
+    - test
+  script: |
+    apk add bash
+    apk add git
+    git config --system credential.helper store
+    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
+    bash scripts/init.sh
+    npm i -D @compodoc/compodoc
+    npm i -D nyc
+    yarn run test:coverage
+    yarn run build:docs
+  only:
+    - main
+    - develop
+
+deploy-docs-to-s3:
+  stage: deploy
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
+  needs:
+    - build-docs-with-coverage
+  script: |
+    aws s3 sync ./docs s3://$S3_BUCKET --delete --acl public-read
+  variables:
+    S3_BUCKET: "docs.sync.day"
   only:
     - main
     - develop
@@ -111,3 +159,26 @@ include:
   - template: AWS/Deploy-ECS.gitlab-ci.yml
     rules:
       - if: $CI_COMMIT_BRANCH == "main"
+
+deploy-to-development:
+  stage: deploy
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
+  environment: development
+  dependencies:
+    - lint
+    - test
+  before_script:
+    - apt-get update -y && apt-get -y install openssh-server
+    - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
+    - dpkg -i session-manager-plugin.deb
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash  #download secure files(https://docs.gitlab.com/ee/ci/secure_files/index.html)
+  script:
+    # SSH over Session Manager
+    - mkdir $HOME/.ssh
+    - echo -e "host i-* mi-*\n
+          ProxyCommand sh -c \"aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters 'portNumber=%p'\"" > $HOME/.ssh/config
+    - cp ./.secure_files/syncday.pem ./syncday.pem && chmod 400 syncday.pem
+    - cp ./.secure_files/.env.dev ./.env.dev
+    - bash ./scripts/deploy-to-dev.sh $DEV_EC2_INSTANCE_ID
+  only:
+    - develop

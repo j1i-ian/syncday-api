@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { UserService } from '@services/users/user.service';
-import { CreateTokenRequestDto } from '../dto/tokens/create-token-request.dto';
-import { CreateTokenResponseDto } from '../dto/tokens/create-token-response.dto';
+import { CreateTokenRequestDto } from '@dto/auth/create-verification-request.dto';
+import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { TokenService } from './token/token.service';
 
 @Injectable()

@@ -6,17 +6,15 @@ export interface ZoomUserResponseDTO {
     type: number;
     role_name: string;
     pmi: number;
-    user_pmi: boolean;
-    vanity_url: string;
+    use_pmi: boolean;
     personal_meeting_url: string;
     timezone: string;
     verified: number;
     dept: string;
     created_at: string;
     last_login_time: string;
-    last_client_version: string;
     pic_url: string;
-    host_key: string;
+    cms_user_id: string;
     jid: string;
     group_ids: string[];
     im_group_ids: string[];
@@ -25,4 +23,10 @@ export interface ZoomUserResponseDTO {
     phone_country: string;
     phone_number: string;
     status: string;
+    job_title: string;
+    location: string;
+    login_types: number[];
+    role_id: string;
+    cluster: string;
+    user_created_at: string;
 }
