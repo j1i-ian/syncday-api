@@ -19,6 +19,15 @@ stages:
   - production
   - cleanup
 
+.resolve-submodule: &resolve-submodule
+  image: node:19-alpine
+  before_script: |
+    apk add bash
+    apk add git
+    git config --system credential.helper store
+    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
+    bash scripts/init.sh
+
 variables:
   APP_NAME: syncday-api
   DOCKER_HOST: tcp://docker:2375
@@ -34,16 +43,12 @@ init:
     - develop
 
 build:
+  <<: *resolve-submodule
   stage: build
   image: node:19-alpine
   needs:
     - init
   script: |
-    apk add bash
-    apk add git
-    git config --system credential.helper store
-    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
-    bash scripts/init.sh
     npm run build
   artifacts:
     when: on_success
@@ -54,49 +59,34 @@ build:
     - if: '$CI_COMMIT_REF_NAME == "main" || $CI_COMMIT_REF_NAME == "develop"'
 
 lint:
+  <<: *resolve-submodule
   stage: test
-  image: node:19-alpine
   needs:
     - build
   script: |
-    apk add bash
-    apk add git
-    git config --system credential.helper store
-    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
-    bash scripts/init.sh
     npm run lint
   only:
     - main
     - develop
 
 test:
+  <<: *resolve-submodule
   stage: test
-  image: node:19-alpine
   needs:
     - build
   script: |
-    apk add bash
-    apk add git
-    git config --system credential.helper store
-    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
-    bash scripts/init.sh
     npm run test
   only:
     - main
     - develop
 
 build-docs-with-coverage:
+  <<: *resolve-submodule
   stage: deploy
-  image: node:19-alpine
   needs:
     - lint
     - test
   script: |
-    apk add bash
-    apk add git
-    git config --system credential.helper store
-    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
-    bash scripts/init.sh
     npm i -D @compodoc/compodoc
     npm i -D nyc
     yarn run test:coverage
@@ -106,6 +96,7 @@ build-docs-with-coverage:
     - develop
 
 deploy-docs-to-s3:
+  <<: *resolve-submodule
   stage: deploy
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   needs:
@@ -119,6 +110,7 @@ deploy-docs-to-s3:
     - develop
 
 upload-container-repository:
+  <<: *resolve-submodule
   stage: deploy
   image:
     name: amazon/aws-cli
