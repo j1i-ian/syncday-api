@@ -139,7 +139,6 @@ upload-container-repository:
       aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
     - !reference [.resolve-core, before_script]
   script: |
-    # Secret Resolving
     yum install -y curl
     curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     cp ./.secure_files/.env.production ./.env.production
