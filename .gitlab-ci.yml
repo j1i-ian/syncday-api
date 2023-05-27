@@ -19,14 +19,14 @@ stages:
   - production
   - cleanup
 
-.resolve-bash-git-for-alpine: &resolve-alpine
+.resolve-bash-git-for-alpine:
   image: node:19-alpine
   before_script:
-  - |
-    apk add bash
-    apk add git
+    - |
+      apk add bash
+      apk add git
 
-.resolve-core: &resolve-core
+.resolve-core:
   before_script: |
     git config --system credential.helper store
     echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
@@ -34,7 +34,7 @@ stages:
 
 .resolve-submodule: &resolve-submodule
   before_script:
-    - !reference [.resolve-alpine, before_script]
+    - !reference [.resolve-bash-git-for-alpine, before_script]
     - !reference [.resolve-core, before_script]
 
 variables:
