@@ -132,7 +132,7 @@ upload-container-repository:
     name: production
   before_script:
     - !reference [.resolve-core, before_script]
-    - install git and docker: |
+    - |
         # Install git
         yum install git
         # Install docker
