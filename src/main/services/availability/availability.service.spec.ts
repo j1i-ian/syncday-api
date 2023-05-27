@@ -435,7 +435,10 @@ describe('AvailabilityService', () => {
                 const clonedAvailability = await service.clone(
                     availabilityStub.id,
                     userMock.id,
-                    userMock.uuid
+                    userMock.uuid,
+                    {
+                        cloneSuffix: 'cloned'
+                    }
                 );
 
                 expect(clonedAvailability).ok;
@@ -443,6 +446,47 @@ describe('AvailabilityService', () => {
                 expect(validatorStub.validate.called).true;
                 expect(availabilityRepositoryStub.save.called).true;
                 expect(availabilityRepositoryStub.save.getCall(0).args[0].default).false;
+                expect(availabilityRepositoryStub.save.getCall(0).args[0].name).contains('cloned');
+                expect(availabilityRedisRepositoryStub.clone.called).true;
+            });
+
+            it('should be cloned availability with specified name', async () => {
+                const availabilityStub = stubOne(Availability, {
+                    default: false
+                });
+                const clonedAvailabilityStub = stubOne(Availability, {
+                    default: false
+                });
+                const userMock = stubOne(User);
+                const expectedSuffix = 'clonecloned';
+
+                const availabilityBody = testMockUtil.getAvailabilityBodyMock(availabilityStub);
+
+                validatorStub.validate.resolves(availabilityStub);
+
+                clonedAvailabilityStub.name = expectedSuffix;
+                availabilityRepositoryStub.save.resolves(clonedAvailabilityStub);
+
+                availabilityRedisRepositoryStub.clone.returns(of(availabilityBody));
+
+                const clonedAvailability = await service.clone(
+                    availabilityStub.id,
+                    userMock.id,
+                    userMock.uuid,
+                    {
+                        cloneSuffix: expectedSuffix
+                    }
+                );
+
+                expect(clonedAvailability).ok;
+                expect(clonedAvailability.default).false;
+                expect(clonedAvailability.name).contains(expectedSuffix);
+                expect(validatorStub.validate.called).true;
+                expect(availabilityRepositoryStub.save.called).true;
+                expect(availabilityRepositoryStub.save.getCall(0).args[0].default).false;
+                expect(availabilityRepositoryStub.save.getCall(0).args[0].name).contains(
+                    expectedSuffix
+                );
                 expect(availabilityRedisRepositoryStub.clone.called).true;
             });
 
@@ -466,7 +510,10 @@ describe('AvailabilityService', () => {
                 const clonedAvailability = await service.clone(
                     availabilityStub.id,
                     userMock.id,
-                    userMock.uuid
+                    userMock.uuid,
+                    {
+                        cloneSuffix: 'cloned'
+                    }
                 );
 
                 expect(clonedAvailability).ok;

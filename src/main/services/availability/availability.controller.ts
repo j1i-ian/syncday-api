@@ -27,6 +27,7 @@ import { UpdateAvailabilityRequestDto } from '@dto/availability/update-availabil
 import { CreateAvailabilityResponseDto } from '@dto/availability/create-availability-response.dto';
 import { GetAvailabilityResponseDto } from '@dto/availability/get-availability-response.dto';
 import { PatchAvailabilityRequestDto } from '@dto/availability/patch-availability-request.dto';
+import { CloneAvailabilityRequestDto } from '@dto/availability/clone-availability-options.dto';
 import { AvailabilitySearchOption } from '@app/interfaces/availability/availability-search-option.interface';
 import { AvailabilityService } from './availability.service';
 
@@ -120,8 +121,20 @@ export class AvailabilityController {
         return from(this.availabilityService.remove(availabilityId, userId, userUUID));
     }
 
-    clone(availabilityId: number, userId: number, userUUID: string): Promise<Availability> {
-        return this.availabilityService.clone(availabilityId, userId, userUUID);
+    clone(
+        availabilityId: number,
+        userId: number,
+        userUUID: string,
+        cloneAvailabilityOption: CloneAvailabilityRequestDto = {
+            cloneSuffix: 'cloned'
+        }
+    ): Promise<Availability> {
+        return this.availabilityService.clone(
+            availabilityId,
+            userId,
+            userUUID,
+            cloneAvailabilityOption
+        );
     }
 
     linkToEvents(userId: number, availabilityId: number, eventIds: number[]): Promise<boolean> {
@@ -143,12 +156,17 @@ export class AvailabilityController {
         @Res() response: Response,
         @AuthUser('id') userId: number,
         @AuthUser('uuid') userUUID: string,
+        @Body() requestBody?: CloneAvailabilityRequestDto,
         @Matrix({
             key: 'eventId',
             parseInt: true
         })
         eventIds?: number[]
     ): Promise<void> {
+        if (requestBody && Object.keys(requestBody).length === 0) {
+            requestBody = undefined;
+        }
+
         let responseBody;
         let statusCode = 500;
 
@@ -158,7 +176,12 @@ export class AvailabilityController {
 
         switch (req.method) {
             case 'COPY':
-                responseBody = await this.clone(parsedAvailabilityId, userId, userUUID);
+                responseBody = await this.clone(
+                    parsedAvailabilityId,
+                    userId,
+                    userUUID,
+                    requestBody
+                );
                 statusCode = HttpStatus.CREATED;
                 break;
             case 'LINK':

@@ -9,6 +9,7 @@ import { EventsService } from '@services/events/events.service';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
 import { UpdateAvailabilityRequestDto } from '@dto/availability/update-availability-request.dto';
 import { PatchAvailabilityRequestDto } from '@dto/availability/patch-availability-request.dto';
+import { CloneAvailabilityRequestDto } from '@dto/availability/clone-availability-options.dto';
 import { AvailabilitySearchOption } from '@app/interfaces/availability/availability-search-option.interface';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { AvailabilityUpdateFailByEntityException } from '@app/exceptions/availability-update-fail-by-entity.exception';
@@ -247,7 +248,12 @@ export class AvailabilityService {
         return true;
     }
 
-    async clone(availabilityId: number, userId: number, userUUID: string): Promise<Availability> {
+    async clone(
+        availabilityId: number,
+        userId: number,
+        userUUID: string,
+        { cloneSuffix }: CloneAvailabilityRequestDto
+    ): Promise<Availability> {
         const validatedAvailability = await this.validator.validate(
             userId,
             availabilityId,
@@ -257,6 +263,7 @@ export class AvailabilityService {
         const { id: _eventId, uuid: _eventUUID, ...newAvailability } = validatedAvailability;
 
         newAvailability.default = false;
+        newAvailability.name += cloneSuffix;
 
         const clonedAvailability = await this.availabilityRepository.save(newAvailability);
 
