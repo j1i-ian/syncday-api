@@ -10,6 +10,8 @@
   },
   "scripts": {
     "bumpup": "npm version patch --no-git-tag-version",
+    "bumpup:minor": "npm version minor --no-git-tag-version",
+    "bumpup:major": "npm version major --no-git-tag-version",
     "prebuild": "rm -rf dist",
     "build": "nest build",
     "prebuild:docs": "npm run test:coverage",
