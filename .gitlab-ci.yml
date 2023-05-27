@@ -96,7 +96,6 @@ build-docs-with-coverage:
     - develop
 
 deploy-docs-to-s3:
-  <<: *resolve-submodule
   stage: deploy
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   needs:
@@ -110,11 +109,8 @@ deploy-docs-to-s3:
     - develop
 
 upload-container-repository:
-  <<: *resolve-submodule
   stage: deploy
-  image:
-    name: amazon/aws-cli
-    entrypoint: [""]
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   needs:
     - lint
     - test
@@ -126,8 +122,11 @@ upload-container-repository:
     amazon-linux-extras install docker
     aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
   script: |
+    git config --system credential.helper store
+    echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
+    bash scripts/init.sh
     echo "Upload container image to AWS ECR repository"
-    cat $DOTENV > .env.production
+    cp ./.secure_files/.env.production ./.env.production
     docker build -t $APP_NAME .
     docker tag $APP_NAME:latest $ECR_REPOSITORY_URL/$APP_NAME:latest
     docker push $ECR_REPOSITORY_URL/$APP_NAME:latest
