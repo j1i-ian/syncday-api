@@ -126,7 +126,7 @@ export class AvailabilityController {
         userId: number,
         userUUID: string,
         cloneAvailabilityOption: CloneAvailabilityRequestDto = {
-            cloneSuffix: 'cloned'
+            cloneSuffix: ' (cloned)'
         }
     ): Promise<Availability> {
         return this.availabilityService.clone(
