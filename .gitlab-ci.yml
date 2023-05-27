@@ -131,7 +131,7 @@ upload-container-repository:
   environment:
     name: production
   before_script:
-    - !reference [.resolve-submodule, before_script]
+    - !reference [.resolve-core, before_script]
     - |
       amazon-linux-extras install docker
       aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
