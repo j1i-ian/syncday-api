@@ -22,6 +22,7 @@
     "start:local": "ENV=local nest start --watch",
     "start:local:dev": "ENV=development nest start --watch",
     "start:local:staging": "ENV=staging nest start --watch",
+    "prestart:local:prod": "npm run build",
     "start:local:prod": "ENV=production pm2 start ecosystem.json",
     "start:debug": "nest start --debug --watch",
     "start:prod": "ENV=production pm2-runtime start ecosystem.json",
