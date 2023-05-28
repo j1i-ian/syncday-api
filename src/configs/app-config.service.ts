@@ -55,7 +55,7 @@ export class AppConfigService {
         ];
 
         if (process.env.ENV === NodeEnv.PRODUCTION) {
-            origin = ['https://sync.day'];
+            origin = ['https://www.sync.day', 'https://sync.day'];
         }
 
         return origin;
