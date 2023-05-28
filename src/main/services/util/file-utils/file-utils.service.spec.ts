@@ -1,5 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Logger } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { GetObjectCommandOutput, S3 } from '@aws-sdk/client-s3';
 import { EmailTemplate } from '@app/enums/email-template.enum';
 import { Language } from '@app/enums/language.enum';
@@ -15,10 +17,13 @@ describe('File Util Service Test', () => {
 
     let awsS3ServiceStub: sinon.SinonStubbedInstance<S3>;
 
+    let logggerStub: sinon.SinonStubbedInstance<Logger>;
+
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     before(async () => {
         awsS3ServiceStub = sinon.createStubInstance(S3);
+        logggerStub = sinon.createStubInstance(Logger);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -35,6 +40,10 @@ describe('File Util Service Test', () => {
                 {
                     provide: 'AWS_SERVICE_UNDEFINED',
                     useValue: awsS3ServiceStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: logggerStub
                 }
             ]
         }).compile();
