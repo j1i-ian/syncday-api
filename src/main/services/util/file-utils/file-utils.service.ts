@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { AwsService, AwsServiceType, InjectAwsService } from 'nest-aws-sdk';
 import { ConfigService } from '@nestjs/config';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { GetObjectCommandInput, S3 } from '@aws-sdk/client-s3';
 import { Language } from '@app/enums/language.enum';
 import { EmailTemplate } from '@app/enums/email-template.enum';
@@ -17,7 +18,8 @@ export class FileUtilsService {
         private utilService: UtilService,
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        @InjectAwsService(S3 as AwsServiceType<AwsService>) private readonly s3: S3
+        @InjectAwsService(S3 as AwsServiceType<AwsService>) private readonly s3: S3,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
         this.__s3BucketName = this.configService.get<string>('AWS_S3_BUCKET_NAME') as string;
     }
@@ -49,15 +51,21 @@ export class FileUtilsService {
             Key: emailSubjectFullPath
         } as GetObjectCommandInput;
 
-        const result = await this.s3.getObject(params);
+        try {
+            const result = await this.s3.getObject(params);
 
-        if (!result.Body) {
-            throw new BadRequestException('Cannot found template type email');
+            if (!result.Body) {
+                throw new BadRequestException('Cannot found template type email');
+            }
+
+            const transformedJsonString = await result.Body.transformToString();
+            const emailSubjectJson: EmailSubject = JSON.parse(transformedJsonString);
+            const emailSubject = emailSubjectJson[emailTemplate];
+            return emailSubject;
+        } catch (error) {
+            const message = `Error while fetching bucket item: ${String(error)}`;
+            this.logger.error(message);
+            throw error;
         }
-
-        const transformedJsonString = await result.Body.transformToString();
-        const emailSubjectJson: EmailSubject = JSON.parse(transformedJsonString);
-        const emailSubject = emailSubjectJson[emailTemplate];
-        return emailSubject;
     }
 }
