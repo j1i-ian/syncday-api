@@ -88,13 +88,13 @@ export class TestMockUtil {
                     const _availabilityBody: AvailabilityBody =
                         _availableTimes && _overrides
                             ? ({
-                                  availableTimes: _availableTimes,
-                                  overrides: _overrides
-                              } as AvailabilityBody)
+                                availableTimes: _availableTimes,
+                                overrides: _overrides
+                            } as AvailabilityBody)
                             : ({
-                                  availableTimes: [],
-                                  overrides: []
-                              } as AvailabilityBody);
+                                availableTimes: [],
+                                overrides: []
+                            } as AvailabilityBody);
 
                     return [
                         availabilityStub.uuid,

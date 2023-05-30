@@ -1,6 +1,0 @@
-*.yml
-**/node_modules
-package.json
-public/
-dist/
-src/@core/**/*

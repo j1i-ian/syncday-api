@@ -27,9 +27,8 @@ export class GoogleCalendarIntegrationsService {
 
     async patch(
         userId: number,
-        googleCalendarIntegrations: Array<
-            Partial<GoogleCalendarIntegration> & Pick<GoogleCalendarIntegration, 'id'>
-        >
+        googleCalendarIntegrations:
+        Array<Partial<GoogleCalendarIntegration> &  Pick<GoogleCalendarIntegration, 'id'>>
     ): Promise<boolean> {
         const googleCalendarIntegrationIds = googleCalendarIntegrations.map(
             (_calendarIntegration) => _calendarIntegration.id
