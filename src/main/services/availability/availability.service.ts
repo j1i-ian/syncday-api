@@ -121,6 +121,7 @@ export class AvailabilityService {
 
     async update(
         availabilityId: number,
+        userId: number,
         userUUID: string,
         updateAvailabilityDto: UpdateAvailabilityRequestDto
     ): Promise<boolean> {
@@ -131,6 +132,8 @@ export class AvailabilityService {
             timezone,
             default: availabilityDefault
         } = updateAvailabilityDto;
+
+        await this.validator.validate(userId, availabilityId, Availability);
 
         const availability = await this.availabilityRepository.findOneByOrFail({
             id: availabilityId
@@ -222,6 +225,30 @@ export class AvailabilityService {
         }
 
         return true;
+    }
+
+    async patchAll(
+        userId: number,
+        userUUID: string,
+        { availableTimes, overrides }: PatchAvailabilityRequestDto
+    ): Promise<boolean> {
+        /**
+         * TDDO: it should be split into another api.
+         * Notice availability uuid is fetched from rdb
+         */
+        let availabilityBodyUpdateSuccess = false;
+
+        if (availableTimes && overrides) {
+            availabilityBodyUpdateSuccess = await this.availabilityRedisRepository.saveAll(
+                userUUID,
+                {
+                    availableTimes,
+                    overrides
+                }
+            );
+        }
+
+        return availabilityBodyUpdateSuccess;
     }
 
     async remove(availabilityId: number, userId: number, userUUID: string): Promise<boolean> {
