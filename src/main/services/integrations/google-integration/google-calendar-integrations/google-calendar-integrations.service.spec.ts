@@ -10,9 +10,7 @@ import { GoogleCalendarIntegrationsService } from './google-calendar-integration
 describe('GoogleCalendarIntegrationsService', () => {
     let service: GoogleCalendarIntegrationsService;
 
-    let gogoleCalendarIntegrationRepositoryStub: sinon.SinonStubbedInstance<
-        Repository<GoogleCalendarIntegration>
-    >;
+    let gogoleCalendarIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleCalendarIntegration>>;
 
     before(async () => {
         gogoleCalendarIntegrationRepositoryStub =

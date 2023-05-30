@@ -172,8 +172,8 @@ describe('Availability Redis Repository Test', () => {
             expect(clusterStub.hset.called).true;
 
             const availabilityBodyMapStub = clusterStub.hset.getCall(0).args[1] as unknown as Map<
-                string,
-                string
+            string,
+            string
             >;
             expect(availabilityBodyMapStub).ok;
 

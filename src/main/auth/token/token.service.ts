@@ -18,11 +18,11 @@ export interface EnsuredGoogleTokenResponse {
 }
 
 export type EnsuredGoogleOAuth2User = oauth2_v2.Schema$Userinfo &
-    EnsuredGoogleTokenResponse & {
-        email: string;
-        name: string;
-        picture: string;
-    };
+EnsuredGoogleTokenResponse & {
+    email: string;
+    name: string;
+    picture: string;
+};
 
 @Injectable()
 export class TokenService {
@@ -46,10 +46,7 @@ export class TokenService {
     async issueTokenByGoogleOAuth(
         authorizationCode: string,
         language: Language
-    ): Promise<{
-        issuedToken: CreateTokenResponseDto;
-        isNewbie: boolean;
-    }> {
+    ): Promise<{ issuedToken: CreateTokenResponseDto; isNewbie: boolean }> {
         const { googleUser, calendars, tokens } =
             await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode);
 

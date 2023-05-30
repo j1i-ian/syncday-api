@@ -137,10 +137,10 @@ export class AppConfigService {
                     env === NodeEnv.PRODUCTION
                         ? [this._getWinstonModuleProductionTransports(configService)]
                         : [
-                              new winston.transports.Console({
-                                  format: winston.format.json()
-                              })
-                          ];
+                            new winston.transports.Console({
+                                format: winston.format.json()
+                            })
+                        ];
 
                 const winstonDefaultOption = {
                     level,
