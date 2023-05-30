@@ -218,7 +218,7 @@ export class AvailabilityService {
          * Notice availability uuid is fetched from rdb
          */
         if (availableTimes && overrides) {
-            await this.availabilityRedisRepository.save(availability.uuid, userUUID, {
+            await this.availabilityRedisRepository.update(availability.uuid, userUUID, {
                 availableTimes,
                 overrides
             });
@@ -239,7 +239,7 @@ export class AvailabilityService {
         let availabilityBodyUpdateSuccess = false;
 
         if (availableTimes && overrides) {
-            availabilityBodyUpdateSuccess = await this.availabilityRedisRepository.saveAll(
+            availabilityBodyUpdateSuccess = await this.availabilityRedisRepository.updateAll(
                 userUUID,
                 {
                     availableTimes,

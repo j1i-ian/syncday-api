@@ -54,19 +54,76 @@ describe('Availability Redis Repository Test', () => {
             serviceSandbox.restore();
         });
 
-        it('coverage fill: save', async () => {
+        it('should be returned 1 for availability body creation', async () => {
+            const setStub = serviceSandbox.stub(service, 'set').resolves(1);
+
             const uuidKey = '';
-            const updatedHashFieldStub = 1;
 
-            syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(uuidKey);
-
-            clusterStub.hset.resolves(updatedHashFieldStub);
-
-            const verification = await service.save(uuidKey, uuidKey, {
+            const createdAvailabilityBody = await service.save(uuidKey, uuidKey, {
                 availableTimes: [],
                 overrides: []
             } as AvailabilityBody);
-            expect(verification).ok;
+
+            expect(setStub.called).true;
+            expect(createdAvailabilityBody).ok;
+        });
+
+        it('should be threw error when set returns 0 for availability body creation count', async () => {
+            const setStub = serviceSandbox.stub(service, 'set').resolves(0);
+
+            const uuidKey = '';
+
+            await expect(
+                service.save(uuidKey, uuidKey, {
+                    availableTimes: [],
+                    overrides: []
+                } as AvailabilityBody)
+            ).rejectedWith(AvailabilityBodySaveFail);
+
+            expect(setStub.called).true;
+        });
+
+        it('should be updated availability body with 0 creation', async () => {
+            const setStub = serviceSandbox.stub(service, 'set').resolves(0);
+            const uuidKey = '';
+
+            const updateSuccess = await service.update(uuidKey, uuidKey, {
+                availableTimes: [],
+                overrides: []
+            } as AvailabilityBody);
+
+            expect(updateSuccess).true;
+            expect(setStub.called).true;
+        });
+
+        it('should be threw error when set returns 1 or more for availability body creation count on update', async () => {
+            const setStub = serviceSandbox.stub(service, 'set').resolves(1);
+            const uuidKey = '';
+
+            await expect(
+                service.update(uuidKey, uuidKey, {
+                    availableTimes: [],
+                    overrides: []
+                } as AvailabilityBody)
+            ).rejectedWith(AvailabilityBodySaveFail);
+
+            expect(setStub.called).true;
+        });
+
+        it('should be returned 1 for availability body creation', async () => {
+            const uuidKey = '';
+            const createdHashFieldStub = 1;
+
+            syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(uuidKey);
+
+            clusterStub.hset.resolves(createdHashFieldStub);
+
+            const setResult = await service.set(uuidKey, uuidKey, {
+                availableTimes: [],
+                overrides: []
+            } as AvailabilityBody);
+            expect(setResult).ok;
+            expect(setResult).equals(createdHashFieldStub);
         });
 
         it('should be saved all for availability bodies with sorting', async () => {
@@ -107,7 +164,7 @@ describe('Availability Redis Repository Test', () => {
             syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(userUUIDMock);
             clusterStub.hset.resolves(createdItemCountStub);
 
-            const result = await service.saveAll(userUUIDMock, updateAvailabilityBodyStub);
+            const result = await service.updateAll(userUUIDMock, updateAvailabilityBodyStub);
 
             expect(result).true;
             expect(getAvailabilityBodyRecordStub.called).true;
@@ -174,7 +231,7 @@ describe('Availability Redis Repository Test', () => {
             syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(userUUIDMock);
             clusterStub.hset.resolves(createdItemCountStub);
 
-            await expect(service.saveAll(userUUIDMock, updateAvailabilityBodyStub)).rejectedWith(
+            await expect(service.updateAll(userUUIDMock, updateAvailabilityBodyStub)).rejectedWith(
                 AvailabilityBodySaveFail
             );
 
