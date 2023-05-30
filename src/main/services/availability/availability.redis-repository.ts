@@ -47,7 +47,63 @@ export class AvailabilityRedisRepository {
         return availabilityBody;
     }
 
-    async saveAll(userUUID: string, updateAvailabilityBody: AvailabilityBody): Promise<boolean> {
+    async save(
+        availabilityUUID: string,
+        userUUID: string,
+        availabilityBody: AvailabilityBody
+    ): Promise<AvailabilityBody> {
+        const createdHashFieldCount = await this.set(availabilityUUID, userUUID, availabilityBody);
+
+        if (createdHashFieldCount !== 1) {
+            throw new AvailabilityBodySaveFail();
+        } else {
+            return availabilityBody;
+        }
+    }
+
+    async update(
+        availabilityUUID: string,
+        userUUID: string,
+        availabilityBody: AvailabilityBody
+    ): Promise<boolean> {
+        const createdHashFieldCount = await this.set(availabilityUUID, userUUID, availabilityBody);
+
+        if (createdHashFieldCount !== 0) {
+            throw new AvailabilityBodySaveFail();
+        } else {
+            return true;
+        }
+    }
+
+    async set(
+        availabilityUUID: string,
+        userUUID: string,
+        availabilityBody: AvailabilityBody
+    ): Promise<number> {
+        availabilityBody.availableTimes = availabilityBody.availableTimes.sort(
+            (availableTimeA, availableTimeB) => availableTimeA.day - availableTimeB.day
+        );
+
+        // ascending
+        availabilityBody.overrides = availabilityBody.overrides
+            .filter((override) => new Date(override.targetDate).getTime() > Date.now())
+            .sort(
+                (overrideA, overrideB) =>
+                    new Date(overrideB.targetDate).getTime() -
+                    new Date(overrideA.targetDate).getTime()
+            );
+
+        const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
+        const createdHashFields = await this.cluster.hset(
+            availabilityUserKey,
+            availabilityUUID,
+            JSON.stringify(availabilityBody)
+        );
+
+        return createdHashFields;
+    }
+
+    async updateAll(userUUID: string, updateAvailabilityBody: AvailabilityBody): Promise<boolean> {
         const allAvailabilityRecordOfUser = await this.getAvailabilityBodyRecord(userUUID);
 
         // sort
@@ -85,38 +141,6 @@ export class AvailabilityRedisRepository {
             throw new AvailabilityBodySaveFail();
         } else {
             return true;
-        }
-    }
-
-    async save(
-        availabilityUUID: string,
-        userUUID: string,
-        availabilityBody: AvailabilityBody
-    ): Promise<AvailabilityBody> {
-        availabilityBody.availableTimes = availabilityBody.availableTimes.sort(
-            (availableTimeA, availableTimeB) => availableTimeA.day - availableTimeB.day
-        );
-
-        // ascending
-        availabilityBody.overrides = availabilityBody.overrides
-            .filter((override) => new Date(override.targetDate).getTime() > Date.now())
-            .sort(
-                (overrideA, overrideB) =>
-                    new Date(overrideB.targetDate).getTime() -
-                    new Date(overrideA.targetDate).getTime()
-            );
-
-        const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
-        const updatedHashFields = await this.cluster.hset(
-            availabilityUserKey,
-            availabilityUUID,
-            JSON.stringify(availabilityBody)
-        );
-
-        if (updatedHashFields !== 1) {
-            throw new AvailabilityBodySaveFail();
-        } else {
-            return availabilityBody;
         }
     }
 

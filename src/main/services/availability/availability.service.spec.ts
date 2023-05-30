@@ -217,14 +217,15 @@ describe('AvailabilityService', () => {
                 availabilityRedisRepositoryStub.getAvailabilityBodyRecord.reset();
                 availabilityRedisRepositoryStub.getAvailabilityBody.reset();
                 availabilityRedisRepositoryStub.save.reset();
-                availabilityRedisRepositoryStub.saveAll.reset();
+                availabilityRedisRepositoryStub.update.reset();
+                availabilityRedisRepositoryStub.updateAll.reset();
             });
 
             it('should be patched all', async () => {
                 const userStub = stubOne(User);
                 const availabilityBody = testMockUtil.getAvailabilityBodyMock();
 
-                availabilityRedisRepositoryStub.saveAll.resolves(true);
+                availabilityRedisRepositoryStub.updateAll.resolves(true);
 
                 const patchAllResult = await service.patchAll(
                     userStub.id,
@@ -233,21 +234,21 @@ describe('AvailabilityService', () => {
                 );
 
                 expect(patchAllResult).true;
-                expect(availabilityRedisRepositoryStub.saveAll.called).true;
+                expect(availabilityRedisRepositoryStub.updateAll.called).true;
             });
 
             it('should be not patched without available times or overrides', async () => {
                 const userStub = stubOne(User);
                 const availabilityBody = testMockUtil.getAvailabilityBodyMock();
 
-                availabilityRedisRepositoryStub.saveAll.resolves(true);
+                availabilityRedisRepositoryStub.updateAll.resolves(true);
 
                 const patchAllResult = await service.patchAll(userStub.id, userStub.uuid, {
                     availableTimes: availabilityBody.availableTimes
                 });
 
                 expect(patchAllResult).false;
-                expect(availabilityRedisRepositoryStub.saveAll.called).false;
+                expect(availabilityRedisRepositoryStub.updateAll.called).false;
             });
 
             it('should be patched default as true and previous default availability should be patched default as false ', async () => {
@@ -271,7 +272,7 @@ describe('AvailabilityService', () => {
                 expect(patchResult).true;
                 expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(availabilityRepositoryStub.update.calledTwice).true;
-                expect(availabilityRedisRepositoryStub.save.called).false;
+                expect(availabilityRedisRepositoryStub.update.called).false;
             });
 
             it('should be patched default as true with name, timezone and previous default availability should be patched default as false ', async () => {
@@ -299,7 +300,7 @@ describe('AvailabilityService', () => {
                 expect(patchResult).true;
                 expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(availabilityRepositoryStub.update.calledTwice).true;
-                expect(availabilityRedisRepositoryStub.save.called).false;
+                expect(availabilityRedisRepositoryStub.update.called).false;
             });
 
             it('should be threw error when default request value is false if that target availability is default', async () => {
@@ -324,7 +325,7 @@ describe('AvailabilityService', () => {
                 expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(availabilityRepositoryStub.update.called).false;
                 expect(availabilityRepositoryStub.update.calledTwice).false;
-                expect(availabilityRedisRepositoryStub.save.called).false;
+                expect(availabilityRedisRepositoryStub.update.called).false;
             });
 
             it('should be patched name, timezone when patching default request value is false', async () => {
@@ -350,7 +351,7 @@ describe('AvailabilityService', () => {
                 expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(availabilityRepositoryStub.update.called).true;
                 expect(availabilityRepositoryStub.update.calledTwice).false;
-                expect(availabilityRedisRepositoryStub.save.called).false;
+                expect(availabilityRedisRepositoryStub.update.called).false;
             });
 
             it('should be patched availableTimes with overrides', async () => {
@@ -374,7 +375,7 @@ describe('AvailabilityService', () => {
                 expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(availabilityRepositoryStub.update.called).false;
                 expect(availabilityRepositoryStub.update.calledTwice).false;
-                expect(availabilityRedisRepositoryStub.save.called).true;
+                expect(availabilityRedisRepositoryStub.update.called).true;
             });
 
             it('should be not patched when dto has only availableTimes, not include overrides', async () => {
@@ -398,7 +399,7 @@ describe('AvailabilityService', () => {
                 expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(availabilityRepositoryStub.update.called).false;
                 expect(availabilityRepositoryStub.update.calledTwice).false;
-                expect(availabilityRedisRepositoryStub.save.called).true;
+                expect(availabilityRedisRepositoryStub.update.called).true;
             });
         });
 
