@@ -47,6 +47,47 @@ export class AvailabilityRedisRepository {
         return availabilityBody;
     }
 
+    async saveAll(userUUID: string, updateAvailabilityBody: AvailabilityBody): Promise<boolean> {
+        const allAvailabilityRecordOfUser = await this.getAvailabilityBodyRecord(userUUID);
+
+        // sort
+        updateAvailabilityBody.availableTimes = updateAvailabilityBody.availableTimes.sort(
+            (availableTimeA, availableTimeB) => availableTimeA.day - availableTimeB.day
+        );
+
+        // ascending
+        updateAvailabilityBody.overrides = updateAvailabilityBody.overrides
+            .filter((override) => new Date(override.targetDate).getTime() > Date.now())
+            .sort(
+                (overrideA, overrideB) =>
+                    new Date(overrideB.targetDate).getTime() -
+                    new Date(overrideA.targetDate).getTime()
+            );
+
+        const updatedAvailabilityMap: Map<string, string> = Object.keys(
+            allAvailabilityRecordOfUser
+        ).reduce((_availabilityBodyMap, availabilityUUIDKey) => {
+            _availabilityBodyMap.set(availabilityUUIDKey, JSON.stringify(updateAvailabilityBody));
+            return _availabilityBodyMap;
+        }, new Map());
+
+        const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
+
+        /**
+         * all fields should be updated, so the created item should not exist
+         */
+        const createdFieldsCount = await this.cluster.hset(
+            availabilityUserKey,
+            updatedAvailabilityMap
+        );
+
+        if (createdFieldsCount !== 0) {
+            throw new AvailabilityBodySaveFail();
+        } else {
+            return true;
+        }
+    }
+
     async save(
         availabilityUUID: string,
         userUUID: string,

@@ -90,12 +90,23 @@ export class AvailabilityController {
     @HttpCode(HttpStatus.NO_CONTENT)
     update(
         @Param('availabilityId', ParseIntPipe) availabilityId: number,
+        @AuthUser('id') userId: number,
         @AuthUser('uuid') userUUID: string,
         @Body() updateAvailabilityDto: UpdateAvailabilityRequestDto
     ): Observable<boolean> {
         return from(
-            this.availabilityService.update(availabilityId, userUUID, updateAvailabilityDto)
+            this.availabilityService.update(availabilityId, userId, userUUID, updateAvailabilityDto)
         );
+    }
+
+    @Patch()
+    @HttpCode(HttpStatus.NO_CONTENT)
+    patchAll(
+        @AuthUser('id') userId: number,
+        @AuthUser('uuid') userUUID: string,
+        @Body() patchAvailabilityDto: PatchAvailabilityRequestDto
+    ): Observable<boolean> {
+        return from(this.availabilityService.patchAll(userId, userUUID, patchAvailabilityDto));
     }
 
     @Patch(':availabilityId')

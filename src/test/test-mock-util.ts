@@ -74,20 +74,37 @@ export class TestMockUtil {
     }
 
     getAvailabilityBodyRecordMocks(
-        availabilityStubs?: Availability[]
+        availabilityStubs?: Array<Pick<Availability, 'uuid' | 'availableTimes' | 'overrides'>>
     ): Record<string, AvailabilityBody> {
         if (!availabilityStubs) {
             availabilityStubs = stub(Availability);
         }
 
         return Object.fromEntries(
-            availabilityStubs.map((availabilityStub: Availability) => [
-                availabilityStub.uuid,
-                {
-                    availableTimes: [],
-                    overrides: []
-                } as AvailabilityBody
-            ])
+            availabilityStubs.map(
+                (availabilityStub: Pick<Availability, 'uuid' | 'availableTimes' | 'overrides'>) => {
+                    const { availableTimes: _availableTimes, overrides: _overrides } =
+                        availabilityStub;
+                    const _availabilityBody: AvailabilityBody =
+                        _availableTimes && _overrides
+                            ? ({
+                                  availableTimes: _availableTimes,
+                                  overrides: _overrides
+                              } as AvailabilityBody)
+                            : ({
+                                  availableTimes: [],
+                                  overrides: []
+                              } as AvailabilityBody);
+
+                    return [
+                        availabilityStub.uuid,
+                        {
+                            availableTimes: _availabilityBody.availableTimes,
+                            overrides: _availabilityBody.overrides
+                        } as AvailabilityBody
+                    ];
+                }
+            )
         ) as Record<string, AvailabilityBody>;
     }
 

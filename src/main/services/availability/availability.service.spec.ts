@@ -165,6 +165,7 @@ describe('AvailabilityService', () => {
 
             const loadedAvailability = await service.update(
                 availabilityStub.id,
+                userStub.id,
                 userStub.uuid,
                 updateAvailabilityStub
             );
@@ -196,7 +197,12 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.save.resolves(updateAvailabilityRequestDtoMock);
 
             await expect(
-                service.update(availabilityStub.id, userStub.uuid, updateAvailabilityStub)
+                service.update(
+                    availabilityStub.id,
+                    userStub.id,
+                    userStub.uuid,
+                    updateAvailabilityStub
+                )
             ).rejectedWith(InternalServerErrorException);
 
             expect(availabilityRepositoryStub.findOneByOrFail.called).true;
@@ -204,13 +210,44 @@ describe('AvailabilityService', () => {
             expect(availabilityRedisRepositoryStub.save.called).false;
         });
 
-        describe('Test availability patch', () => {
+        describe('Test availability patch & patchAll', () => {
             afterEach(() => {
                 availabilityRepositoryStub.update.reset();
                 availabilityRepositoryStub.findOneByOrFail.reset();
                 availabilityRedisRepositoryStub.getAvailabilityBodyRecord.reset();
                 availabilityRedisRepositoryStub.getAvailabilityBody.reset();
                 availabilityRedisRepositoryStub.save.reset();
+                availabilityRedisRepositoryStub.saveAll.reset();
+            });
+
+            it('should be patched all', async () => {
+                const userStub = stubOne(User);
+                const availabilityBody = testMockUtil.getAvailabilityBodyMock();
+
+                availabilityRedisRepositoryStub.saveAll.resolves(true);
+
+                const patchAllResult = await service.patchAll(
+                    userStub.id,
+                    userStub.uuid,
+                    availabilityBody
+                );
+
+                expect(patchAllResult).true;
+                expect(availabilityRedisRepositoryStub.saveAll.called).true;
+            });
+
+            it('should be not patched without available times or overrides', async () => {
+                const userStub = stubOne(User);
+                const availabilityBody = testMockUtil.getAvailabilityBodyMock();
+
+                availabilityRedisRepositoryStub.saveAll.resolves(true);
+
+                const patchAllResult = await service.patchAll(userStub.id, userStub.uuid, {
+                    availableTimes: availabilityBody.availableTimes
+                });
+
+                expect(patchAllResult).false;
+                expect(availabilityRedisRepositoryStub.saveAll.called).false;
             });
 
             it('should be patched default as true and previous default availability should be patched default as false ', async () => {
