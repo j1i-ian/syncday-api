@@ -2,11 +2,11 @@ import { Observable, forkJoin, from, iif, of, switchMap } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster } from 'ioredis';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
-import { Reminder } from '@core/entities/reminders/reminder.entity';
+import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
-import { InviteeQuestionsOrRemindersSaveFailException } from '@app/exceptions/invitee-questions-or-reminders-save-fail.exception';
+import { EventDetailBodySaveFailException } from '@app/exceptions/event-detail-body-save-fail.exception';
 
 /**
  * TODO: modulization to NessJS-Typeorm or custom repository that can be loaded with getRepositoryToken() in typeorm.
@@ -31,32 +31,32 @@ export class EventsRedisRepository {
         );
     }
 
-    getReminders(eventDetailUUID: string): Observable<Reminder[]> {
-        const reminderKey = this.syncdayRedisService.getRemindersKey(eventDetailUUID);
+    getNotificationInfo(eventDetailUUID: string): Observable<NotificationInfo> {
+        const notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID);
 
-        return from(this.cluster.get(reminderKey)).pipe(
+        return from(this.cluster.get(notificationInfoKey)).pipe(
             switchMap((result: string | null) =>
-                iif(() => !!result, of(JSON.parse(result as string) as Reminder[]), of([]))
+                iif(() => !!result, of(JSON.parse(result as string) as NotificationInfo), of({}))
             )
         );
     }
 
     /**
-     * This method overwrites invitee questions, reminders always.
+     * This method overwrites invitee questions, notification info always.
      * Both elements have too small chunk sizes, so it has not been configured with hash map
      *
      * @param eventDetailUUID
      * @param newInviteeQuestions
-     * @param newReminders
+     * @param newNotificationInfo
      * @returns
      */
     async save(
         eventDetailUUID: string,
         newInviteeQuestions: InviteeQuestion[],
-        newReminders: Reminder[]
+        newNotificationInfo: NotificationInfo
     ): Promise<EventsDetailBody> {
         const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID);
-        const reminderKey = this.syncdayRedisService.getRemindersKey(eventDetailUUID);
+        const notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID);
 
         const newInviteeQuestionsBody = JSON.stringify(newInviteeQuestions);
         const createdInviteeQuestionsResult = await this.cluster.set(
@@ -64,36 +64,36 @@ export class EventsRedisRepository {
             newInviteeQuestionsBody
         );
 
-        const newRemindersBody = JSON.stringify(newReminders);
-        const createdRemindersResult = await this.cluster.set(reminderKey, newRemindersBody);
+        const newNotificationInfoBody = JSON.stringify(newNotificationInfo);
+        const createdNotificationInfoResult = await this.cluster.set(notificationInfoKey, newNotificationInfoBody);
 
-        if (createdInviteeQuestionsResult === 'OK' && createdRemindersResult === 'OK') {
+        if (createdInviteeQuestionsResult === 'OK' && createdNotificationInfoResult === 'OK') {
             return {
                 inviteeQuestions: newInviteeQuestions,
-                reminders: newReminders
+                notificationInfo: newNotificationInfo
             };
         } else {
-            throw new InviteeQuestionsOrRemindersSaveFailException();
+            throw new EventDetailBodySaveFailException();
         }
     }
 
     async remove(eventDetailUUID: string): Promise<boolean> {
         const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID);
-        const reminderKey = this.syncdayRedisService.getRemindersKey(eventDetailUUID);
+        const notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID);
 
         const deletedInviteeQuestionNode = await this.cluster.del(inviteeQuestionKey);
-        const deletedReminderNode = await this.cluster.del(reminderKey);
+        const deletedNotificationInfoNode = await this.cluster.del(notificationInfoKey);
 
-        return deletedInviteeQuestionNode > 0 && deletedReminderNode > 0;
+        return deletedInviteeQuestionNode > 0 && deletedNotificationInfoNode > 0;
     }
 
     clone(sourceEventDetailUUID: string, newEventDetailUUID: string): Observable<EventsDetailBody> {
         return forkJoin({
             sourceInviteeQuestions: this.getInviteeQuestions(sourceEventDetailUUID),
-            sourceReminders: this.getReminders(sourceEventDetailUUID)
+            sourceNotificationInfo: this.getNotificationInfo(sourceEventDetailUUID)
         }).pipe(
-            switchMap(({ sourceInviteeQuestions, sourceReminders }) =>
-                this.save(newEventDetailUUID, sourceInviteeQuestions, sourceReminders)
+            switchMap(({ sourceInviteeQuestions, sourceNotificationInfo }) =>
+                this.save(newEventDetailUUID, sourceInviteeQuestions, sourceNotificationInfo)
             )
         );
     }
