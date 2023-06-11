@@ -38,15 +38,17 @@ export class EventsService {
         );
     }
 
-    findOne(eventId: number): Observable<Event> {
+    findOne(eventId: number, userId: number): Observable<Event> {
         return from(
-            this.eventRepository.findOneOrFail({
-                relations: ['eventDetail'],
-                where: {
-                    id: eventId
-                }
-            })
+            this.validator.validate(userId, eventId, Event)
         ).pipe(
+            mergeMap(() =>
+                this.eventRepository.findOneOrFail({
+                    relations: ['eventDetail'],
+                    where: {
+                        id: eventId
+                    }
+                })),
             mergeMap((loadedEvent) => {
                 const eventDetail = loadedEvent.eventDetail;
                 const eventDetailUUID = eventDetail.uuid;
@@ -54,12 +56,12 @@ export class EventsService {
                 return forkJoin({
                     inviteeQuestions:
                         this.eventRedisRepository.getInviteeQuestions(eventDetailUUID),
-                    reminders: this.eventRedisRepository.getReminders(eventDetailUUID),
+                    notificationInfo: this.eventRedisRepository.getNotificationInfo(eventDetailUUID),
                     event: of(loadedEvent)
                 }).pipe(
-                    map(({ inviteeQuestions, reminders, event }) => {
+                    map(({ inviteeQuestions, notificationInfo, event }) => {
                         event.eventDetail.inviteeQuestions = inviteeQuestions;
-                        event.eventDetail.reminders = reminders;
+                        event.eventDetail.notificationInfo = notificationInfo;
                         return event;
                     })
                 );
@@ -80,23 +82,19 @@ export class EventsService {
 
         // save consumption data
         const newEventDetail = newEvent.eventDetail;
-        const { inviteeQuestions, reminders } = newEventDetail;
-        const savedEventDetailBody = await this.eventRedisRepository.save(
-            savedEventDetail.uuid,
-            inviteeQuestions,
-            reminders
-        );
+        const { inviteeQuestions, notificationInfo } = newEventDetail;
+        const savedEventDetailBody = await this.eventRedisRepository.save(savedEventDetail.uuid, inviteeQuestions, notificationInfo);
 
         savedEvent.eventDetail.inviteeQuestions = savedEventDetailBody.inviteeQuestions;
-        savedEvent.eventDetail.reminders = savedEventDetailBody.reminders;
+        savedEvent.eventDetail.notificationInfo = savedEventDetailBody.notificationInfo;
 
         return savedEvent;
     }
 
-    async update(eventId: number, userId: number, updateEvent: Partial<Event>): Promise<boolean> {
+    async patch(eventId: number, userId: number, patchEvent: Partial<Event>): Promise<boolean> {
         await this.validator.validate(userId, eventId, Event);
 
-        const updateResult = await this.eventRepository.update(eventId, updateEvent);
+        const updateResult = await this.eventRepository.update(eventId, patchEvent);
 
         const updateSuccess = updateResult && updateResult.affected && updateResult.affected > 0;
 
@@ -161,7 +159,7 @@ export class EventsService {
         );
 
         clonedEvent.eventDetail.inviteeQuestions = clonedEventDetailBody.inviteeQuestions;
-        clonedEvent.eventDetail.reminders = clonedEventDetailBody.reminders;
+        clonedEvent.eventDetail.notificationInfo = clonedEventDetailBody.notificationInfo;
 
         return clonedEvent;
     }

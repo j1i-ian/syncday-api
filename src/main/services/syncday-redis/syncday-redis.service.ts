@@ -100,8 +100,8 @@ export class SyncdayRedisService {
         ]);
     }
 
-    getRemindersKey(eventDetailUUID: string): RedisKey {
-        return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.REMINDER]);
+    getNotificationInfoKey(eventDetailUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.NOTIFICATION_INFO]);
     }
 
     _getAvailabilityHashMapKey(userUUID: string): RedisKey {

@@ -21,8 +21,8 @@ import { Event } from '@core/entities/events/event.entity';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
-import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-request.dto';
 import { GetEventResponseDto } from '@dto/event-groups/events/get-event-response.dto';
+import { PatchEventRequestDto } from '@dto/event-groups/events/patch-event-request.dto';
 import { EventsService } from './events.service';
 
 @Controller('events')
@@ -45,8 +45,11 @@ export class EventsController {
     }
 
     @Get(':eventId')
-    findOne(@Param('eventId', ParseIntPipe) eventId: number): Observable<Event> {
-        return this.eventsService.findOne(eventId);
+    findOne(
+        @AuthUser('id') userId: number,
+        @Param('eventId', ParseIntPipe) eventId: number
+    ): Observable<Event> {
+        return this.eventsService.findOne(eventId, userId);
     }
 
     @Post()
@@ -59,12 +62,12 @@ export class EventsController {
 
     @Patch(':eventId')
     @HttpCode(HttpStatus.NO_CONTENT)
-    async update(
+    async patch(
         @AuthUser('id') userId: number,
         @Param('eventId', ParseIntPipe) eventId: number,
-        @Body() updateEventRequestDto: UpdateEventRequestDto
+        @Body() patchEventRequestDto: PatchEventRequestDto
     ): Promise<void> {
-        await this.eventsService.update(eventId, userId, updateEventRequestDto as Partial<Event>);
+        await this.eventsService.patch(eventId, userId, patchEventRequestDto as Partial<Event>);
     }
 
     @Delete(':eventId')

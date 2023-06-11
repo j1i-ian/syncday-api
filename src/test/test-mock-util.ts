@@ -14,10 +14,12 @@ import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
 import { QuestionInputType } from '@core/entities/invitee-questions/question-input-type.enum';
-import { Reminder } from '@core/entities/reminders/reminder.entity';
-import { ReminderType } from '@core/entities/reminders/reminder-type.enum';
-import { ReminderTarget } from '@core/entities/reminders/reminder-target.enum';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
+import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
+import { Notification } from '@interfaces/notifications/notification';
+import { Reminder } from '@interfaces/reminders/reminder';
+import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { Verification } from '@entity/verifications/verification.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { Faker, faker } from '@faker-js/faker';
@@ -132,12 +134,32 @@ export class TestMockUtil {
         };
     }
 
-    getReminderMock(eventDetailUUID?: string, reminder?: Partial<Reminder>): Reminder {
+    getNotificationInfoMock(): NotificationInfo {
+
+        const hostNotificationMock = this.getNotificationMock();
+        const inviteeNotificationMock = this.getNotificationMock();
+
         return {
-            eventDetailUUID: eventDetailUUID || 'DEFAULT_EVENT_DETAIL_UUID',
+            host: [hostNotificationMock],
+            invitee: [inviteeNotificationMock]
+        };
+    }
+
+    getNotificationMock(): Notification {
+
+        const reminderMock = this.getReminderMock();
+
+        return {
+            reminders: [reminderMock],
+            type: NotificationType.EMAIL,
+            uuid: faker.datatype.uuid()
+        };
+    }
+
+    getReminderMock(reminder?: Partial<Reminder>): Reminder {
+        return {
             remindBefore: '10',
-            target: ReminderTarget.HOST,
-            type: ReminderType.EMAIL,
+            type: ReminderType.SMS,
             uuid: faker.datatype.uuid(),
             ...reminder
         };

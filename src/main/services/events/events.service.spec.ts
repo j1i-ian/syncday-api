@@ -95,7 +95,7 @@ describe('EventsService', () => {
             eventRepositoryStub.delete.reset();
 
             eventRedisRepositoryStub.getInviteeQuestions.reset();
-            eventRedisRepositoryStub.getReminders.reset();
+            eventRedisRepositoryStub.getNotificationInfo.reset();
             eventRedisRepositoryStub.save.reset();
             eventRedisRepositoryStub.remove.reset();
             eventRedisRepositoryStub.clone.reset();
@@ -118,21 +118,21 @@ describe('EventsService', () => {
 
         it('should be fetched event with detail', async () => {
             const eventDetailStub = stubOne(EventDetail);
+            const userStub = stubOne(User);
             const eventStub = stubOne(Event, {
                 eventDetail: eventDetailStub
             });
             const inviteeStubs = Array(10).fill(
                 testMockUtil.getInviteeQuestionMock(eventDetailStub.uuid)
             );
-            const reminderStubs = Array(10).fill(
-                testMockUtil.getReminderMock(eventDetailStub.uuid)
-            );
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
+            validatorStub.validate.resolves();
             eventRepositoryStub.findOneOrFail.resolves(eventStub);
             eventRedisRepositoryStub.getInviteeQuestions.returns(from(inviteeStubs));
-            eventRedisRepositoryStub.getReminders.returns(from(reminderStubs));
+            eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
 
-            const loadedEventWithDetail = await firstValueFrom(service.findOne(eventStub.id));
+            const loadedEventWithDetail = await firstValueFrom(service.findOne(eventStub.id, userStub.id));
 
             expect(loadedEventWithDetail).ok;
             expect(loadedEventWithDetail.eventDetail).ok;
@@ -143,16 +143,16 @@ describe('EventsService', () => {
             const userMock = stubOne(User);
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
-            const reminderStubs = [testMockUtil.getReminderMock()];
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
             const eventDetailBodyStub = {
                 inviteeQuestions: inviteeQuestionStubs,
-                reminders: reminderStubs
+                notificationInfo: notificationInfoStub
             } as EventsDetailBody;
 
             const eventDetailStub = stubOne(EventDetail, {
                 inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
-                reminders: eventDetailBodyStub.reminders
+                notificationInfo: eventDetailBodyStub.notificationInfo
             });
             const eventMock = stubOne(Event, {
                 eventDetail: eventDetailStub
@@ -173,8 +173,7 @@ describe('EventsService', () => {
             expect(createdEvent.eventDetail).ok;
             expect(createdEvent.eventDetail.inviteeQuestions).ok;
             expect(createdEvent.eventDetail.inviteeQuestions.length).greaterThan(0);
-            expect(createdEvent.eventDetail.reminders).ok;
-            expect(createdEvent.eventDetail.reminders.length).greaterThan(0);
+            expect(createdEvent.eventDetail.notificationInfo).ok;
 
             expect(eventGroupRepositoryStub.findOneByOrFail.called).true;
             expect(eventRepositoryStub.save.called).true;
@@ -189,7 +188,7 @@ describe('EventsService', () => {
 
             eventRepositoryStub.update.resolves(updateResultStub);
 
-            const updateResult = await service.update(eventMock.id, userMock.id, eventMock);
+            const updateResult = await service.patch(eventMock.id, userMock.id, eventMock);
 
             expect(updateResult).true;
             expect(validatorStub.validate.called).true;
@@ -200,16 +199,16 @@ describe('EventsService', () => {
             const userMock = stubOne(User);
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
-            const reminderStubs = [testMockUtil.getReminderMock()];
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
             const eventDetailBodyStub = {
                 inviteeQuestions: inviteeQuestionStubs,
-                reminders: reminderStubs
+                notificationInfo: notificationInfoStub
             } as EventsDetailBody;
 
             const eventDetailStub = stubOne(EventDetail, {
                 inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
-                reminders: eventDetailBodyStub.reminders
+                notificationInfo: eventDetailBodyStub.notificationInfo
             });
             const eventMock = stubOne(Event, {
                 eventDetail: eventDetailStub
@@ -235,16 +234,16 @@ describe('EventsService', () => {
             const userMock = stubOne(User);
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
-            const reminderStubs = [testMockUtil.getReminderMock()];
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
             const eventDetailBodyStub = {
                 inviteeQuestions: inviteeQuestionStubs,
-                reminders: reminderStubs
+                notificationInfo: notificationInfoStub
             } as EventsDetailBody;
 
             const eventDetailStub = stubOne(EventDetail, {
                 inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
-                reminders: eventDetailBodyStub.reminders
+                notificationInfo: eventDetailBodyStub.notificationInfo
             });
             const eventMock = stubOne(Event, {
                 eventDetail: eventDetailStub
@@ -270,16 +269,16 @@ describe('EventsService', () => {
             const userMock = stubOne(User);
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
-            const reminderStubs = [testMockUtil.getReminderMock()];
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
             const eventDetailBodyStub = {
                 inviteeQuestions: inviteeQuestionStubs,
-                reminders: reminderStubs
+                notificationInfo: notificationInfoStub
             } as EventsDetailBody;
 
             const [sourceEventDetailStub, clonedEventDetailStub] = stub(EventDetail, 2, {
                 inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
-                reminders: eventDetailBodyStub.reminders
+                notificationInfo: eventDetailBodyStub.notificationInfo
             });
             const [sourceEventStub, clonedEventStub] = stub(Event, 2);
             sourceEventStub.eventDetail = sourceEventDetailStub;

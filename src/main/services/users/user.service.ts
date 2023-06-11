@@ -8,15 +8,12 @@ import { AvailabilityRedisRepository } from '@services/availability/availability
 import { User } from '@entity/users/user.entity';
 import { BufferTime } from '@entity/events/buffer-time.entity';
 import { EventType } from '@entity/events/event-type.entity';
-import { TimeRange } from '@entity/events/time-range.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { DateRange } from '@entity/events/date-range.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
-import { Contact } from '@entity/events/contact.entity';
-import { ContactType } from '@entity/events/contact-type.enum';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
@@ -200,23 +197,10 @@ export class UserService {
         initialBufferTime.before = _5min;
         initialBufferTime.after = _5min;
 
-        const initialTimeRange = new TimeRange();
-        initialTimeRange.startTime = _5min;
-        initialTimeRange.endTime = _5min;
-
         const initialDateRange = new DateRange();
-        initialDateRange.before = 1;
-
-        const initialContact = new Contact({
-            type: ContactType.OFFLINE,
-            value: 'meeting room'
-        });
+        initialDateRange.until = 60;
 
         const initialEventDetail = new EventDetail({
-            bufferTime: initialBufferTime,
-            timeRange: initialTimeRange,
-            dateRange: initialDateRange,
-            contacts: [initialContact],
             description: 'default'
         });
 
@@ -225,6 +209,9 @@ export class UserService {
             type: EventType.ONE_ON_ONE,
             link: 'default',
             name: 'default',
+            bufferTime: initialBufferTime,
+            dateRange: initialDateRange,
+            contacts: [],
             eventDetail: initialEventDetail
         });
 

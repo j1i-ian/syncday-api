@@ -6,5 +6,5 @@ export enum RedisStores {
     EVENT_DETAIL = 'event-detail',
     AVAILABILITY = 'availability',
     INVITEE_QUESTION = 'invitee-question',
-    REMINDER = 'reminder'
+    NOTIFICATION_INFO = 'reminder'
 }
