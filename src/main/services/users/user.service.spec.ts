@@ -4,6 +4,7 @@ import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, FindOneOptions, FindOptionsWhere, Repository } from 'typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
+import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
@@ -29,6 +30,7 @@ describe('Test User Service', () => {
     let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
+    let eventRedisRepository: sinon.SinonStubbedInstance<EventsRedisRepository>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
@@ -50,6 +52,7 @@ describe('Test User Service', () => {
         userSettingServiceStub = sinon.createStubInstance(UserSettingService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
         availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
+        eventRedisRepository = sinon.createStubInstance(EventsRedisRepository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
@@ -87,6 +90,10 @@ describe('Test User Service', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
+                },
+                {
+                    provide: EventsRedisRepository,
+                    useValue: eventRedisRepository
                 },
                 {
                     provide: getRepositoryToken(User),
@@ -179,6 +186,9 @@ describe('Test User Service', () => {
             availabilityRepositoryStub.save.reset();
 
             utilServiceStub.getUserDefaultSetting.reset();
+            utilServiceStub.getDefaultEvent.reset();
+
+            eventRedisRepository.setEventLinkSetStatus.reset();
 
             serviceSandbox.reset();
         });
@@ -193,12 +203,14 @@ describe('Test User Service', () => {
                 hashedPassword: plainPassword
             });
             const languageDummy = Language.ENGLISH;
+            const defaultEventStub = stubOne(Event);
             const availabilityStub = stubOne(Availability);
 
             verificationServiceStub.isVerifiedUser.resolves(true);
 
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
+            utilServiceStub.getDefaultEvent.returns(defaultEventStub);
             availabilityRepositoryStub.save.resolves(availabilityStub);
 
             const createdUser = await service._createUser(
@@ -210,8 +222,10 @@ describe('Test User Service', () => {
                 }
             );
 
+            expect(utilServiceStub.getDefaultEvent.called).true;
             expect(utilServiceStub.getUserDefaultSetting.called).true;
             expect(availabilityRepositoryStub.save.called).true;
+            expect(eventRedisRepository.setEventLinkSetStatus.called).true;
 
             expect(createdUser).ok;
             expect(createdUser.email).ok;

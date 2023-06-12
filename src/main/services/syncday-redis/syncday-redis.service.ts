@@ -89,6 +89,10 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.WORKSPACES, [String(workspace)]);
     }
 
+    getEventLinkStatusKey(workspace: string, eventLink: string): RedisKey {
+        return this.getRedisKey(RedisStores.WORKSPACES, [workspace, eventLink]);
+    }
+
     getEmailVerificationKey(email: string): RedisKey {
         return this.getRedisKey(RedisStores.VERIFICATIONS_EMAIL, [String(email)]);
     }
