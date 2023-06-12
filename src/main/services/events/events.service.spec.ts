@@ -9,6 +9,7 @@ import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { User } from '@core/entities/users/user.entity';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
+import { UtilService } from '@services/util/util.service';
 import { Availability } from '@entity/availability/availability.entity';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
@@ -31,6 +32,7 @@ describe('EventsService', () => {
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
     let eventDetailRepositoryStub: sinon.SinonStubbedInstance<Repository<EventDetail>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
+    let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     before(async () => {
         validatorStub = sinon.createStubInstance(Validator);
@@ -40,6 +42,7 @@ describe('EventsService', () => {
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
         eventDetailRepositoryStub = sinon.createStubInstance<Repository<EventDetail>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
+        utilServiceStub = sinon.createStubInstance(UtilService);
 
         module = await Test.createTestingModule({
             providers: [
@@ -71,6 +74,10 @@ describe('EventsService', () => {
                 {
                     provide: getRepositoryToken(EventGroup),
                     useValue: eventGroupRepositoryStub
+                },
+                {
+                    provide: UtilService,
+                    useValue: utilServiceStub
                 }
             ]
         }).compile();
@@ -86,7 +93,7 @@ describe('EventsService', () => {
         afterEach(() => {
             validatorStub.validate.reset();
 
-            eventGroupRepositoryStub.findOneByOrFail.reset();
+            eventGroupRepositoryStub.findOneOrFail.reset();
 
             eventRepositoryStub.find.reset();
             eventRepositoryStub.findOneOrFail.reset();
@@ -99,9 +106,13 @@ describe('EventsService', () => {
             eventRedisRepositoryStub.save.reset();
             eventRedisRepositoryStub.remove.reset();
             eventRedisRepositoryStub.clone.reset();
+            eventRedisRepositoryStub.getEventLinkSetStatus.reset();
+            eventRedisRepositoryStub.setEventLinkSetStatus.reset();
 
             eventDetailRepositoryStub.save.reset();
             eventDetailRepositoryStub.delete.reset();
+
+            utilServiceStub.generateUniqueNumber.reset();
         });
 
         it('should be searched event list', async () => {
@@ -139,8 +150,11 @@ describe('EventsService', () => {
             expect(eventRepositoryStub);
         });
 
-        it('should be created event', async () => {
-            const userMock = stubOne(User);
+        it('should be created event with passed name when event link is not used in', async () => {
+            const defaultAvailability = stubOne(Availability);
+            const userMock = stubOne(User, {
+                availabilities: [defaultAvailability]
+            });
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
@@ -163,11 +177,61 @@ describe('EventsService', () => {
                 userId: userMock.id
             });
 
-            eventGroupRepositoryStub.findOneByOrFail.resolves(defaultEventGroupStub);
+            eventGroupRepositoryStub.findOneOrFail.resolves(defaultEventGroupStub);
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
+            utilServiceStub.getDefaultEvent.returns(eventMock);
             eventRepositoryStub.save.resolves(eventMock);
             eventRedisRepositoryStub.save.resolves(eventDetailBodyStub);
 
-            const createdEvent = await service.create(userMock.id, eventMock);
+            const createdEvent = await service.create(userMock.uuid, userMock.id, eventMock);
+
+            expect(createdEvent).ok;
+            expect(createdEvent.name).equals(eventMock.name);
+            expect(createdEvent.eventDetail).ok;
+            expect(createdEvent.eventDetail.inviteeQuestions).ok;
+            expect(createdEvent.eventDetail.inviteeQuestions.length).greaterThan(0);
+            expect(createdEvent.eventDetail.notificationInfo).ok;
+
+            expect(utilServiceStub.generateUniqueNumber.called).false;
+            expect(eventGroupRepositoryStub.findOneOrFail.called).true;
+            expect(eventRepositoryStub.save.called).true;
+            expect(eventRedisRepositoryStub.save.called).true;
+        });
+
+        it('should be created event with combinded name and generated numbers when event link is used in', async () => {
+            const defaultAvailability = stubOne(Availability);
+            const userMock = stubOne(User, {
+                availabilities: [defaultAvailability]
+            });
+
+            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
+
+            const eventDetailBodyStub = {
+                inviteeQuestions: inviteeQuestionStubs,
+                notificationInfo: notificationInfoStub
+            } as EventsDetailBody;
+
+            const eventDetailStub = stubOne(EventDetail, {
+                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
+                notificationInfo: eventDetailBodyStub.notificationInfo
+            });
+            const eventMock = stubOne(Event, {
+                eventDetail: eventDetailStub
+            });
+            const defaultEventGroupStub = stubOne(EventGroup, {
+                user: userMock,
+                events: [eventMock],
+                userId: userMock.id
+            });
+
+            eventGroupRepositoryStub.findOneOrFail.resolves(defaultEventGroupStub);
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
+            utilServiceStub.getDefaultEvent.returns(eventMock);
+            eventRepositoryStub.save.resolves(eventMock);
+            eventRedisRepositoryStub.save.resolves(eventDetailBodyStub);
+
+            const createdEvent = await service.create(userMock.uuid, userMock.id, eventMock);
 
             expect(createdEvent).ok;
             expect(createdEvent.eventDetail).ok;
@@ -175,7 +239,8 @@ describe('EventsService', () => {
             expect(createdEvent.eventDetail.inviteeQuestions.length).greaterThan(0);
             expect(createdEvent.eventDetail.notificationInfo).ok;
 
-            expect(eventGroupRepositoryStub.findOneByOrFail.called).true;
+            expect(utilServiceStub.generateUniqueNumber.called).true;
+            expect(eventGroupRepositoryStub.findOneOrFail.called).true;
             expect(eventRepositoryStub.save.called).true;
             expect(eventRedisRepositoryStub.save.called).true;
         });

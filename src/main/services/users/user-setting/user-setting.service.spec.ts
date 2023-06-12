@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { BadRequestException } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { TestMockUtil } from '@test/test-mock-util';
 import { UserSettingService } from './user-setting.service';
@@ -129,10 +129,7 @@ describe('UserSettingService', () => {
 
             syncdayRedisServiceStub.getWorkspaceStatus.resolves(true);
 
-            await expect(service.createUserWorkspaceStatus(datasourceMock as EntityManager, userIdMock, workspaceMock)).rejectedWith(
-                BadRequestException,
-                'already used workspace'
-            );
+            await expect(service.createUserWorkspaceStatus(datasourceMock as EntityManager, userIdMock, workspaceMock)).rejectedWith(AlreadyUsedInWorkspace);
         });
 
         it('should be set status of user workspace', async () => {

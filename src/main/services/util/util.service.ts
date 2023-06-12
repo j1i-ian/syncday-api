@@ -80,6 +80,18 @@ export class UtilService {
                             }
                         ]
                     }
+                ],
+                invitee: [
+                    {
+                        uuid: hostNotificationUUID,
+                        type: NotificationType.EMAIL,
+                        reminders: [
+                            {
+                                remindBefore: '01:00:00',
+                                uuid: emailReminderUUID
+                            }
+                        ]
+                    }
                 ]
             }
         });

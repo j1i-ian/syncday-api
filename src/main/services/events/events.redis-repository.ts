@@ -1,4 +1,4 @@
-import { Observable, forkJoin, from, iif, of, switchMap } from 'rxjs';
+import { Observable, forkJoin, from, iif, mergeMap, of, switchMap } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster } from 'ioredis';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -21,11 +21,21 @@ export class EventsRedisRepository {
         @AppInjectCluster() private readonly cluster: Cluster
     ) {}
 
+    getEventLinkStatus(workspace: string, link: string): Observable<boolean> {
+        const eventLinkStatusKey = this.syncdayRedisService.getEventLinkStatusKey(workspace, link);
+
+        return from(this.cluster.get(eventLinkStatusKey)).pipe(
+            mergeMap((result: string | null) =>
+                iif(() => !!result, of(JSON.parse(result as string) as boolean), of(false))
+            )
+        );
+    }
+
     getInviteeQuestions(eventDetailUUID: string): Observable<InviteeQuestion[]> {
         const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID);
 
         return from(this.cluster.get(inviteeQuestionKey)).pipe(
-            switchMap((result: string | null) =>
+            mergeMap((result: string | null) =>
                 iif(() => !!result, of(JSON.parse(result as string) as InviteeQuestion[]), of([]))
             )
         );
@@ -35,7 +45,7 @@ export class EventsRedisRepository {
         const notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID);
 
         return from(this.cluster.get(notificationInfoKey)).pipe(
-            switchMap((result: string | null) =>
+            mergeMap((result: string | null) =>
                 iif(() => !!result, of(JSON.parse(result as string) as NotificationInfo), of({}))
             )
         );
