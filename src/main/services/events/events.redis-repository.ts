@@ -41,6 +41,20 @@ export class EventsRedisRepository {
         );
     }
 
+    async getEventLinkSetStatus(userUUID: string, eventName: string): Promise<boolean> {
+        const eventLinkSetStatusKey = this.syncdayRedisService.getEventLinkSetStatusKey(userUUID);
+        const usedCount = await this.cluster.sismember(eventLinkSetStatusKey, eventName);
+
+        return usedCount > 0;
+    }
+
+    async setEventLinkSetStatus(userUUID: string, eventName: string): Promise<boolean> {
+        const eventLinkSetStatusKey = this.syncdayRedisService.getEventLinkSetStatusKey(userUUID);
+        const addedItemCount = await this.cluster.sadd(eventLinkSetStatusKey, eventName);
+
+        return addedItemCount > 0;
+    }
+
     /**
      * This method overwrites invitee questions, notification info always.
      * Both elements have too small chunk sizes, so it has not been configured with hash map

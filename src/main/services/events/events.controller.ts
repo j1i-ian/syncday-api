@@ -55,9 +55,10 @@ export class EventsController {
     @Post()
     create(
         @AuthUser('id') userId: number,
+        @AuthUser('uuid') userUUID: string,
         @Body() createEventDto: CreateEventRequestDto
     ): Promise<Event> {
-        return this.eventsService.create(userId, createEventDto as Event);
+        return this.eventsService.create(userUUID, userId, createEventDto as Event);
     }
 
     @Patch(':eventId')

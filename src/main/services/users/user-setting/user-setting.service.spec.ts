@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import { UserSetting } from '@entity/users/user-setting.entity';
@@ -15,6 +15,14 @@ describe('UserSettingService', () => {
     let userSettingRepositoryStub: sinon.SinonStubbedInstance<Repository<UserSetting>>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
 
+    const _getRepository = (EntityClass: new () => any) =>
+        module.get(getRepositoryToken(EntityClass));
+
+    const datasourceMock = {
+        getRepository: _getRepository,
+        transaction: (callback: any) => Promise.resolve(callback({ getRepository: _getRepository }))
+    };
+
     beforeEach(async () => {
         userSettingRepositoryStub = sinon.createStubInstance<Repository<UserSetting>>(Repository);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
@@ -22,6 +30,10 @@ describe('UserSettingService', () => {
         module = await Test.createTestingModule({
             providers: [
                 UserSettingService,
+                {
+                    provide: getDataSourceToken(),
+                    useValue: datasourceMock
+                },
                 {
                     provide: getRepositoryToken(UserSetting),
                     useValue: userSettingRepositoryStub
@@ -117,7 +129,7 @@ describe('UserSettingService', () => {
 
             syncdayRedisServiceStub.getWorkspaceStatus.resolves(true);
 
-            await expect(service.createUserWorkspaceStatus(userIdMock, workspaceMock)).rejectedWith(
+            await expect(service.createUserWorkspaceStatus(datasourceMock as EntityManager, userIdMock, workspaceMock)).rejectedWith(
                 BadRequestException,
                 'already used workspace'
             );
@@ -134,7 +146,7 @@ describe('UserSettingService', () => {
 
             syncdayRedisServiceStub.setWorkspaceStatus.resolves(true);
 
-            const result = await service.createUserWorkspaceStatus(userIdMock, workspaceMock);
+            const result = await service.createUserWorkspaceStatus(datasourceMock as EntityManager, userIdMock, workspaceMock);
 
             expect(syncdayRedisServiceStub.deleteWorkspaceStatus.called).true;
             expect(userSettingRepositoryStub.update.called).true;

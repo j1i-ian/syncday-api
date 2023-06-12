@@ -203,6 +203,16 @@ describe('Redis Service Test', () => {
             expect(result).ok;
         });
 
+        it('coverage fill: getEventLinkStatusKey', () => {
+            const userUUIDMock = TestMockUtil.faker.datatype.uuid();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns('local:workspaces');
+
+            const result = service.getEventLinkSetStatusKey(userUUIDMock);
+
+            expect(result).ok;
+        });
+
         it('coverage fill: getWorkspaceAssignStatusKey', () => {
             const emailMock = TestMockUtil.faker.internet.email();
 

@@ -5,15 +5,11 @@ import { plainToInstance } from 'class-transformer';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
+import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { User } from '@entity/users/user.entity';
-import { BufferTime } from '@entity/events/buffer-time.entity';
-import { EventType } from '@entity/events/event-type.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
-import { Event } from '@entity/events/event.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
-import { DateRange } from '@entity/events/date-range.entity';
-import { EventDetail } from '@entity/events/event-detail.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
@@ -41,8 +37,9 @@ export class UserService {
         private readonly verificationService: VerificationService,
         private readonly userSettingService: UserSettingService,
         private readonly syncdayRedisService: SyncdayRedisService,
-        private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         private readonly utilService: UtilService,
+        private readonly eventRedisRepository: EventsRedisRepository,
+        private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
 
@@ -126,6 +123,7 @@ export class UserService {
             });
 
             await this.userSettingService.createUserWorkspaceStatus(
+                manager,
                 createdUser.id,
                 createdUser.userSetting.workspace
             );
@@ -191,28 +189,10 @@ export class UserService {
             userSetting
         } as User);
 
-        const _5min = '00:05:00';
-
-        const initialBufferTime = new BufferTime();
-        initialBufferTime.before = _5min;
-        initialBufferTime.after = _5min;
-
-        const initialDateRange = new DateRange();
-        initialDateRange.until = 60;
-
-        const initialEventDetail = new EventDetail({
-            description: 'default'
-        });
-
         const initialEventGroup = new EventGroup();
-        const initialEvent = new Event({
-            type: EventType.ONE_ON_ONE,
-            link: 'default',
+        const initialEvent = this.utilService.getDefaultEvent({
             name: 'default',
-            bufferTime: initialBufferTime,
-            dateRange: initialDateRange,
-            contacts: [],
-            eventDetail: initialEventDetail
+            link: 'default'
         });
 
         const availableTimes: AvailableTime[] = [];
@@ -243,12 +223,13 @@ export class UserService {
         });
 
         initialEvent.availabilityId = savedAvailability.id;
-        initialEvent.eventDetail = initialEventDetail;
 
         initialEventGroup.events = [initialEvent];
         initialEventGroup.user = savedUser;
 
         await manager.getRepository(EventGroup).save(initialEventGroup);
+
+        await this.eventRedisRepository.setEventLinkSetStatus(savedUser.uuid, initialEvent.name);
 
         return plainToInstance(User, savedUser);
     }
@@ -288,13 +269,14 @@ export class UserService {
                 })
             });
 
+            await this.userSettingService.createUserWorkspaceStatus(
+                manager,
+                createdUser.id,
+                createdUser.userSetting.workspace
+            );
+
             return _createdUser;
         });
-
-        await this.userSettingService.createUserWorkspaceStatus(
-            createdUser.id,
-            createdUser.userSetting.workspace
-        );
 
         return createdUser;
     }

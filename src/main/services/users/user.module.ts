@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AvailabilityModule } from '@services/availability/availability.module';
+import { EventsModule } from '@services/events/events.module';
 import { User } from '@entity/users/user.entity';
 import { VerificationModule } from '../../auth/verification/verification.module';
 import { TokenModule } from '../../auth/token/token.module';
@@ -18,7 +19,8 @@ import { SyncdayRedisModule } from '../syncday-redis/syncday-redis.module';
         UserSettingModule,
         SyncdayRedisModule,
         TemporaryUsersModule,
-        AvailabilityModule
+        AvailabilityModule,
+        EventsModule
     ],
     controllers: [UserController],
     providers: [UserService],
