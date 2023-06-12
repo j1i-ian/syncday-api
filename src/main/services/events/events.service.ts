@@ -6,9 +6,11 @@ import { Event } from '@core/entities/events/event.entity';
 import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
+import { UtilService } from '@services/util/util.service';
 import { Availability } from '@entity/availability/availability.entity';
 import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
+import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { Validator } from '@criteria/validator';
 
 @Injectable()
@@ -16,6 +18,7 @@ export class EventsService {
     constructor(
         private readonly validator: Validator,
         private readonly eventRedisRepository: EventsRedisRepository,
+        private readonly utilService: UtilService,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(EventGroup) private readonly eventGroupRepository: Repository<EventGroup>,
         @InjectRepository(Event) private readonly eventRepository: Repository<Event>
@@ -69,24 +72,55 @@ export class EventsService {
         );
     }
 
-    async create(userId: number, newEvent: Event): Promise<Event> {
-        const defaultEventGroup = await this.eventGroupRepository.findOneByOrFail({ userId });
+    async create(userUUID: string, userId: number, newEvent: Event): Promise<Event> {
+        const defaultEventGroup = await this.eventGroupRepository.findOneOrFail({
+            relations: ['user', 'user.availabilities'],
+            where: {
+                userId,
+                user: {
+                    availabilities: {
+                        default: true
+                    }
+                }
+            }
+        });
+
+        const defaultAvailability = defaultEventGroup.user.availabilities.pop();
+
+        if (defaultAvailability) {
+            newEvent.availabilityId = defaultAvailability.id;
+        } else {
+            throw new NoDefaultAvailabilityException();
+        }
 
         newEvent.eventGroupId = defaultEventGroup.id;
 
+        const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(userUUID, newEvent.name);
+
+        if (isAlreadyUsedIn) {
+            const generatedEventSuffix = this.utilService.generateUniqueNumber();
+            newEvent.link = `${newEvent.name}-${generatedEventSuffix}`;
+        } else {
+            newEvent.link = newEvent.name;
+        }
+
+        const ensuredNewEvent = this.utilService.getDefaultEvent(newEvent);
+
         // save relation data
         // event detail is saved by orm cascading.
-        const savedEvent = await this.eventRepository.save(newEvent);
+        const savedEvent = await this.eventRepository.save(ensuredNewEvent);
 
         const savedEventDetail = savedEvent.eventDetail;
 
         // save consumption data
-        const newEventDetail = newEvent.eventDetail;
+        const newEventDetail = ensuredNewEvent.eventDetail;
         const { inviteeQuestions, notificationInfo } = newEventDetail;
         const savedEventDetailBody = await this.eventRedisRepository.save(savedEventDetail.uuid, inviteeQuestions, notificationInfo);
 
         savedEvent.eventDetail.inviteeQuestions = savedEventDetailBody.inviteeQuestions;
         savedEvent.eventDetail.notificationInfo = savedEventDetailBody.notificationInfo;
+
+        await this.eventRedisRepository.setEventLinkSetStatus(userUUID, savedEvent.name);
 
         return savedEvent;
     }

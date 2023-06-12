@@ -2,10 +2,16 @@ import { v4 as uuidv4 } from 'uuid';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
+import { EventType } from '@interfaces/events/event-type.enum';
+import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { DateTimeOrderFormat } from '@entity/users/date-time-format-order.enum';
 import { DateTimeFormatOption } from '@entity/users/date-time-format-option.type';
+import { BufferTime } from '@entity/events/buffer-time.entity';
+import { DateRange } from '@entity/events/date-range.entity';
+import { EventDetail } from '@entity/events/event-detail.entity';
+import { Event } from '@entity/events/event.entity';
 import { Language } from '@app/enums/language.enum';
 import { EmailTemplate } from '@app/enums/email-template.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
@@ -29,6 +35,11 @@ export class UtilService {
         return uuidv4();
     }
 
+    generateUniqueNumber(): number {
+        // eslint-disable-next-line no-bitwise
+        return Math.floor(Date.now() << 1 / 100);
+    }
+
     hash(plainText: string): string {
         const salt = bcrypt.genSaltSync(5);
         const hashedPassword = bcrypt.hashSync(plainText, salt);
@@ -38,6 +49,53 @@ export class UtilService {
 
     generateRandomNumberString(digit: number, prefix = '0'): string {
         return String(Math.floor(Math.random() * Math.pow(10, digit))).padStart(digit, prefix);
+    }
+
+    getDefaultEvent(patchBody?: Partial<Event>): Event {
+
+        const _0min = '00:00:00';
+
+        const initialBufferTime = new BufferTime();
+        initialBufferTime.before = _0min;
+        initialBufferTime.after = _0min;
+
+        const initialDateRange = new DateRange();
+        initialDateRange.until = 60;
+
+        const hostNotificationUUID = this.generateUUID();
+        const emailReminderUUID = this.generateUUID();
+
+        const initialEventDetail = new EventDetail({
+            description: 'default',
+            inviteeQuestions: [],
+            notificationInfo: {
+                host: [
+                    {
+                        uuid: hostNotificationUUID,
+                        type: NotificationType.EMAIL,
+                        reminders: [
+                            {
+                                remindBefore: '01:00:00',
+                                uuid: emailReminderUUID
+                            }
+                        ]
+                    }
+                ]
+            }
+        });
+        const initialEvent = new Event({
+            type: EventType.ONE_ON_ONE,
+            link: 'default',
+            name: 'default',
+            bufferTime: initialBufferTime,
+            dateRange: initialDateRange,
+            contacts: [],
+            eventDetail: initialEventDetail,
+            ...patchBody
+        });
+        initialEvent.eventDetail = initialEventDetail;
+
+        return initialEvent;
     }
 
     getMailAssetFullPath(emailTemplate: EmailTemplate, language: Language): string {

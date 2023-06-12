@@ -44,6 +44,27 @@ describe('UtilService', () => {
             });
     });
 
+    it('should be not conflicts in 30 times in 500 ms', async () => {
+
+        const checkSet = new Set();
+        let uniqueCheck = true;
+
+        for (let i = 0; i < 30; i++) {
+
+            await new Promise<void>((resolve) => setTimeout(() => resolve(), 5));
+
+            const generated = service.generateUniqueNumber();
+            if (checkSet.has(generated) === false) {
+                checkSet.add(generated);
+            } else {
+                uniqueCheck = false;
+                break;
+            }
+        }
+
+        expect(uniqueCheck).true;
+    }).timeout(500);
+
     it('should be hashed for text', () => {
         const plainText = 'abcd';
         const bcryptedText = service.hash(plainText);
@@ -59,6 +80,13 @@ describe('UtilService', () => {
             .forEach((generatedRandomNumberString) => {
                 expect(generatedRandomNumberString.length).eq(4);
             });
+    });
+
+    it('should be generated default event', () => {
+        const defaultEvent = service.getDefaultEvent();
+
+        expect(defaultEvent).ok;
+        expect(defaultEvent.bufferTime).ok;
     });
 
     it('should be got asset full path', () => {

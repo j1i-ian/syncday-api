@@ -46,6 +46,7 @@ export class AppConfigService {
             googleOAuth2SuccessRedirectURI
         };
     }
+
     static getCorsSettingByEnv(): string[] {
         let origin = [
             'https://dev.sync.day',

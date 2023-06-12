@@ -12,6 +12,6 @@ import { EventsController } from './events.controller';
     imports: [TypeOrmModule.forFeature([EventGroup, Event]), SyncdayCriteriaModule],
     controllers: [EventsController],
     providers: [EventsRedisRepository, SyncdayRedisService, EventsService],
-    exports: [EventsService]
+    exports: [EventsService, EventsRedisRepository]
 })
 export class EventsModule {}

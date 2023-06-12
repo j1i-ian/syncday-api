@@ -81,6 +81,10 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.TEMPORARY_USER, [email]);
     }
 
+    getEventLinkSetStatusKey(userUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.USERS, [userUUID, RedisStores.EVENT_LINK]);
+    }
+
     getWorkspaceAssignStatusKey(workspace: string): RedisKey {
         return this.getRedisKey(RedisStores.WORKSPACES, [String(workspace)]);
     }
