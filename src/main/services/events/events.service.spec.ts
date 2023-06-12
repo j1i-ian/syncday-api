@@ -116,15 +116,27 @@ describe('EventsService', () => {
         });
 
         it('should be searched event list', async () => {
-            const eventStubs = stub(Event);
+            const eventDetailStub = stubOne(EventDetail);
+            const eventStubs = stub(Event, 5, {
+                eventDetail: eventDetailStub
+            });
+
+            const inviteeStubs = Array(10).fill(
+                testMockUtil.getInviteeQuestionMock(eventDetailStub.uuid)
+            );
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
             eventRepositoryStub.find.resolves(eventStubs);
+            eventRedisRepositoryStub.getInviteeQuestions.returns(from(inviteeStubs));
+            eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
 
             const list = await firstValueFrom(service.search({}));
 
             expect(list).ok;
             expect(list.length).greaterThan(0);
             expect(eventRepositoryStub.find.called).true;
+            expect(eventRedisRepositoryStub.getInviteeQuestions.called).true;
+            expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
         });
 
         it('should be fetched event with detail', async () => {
@@ -148,6 +160,8 @@ describe('EventsService', () => {
             expect(loadedEventWithDetail).ok;
             expect(loadedEventWithDetail.eventDetail).ok;
             expect(eventRepositoryStub);
+            expect(eventRedisRepositoryStub.getInviteeQuestions.called).true;
+            expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
         });
 
         it('should be created event with passed name when event link is not used in', async () => {
