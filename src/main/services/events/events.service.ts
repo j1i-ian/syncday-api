@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { Observable, firstValueFrom, forkJoin, from, map, mergeMap, of } from 'rxjs';
+import { Observable, firstValueFrom, forkJoin, from, map, mergeMap, of, toArray } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { Event } from '@core/entities/events/event.entity';
@@ -38,6 +38,23 @@ export class EventsService {
                     priority: 'DESC'
                 }
             })
+        ).pipe(
+            mergeMap((_events) => from(_events)),
+            mergeMap((_event) => {
+                const eventDetailUUID = _event.eventDetail.uuid;
+                return forkJoin({
+                    inviteeQuestions:
+                this.eventRedisRepository.getInviteeQuestions(eventDetailUUID),
+                    notificationInfo: this.eventRedisRepository.getNotificationInfo(eventDetailUUID)
+                }).pipe(
+                    map(({ inviteeQuestions, notificationInfo }) => {
+                        _event.eventDetail.inviteeQuestions = inviteeQuestions;
+                        _event.eventDetail.notificationInfo = notificationInfo;
+                        return _event;
+                    })
+                );
+            }),
+            toArray()
         );
     }
 
