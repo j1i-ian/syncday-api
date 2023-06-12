@@ -37,7 +37,7 @@ export class UtilService {
 
     generateUniqueNumber(): number {
         // eslint-disable-next-line no-bitwise
-        return Math.floor(Date.now() << 1 / 100);
+        return Math.floor((Date.now() << 1) / 100);
     }
 
     hash(plainText: string): string {
