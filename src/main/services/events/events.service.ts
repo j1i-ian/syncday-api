@@ -27,7 +27,7 @@ export class EventsService {
     search(searchOption: EventsSearchOption): Observable<Event[]> {
         return from(
             this.eventRepository.find({
-                relations: ['eventGroup'],
+                relations: ['eventGroup', 'eventDetail'],
                 where: {
                     eventGroup: {
                         userId: searchOption.userId

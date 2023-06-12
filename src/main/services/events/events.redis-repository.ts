@@ -1,4 +1,4 @@
-import { Observable, forkJoin, from, iif, mergeMap, of, switchMap } from 'rxjs';
+import { Observable, forkJoin, from, iif, mergeMap, of } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster } from 'ioredis';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -116,7 +116,7 @@ export class EventsRedisRepository {
             sourceInviteeQuestions: this.getInviteeQuestions(sourceEventDetailUUID),
             sourceNotificationInfo: this.getNotificationInfo(sourceEventDetailUUID)
         }).pipe(
-            switchMap(({ sourceInviteeQuestions, sourceNotificationInfo }) =>
+            mergeMap(({ sourceInviteeQuestions, sourceNotificationInfo }) =>
                 this.save(newEventDetailUUID, sourceInviteeQuestions, sourceNotificationInfo)
             )
         );

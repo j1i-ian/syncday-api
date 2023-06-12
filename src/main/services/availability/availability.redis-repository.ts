@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster } from 'ioredis';
-import { Observable, from, switchMap } from 'rxjs';
+import { Observable, from, mergeMap } from 'rxjs';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
@@ -157,7 +157,7 @@ export class AvailabilityRedisRepository {
         newAvailabilityUUID: string
     ): Observable<AvailabilityBody> {
         return from(this.getAvailabilityBody(sourceAvailabilityUUID, userUUID)).pipe(
-            switchMap((availabilityBody) =>
+            mergeMap((availabilityBody) =>
                 this.save(userUUID, newAvailabilityUUID, availabilityBody)
             )
         );
