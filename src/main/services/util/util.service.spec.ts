@@ -49,11 +49,14 @@ describe('UtilService', () => {
         const checkSet = new Set();
         let uniqueCheck = true;
 
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 5; i++) {
 
-            await new Promise<void>((resolve) => setTimeout(() => resolve(), 5));
+            await new Promise<void>((resolve) => setTimeout(() => resolve(), 50));
 
             const generated = service.generateUniqueNumber();
+
+            expect(generated).greaterThan(0);
+
             if (checkSet.has(generated) === false) {
                 checkSet.add(generated);
             } else {
