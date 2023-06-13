@@ -151,6 +151,14 @@ export class AvailabilityRedisRepository {
         return deleteCount === 1;
     }
 
+    async deleteAll(userUUID: string, availabilityUUIDs: string[]): Promise<boolean>{
+        const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
+        const deleteCount = await this.cluster.hdel(availabilityUserKey, ...availabilityUUIDs);
+
+        const deleteSuccess = deleteCount >= 1;
+        return deleteSuccess;
+    }
+
     clone(
         userUUID: string,
         sourceAvailabilityUUID: string,

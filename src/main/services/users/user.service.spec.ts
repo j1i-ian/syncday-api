@@ -9,6 +9,7 @@ import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { EventDetail } from '@entity/events/event-detail.entity';
 import { Language } from '@app/enums/language.enum';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { TokenService } from '../../auth/token/token.service';
@@ -30,12 +31,14 @@ describe('Test User Service', () => {
     let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
-    let eventRedisRepository: sinon.SinonStubbedInstance<EventsRedisRepository>;
+    let eventsRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
+    let userSettingRepositoryStub: sinon.SinonStubbedInstance<Repository<UserSetting>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
+    let eventDetaiRepositoryStub: sinon.SinonStubbedInstance<Repository<EventDetail>>;
     let availabilityRepositoryStub: sinon.SinonStubbedInstance<Repository<Availability>>;
 
     const _getRepository = (EntityClass: new () => any) =>
@@ -52,12 +55,14 @@ describe('Test User Service', () => {
         userSettingServiceStub = sinon.createStubInstance(UserSettingService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
         availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
-        eventRedisRepository = sinon.createStubInstance(EventsRedisRepository);
+        eventsRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
+        userSettingRepositoryStub = sinon.createStubInstance<Repository<UserSetting>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
+        eventDetaiRepositoryStub = sinon.createStubInstance<Repository<EventDetail>>(Repository);
         availabilityRepositoryStub = sinon.createStubInstance<Repository<Availability>>(Repository);
 
         module = await Test.createTestingModule({
@@ -80,6 +85,10 @@ describe('Test User Service', () => {
                     useValue: availabilityRedisRepositoryStub
                 },
                 {
+                    provide: EventsRedisRepository,
+                    useValue: eventsRedisRepositoryStub
+                },
+                {
                     provide: TokenService,
                     useValue: tokenServiceStub
                 },
@@ -93,11 +102,15 @@ describe('Test User Service', () => {
                 },
                 {
                     provide: EventsRedisRepository,
-                    useValue: eventRedisRepository
+                    useValue: eventsRedisRepositoryStub
                 },
                 {
                     provide: getRepositoryToken(User),
                     useValue: userRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(UserSetting),
+                    useValue: userSettingRepositoryStub
                 },
                 {
                     provide: getRepositoryToken(EventGroup),
@@ -106,6 +119,10 @@ describe('Test User Service', () => {
                 {
                     provide: getRepositoryToken(Event),
                     useValue: eventRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(EventDetail),
+                    useValue: eventDetaiRepositoryStub
                 },
                 {
                     provide: getRepositoryToken(Availability),
@@ -188,7 +205,7 @@ describe('Test User Service', () => {
             utilServiceStub.getUserDefaultSetting.reset();
             utilServiceStub.getDefaultEvent.reset();
 
-            eventRedisRepository.setEventLinkSetStatus.reset();
+            eventsRedisRepositoryStub.setEventLinkSetStatus.reset();
 
             serviceSandbox.reset();
         });
@@ -225,7 +242,7 @@ describe('Test User Service', () => {
             expect(utilServiceStub.getDefaultEvent.called).true;
             expect(utilServiceStub.getUserDefaultSetting.called).true;
             expect(availabilityRepositoryStub.save.called).true;
-            expect(eventRedisRepository.setEventLinkSetStatus.called).true;
+            expect(eventsRedisRepositoryStub.setEventLinkSetStatus.called).true;
 
             expect(createdUser).ok;
             expect(createdUser.email).ok;
@@ -341,6 +358,62 @@ describe('Test User Service', () => {
 
                 expect(syncdayRedisServiceStub.getEmailVerification.called).true;
                 expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).false;
+            });
+        });
+    });
+
+    describe('Test User delete', () => {
+        afterEach(() => {
+            userRepositoryStub.findOneOrFail.reset();
+            eventDetaiRepositoryStub.delete.reset();
+            eventRepositoryStub.delete.reset();
+            eventGroupRepositoryStub.delete.reset();
+            availabilityRepositoryStub.delete.reset();
+            userSettingRepositoryStub.delete.reset();
+            userRepositoryStub.delete.reset();
+        });
+
+        it('should be removed a user', async () => {
+            const eventDetail = stubOne(EventDetail);
+            const events = stub(Event, 2, {
+                eventDetail
+            });
+            const eventGroup = stubOne(EventGroup,{
+                events
+            });
+
+            const availabilities = stub(Availability);
+            const userSetting = stubOne(UserSetting);
+            const userStub = stubOne(User, {
+                eventGroup: [eventGroup],
+                userSetting,
+                availabilities
+            });
+
+            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            userRepositoryStub.findOneOrFail.resolves(userStub);
+
+            const repositoryStubs = [
+                eventDetaiRepositoryStub,
+                eventRepositoryStub,
+                eventGroupRepositoryStub,
+                availabilityRepositoryStub,
+                userSettingRepositoryStub,
+                userRepositoryStub
+            ];
+
+            repositoryStubs.forEach((_repositoryStub) => {
+                _repositoryStub.delete.resolves(deleteResultStub);
+            });
+
+            const deleteResult = await service.deleteUser(userStub.id);
+            expect(deleteResult).true;
+            expect(availabilityRedisRepositoryStub.deleteAll.called).true;
+            expect(eventsRedisRepositoryStub.removeEventDetails.called).true;
+
+            repositoryStubs.forEach((_repositoryStub) => {
+                expect(_repositoryStub.delete.called).true;
             });
         });
     });
