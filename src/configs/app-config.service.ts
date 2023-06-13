@@ -92,16 +92,20 @@ export class AppConfigService {
         let dotenvFilePath = '.env';
 
         switch (nodeEnv) {
-            case 'production':
+            case NodeEnv.PRODUCTION:
+            case NodeEnv.LOCAL_PRODUCTION:
                 dotenvFilePath = '.env.production';
                 break;
-            case 'development':
+            case NodeEnv.DEVELOP:
+            case NodeEnv.LOCAL_DEVELOP:
                 dotenvFilePath = '.env.dev';
                 break;
             case 'staging':
                 dotenvFilePath = '.env.staging';
                 break;
             default:
+            case NodeEnv.LOCAL:
+            case NodeEnv.TEST:
                 dotenvFilePath = '.env.local';
                 break;
         }
