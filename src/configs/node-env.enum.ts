@@ -5,9 +5,9 @@ export enum NodeEnv {
 
     DEVELOP = 'development',
 
-    LOCAL_PRODUCTION = 'local:production',
+    LOCAL_PRODUCTION = 'local_production',
 
-    LOCAL_DEVELOP = 'local:development',
+    LOCAL_DEVELOP = 'local_development',
 
     LOCAL = 'local',
 
