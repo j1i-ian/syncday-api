@@ -133,9 +133,12 @@ export class AppConfigService {
             useFactory: (configService: ConfigService) => {
                 const level = (configService.get<string>('LOG_LEVEL') as string) || 'debug';
                 const env = process.env.ENV;
+                const isLocal = env === NodeEnv.LOCAL
+                    || env === NodeEnv.LOCAL_DEVELOP
+                    || env === NodeEnv.LOCAL_PRODUCTION;
 
                 const transports: winston.transport[] =
-                    env !== NodeEnv.LOCAL
+                    isLocal === false
                         ? [this._getWinstonModuleProductionTransports(configService)]
                         : [
                             new winston.transports.Console({
