@@ -21,8 +21,8 @@ import { Event } from '@core/entities/events/event.entity';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
-import { GetEventResponseDto } from '@dto/event-groups/events/get-event-response.dto';
 import { PatchEventRequestDto } from '@dto/event-groups/events/patch-event-request.dto';
+import { FetchEventResponseDto } from '@dto/event-groups/events/fetch-event-response.dto';
 import { EventsService } from './events.service';
 
 @Controller('events')
@@ -30,14 +30,14 @@ export class EventsController {
     constructor(private readonly eventsService: EventsService) {}
 
     @Get()
-    findAll(@AuthUser('id') userId: number): Observable<GetEventResponseDto[]> {
+    findAll(@AuthUser('id') userId: number): Observable<FetchEventResponseDto[]> {
         return this.eventsService
             .search({
                 userId
             })
             .pipe(
                 map((list) =>
-                    plainToInstance(GetEventResponseDto, list, {
+                    plainToInstance(FetchEventResponseDto, list, {
                         excludeExtraneousValues: true
                     })
                 )

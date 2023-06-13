@@ -168,7 +168,13 @@ export class AppConfigService {
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => {
                 const redisHost = configService.get<string>('REDIS_HOST');
-                const env = configService.get<string>('ENV') as string;
+                let env = configService.get<string>('ENV') as NodeEnv;
+
+                if (env === NodeEnv.LOCAL_DEVELOP) {
+                    env = NodeEnv.DEVELOP;
+                } else if (env === NodeEnv.LOCAL_PRODUCTION) {
+                    env = NodeEnv.PRODUCTION;
+                }
 
                 return {
                     config: {
