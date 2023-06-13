@@ -271,8 +271,8 @@ export class UserService {
 
             await this.userSettingService.createUserWorkspaceStatus(
                 manager,
-                createdUser.id,
-                createdUser.userSetting.workspace
+                _createdUser.id,
+                _createdUser.userSetting.workspace
             );
 
             return _createdUser;

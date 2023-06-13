@@ -135,7 +135,7 @@ export class AppConfigService {
                 const env = process.env.ENV;
 
                 const transports: winston.transport[] =
-                    env === NodeEnv.PRODUCTION
+                    env === NodeEnv.LOCAL
                         ? [this._getWinstonModuleProductionTransports(configService)]
                         : [
                             new winston.transports.Console({
