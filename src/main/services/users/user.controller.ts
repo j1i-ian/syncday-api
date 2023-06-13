@@ -8,6 +8,7 @@ import {
     HttpCode,
     HttpStatus,
     Param,
+    ParseIntPipe,
     Patch,
     Post
 } from '@nestjs/common';
@@ -76,7 +77,9 @@ export class UserController {
 
     @Delete(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
-    async deleteUser(@Param('userId') userId: number): Promise<void> {
+    async deleteUser(
+        @Param('userId', ParseIntPipe) userId: number
+    ): Promise<void> {
         await this.userService.deleteUser(userId);
     }
 }

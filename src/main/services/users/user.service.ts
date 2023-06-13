@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, forwardRef } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, InternalServerErrorException, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
@@ -12,6 +12,8 @@ import { EventGroup } from '@entity/events/evnet-group.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
+import { EventDetail } from '@entity/events/event-detail.entity';
+import { Event } from '@entity/events/event.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
@@ -22,6 +24,7 @@ import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-u
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
+
 
 interface CreateUserOptions {
     plainPassword?: string;
@@ -292,6 +295,62 @@ export class UserService {
     }
 
     async deleteUser(userId: number): Promise<boolean> {
-        return await Promise.resolve(!!userId);
+
+        const user = await this.userRepository.findOneOrFail({
+            where: {
+                id: userId
+            },
+            relations: {
+                userSetting: true,
+                eventGroup: {
+                    events: {
+                        eventDetail: true
+                    }
+                },
+                availabilities: true
+            }
+        });
+
+        const { eventGroup: eventGroups, userSetting, availabilities } = user;
+        const eventGroup = eventGroups.pop() as EventGroup ;
+        const { events } = eventGroup;
+        const { eventDetailIds, eventDetailUUIDs } = events.reduce((eventDetailIdAndEventDetailUUIDArray, event) => {
+            const { eventDetailIds, eventDetailUUIDs } = eventDetailIdAndEventDetailUUIDArray;
+            eventDetailIds.push(event.eventDetail.id);
+            eventDetailUUIDs.push(event.eventDetail.uuid);
+            return { eventDetailIds, eventDetailUUIDs };
+        }, { eventDetailIds: [] as number[], eventDetailUUIDs:[] as string[] });
+        const availabilityUUIDs = availabilities.map((availability) => availability.uuid);
+
+        const deleteSuccess = await this.datasource.transaction(async (transactionManager) => {
+
+            const deleteEntityMapList = [
+                { EntityClass: EventDetail, deleteCriteria: eventDetailIds },
+                { EntityClass: Event, deleteCriteria: { eventGroupId: eventGroup.id } },
+                { EntityClass: EventGroup, deleteCriteria: eventGroup.id },
+                { EntityClass: Availability, deleteCriteria: { userId } },
+                { EntityClass: UserSetting, deleteCriteria: userSetting.id },
+                { EntityClass: User, deleteCriteria: userId }
+            ];
+
+            for (const deleteEntityMap of deleteEntityMapList) {
+                const { EntityClass: _DeleteTargetEntity, deleteCriteria } = deleteEntityMap;
+
+                const repository = transactionManager.getRepository(_DeleteTargetEntity);
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+                const deleteResult = await repository.delete(deleteCriteria as unknown as any);
+
+                const deleteSuccess = deleteResult.affected && deleteResult.affected >= 0;
+                if (deleteSuccess === false) {
+                    throw new InternalServerErrorException('Delete user is failed');
+                }
+            }
+            // TODO: Transaction processing is required for event processing.
+            await this.availabilityRedisRepository.deleteAll(user.uuid, availabilityUUIDs);
+            await this.eventRedisRepository.removeEventDetails(eventDetailUUIDs);
+
+            return true;
+        });
+        return deleteSuccess;
     }
 }

@@ -1,6 +1,6 @@
 import { Observable, forkJoin, from, iif, mergeMap, of } from 'rxjs';
 import { Injectable } from '@nestjs/common';
-import { Cluster } from 'ioredis';
+import { Cluster, RedisKey } from 'ioredis';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
@@ -109,6 +109,25 @@ export class EventsRedisRepository {
         const deletedNotificationInfoNode = await this.cluster.del(notificationInfoKey);
 
         return deletedInviteeQuestionNode > 0 && deletedNotificationInfoNode > 0;
+    }
+
+    async removeEventDetails(eventDetailUUIDs: string[]): Promise<boolean> {
+
+        const { inviteeQuestionKeys, notificationInfoKeys } =
+            eventDetailUUIDs.reduce((inviteeQuestionAndNotificationInfoKeysArray, eventDetailUUID) =>  {
+                const { inviteeQuestionKeys, notificationInfoKeys } = inviteeQuestionAndNotificationInfoKeysArray;
+                inviteeQuestionKeys.push(this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID));
+                notificationInfoKeys.push(this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID));
+
+                return { inviteeQuestionKeys, notificationInfoKeys };
+            }, { inviteeQuestionKeys: [] as RedisKey[], notificationInfoKeys:[] as RedisKey[] });
+
+        const deletedInviteeQuestionNode = await this.cluster.del(...inviteeQuestionKeys);
+        const deletedReminderNode = await this.cluster.del(...notificationInfoKeys);
+
+        const deleteSuccess = deletedInviteeQuestionNode >= 0 && deletedReminderNode >= 0;
+
+        return deleteSuccess;
     }
 
     clone(sourceEventDetailUUID: string, newEventDetailUUID: string): Observable<EventsDetailBody> {
