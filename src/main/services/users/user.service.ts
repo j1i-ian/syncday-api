@@ -170,10 +170,10 @@ export class UserService {
 
         const emailId = createdUser.email.split('@').shift();
 
-        const canBeUsedAsWorkspace = await this.userSettingService.fetchUserWorkspaceStatus(
+        const alreadyUsedIn = await this.userSettingService.fetchUserWorkspaceStatus(
             emailId || newUser.name
         );
-        const shouldAddRandomSuffix = canBeUsedAsWorkspace;
+        const shouldAddRandomSuffix = alreadyUsedIn;
 
         const defaultUserSetting = this.utilService.getUserDefaultSetting(createdUser, language, {
             randomSuffix: shouldAddRandomSuffix
@@ -230,9 +230,20 @@ export class UserService {
         initialEventGroup.events = [initialEvent];
         initialEventGroup.user = savedUser;
 
-        await manager.getRepository(EventGroup).save(initialEventGroup);
+        const eventGroupRepository = manager.getRepository(EventGroup);
+
+        const createdEventGroup = await eventGroupRepository.save(initialEventGroup);
+
+        const intializedEvent = createdEventGroup.events.pop() as Event;
+        const initializedEventDetail = intializedEvent.eventDetail;
 
         await this.eventRedisRepository.setEventLinkSetStatus(savedUser.uuid, initialEvent.name);
+        await this.eventRedisRepository.save(
+            initializedEventDetail.uuid,
+            initializedEventDetail.inviteeQuestions,
+            initializedEventDetail.notificationInfo,
+            initializedEventDetail.eventSetting
+        );
 
         return plainToInstance(User, savedUser);
     }
