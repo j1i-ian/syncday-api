@@ -192,25 +192,32 @@ describe('Test User Service', () => {
     describe('Test user sign up', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
-        before(() => {
+        beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
         });
 
         afterEach(() => {
+
+            verificationServiceStub.isVerifiedUser.reset();
+
             userRepositoryStub.create.reset();
             userRepositoryStub.save.reset();
+            userSettingServiceStub.fetchUserWorkspaceStatus.reset();
+
             verificationServiceStub.isVerifiedUser.reset();
             availabilityRepositoryStub.save.reset();
+            availabilityRedisRepositoryStub.save.reset();
 
             utilServiceStub.getUserDefaultSetting.reset();
+            utilServiceStub.hash.reset();
             utilServiceStub.getDefaultEvent.reset();
+            utilServiceStub.getDefaultAvailabilityName.reset();
 
+            eventGroupRepositoryStub.save.reset();
             eventsRedisRepositoryStub.setEventLinkSetStatus.reset();
+            eventsRedisRepositoryStub.save.reset();
 
             serviceSandbox.reset();
-        });
-
-        after(() => {
             serviceSandbox.restore();
         });
 
@@ -220,29 +227,61 @@ describe('Test User Service', () => {
                 hashedPassword: plainPassword
             });
             const languageDummy = Language.ENGLISH;
-            const defaultEventStub = stubOne(Event);
+            const defaultUserSettingStub = stubOne(UserSetting);
+            const eventDetailStub = stubOne(EventDetail);
+            const defaultEventStub = stubOne(Event, {
+                eventDetail: eventDetailStub
+            });
+            const eventGroupStub = stubOne(EventGroup, {
+                events: [defaultEventStub]
+            });
             const availabilityStub = stubOne(Availability);
+            const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
+
+            const findUserByEmailStub = serviceSandbox.stub(service, 'findUserByEmail');
 
             verificationServiceStub.isVerifiedUser.resolves(true);
+            findUserByEmailStub.resolves(null);
 
             userRepositoryStub.create.returns(userStub);
+            userSettingServiceStub.fetchUserWorkspaceStatus.resolves(true);
+            utilServiceStub.getUserDefaultSetting.returns(defaultUserSettingStub);
+            utilServiceStub.hash.returns(userStub.hashedPassword);
+
             userRepositoryStub.save.resolves(userStub);
             utilServiceStub.getDefaultEvent.returns(defaultEventStub);
+            utilServiceStub.getDefaultAvailabilityName.returns(availabilityStub.name);
             availabilityRepositoryStub.save.resolves(availabilityStub);
+            availabilityRedisRepositoryStub.save.resolves(availabilityBodyStub);
+            eventGroupRepositoryStub.save.resolves(eventGroupStub);
+            eventsRedisRepositoryStub.setEventLinkSetStatus.resolves(true);
+            eventsRedisRepositoryStub.save.resolves(eventDetailStub);
 
             const createdUser = await service._createUser(
                 datasourceMock as EntityManager,
                 userStub,
                 languageDummy,
                 {
-                    plainPassword
+                    plainPassword,
+                    emailVerification: true,
+                    alreadySignedUpUserCheck: true
                 }
             );
 
-            expect(utilServiceStub.getDefaultEvent.called).true;
+            expect(verificationServiceStub.isVerifiedUser.called).true;
+            expect(findUserByEmailStub.called).true;
+            expect(userRepositoryStub.create.called).true;
+            expect(userSettingServiceStub.fetchUserWorkspaceStatus.called).true;
             expect(utilServiceStub.getUserDefaultSetting.called).true;
+            expect(utilServiceStub.hash.called).true;
+            expect(userRepositoryStub.save.called).true;
+            expect(utilServiceStub.getDefaultEvent.called).true;
+            expect(utilServiceStub.getDefaultAvailabilityName.called).true;
             expect(availabilityRepositoryStub.save.called).true;
+            expect(availabilityRedisRepositoryStub.save.called).true;
+            expect(eventGroupRepositoryStub.save.called).true;
             expect(eventsRedisRepositoryStub.setEventLinkSetStatus.called).true;
+            expect(eventsRedisRepositoryStub.save.called).true;
 
             expect(createdUser).ok;
             expect(createdUser.email).ok;
