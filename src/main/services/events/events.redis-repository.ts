@@ -1,4 +1,4 @@
-import { Observable, forkJoin, from, iif, mergeMap, of } from 'rxjs';
+import { Observable, forkJoin, from, iif, map, mergeMap, of } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -8,6 +8,10 @@ import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.dec
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
 import { EventDetailBodySaveFailException } from '@app/exceptions/event-detail-body-save-fail.exception';
+
+interface EventDetailsRecord {
+    [eventDetailUUID: string]: EventsDetailBody;
+}
 
 /**
  * TODO: modulization to NessJS-Typeorm or custom repository that can be loaded with getRepositoryToken() in typeorm.
@@ -21,6 +25,38 @@ export class EventsRedisRepository {
         private readonly syncdayRedisService: SyncdayRedisService,
         @AppInjectCluster() private readonly cluster: Cluster
     ) {}
+
+    getEventDetailRecords(eventDetailUUIDs: string[]): Observable<EventDetailsRecord> {
+        const readPipeline = this.cluster.pipeline();
+
+        // 키들의 값을 가져오기 위한 파이프라인 명령 추가
+        eventDetailUUIDs.forEach((_eventDetailUUID) => {
+            const _inviteeQuestionsKey = this.syncdayRedisService.getInviteeQuestionKey(_eventDetailUUID);
+            const _notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(_eventDetailUUID);
+            const _eventSettingKey = this.syncdayRedisService.getEventSettingKey(_eventDetailUUID);
+
+            readPipeline.get(_inviteeQuestionsKey);
+            readPipeline.get(_notificationInfoKey);
+            readPipeline.get(_eventSettingKey);
+        });
+
+        return from(readPipeline.exec() as Promise<Array<[unknown, InviteeQuestion[] | NotificationInfo | EventSetting]>>)
+            .pipe(
+                map((_results) => eventDetailUUIDs.reduce((eventDetailsRecord, _eventDetailUUID) => {
+                    const [, _inviteeQuestions] = _results.shift() as [unknown, string];
+                    const [, _notificationInfo] = _results.shift() as [unknown, string];
+                    const [, _eventSetting] = _results.shift() as [unknown, string];
+
+                    eventDetailsRecord[_eventDetailUUID] = {
+                        inviteeQuestions: JSON.parse(_inviteeQuestions),
+                        notificationInfo: JSON.parse(_notificationInfo),
+                        eventSetting: JSON.parse(_eventSetting)
+                    };
+
+                    return eventDetailsRecord;
+                }, {} as EventDetailsRecord))
+            );
+    }
 
     getEventLinkStatus(workspace: string, link: string): Observable<boolean> {
         const eventLinkStatusKey = this.syncdayRedisService.getEventLinkStatusKey(workspace, link);

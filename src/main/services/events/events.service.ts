@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { Observable, firstValueFrom, forkJoin, from, map, mergeMap, of, toArray } from 'rxjs';
+import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { Event } from '@core/entities/events/event.entity';
@@ -39,22 +39,23 @@ export class EventsService {
                 }
             })
         ).pipe(
-            mergeMap((_events) => from(_events)),
-            mergeMap((_event) => {
-                const eventDetailUUID = _event.eventDetail.uuid;
-                return forkJoin({
-                    inviteeQuestions:
-                this.eventRedisRepository.getInviteeQuestions(eventDetailUUID),
-                    notificationInfo: this.eventRedisRepository.getNotificationInfo(eventDetailUUID)
-                }).pipe(
-                    map(({ inviteeQuestions, notificationInfo }) => {
-                        _event.eventDetail.inviteeQuestions = inviteeQuestions;
-                        _event.eventDetail.notificationInfo = notificationInfo;
-                        return _event;
-                    })
-                );
-            }),
-            toArray()
+            // TODO: should be refactored
+            mergeMap((_events) => {
+                const eventDetailUUIDs = _events.map((_event) => _event.eventDetail.uuid);
+
+                return this.eventRedisRepository.getEventDetailRecords(eventDetailUUIDs)
+                    .pipe(
+                        map((eventDetailsRecord) => _events.map((__event) => {
+                            const eventDetailBody = eventDetailsRecord[__event.eventDetail.uuid];
+
+                            __event.eventDetail = {
+                                ...__event.eventDetail,
+                                ...eventDetailBody
+                            };
+                            return __event;
+                        }))
+                    );
+            })
         );
     }
 
@@ -77,12 +78,13 @@ export class EventsService {
                     inviteeQuestions:
                         this.eventRedisRepository.getInviteeQuestions(eventDetailUUID),
                     notificationInfo: this.eventRedisRepository.getNotificationInfo(eventDetailUUID),
-                    event: of(loadedEvent)
+                    eventSetting: this.eventRedisRepository.getEventSetting(eventDetailUUID)
                 }).pipe(
-                    map(({ inviteeQuestions, notificationInfo, event }) => {
-                        event.eventDetail.inviteeQuestions = inviteeQuestions;
-                        event.eventDetail.notificationInfo = notificationInfo;
-                        return event;
+                    map(({ inviteeQuestions, notificationInfo, eventSetting }) => {
+                        loadedEvent.eventDetail.inviteeQuestions = inviteeQuestions;
+                        loadedEvent.eventDetail.notificationInfo = notificationInfo;
+                        loadedEvent.eventDetail.eventSetting = eventSetting;
+                        return loadedEvent;
                     })
                 );
             })
