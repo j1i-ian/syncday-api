@@ -20,6 +20,7 @@ import { NotificationInfo } from '@interfaces/notifications/notification-info.in
 import { Notification } from '@interfaces/notifications/notification';
 import { Reminder } from '@interfaces/reminders/reminder';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
+import { EventSetting } from '@interfaces/events/event-setting';
 import { Verification } from '@entity/verifications/verification.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { Faker, faker } from '@faker-js/faker';
@@ -153,6 +154,13 @@ export class TestMockUtil {
             reminders: [reminderMock],
             type: NotificationType.EMAIL,
             uuid: faker.datatype.uuid()
+        };
+    }
+
+    getEventSettingMock(): EventSetting {
+
+        return {
+            enforceInviteePhoneInput: false
         };
     }
 

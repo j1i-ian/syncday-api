@@ -103,11 +103,13 @@ describe('EventsService', () => {
 
             eventRedisRepositoryStub.getInviteeQuestions.reset();
             eventRedisRepositoryStub.getNotificationInfo.reset();
+            eventRedisRepositoryStub.getEventSetting.reset();
             eventRedisRepositoryStub.save.reset();
             eventRedisRepositoryStub.remove.reset();
             eventRedisRepositoryStub.clone.reset();
             eventRedisRepositoryStub.getEventLinkSetStatus.reset();
             eventRedisRepositoryStub.setEventLinkSetStatus.reset();
+            eventRedisRepositoryStub.getEventDetailRecords.reset();
 
             eventDetailRepositoryStub.save.reset();
             eventDetailRepositoryStub.delete.reset();
@@ -116,27 +118,22 @@ describe('EventsService', () => {
         });
 
         it('should be searched event list', async () => {
-            const eventDetailStub = stubOne(EventDetail);
-            const eventStubs = stub(Event, 5, {
-                eventDetail: eventDetailStub
+            const eventDetailStubs = stub(EventDetail, 5);
+            const eventStubs = stub(Event, 5).map((_event) => {
+                _event.eventDetail = eventDetailStubs.shift() as EventDetail;
+                return _event;
             });
-
-            const inviteeStubs = Array(10).fill(
-                testMockUtil.getInviteeQuestionMock(eventDetailStub.uuid)
-            );
-            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
+            const eventDetailsRecordStub = Object.fromEntries(eventDetailStubs.map((eventDetailStub) => [eventDetailStub.uuid, eventDetailStub]));
 
             eventRepositoryStub.find.resolves(eventStubs);
-            eventRedisRepositoryStub.getInviteeQuestions.returns(from(inviteeStubs));
-            eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
+            eventRedisRepositoryStub.getEventDetailRecords.returns(of(eventDetailsRecordStub));
 
             const list = await firstValueFrom(service.search({}));
 
             expect(list).ok;
             expect(list.length).greaterThan(0);
             expect(eventRepositoryStub.find.called).true;
-            expect(eventRedisRepositoryStub.getInviteeQuestions.called).true;
-            expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
+            expect(eventRedisRepositoryStub.getEventDetailRecords.called).true;
         });
 
         it('should be fetched event with detail', async () => {
@@ -149,11 +146,13 @@ describe('EventsService', () => {
                 testMockUtil.getInviteeQuestionMock(eventDetailStub.uuid)
             );
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
+            const eventSettingMock = testMockUtil.getEventSettingMock();
 
             validatorStub.validate.resolves();
             eventRepositoryStub.findOneOrFail.resolves(eventStub);
             eventRedisRepositoryStub.getInviteeQuestions.returns(from(inviteeStubs));
             eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
+            eventRedisRepositoryStub.getEventSetting.returns(of(eventSettingMock));
 
             const loadedEventWithDetail = await firstValueFrom(service.findOne(eventStub.id, userStub.id));
 
