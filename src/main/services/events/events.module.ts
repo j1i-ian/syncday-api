@@ -8,10 +8,12 @@ import { UserSettingModule } from '@services/users/user-setting/user-setting.mod
 import { SyncdayCriteriaModule } from '@criteria/syncday-criteria.module';
 import { EventsService } from './events.service';
 import { EventsController } from './events.controller';
+import { EventDetailsController } from './event-details/event-details.controller';
+import { EventDetailsModule } from './event-details/event-details.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([EventGroup, Event]), SyncdayCriteriaModule, UserSettingModule],
-    controllers: [EventsController],
+    imports: [TypeOrmModule.forFeature([EventGroup, Event]), SyncdayCriteriaModule, UserSettingModule, EventDetailsModule],
+    controllers: [EventsController, EventDetailsController],
     providers: [EventsRedisRepository, SyncdayRedisService, EventsService],
     exports: [EventsService, EventsRedisRepository]
 })

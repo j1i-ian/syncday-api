@@ -131,8 +131,8 @@ export class EventsService {
 
         // save consumption data
         const newEventDetail = ensuredNewEvent.eventDetail;
-        const { inviteeQuestions, notificationInfo } = newEventDetail;
-        const savedEventDetailBody = await this.eventRedisRepository.save(savedEventDetail.uuid, inviteeQuestions, notificationInfo);
+        const { inviteeQuestions, notificationInfo, eventSetting } = newEventDetail;
+        const savedEventDetailBody = await this.eventRedisRepository.save(savedEventDetail.uuid, inviteeQuestions, notificationInfo, eventSetting);
 
         savedEvent.eventDetail.inviteeQuestions = savedEventDetailBody.inviteeQuestions;
         savedEvent.eventDetail.notificationInfo = savedEventDetailBody.notificationInfo;
