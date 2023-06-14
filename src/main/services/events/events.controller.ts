@@ -25,7 +25,7 @@ import { PatchEventRequestDto } from '@dto/event-groups/events/patch-event-reque
 import { FetchEventResponseDto } from '@dto/event-groups/events/fetch-event-response.dto';
 import { EventsService } from './events.service';
 
-@Controller('events')
+@Controller()
 export class EventsController {
     constructor(private readonly eventsService: EventsService) {}
 

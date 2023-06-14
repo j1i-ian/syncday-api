@@ -112,6 +112,10 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.NOTIFICATION_INFO]);
     }
 
+    getEventSettingKey(eventDetailUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.EVENT_SETTING]);
+    }
+
     _getAvailabilityHashMapKey(userUUID: string): RedisKey {
         return this.getRedisKey(RedisStores.AVAILABILITY, [userUUID]);
     }

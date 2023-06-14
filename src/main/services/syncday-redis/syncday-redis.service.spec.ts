@@ -193,6 +193,36 @@ describe('Redis Service Test', () => {
             expect(verification).true;
         });
 
+        it('coverage fill: getInviteeQuestionKey', () => {
+            const eventDetailUUIDMock = TestMockUtil.faker.datatype.uuid();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns(`local:event-detail:${eventDetailUUIDMock}:invitee-question`);
+
+            const result = service.getInviteeQuestionKey(eventDetailUUIDMock);
+
+            expect(result).ok;
+        });
+
+        it('coverage fill: getNotificationInfoKey', () => {
+            const eventDetailUUIDMock = TestMockUtil.faker.datatype.uuid();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns(`local:event-detail:${eventDetailUUIDMock}:notifications`);
+
+            const result = service.getNotificationInfoKey(eventDetailUUIDMock);
+
+            expect(result).ok;
+        });
+
+        it('coverage fill: getEventSettingKey', () => {
+            const eventDetailUUIDMock = TestMockUtil.faker.datatype.uuid();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns(`local:event-detail:${eventDetailUUIDMock}:event-setting`);
+
+            const result = service.getEventSettingKey(eventDetailUUIDMock);
+
+            expect(result).ok;
+        });
+
         it('coverage fill: getTemporaryUserKey', () => {
             const emailMock = TestMockUtil.faker.internet.email();
 

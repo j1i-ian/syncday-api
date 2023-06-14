@@ -27,6 +27,19 @@ interface DefaultDateTimeFormat {
     dateTimeOrderFormat: DateTimeOrderFormat[];
 }
 
+type EventDetailInit = Omit<EventDetail,
+'id'
+| 'uuid'
+| 'createdAt'
+| 'updatedAt'
+| 'deletedAt'
+| 'eventId'
+| 'event'
+| 'interval'
+| 'minimumNotice'
+| 'schedules'
+>;
+
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
@@ -68,6 +81,9 @@ export class UtilService {
         const initialEventDetail = new EventDetail({
             description: 'default',
             inviteeQuestions: [],
+            eventSetting: {
+                enforceInviteePhoneInput: false
+            },
             notificationInfo: {
                 host: [
                     {
@@ -94,7 +110,8 @@ export class UtilService {
                     }
                 ]
             }
-        });
+        } as EventDetailInit);
+
         const initialEvent = new Event({
             type: EventType.ONE_ON_ONE,
             link: 'default',
