@@ -146,7 +146,7 @@ export class AvailabilityService {
         });
 
         if (updateResult.affected && updateResult.affected > 0) {
-            await this.availabilityRedisRepository.save(availability.uuid, userUUID, {
+            await this.availabilityRedisRepository.set(availability.uuid, userUUID, {
                 availableTimes,
                 overrides
             });

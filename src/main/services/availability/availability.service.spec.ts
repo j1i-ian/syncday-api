@@ -82,6 +82,7 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.getAvailabilityBodyRecord.reset();
             availabilityRedisRepositoryStub.getAvailabilityBody.reset();
             availabilityRedisRepositoryStub.save.reset();
+            availabilityRedisRepositoryStub.set.reset();
             availabilityRedisRepositoryStub.deleteAvailabilityBody.reset();
         });
 
@@ -161,7 +162,7 @@ describe('AvailabilityService', () => {
 
             availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
             availabilityRepositoryStub.update.resolves(updateResultStub);
-            availabilityRedisRepositoryStub.save.resolves(updateAvailabilityRequestDtoMock);
+            availabilityRedisRepositoryStub.set.resolves(0);
 
             const loadedAvailability = await service.update(
                 availabilityStub.id,
@@ -172,7 +173,7 @@ describe('AvailabilityService', () => {
 
             expect(availabilityRepositoryStub.findOneByOrFail.called).true;
             expect(availabilityRepositoryStub.update.called).true;
-            expect(availabilityRedisRepositoryStub.save.called).true;
+            expect(availabilityRedisRepositoryStub.set.called).true;
             expect(loadedAvailability).ok;
         });
 
