@@ -80,8 +80,8 @@ export class EventsController {
         await this.eventsService.remove(eventId, userId);
     }
 
-    clone(userId: number, eventId: number): Promise<Event> {
-        return this.eventsService.clone(eventId, userId);
+    clone(eventId: number, userId: number, userUUID: string): Promise<Event> {
+        return this.eventsService.clone(eventId, userId, userUUID);
     }
 
     connectToAvailability(
@@ -102,6 +102,7 @@ export class EventsController {
         @Req() req: Request,
         @Res() response: Response,
         @AuthUser('id') userId: number,
+        @AuthUser('uuid') userUUID: string,
         @Matrix({
             key: 'availabilityId',
             parseInt: true,
@@ -118,7 +119,7 @@ export class EventsController {
 
         switch (req.method) {
             case 'COPY':
-                responseBody = await this.clone(userId, parsedEventId);
+                responseBody = await this.clone(parsedEventId, userId, userUUID);
                 statusCode = HttpStatus.CREATED;
                 break;
             case 'LINK':
