@@ -184,7 +184,7 @@ export class EventsService {
         return deleteSuccess;
     }
 
-    async clone(eventId: number, userId: number): Promise<Event> {
+    async clone(eventId: number, userId: number, uesrUUID: string): Promise<Event> {
         const validatedEvent = await this.validator.validate(userId, eventId, Event);
 
         /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -203,7 +203,9 @@ export class EventsService {
         } = newEventBody.eventDetail;
         /* eslint-enable @typescript-eslint/no-unused-vars */
 
+        const generatedEventSuffix = this.utilService.generateUniqueNumber();
         newEventBody.eventDetail = newEventDetailBody as EventDetail;
+        newEventBody.link = `${validatedEvent.link}-${generatedEventSuffix}`;
 
         const clonedEvent = await this.eventRepository.save(newEventBody);
 
@@ -211,8 +213,11 @@ export class EventsService {
             this.eventRedisRepository.clone(eventDetailUUID, clonedEvent.eventDetail.uuid)
         );
 
+        await this.eventRedisRepository.setEventLinkSetStatus(uesrUUID, clonedEvent.link);
+
         clonedEvent.eventDetail.inviteeQuestions = clonedEventDetailBody.inviteeQuestions;
         clonedEvent.eventDetail.notificationInfo = clonedEventDetailBody.notificationInfo;
+        clonedEvent.eventDetail.eventSetting = clonedEventDetailBody.eventSetting;
 
         return clonedEvent;
     }
