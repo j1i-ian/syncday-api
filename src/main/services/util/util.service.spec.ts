@@ -44,7 +44,7 @@ describe('UtilService', () => {
             });
     });
 
-    it('should be not conflicts in 30 times in 500 ms', async () => {
+    it('should be not conflicts in 5 times in 500 ms', async () => {
 
         const checkSet = new Set();
         let uniqueCheck = true;
