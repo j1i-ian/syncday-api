@@ -17,6 +17,6 @@ export class VerificationController {
         @BCP47AcceptLanguage() language: Language
     ): Promise<boolean> {
         const { email } = createVerificationDto;
-        return this.verificationService.createVerification(email, language);
+        return this.verificationService.createVerification(email as string, language);
     }
 }
