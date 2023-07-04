@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Observable, from } from 'rxjs';
@@ -28,8 +28,18 @@ export class GoogleCalendarIntegrationsService {
     async patch(
         userId: number,
         googleCalendarIntegrations:
-        Array<Partial<GoogleCalendarIntegration> &  Pick<GoogleCalendarIntegration, 'id'>>
+        Array<Partial<GoogleCalendarIntegration> & Pick<GoogleCalendarIntegration, 'id' | 'setting'>>
     ): Promise<boolean> {
+
+        // validate if there is more than one outboundWriteSync
+        const outboundWriteSyncCounts = googleCalendarIntegrations.filter((googleCalendarSettingStatus) =>
+            googleCalendarSettingStatus.setting.outboundWriteSync === true
+        );
+
+        if (outboundWriteSyncCounts.length > 1) {
+            throw new BadRequestException('Only one calendar can be linked');
+        }
+
         const googleCalendarIntegrationIds = googleCalendarIntegrations.map(
             (_calendarIntegration) => _calendarIntegration.id
         );

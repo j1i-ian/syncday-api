@@ -5,6 +5,7 @@ import { compare } from 'bcrypt';
 import { oauth2_v2 } from 'googleapis';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
+import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
@@ -32,6 +33,7 @@ export class TokenService {
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
         private readonly googleIntegrationFacade: GoogleIntegrationFacade,
+        private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly googleConverterService: GoogleConverterService
     ) {
         this.jwtOption = AppConfigService.getJwtOptions(this.configService);
@@ -50,17 +52,16 @@ export class TokenService {
         const { googleUser, calendars, tokens } =
             await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode);
 
-        let isNewbie = false;
         let loadedUserOrNull = await this.userService.findUserByEmail(googleUser.email);
 
-        if (loadedUserOrNull === null || loadedUserOrNull === undefined) {
+        const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
+        let isNewbie = loadedUserOrNull === null || loadedUserOrNull === undefined;
+
+        if (isNewbie) {
             const createUserRequestDto: CreateUserRequestDto = {
                 email: googleUser.email,
                 name: googleUser.name
             };
-
-            const newGoogleCalendarIntegrations =
-                this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
 
             loadedUserOrNull = await this.userService.createUserByGoogleOAuth2(
                 createUserRequestDto,
@@ -68,10 +69,22 @@ export class TokenService {
                 newGoogleCalendarIntegrations,
                 language
             );
+
             isNewbie = true;
+        } else {
+
+            const ensuredUser = loadedUserOrNull as User;
+            const hasUserGoogleIntegration =
+            ensuredUser.googleIntergrations &&
+            ensuredUser.googleIntergrations.length > 0;
+
+            // old user but has no google integration
+            if (hasUserGoogleIntegration === false) {
+                await this.googleIntegrationService.createGoogleIntegration(ensuredUser, tokens, newGoogleCalendarIntegrations);
+            }
         }
 
-        const issuedToken = this.issueToken(loadedUserOrNull);
+        const issuedToken = this.issueToken(loadedUserOrNull as User);
         return { issuedToken, isNewbie };
     }
 

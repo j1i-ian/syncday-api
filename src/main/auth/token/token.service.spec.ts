@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
+import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { GoogleOAuth2UserWithToken } from '@app/interfaces/integrations/google/google-oauth2-user-with-token.interface';
@@ -17,6 +18,7 @@ describe('TokenService', () => {
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let jwtServiceStub: sinon.SinonStubbedInstance<JwtService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
+    let googleIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let googleIntegrationFacadeStub: sinon.SinonStubbedInstance<GoogleIntegrationFacade>;
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
 
@@ -24,6 +26,7 @@ describe('TokenService', () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         jwtServiceStub = sinon.createStubInstance(JwtService);
         userServiceStub = sinon.createStubInstance(UserService);
+        googleIntegrationsServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
         googleIntegrationFacadeStub = sinon.createStubInstance(GoogleIntegrationFacade);
         googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
 
@@ -41,6 +44,10 @@ describe('TokenService', () => {
                 {
                     provide: UserService,
                     useValue: userServiceStub
+                },
+                {
+                    provide: GoogleIntegrationsService,
+                    useValue: googleIntegrationsServiceStub
                 },
                 {
                     provide: GoogleIntegrationFacade,
