@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Cluster } from 'ioredis';
 import { firstValueFrom } from 'rxjs';
+import { Logger } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Weekday } from '@interfaces/availability/weekday.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
@@ -19,9 +21,12 @@ describe('Availability Redis Repository Test', () => {
     let clusterStub: sinon.SinonStubbedInstance<Cluster>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
 
+    let logggerStub: sinon.SinonStubbedInstance<Logger>;
+
     beforeEach(async () => {
         clusterStub = sinon.createStubInstance(Cluster);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
+        logggerStub = sinon.createStubInstance(Logger);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -32,6 +37,10 @@ describe('Availability Redis Repository Test', () => {
                 {
                     provide: SyncdayRedisService,
                     useValue: syncdayRedisServiceStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: logggerStub
                 },
                 AvailabilityRedisRepository
             ]

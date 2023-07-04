@@ -117,7 +117,7 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyStub);
 
             const loadedAvailability = await firstValueFrom(
-                service.fetchDetail(availabilityStub.id, userStub.id, userStub.uuid)
+                service.fetchDetail(userStub.id, userStub.uuid, availabilityStub.id)
             );
 
             expect(loadedAvailability).ok;
@@ -165,9 +165,9 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.set.resolves(0);
 
             const loadedAvailability = await service.update(
-                availabilityStub.id,
                 userStub.id,
                 userStub.uuid,
+                availabilityStub.id,
                 updateAvailabilityStub
             );
 
@@ -199,9 +199,9 @@ describe('AvailabilityService', () => {
 
             await expect(
                 service.update(
-                    availabilityStub.id,
                     userStub.id,
                     userStub.uuid,
+                    availabilityStub.id,
                     updateAvailabilityStub
                 )
             ).rejectedWith(InternalServerErrorException);
@@ -261,9 +261,9 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    availabilityStub.id,
                     userStub.id,
                     userStub.uuid,
+                    availabilityStub.id,
                     {
                         ...availabilityStub,
                         default: true
@@ -289,9 +289,9 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    availabilityStub.id,
                     userStub.id,
                     userStub.uuid,
+                    availabilityStub.id,
                     {
                         ...availabilityStub,
                         default: true
@@ -317,7 +317,7 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 await expect(
-                    service.patch(availabilityStub.id, userStub.id, userStub.uuid, {
+                    service.patch(userStub.id, userStub.uuid, availabilityStub.id, {
                         ...availabilityStub,
                         default: false
                     })
@@ -342,9 +342,9 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    availabilityStub.id,
                     userStub.id,
                     userStub.uuid,
+                    availabilityStub.id,
                     availabilityStub
                 );
 
@@ -366,9 +366,9 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    availabilityStub.id,
                     userStub.id,
                     userStub.uuid,
+                    availabilityStub.id,
                     patchAvailabilityRequestDtoMock
                 );
 
@@ -390,9 +390,9 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    availabilityStub.id,
                     userStub.id,
                     userStub.uuid,
+                    availabilityStub.id,
                     patchAvailabilityRequestDtoMock
                 );
 
