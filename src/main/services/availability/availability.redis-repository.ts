@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cluster } from 'ioredis';
 import { Observable, from, mergeMap } from 'rxjs';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
@@ -13,6 +14,8 @@ export class AvailabilityRedisRepository {
         private readonly syncdayRedisService: SyncdayRedisService,
         @AppInjectCluster() private readonly cluster: Cluster
     ) {}
+
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
 
     async getAvailabilityBodyRecord(userUUID: string): Promise<Record<string, AvailabilityBody>> {
         const availabilityListKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
@@ -27,8 +30,8 @@ export class AvailabilityRedisRepository {
     }
 
     async getAvailabilityBody(
-        availabilityUUID: string,
-        userUUID: string
+        userUUID: string,
+        availabilityUUID: string
     ): Promise<AvailabilityBody> {
         const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
 
@@ -38,8 +41,10 @@ export class AvailabilityRedisRepository {
         );
 
         if (!availabilityBodyJsonString) {
+            this.logger.error(`CannotFindAvailabilityBody: availabilityUUID is ${availabilityUUID}, user uuid: ${userUUID}, availabilityUserKey: ${availabilityUserKey as string}`);
             throw new CannotFindAvailabilityBody();
         }
+
         const availabilityBody =
             (JSON.parse(availabilityBodyJsonString as unknown as string) as AvailabilityBody) ??
             null;
@@ -48,11 +53,11 @@ export class AvailabilityRedisRepository {
     }
 
     async save(
-        availabilityUUID: string,
         userUUID: string,
+        availabilityUUID: string,
         availabilityBody: AvailabilityBody
     ): Promise<AvailabilityBody> {
-        const createdHashFieldCount = await this.set(availabilityUUID, userUUID, availabilityBody);
+        const createdHashFieldCount = await this.set(userUUID, availabilityUUID, availabilityBody);
 
         if (createdHashFieldCount !== 1) {
             throw new AvailabilityBodySaveFail();
@@ -62,11 +67,11 @@ export class AvailabilityRedisRepository {
     }
 
     async update(
-        availabilityUUID: string,
         userUUID: string,
+        availabilityUUID: string,
         availabilityBody: AvailabilityBody
     ): Promise<boolean> {
-        const createdHashFieldCount = await this.set(availabilityUUID, userUUID, availabilityBody);
+        const createdHashFieldCount = await this.set(userUUID, availabilityUUID, availabilityBody);
 
         if (createdHashFieldCount !== 0) {
             throw new AvailabilityBodySaveFail();
@@ -76,8 +81,8 @@ export class AvailabilityRedisRepository {
     }
 
     async set(
-        availabilityUUID: string,
         userUUID: string,
+        availabilityUUID: string,
         availabilityBody: AvailabilityBody
     ): Promise<number> {
         availabilityBody.availableTimes = availabilityBody.availableTimes.sort(
@@ -144,7 +149,7 @@ export class AvailabilityRedisRepository {
         }
     }
 
-    async deleteAvailabilityBody(availabilityUUID: string, userUUID: string): Promise<boolean> {
+    async deleteAvailabilityBody(userUUID: string, availabilityUUID: string): Promise<boolean> {
         const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
         const deleteCount = await this.cluster.hdel(availabilityUserKey, availabilityUUID);
 
@@ -164,7 +169,7 @@ export class AvailabilityRedisRepository {
         sourceAvailabilityUUID: string,
         newAvailabilityUUID: string
     ): Observable<AvailabilityBody> {
-        return from(this.getAvailabilityBody(sourceAvailabilityUUID, userUUID)).pipe(
+        return from(this.getAvailabilityBody(userUUID, sourceAvailabilityUUID)).pipe(
             mergeMap((availabilityBody) =>
                 this.save(userUUID, newAvailabilityUUID, availabilityBody)
             )

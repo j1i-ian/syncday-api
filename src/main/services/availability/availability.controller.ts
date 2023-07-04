@@ -62,7 +62,7 @@ export class AvailabilityController {
         @AuthUser('id') userId: number,
         @AuthUser('uuid') userUUID: string
     ): Observable<GetAvailabilityResponseDto> {
-        return this.availabilityService.fetchDetail(availabilityId, userId, userUUID).pipe(
+        return this.availabilityService.fetchDetail(userId, userUUID, availabilityId).pipe(
             map((loadedAvailability) =>
                 plainToInstance(GetAvailabilityResponseDto, loadedAvailability, {
                     excludeExtraneousValues: true
@@ -89,13 +89,13 @@ export class AvailabilityController {
     @Put(':availabilityId')
     @HttpCode(HttpStatus.NO_CONTENT)
     update(
-        @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @AuthUser('id') userId: number,
         @AuthUser('uuid') userUUID: string,
+        @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @Body() updateAvailabilityDto: UpdateAvailabilityRequestDto
     ): Observable<boolean> {
         return from(
-            this.availabilityService.update(availabilityId, userId, userUUID, updateAvailabilityDto)
+            this.availabilityService.update(userId, userUUID, availabilityId, updateAvailabilityDto)
         );
     }
 
@@ -112,22 +112,22 @@ export class AvailabilityController {
     @Patch(':availabilityId')
     @HttpCode(HttpStatus.NO_CONTENT)
     patch(
-        @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @AuthUser('id') userId: number,
         @AuthUser('uuid') userUUID: string,
+        @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @Body() patchAvailabilityDto: PatchAvailabilityRequestDto
     ): Observable<boolean> {
         return from(
-            this.availabilityService.patch(availabilityId, userId, userUUID, patchAvailabilityDto)
+            this.availabilityService.patch(userId, userUUID, availabilityId, patchAvailabilityDto)
         );
     }
 
     @Delete(':availabilityId')
     @HttpCode(HttpStatus.NO_CONTENT)
     delete(
-        @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string
+        @AuthUser('uuid') userUUID: string,
+        @Param('availabilityId', ParseIntPipe) availabilityId: number
     ): Observable<boolean> {
         return from(this.availabilityService.remove(availabilityId, userId, userUUID));
     }

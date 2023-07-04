@@ -117,7 +117,7 @@ export class SyncdayRedisService {
     }
 
     _getAvailabilityHashMapKey(userUUID: string): RedisKey {
-        return this.getRedisKey(RedisStores.AVAILABILITY, [userUUID]);
+        return this.getRedisKey(RedisStores.USERS, [userUUID, RedisStores.AVAILABILITY]);
     }
 
     __parseHashmapRecords<T>(hashmapRecords: Record<string, string>): Record<string, T> {

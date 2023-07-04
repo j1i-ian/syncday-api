@@ -65,9 +65,9 @@ export class AvailabilityService {
     }
 
     fetchDetail(
-        availabilityId: number,
         userId: number,
-        userUUID: string
+        userUUID: string,
+        availabilityId: number
     ): Observable<Availability> {
         return from(
             this.availabilityRepository.findOneByOrFail({
@@ -78,8 +78,8 @@ export class AvailabilityService {
             mergeMap((availability) =>
                 from(
                     this.availabilityRedisRepository.getAvailabilityBody(
-                        availability.uuid,
-                        userUUID
+                        userUUID,
+                        availability.uuid
                     )
                 ).pipe(
                     map((availabilityBody) => {
@@ -108,8 +108,8 @@ export class AvailabilityService {
         });
 
         await this.availabilityRedisRepository.save(
-            savedAvailability.uuid,
             userUUID,
+            savedAvailability.uuid,
             newAvailabilityBody
         );
 
@@ -120,9 +120,9 @@ export class AvailabilityService {
     }
 
     async update(
-        availabilityId: number,
         userId: number,
         userUUID: string,
+        availabilityId: number,
         updateAvailabilityDto: UpdateAvailabilityRequestDto
     ): Promise<boolean> {
         const {
@@ -146,7 +146,7 @@ export class AvailabilityService {
         });
 
         if (updateResult.affected && updateResult.affected > 0) {
-            await this.availabilityRedisRepository.set(availability.uuid, userUUID, {
+            await this.availabilityRedisRepository.set(userUUID, availability.uuid, {
                 availableTimes,
                 overrides
             });
@@ -160,9 +160,9 @@ export class AvailabilityService {
     }
 
     async patch(
-        availabilityId: number,
         userId: number,
         userUUID: string,
+        availabilityId: number,
         patchAvailabilityDto: PatchAvailabilityRequestDto
     ): Promise<boolean> {
         const {
@@ -218,7 +218,7 @@ export class AvailabilityService {
          * Notice availability uuid is fetched from rdb
          */
         if (availableTimes && overrides) {
-            await this.availabilityRedisRepository.update(availability.uuid, userUUID, {
+            await this.availabilityRedisRepository.update(userUUID, availability.uuid, {
                 availableTimes,
                 overrides
             });
@@ -267,8 +267,8 @@ export class AvailabilityService {
 
         if (loadedAvailability && deleteResult.affected && deleteResult.affected > 0) {
             await this.availabilityRedisRepository.deleteAvailabilityBody(
-                loadedAvailability.uuid,
-                userUUID
+                userUUID,
+                loadedAvailability.uuid
             );
         }
 

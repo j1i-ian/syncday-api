@@ -221,7 +221,7 @@ export class UserService {
         initialAvailability.timezone = userSetting?.preferredTimezone;
 
         const savedAvailability = await _availabilityRepository.save(initialAvailability);
-        await this.availabilityRedisRepository.save(savedAvailability.uuid, savedUser.uuid, {
+        await this.availabilityRedisRepository.save(savedUser.uuid, savedAvailability.uuid, {
             availableTimes,
             overrides: []
         });
