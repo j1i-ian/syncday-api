@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { User } from '@entity/users/user.entity';
-import { EmailTemplate } from '../../enums/email-template.enum';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { UtilService } from './util.service';
@@ -90,13 +89,6 @@ describe('UtilService', () => {
 
         expect(defaultEvent).ok;
         expect(defaultEvent.bufferTime).ok;
-    });
-
-    it('should be got asset full path', () => {
-        const fullPath = service.getMailAssetFullPath(EmailTemplate.VERIFICATION, Language.ENGLISH);
-
-        expect(fullPath).ok;
-        expect(fullPath).contains('hbs');
     });
 
     describe('Test Getting default user setting', () => {

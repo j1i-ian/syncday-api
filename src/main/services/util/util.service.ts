@@ -13,7 +13,6 @@ import { DateRange } from '@entity/events/date-range.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
 import { Language } from '@app/enums/language.enum';
-import { EmailTemplate } from '@app/enums/email-template.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { ZoomBasicAuth } from '../../interfaces/zoom-basic-auth.interface';
 
@@ -127,24 +126,10 @@ export class UtilService {
         return initialEvent;
     }
 
-    getMailAssetFullPath(emailTemplate: EmailTemplate, language: Language): string {
-        const hbsAssetPath = [emailTemplate, language, 'hbs'].join('.');
-        const assetFullPath = ['assets', 'mails', hbsAssetPath].join('/');
-
-        return assetFullPath;
-    }
-
     getZoomBasicAuth(zoomBasicAuth: ZoomBasicAuth): string {
         const { clientId, clientSecret } = zoomBasicAuth;
         const basicAuthValue = clientId + ':' + clientSecret;
         return Buffer.from(basicAuthValue).toString('base64');
-    }
-
-    getMailSubjectsJsonPath(language: Language): string {
-        const emailSubjectFileName = ['email-subject', language, 'json'].join('.');
-        const emailSubjectPath = ['assets', 'mails', emailSubjectFileName].join('/');
-
-        return emailSubjectPath;
     }
 
     getUserDefaultSetting(

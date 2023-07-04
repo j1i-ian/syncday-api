@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { IntegrationsService } from './integrations.service';
 import { MeetingModule } from './meetings/meetings.module';
@@ -12,7 +13,8 @@ import { CalendarIntegrationsModule } from './calendar-integrations/calendar-int
         TypeOrmModule.forFeature([GoogleIntegration]),
         MeetingModule,
         GoogleIntegrationModule,
-        CalendarIntegrationsModule
+        CalendarIntegrationsModule,
+        ConfigModule
     ],
     controllers: [IntegrationsController],
     providers: [IntegrationsService],
