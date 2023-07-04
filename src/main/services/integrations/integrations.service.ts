@@ -1,46 +1,44 @@
 import { Injectable } from '@nestjs/common';
-import Handlebars from 'handlebars';
-import { Verification } from '@entity/verifications/verification.entity';
-import { EmailTemplate } from '@app/enums/email-template.enum';
+import { ConfigService } from '@nestjs/config';
+import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
+import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
+import { SyncdayEmailAwsSnsRequest } from '@core/interfaces/integrations/syncday-email-aws-sns-request.interface';
+import { AppConfigService } from '@config/app-config.service';
+import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { Language } from '@app/enums/language.enum';
-import { MailerService } from '@nestjs-modules/mailer';
-import { FileUtilsService } from '../util/file-utils/file-utils.service';
 
-/**
- * TODO: After the event-related entity is materialized, a method to search for the event-related email subject must be implemented.
- */
 @Injectable()
 export class IntegrationsService {
     constructor(
-        private readonly fileUtilService: FileUtilsService,
-        private readonly mailerService: MailerService
+        private readonly configService: ConfigService,
+        private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
     ) {}
 
-    async sendVerificationEmail(verification: Verification, language: Language): Promise<boolean> {
-        const templateSource = await this.fileUtilService.getEmailTemplate(
-            EmailTemplate.VERIFICATION,
-            language
-        );
-        const template = Handlebars.compile(templateSource);
-        const compiledTemplate = template(verification);
+    async sendEmail(recipient: string, emailTemplate: EmailTemplate, language: Language, data: string): Promise<boolean> {
+        const notificationService: MessageAttributeValue = {
+            DataType: 'String.Array',
+            StringValue: JSON.stringify(['email'])
+        };
 
-        const subject = await this.fileUtilService.getEmailSubject(
-            EmailTemplate.VERIFICATION,
-            language
-        );
+        const body: SyncdayEmailAwsSnsRequest = {
+            recipient,
+            emailTemplate,
+            language,
+            data
+        };
 
-        const sendMessageInfo = await this.sendEmail(verification.email, subject, compiledTemplate);
-        return sendMessageInfo;
-    }
+        const params: PublishCommandInput = {
+            Message: JSON.stringify(body),
+            TopicArn: AppConfigService.getAwsSnsTopicARNSyncdayNotification(this.configService),
+            MessageAttributes: {
+                notificationService
+            }
+        };
 
-    async sendEmail(reciever: string, subject: string, content: string): Promise<boolean> {
-        const sentMessageInfo = await this.mailerService.sendMail({
-            to: reciever,
-            from: 'sync.day.official@gmail.com',
-            subject,
-            html: content
-        });
+        const response = await this.syncdayAwsSdkClientService.getSNSClient().send(new PublishCommand(params));
 
-        return !!sentMessageInfo;
+        const isSuccess = response.$metadata.httpStatusCode === 200;
+
+        return isSuccess;
     }
 }

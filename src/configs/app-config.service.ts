@@ -6,29 +6,19 @@ import { JwtModuleAsyncOptions, JwtModuleOptions } from '@nestjs/jwt';
 import { TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { WinstonModuleAsyncOptions } from 'nest-winston';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
-import {
-    AsyncModuleProvider,
-    AwsService,
-    AwsServiceConfigurationOptionsFactory,
-    AwsServiceType,
-    AwsServiceWithServiceOptions
-} from 'nest-aws-sdk';
+
+
 import { CloudWatchLogs, CloudWatchLogsClientConfig } from '@aws-sdk/client-cloudwatch-logs';
+import { S3ClientConfig } from '@aws-sdk/client-s3';
+import { SNSClientConfig } from '@aws-sdk/client-sns';
 import * as ormConfig from '@config/ormconfig.json';
 import { GoogleCredentials } from '@app/interfaces/integrations/google/google-credential.interface';
 import { ClusterModuleAsyncOptions } from '@liaoliaots/nestjs-redis';
 
 // eslint-disable-next-line import/no-internal-modules
-import { MailerAsyncOptions } from '@nestjs-modules/mailer/dist/interfaces/mailer-async-options.interface';
-import { MailerOptions } from '@nestjs-modules/mailer';
 import { NodeEnv } from './node-env.enum';
 import { ZoomBasicAuth } from '../main/interfaces/zoom-basic-auth.interface';
 import { GoogleOAuth2Setting } from '../main/interfaces/auth/google-oauth2-setting.interface';
-
-interface AWSSDKOptionType {
-    defaultServiceOptions?: AsyncModuleProvider<AwsServiceConfigurationOptionsFactory>;
-    services?: Array<AwsServiceType<AwsService> | AwsServiceWithServiceOptions>;
-}
 
 export class AppConfigService {
     static getGoogleOAuth2Setting(configService: ConfigService): GoogleOAuth2Setting {
@@ -192,56 +182,37 @@ export class AppConfigService {
         };
     }
 
-    static getAWSSDKOptions(): AWSSDKOptionType {
-        return {
-            defaultServiceOptions: {
-                imports: [ConfigModule],
-                useFactory: (configService: ConfigService) => {
-                    const region = configService.get<string>('AWS_REGION');
-                    const accessKeyId = configService.get<string>('AWS_S3_ACCESS_KEY');
-                    const secretAccessKey = configService.get<string>('AWS_S3_SECRET_KEY');
+    static getAwsS3ClientConfig(configService: ConfigService): S3ClientConfig {
+        const region = configService.get<string>('AWS_REGION') as string;
+        const accessKeyId = configService.get<string>('AWS_S3_ACCESS_KEY') as string;
+        const secretAccessKey = configService.get<string>('AWS_S3_SECRET_KEY') as string;
 
-                    return {
-                        credentials: {
-                            accessKeyId,
-                            secretAccessKey
-                        },
-                        region
-                    } as AwsServiceConfigurationOptionsFactory;
-                },
-                inject: [ConfigService]
+        return {
+            region,
+            credentials: {
+                accessKeyId,
+                secretAccessKey
             }
         };
     }
 
-    static getNodeMailerModuleOptions(): MailerAsyncOptions {
-        return {
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => {
-                const emailHost = 'smtp.gmail.com';
-                const emailUser = configService.get<'string'>('EMAIL_USER');
-                const emailUserPassword = configService.get<'string'>('EMAIL_USER_PASSWORD');
+    static getAwsSNSClientConfig(configService: ConfigService): SNSClientConfig {
+        const region = configService.get<string>('AWS_REGION') as string;
+        const accessKeyId = configService.get<string>('AWS_SNS_ACCESS_KEY') as string;
+        const secretAccessKey = configService.get<string>('AWS_SNS_SECRET_KEY') as string;
 
-                return {
-                    transport: {
-                        host: emailHost,
-                        port: 587,
-                        secure: false,
-                        auth: {
-                            user: emailUser,
-                            pass: emailUserPassword
-                        }
-                    },
-                    defaults: {
-                        from: {
-                            name: 'Syncday',
-                            address: emailUser
-                        }
-                    }
-                } as MailerOptions;
-            },
-            inject: [ConfigService]
+        return {
+            region,
+            credentials: {
+                accessKeyId,
+                secretAccessKey
+            }
         };
+    }
+
+    static getAwsSnsTopicARNSyncdayNotification(configService: ConfigService): string {
+        const awsSnsTopicARNSyncdayNotification = configService.get<string>('AWS_SNS_TOPIC_ARN_SYNCDAY_NOTIFICATION') as string;
+        return awsSnsTopicARNSyncdayNotification;
     }
 
     static getGoogleCredentials(configService: ConfigService): GoogleCredentials {

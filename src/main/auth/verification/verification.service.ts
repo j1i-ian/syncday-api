@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster } from 'ioredis';
+import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { UtilService } from '@services/util/util.service';
@@ -28,8 +29,9 @@ export class VerificationService {
             email,
             verificationCode: generatedVerificationCode
         };
+        const jsonStringNewVerification = JSON.stringify(newVerification);
 
-        await this.integrationService.sendVerificationEmail(newVerification, language);
+        await this.integrationService.sendEmail(email, EmailTemplate.VERIFICATION , language, jsonStringNewVerification);
 
         // verification code is valid while 10 minutes
         const expire = 60 * 10;

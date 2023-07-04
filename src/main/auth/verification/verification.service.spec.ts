@@ -57,7 +57,7 @@ describe('VerificationService', () => {
             clusterStub.set.reset();
             clusterStub.get.reset();
             utilServiceStub.generateRandomNumberString.reset();
-            integrationsServiceStub.sendVerificationEmail.reset();
+            integrationsServiceStub.sendEmail.reset();
             syncdayRedisServiceStub.getEmailVerificationKey.reset();
         });
 
@@ -70,14 +70,14 @@ describe('VerificationService', () => {
 
                 syncdayRedisServiceStub.getEmailVerificationKey.returns(fakeEmailKey);
                 utilServiceStub.generateRandomNumberString.returns('0123');
-                integrationsServiceStub.sendVerificationEmail.resolves(true);
+                integrationsServiceStub.sendEmail.resolves(true);
                 clusterStub.set.resolves('OK');
 
                 const result = await service.createVerification(emailMock, languageMock);
 
                 expect(syncdayRedisServiceStub.getEmailVerificationKey.called).true;
                 expect(utilServiceStub.generateRandomNumberString.called).true;
-                expect(integrationsServiceStub.sendVerificationEmail.called).true;
+                expect(integrationsServiceStub.sendEmail.called).true;
                 expect(clusterStub.set.called).true;
 
                 expect(result).true;
@@ -89,14 +89,14 @@ describe('VerificationService', () => {
                 syncdayRedisServiceStub.getEmailVerificationKey.returns(fakeEmailKey);
 
                 utilServiceStub.generateRandomNumberString.returns('0123');
-                integrationsServiceStub.sendVerificationEmail.resolves(true);
+                integrationsServiceStub.sendEmail.resolves(true);
                 clusterStub.set.resolves(null);
 
                 const result = await service.createVerification(emailMock, languageMock);
 
                 expect(syncdayRedisServiceStub.getEmailVerificationKey.called).true;
                 expect(utilServiceStub.generateRandomNumberString.called).true;
-                expect(integrationsServiceStub.sendVerificationEmail.called).true;
+                expect(integrationsServiceStub.sendEmail.called).true;
                 expect(clusterStub.set.called).true;
 
                 expect(result).false;
