@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { User } from '@entity/users/user.entity';
+import { Event } from '@entity/events/event.entity';
+import { Schedule } from '@entity/schedules/schedule.entity';
+import { EventDetail } from '@entity/events/event-detail.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { UtilService } from './util.service';
@@ -89,6 +92,23 @@ describe('UtilService', () => {
 
         expect(defaultEvent).ok;
         expect(defaultEvent.bufferTime).ok;
+    });
+
+    it('should be got patched schedule with source event', () => {
+        const eventDetailMock = stubOne(EventDetail);
+        const eventMock = stubOne(Event, {
+            name: faker.name.fullName(),
+            color: faker.color.rgb(),
+            contacts: [],
+            eventDetail: eventDetailMock
+        });
+        const newScheduleMock = stubOne(Schedule);
+
+        const patchedSchedule = service.getPatchedScheduledEvent(eventMock, newScheduleMock);
+
+        expect(patchedSchedule).ok;
+        expect(patchedSchedule.name).contains(eventMock.name);
+        expect(patchedSchedule.color).equals(eventMock.color);
     });
 
     describe('Test Getting default user setting', () => {

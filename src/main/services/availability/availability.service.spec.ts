@@ -75,6 +75,7 @@ describe('AvailabilityService', () => {
         afterEach(() => {
             availabilityRepositoryStub.find.reset();
             availabilityRepositoryStub.findOne.reset();
+            availabilityRepositoryStub.findOneOrFail.reset();
             availabilityRepositoryStub.findOneByOrFail.reset();
             availabilityRepositoryStub.update.reset();
             availabilityRepositoryStub.delete.reset();
@@ -118,6 +119,27 @@ describe('AvailabilityService', () => {
 
             const loadedAvailability = await firstValueFrom(
                 service.fetchDetail(userStub.id, userStub.uuid, availabilityStub.id)
+            );
+
+            expect(loadedAvailability).ok;
+        });
+
+        it('should be fetched availability detail by user workspace and event link', async () => {
+            const userStub = stubOne(User);
+            const eventStub = stubOne(Event);
+            const availabilityStub = stubOne(Availability, {
+                user: userStub
+            });
+            const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock(availabilityStub);
+
+            availabilityRepositoryStub.findOneOrFail.resolves(availabilityStub);
+            availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyStub);
+
+            const loadedAvailability = await firstValueFrom(
+                service.fetchDetailByUserWorkspaceAndLink(
+                    userStub.workspace as string,
+                    eventStub.link
+                )
             );
 
             expect(loadedAvailability).ok;

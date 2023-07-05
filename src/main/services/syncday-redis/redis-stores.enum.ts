@@ -9,5 +9,6 @@ export enum RedisStores {
     EVENT_SETTING = 'event-setting',
     AVAILABILITY = 'availability',
     INVITEE_QUESTION = 'invitee-question',
-    NOTIFICATION_INFO = 'notifications'
+    NOTIFICATION_INFO = 'notifications',
+    SCHEDULES = 'schedules'
 }

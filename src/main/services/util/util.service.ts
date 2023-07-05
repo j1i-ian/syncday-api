@@ -12,6 +12,8 @@ import { BufferTime } from '@entity/events/buffer-time.entity';
 import { DateRange } from '@entity/events/date-range.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
+import { Schedule } from '@entity/schedules/schedule.entity';
+import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { ZoomBasicAuth } from '../../interfaces/zoom-basic-auth.interface';
@@ -130,6 +132,17 @@ export class UtilService {
         const { clientId, clientSecret } = zoomBasicAuth;
         const basicAuthValue = clientId + ':' + clientSecret;
         return Buffer.from(basicAuthValue).toString('base64');
+    }
+
+    getPatchedScheduledEvent(sourceEvent: Event, newSchedule: Schedule): Schedule {
+        newSchedule.name = sourceEvent.name;
+        newSchedule.color = sourceEvent.color;
+        newSchedule.status = ScheduledStatus.OPENED;
+        newSchedule.contacts = sourceEvent.contacts;
+        newSchedule.type = sourceEvent.type;
+        newSchedule.eventDetailId = sourceEvent.eventDetail.id;
+
+        return newSchedule;
     }
 
     getUserDefaultSetting(

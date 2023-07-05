@@ -120,6 +120,10 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.USERS, [userUUID, RedisStores.AVAILABILITY]);
     }
 
+    _getScheduleBodyKey(scheduleUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.SCHEDULES, [scheduleUUID]);
+    }
+
     __parseHashmapRecords<T>(hashmapRecords: Record<string, string>): Record<string, T> {
         const entries = Object.entries(hashmapRecords).reduce<Record<string, T>>(
             (acc, [key, value]) => ({

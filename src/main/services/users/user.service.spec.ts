@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, FindOneOptions, FindOptionsWhere, Repository } from 'typeorm';
+import { firstValueFrom } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
@@ -146,6 +147,24 @@ describe('Test User Service', () => {
         afterEach(() => {
             userRepositoryStub.findOneOrFail.reset();
             userRepositoryStub.findOneBy.reset();
+        });
+
+        it('should be found user by user workspace', async () => {
+            const userStub = stubOne(User);
+
+            userRepositoryStub.findOneOrFail.resolves(userStub);
+
+            const loadedUser = await firstValueFrom(service.findUserByWorkspace(userStub.workspace as string));
+
+            const actualPassedParam = userRepositoryStub.findOneOrFail.getCall(0).args[0];
+            expect(
+                (
+                    (actualPassedParam.where as FindOptionsWhere<User>)
+                        .userSetting as FindOptionsWhere<UserSetting>
+                ).workspace
+            ).equals(userStub.workspace);
+
+            expect(loadedUser).equal(userStub);
         });
 
         it('should be found user by user id', async () => {
