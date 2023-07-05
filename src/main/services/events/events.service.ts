@@ -32,7 +32,14 @@ export class EventsService {
                     eventGroup: {
                         userId: searchOption.userId
                     },
-                    availabilityId: searchOption.availabilityId
+                    availability: {
+                        id: searchOption.availabilityId,
+                        user: {
+                            userSetting: {
+                                workspace: searchOption.userWorkspace
+                            }
+                        }
+                    }
                 },
                 order: {
                     priority: 'DESC'
@@ -70,6 +77,60 @@ export class EventsService {
                         id: eventId
                     }
                 })),
+            mergeMap((loadedEvent) => {
+                const eventDetail = loadedEvent.eventDetail;
+                const eventDetailUUID = eventDetail.uuid;
+
+                return forkJoin({
+                    inviteeQuestions:
+                        this.eventRedisRepository.getInviteeQuestions(eventDetailUUID),
+                    notificationInfo: this.eventRedisRepository.getNotificationInfo(eventDetailUUID),
+                    eventSetting: this.eventRedisRepository.getEventSetting(eventDetailUUID)
+                }).pipe(
+                    map(({ inviteeQuestions, notificationInfo, eventSetting }) => {
+                        loadedEvent.eventDetail.inviteeQuestions = inviteeQuestions;
+                        loadedEvent.eventDetail.notificationInfo = notificationInfo;
+                        loadedEvent.eventDetail.eventSetting = eventSetting;
+                        return loadedEvent;
+                    })
+                );
+            })
+        );
+    }
+
+    findOneByUserWorkspaceAndUUID(userWorkspace: string, eventUUID: string): Observable<Event> {
+        return from(
+            this.eventRepository.findOneOrFail({
+                relations: ['eventDetail'],
+                where: {
+                    uuid: eventUUID,
+                    availability: {
+                        user: {
+                            userSetting: {
+                                workspace: userWorkspace
+                            }
+                        }
+                    }
+                }
+            })
+        );
+    }
+
+    findOneByUserWorkspaceAndLink(userWorkspace: string, eventLink: string): Observable<Event> {
+
+        return from(this.eventRepository.findOneOrFail({
+            relations: ['eventDetail'],
+            where: {
+                link: eventLink,
+                availability: {
+                    user: {
+                        userSetting: {
+                            workspace: userWorkspace
+                        }
+                    }
+                }
+            }
+        })).pipe(
             mergeMap((loadedEvent) => {
                 const eventDetail = loadedEvent.eventDetail;
                 const eventDetailUUID = eventDetail.uuid;

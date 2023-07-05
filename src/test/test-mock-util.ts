@@ -23,6 +23,7 @@ import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { EventSetting } from '@interfaces/events/event-setting';
 import { Verification } from '@entity/verifications/verification.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
+import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
 import { Faker, faker } from '@faker-js/faker';
 import { DataSourceMock } from '@test/datasource-mock.interface';
 import { Language } from '../main/enums/language.enum';
@@ -109,6 +110,17 @@ export class TestMockUtil {
                 }
             )
         ) as Record<string, AvailabilityBody>;
+    }
+
+    getScheduleBodyMock(): ScheduleBody {
+
+        return {
+            inviteeAnswers: [],
+            scheduledNotificationInfo: {
+                host: {},
+                invitee: {}
+            } as NotificationInfo
+        } as ScheduleBody;
     }
 
     getAvailabilityBodyMock(availability?: Availability): AvailabilityBody {

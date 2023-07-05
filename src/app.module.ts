@@ -17,6 +17,8 @@ import { IntegrationsModule } from './main/services/integrations/integrations.mo
 import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
 import { AvailabilityModule } from './main/services/availability/availability.module';
 import { EventsModule } from './main/services/events/events.module';
+import { BookingsModule } from './main/services/bookings/bookings.module';
+import { SchedulesModule } from './main/services/schedules/schedules.module';
 
 @Module({
     imports: [
@@ -42,7 +44,9 @@ import { EventsModule } from './main/services/events/events.module';
 
         EventsModule,
 
-        SyncdayAwsSdkClientModule
+        SyncdayAwsSdkClientModule,
+        BookingsModule,
+        SchedulesModule
     ],
     controllers: [AppController],
     providers: [

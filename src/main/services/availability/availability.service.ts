@@ -92,6 +92,42 @@ export class AvailabilityService {
         );
     }
 
+    fetchDetailByUserWorkspaceAndLink(
+        userWorkspace: string,
+        eventLink: string
+    ): Observable<Availability> {
+        return from(
+            this.availabilityRepository.findOneOrFail({
+                relations: ['user'],
+                where: {
+                    user: {
+                        userSetting: {
+                            workspace: userWorkspace
+                        }
+                    },
+                    events: {
+                        link: eventLink
+                    }
+                }
+            })
+        ).pipe(
+            mergeMap((availability) =>
+                from(
+                    this.availabilityRedisRepository.getAvailabilityBody(
+                        availability.user.uuid,
+                        availability.uuid
+                    )
+                ).pipe(
+                    map((availabilityBody) => {
+                        availability.availableTimes = availabilityBody.availableTimes;
+                        availability.overrides = availabilityBody.overrides;
+                        return availability;
+                    })
+                )
+            )
+        );
+    }
+
     async create(
         userId: number,
         userUUID: string,

@@ -136,6 +136,28 @@ describe('EventsService', () => {
             expect(eventRedisRepositoryStub.getEventDetailRecords.called).true;
         });
 
+        it('should be searched event list by user workspace', async () => {
+            const userStub = stubOne(User);
+            const eventDetailStubs = stub(EventDetail, 5);
+            const eventStubs = stub(Event, 5).map((_event) => {
+                _event.eventDetail = eventDetailStubs.shift() as EventDetail;
+                return _event;
+            });
+            const eventDetailsRecordStub = Object.fromEntries(eventDetailStubs.map((eventDetailStub) => [eventDetailStub.uuid, eventDetailStub]));
+
+            eventRepositoryStub.find.resolves(eventStubs);
+            eventRedisRepositoryStub.getEventDetailRecords.returns(of(eventDetailsRecordStub));
+
+            const searchedByUserWorkspace = await firstValueFrom(service.search({
+                userWorkspace: userStub.workspace as string
+            }));
+
+            expect(searchedByUserWorkspace).ok;
+            expect(searchedByUserWorkspace.length).greaterThan(0);
+            expect(eventRepositoryStub.find.called).true;
+            expect(eventRedisRepositoryStub.getEventDetailRecords.called).true;
+        });
+
         it('should be fetched event with detail', async () => {
             const eventDetailStub = stubOne(EventDetail);
             const userStub = stubOne(User);
@@ -161,6 +183,62 @@ describe('EventsService', () => {
             expect(eventRepositoryStub);
             expect(eventRedisRepositoryStub.getInviteeQuestions.called).true;
             expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
+            expect(eventRedisRepositoryStub.getEventSetting.called).true;
+        });
+
+        it('should be fetched event by user workspace and event uuid with detail without redis body', async () => {
+            const eventDetailStub = stubOne(EventDetail);
+            const userStub = stubOne(User);
+            const eventStub = stubOne(Event, {
+                eventDetail: eventDetailStub
+            });
+
+            validatorStub.validate.resolves();
+            eventRepositoryStub.findOneOrFail.resolves(eventStub);
+
+            const loadedEventWithDetail = await firstValueFrom(
+                service.findOneByUserWorkspaceAndUUID(
+                    userStub.workspace as string,
+                    eventStub.uuid
+                )
+            );
+
+            expect(loadedEventWithDetail).ok;
+            expect(loadedEventWithDetail.eventDetail).ok;
+            expect(eventRepositoryStub);
+        });
+
+        it('should be fetched event by user workspace and event link with detail', async () => {
+            const eventDetailStub = stubOne(EventDetail);
+            const userStub = stubOne(User);
+            const eventStub = stubOne(Event, {
+                eventDetail: eventDetailStub
+            });
+            const inviteeStubs = Array(10).fill(
+                testMockUtil.getInviteeQuestionMock(eventDetailStub.uuid)
+            );
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
+            const eventSettingMock = testMockUtil.getEventSettingMock();
+
+            validatorStub.validate.resolves();
+            eventRepositoryStub.findOneOrFail.resolves(eventStub);
+            eventRedisRepositoryStub.getInviteeQuestions.returns(from(inviteeStubs));
+            eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
+            eventRedisRepositoryStub.getEventSetting.returns(of(eventSettingMock));
+
+            const loadedEventWithDetail = await firstValueFrom(
+                service.findOneByUserWorkspaceAndLink(
+                    userStub.workspace as string,
+                    eventStub.link
+                )
+            );
+
+            expect(loadedEventWithDetail).ok;
+            expect(loadedEventWithDetail.eventDetail).ok;
+            expect(eventRepositoryStub);
+            expect(eventRedisRepositoryStub.getInviteeQuestions.called).true;
+            expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
+            expect(eventRedisRepositoryStub.getEventSetting.called).true;
         });
 
         it('should be created event with passed name when event link is not used in', async () => {
@@ -366,7 +444,7 @@ describe('EventsService', () => {
             eventRepositoryStub.save.resolves(clonedEventStub);
             eventRedisRepositoryStub.clone.returns(of(eventDetailBodyStub));
 
-            const clonedEvent = await service.clone(sourceEventDetailStub.id, userMock.id);
+            const clonedEvent = await service.clone(sourceEventDetailStub.id, userMock.id, userMock.uuid);
             expect(clonedEvent).ok;
 
             expect(validatorStub.validate.called).true;

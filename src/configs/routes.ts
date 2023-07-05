@@ -5,6 +5,7 @@ import { AvailabilityModule } from '@services/availability/availability.module';
 import { CalendarIntegrationsModule } from '@services/integrations/calendar-integrations/calendar-integrations.module';
 import { EventsModule } from '@services/events/events.module';
 import { EventDetailsModule } from '@services/events/event-details/event-details.module';
+import { BookingsModule } from '@services/bookings/bookings.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
@@ -51,6 +52,10 @@ export const routes: Routes = [
     {
         path: 'events-details',
         module: EventDetailsModule
+    },
+    {
+        path: 'bookings',
+        module: BookingsModule
     },
     {
         path: 'integrations',

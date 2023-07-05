@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, InternalServerErrorException, 
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
+import { Observable, from } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
@@ -45,6 +46,19 @@ export class UserService {
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
+
+    findUserByWorkspace(userWorkspace: string): Observable<User> {
+        return from(
+            this.userRepository.findOneOrFail({
+                where: {
+                    userSetting: {
+                        workspace: userWorkspace
+                    }
+                },
+                relations: ['userSetting']
+            })
+        );
+    }
 
     async findUserById(userId: number): Promise<User> {
         const loadedUser = await this.userRepository.findOneOrFail({
