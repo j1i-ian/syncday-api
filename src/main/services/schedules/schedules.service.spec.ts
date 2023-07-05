@@ -8,7 +8,11 @@ import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-re
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
+import { TestMockUtil } from '@test/test-mock-util';
 import { SchedulesService } from './schedules.service';
+
+const testMockUtil = new TestMockUtil();
 
 describe('SchedulesService', () => {
     let service: SchedulesService;
@@ -58,11 +62,21 @@ describe('SchedulesService', () => {
 
     describe('Test Scheduled event CRUD', () => {
 
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
         afterEach(() => {
             eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
-            scheduleRepositoryStub.save.reset();
             schedulesRedisRepositoryStub.save.reset();
+            scheduleRepositoryStub.save.reset();
+            scheduleRepositoryStub.findBy.reset();
+            scheduleRepositoryStub.findOneBy.reset();
+
+            serviceSandbox.restore();
         });
 
         it('should be searched scheduled events', async () => {
@@ -91,6 +105,9 @@ describe('SchedulesService', () => {
 
             eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
             utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+
+            const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
+
             scheduleRepositoryStub.save.resolves(scheduleStub);
             schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
 
@@ -103,8 +120,45 @@ describe('SchedulesService', () => {
             expect(createdSchedule).ok;
             expect(eventsServiceStub.findOneByUserWorkspaceAndUUID.called).true;
             expect(utilServiceStub.getPatchedScheduledEvent.called).true;
+            expect(validateStub.called).true;
             expect(scheduleRepositoryStub.save.called).true;
             expect(schedulesRedisRepositoryStub.save.called).true;
+        });
+
+        it('should be passed when there is no conflicted schedule ', async () => {
+
+            const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
+            const scheduleMock = stubOne(Schedule, scheduleTimeMock);
+
+            scheduleRepositoryStub.findOneBy.resolves(null);
+
+            const validatedSchedule = await firstValueFrom(
+                service.validate(
+                    scheduleMock
+                )
+            );
+
+            expect(validatedSchedule).ok;
+            expect(scheduleRepositoryStub.findOneBy.called).true;
+        });
+
+        it('should be not passed when there are conflicted schedules ', async () => {
+
+            const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
+            const scheduleMock = stubOne(Schedule, scheduleTimeMock);
+            const conflictedScheduleStub = stubOne(Schedule);
+
+            scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
+
+            await expect(
+                firstValueFrom(
+                    service.validate(
+                        scheduleMock
+                    )
+                )
+            ).rejectedWith(CannotCreateByInvalidTimeRange);
+
+            expect(scheduleRepositoryStub.findOneBy.called).true;
         });
     });
 
