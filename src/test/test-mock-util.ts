@@ -113,15 +113,21 @@ export class TestMockUtil {
         ) as Record<string, AvailabilityBody>;
     }
 
-    getScheduleTimeMock(): Pick<Schedule, 'scheduledTime' | 'scheduledBufferTime'> {
+    getScheduleTimeMock(date?: Date): Pick<Schedule, 'scheduledTime' | 'scheduledBufferTime'> {
+
+        const _1hourAfter = new Date();
+        _1hourAfter.setHours(_1hourAfter.getHours() + 1);
+
+        const ensuredDate = date ?? _1hourAfter;
+
         return {
             scheduledTime: {
-                startTimestamp: new Date(),
-                endTimestamp: new Date()
+                startTimestamp: ensuredDate,
+                endTimestamp: ensuredDate
             },
             scheduledBufferTime: {
-                startBufferTimestamp: new Date(),
-                endBufferTimestamp: new Date()
+                startBufferTimestamp: ensuredDate,
+                endBufferTimestamp: ensuredDate
             }
         };
     }
