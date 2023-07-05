@@ -22,6 +22,7 @@ import { Reminder } from '@interfaces/reminders/reminder';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { EventSetting } from '@interfaces/events/event-setting';
 import { Verification } from '@entity/verifications/verification.entity';
+import { Schedule } from '@entity/schedules/schedule.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
 import { Faker, faker } from '@faker-js/faker';
@@ -110,6 +111,19 @@ export class TestMockUtil {
                 }
             )
         ) as Record<string, AvailabilityBody>;
+    }
+
+    getScheduleTimeMock(): Pick<Schedule, 'scheduledTime' | 'scheduledBufferTime'> {
+        return {
+            scheduledTime: {
+                startTimestamp: new Date(),
+                endTimestamp: new Date()
+            },
+            scheduledBufferTime: {
+                startBufferTimestamp: new Date(),
+                endBufferTimestamp: new Date()
+            }
+        };
     }
 
     getScheduleBodyMock(): ScheduleBody {
