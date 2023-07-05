@@ -52,8 +52,17 @@ export class SchedulesService {
         const { startBufferTimestamp, endBufferTimestamp } = scheduledBufferTime;
         const { startTimestamp, endTimestamp } = scheduledTime;
 
-        const ensuredStartDatetime = startBufferTimestamp && new Date(startBufferTimestamp);
-        const ensuredEndDatetime = endBufferTimestamp && new Date(endBufferTimestamp);
+        const ensuredBufferStartDatetime = startBufferTimestamp && new Date(startBufferTimestamp);
+        const ensuredBufferEndDatetime = endBufferTimestamp && new Date(endBufferTimestamp);
+
+        const ensuredStartDatetime = ensuredBufferStartDatetime ?? new Date(startTimestamp);
+        const ensuredEndDatetime = ensuredBufferEndDatetime ?? new Date(endTimestamp);
+
+        if (
+            ensuredStartDatetime.getTime() < Date.now() ||
+            ensuredEndDatetime.getTime() < Date.now()) {
+            throw new CannotCreateByInvalidTimeRange();
+        }
 
         return from(this.scheduleRepository.findOneBy(
             [
@@ -71,13 +80,13 @@ export class SchedulesService {
                 },
                 {
                     scheduledTime: {
-                        startTimestamp: Between(new Date(startTimestamp), new Date(endTimestamp))
+                        startTimestamp: Between(ensuredStartDatetime, ensuredEndDatetime)
                     },
                     eventDetailId: schedule.eventDetailId
                 },
                 {
                     scheduledTime: {
-                        endTimestamp: Between(new Date(startTimestamp), new Date(endTimestamp))
+                        endTimestamp: Between(ensuredStartDatetime, ensuredEndDatetime)
                     },
                     eventDetailId: schedule.eventDetailId
                 }

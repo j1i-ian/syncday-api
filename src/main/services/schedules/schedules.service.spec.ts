@@ -142,6 +142,19 @@ describe('SchedulesService', () => {
             expect(scheduleRepositoryStub.findOneBy.called).true;
         });
 
+        it('should be not passed when requested schedule has old start/end datetime', () => {
+
+            const _1minBefore = new Date();
+            _1minBefore.setMinutes(_1minBefore.getMinutes() - 5);
+
+            const invalidScheduleTimeMock = testMockUtil.getScheduleTimeMock(_1minBefore);
+            const scheduleMock = stubOne(Schedule, invalidScheduleTimeMock);
+
+            expect(() => service.validate(scheduleMock)).throws(CannotCreateByInvalidTimeRange);
+
+            expect(scheduleRepositoryStub.findOneBy.called).false;
+        });
+
         it('should be not passed when there are conflicted schedules ', async () => {
 
             const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
