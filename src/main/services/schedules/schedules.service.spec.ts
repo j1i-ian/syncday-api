@@ -65,6 +65,24 @@ describe('SchedulesService', () => {
             schedulesRedisRepositoryStub.save.reset();
         });
 
+        it('should be searched scheduled events', async () => {
+
+            const eventUUIDMock = stubOne(Event).uuid;
+            const scheduleStubs = stub(Schedule);
+
+            scheduleRepositoryStub.findBy.resolves(scheduleStubs);
+
+            const searchedSchedules = await firstValueFrom(
+                service.search({
+                    eventUUID: eventUUIDMock
+                })
+            );
+
+            expect(searchedSchedules).ok;
+            expect(searchedSchedules.length).greaterThan(0);
+            expect(scheduleRepositoryStub.findBy.called).true;
+        });
+
         it('should be created scheduled event', async () => {
 
             const userWorkspaceMock = stubOne(User).workspace as string;

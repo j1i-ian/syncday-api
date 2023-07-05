@@ -6,6 +6,7 @@ import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { UtilService } from '@services/util/util.service';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { ScheduleSearchOption } from '@app/interfaces/schedules/schedule-search-option.interface';
 
 @Injectable()
 export class SchedulesService {
@@ -16,6 +17,16 @@ export class SchedulesService {
         private readonly scheduleRedisRepository: SchedulesRedisRepository,
         @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>
     ) {}
+
+    search(scheduleSearchOption: ScheduleSearchOption): Observable<Schedule[]> {
+        return from(this.scheduleRepository.findBy({
+            eventDetail: {
+                event: {
+                    uuid: scheduleSearchOption.eventUUID
+                }
+            }
+        }));
+    }
 
     create(userWorkspace: string, eventUUID: string, newSchedule: Schedule): Observable<Schedule> {
 
