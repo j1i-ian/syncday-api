@@ -70,6 +70,22 @@ export class BookingsController {
             );
     }
 
+    @Get('scheduled-events')
+    searchScheduledEvents(
+        @Query('eventUUID') eventUUID: string
+    ): Observable<ScheduledEventResponseDto[]> {
+        return this.bookingsService.searchScheduledEvents(eventUUID)
+            .pipe(
+                map((searchedScheduledEvents) =>
+                    searchedScheduledEvents.map((
+                        _searchedScheduledEvent) =>
+                        plainToInstance(ScheduledEventResponseDto, _searchedScheduledEvent, {
+                            excludeExtraneousValues: true
+                        })
+                    ))
+            );
+    }
+
     @Post('scheduled-events')
     createScheduledEvent(
         @Body() createScheduleRequestDto: CreateScheduledRequestDto,

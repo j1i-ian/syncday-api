@@ -37,6 +37,12 @@ export class BookingsService {
         return this.availabilityService.fetchDetailByUserWorkspaceAndLink(userWorkspace, eventLink);
     }
 
+    searchScheduledEvents(eventUUID: string): Observable<Schedule[]> {
+        return this.scheduleService.search({
+            eventUUID
+        });
+    }
+
     createScheduledEvent(userWorkspace: string, eventUUID: string, newSchedule: Schedule): Observable<Schedule> {
         return this.scheduleService.create(userWorkspace, eventUUID, newSchedule);
     }
