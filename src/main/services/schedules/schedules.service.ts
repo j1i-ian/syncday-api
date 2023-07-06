@@ -29,6 +29,12 @@ export class SchedulesService {
         }));
     }
 
+    findOne(scheduleUUID: string): Observable<Schedule> {
+        return from(this.scheduleRepository.findOneByOrFail({
+            uuid: scheduleUUID
+        }));
+    }
+
     create(userWorkspace: string, eventUUID: string, newSchedule: Schedule): Observable<Schedule> {
 
         return from(

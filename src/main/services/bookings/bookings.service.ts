@@ -43,6 +43,10 @@ export class BookingsService {
         });
     }
 
+    fetchScheduledEventOne(scheduleUUID: string): Observable<Schedule> {
+        return this.scheduleService.findOne(scheduleUUID);
+    }
+
     createScheduledEvent(userWorkspace: string, eventUUID: string, newSchedule: Schedule): Observable<Schedule> {
         return this.scheduleService.create(userWorkspace, eventUUID, newSchedule);
     }
