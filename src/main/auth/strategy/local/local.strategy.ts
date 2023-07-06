@@ -1,6 +1,7 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-local';
+import { EmailOrPasswordMismatchException } from '@core/exceptions/auth/email-or-password-mismatch.exception';
 import { UserService } from '@services/users/user.service';
 import { User } from '@entity/users/user.entity';
 
@@ -23,7 +24,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
         );
 
         if (validatedUserOrNull === null) {
-            throw new UnauthorizedException('email or password is wrong.');
+            throw new EmailOrPasswordMismatchException('email or password is wrong.');
         }
 
         return validatedUserOrNull;
