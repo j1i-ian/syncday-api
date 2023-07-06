@@ -75,6 +75,7 @@ describe('SchedulesService', () => {
             scheduleRepositoryStub.save.reset();
             scheduleRepositoryStub.findBy.reset();
             scheduleRepositoryStub.findOneBy.reset();
+            scheduleRepositoryStub.findOneByOrFail.reset();
 
             serviceSandbox.restore();
         });
@@ -95,6 +96,20 @@ describe('SchedulesService', () => {
             expect(searchedSchedules).ok;
             expect(searchedSchedules.length).greaterThan(0);
             expect(scheduleRepositoryStub.findBy.called).true;
+        });
+
+        it('should be fetched scheduled event one', async () => {
+
+            const scheduleStub = stubOne(Schedule);
+
+            scheduleRepositoryStub.findOneByOrFail.resolves(scheduleStub);
+
+            const fetchedScheduledEvent = await firstValueFrom(
+                service.findOne(scheduleStub.uuid)
+            );
+
+            expect(fetchedScheduledEvent).ok;
+            expect(scheduleRepositoryStub.findOneByOrFail.called).true;
         });
 
         it('should be created scheduled event', async () => {

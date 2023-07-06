@@ -86,6 +86,20 @@ export class BookingsController {
             );
     }
 
+    @Get('scheduled-events/:scheduledEventUUID')
+    fetchScheduledEventDetail(
+        @Query('scheduledEventUUID') scheduledEventUUID: string
+    ): Observable<ScheduledEventResponseDto> {
+        return this.bookingsService.fetchScheduledEventOne(scheduledEventUUID)
+            .pipe(
+                map((fetchedScheduledEvent) =>
+                    plainToInstance(ScheduledEventResponseDto, fetchedScheduledEvent, {
+                        excludeExtraneousValues: true
+                    })
+                )
+            );
+    }
+
     @Post('scheduled-events')
     createScheduledEvent(
         @Body() createScheduleRequestDto: CreateScheduledRequestDto,
