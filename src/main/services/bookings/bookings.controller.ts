@@ -88,7 +88,7 @@ export class BookingsController {
 
     @Get('scheduled-events/:scheduledEventUUID')
     fetchScheduledEventDetail(
-        @Query('scheduledEventUUID') scheduledEventUUID: string
+        @Param('scheduledEventUUID') scheduledEventUUID: string
     ): Observable<ScheduledEventResponseDto> {
         return this.bookingsService.fetchScheduledEventOne(scheduledEventUUID)
             .pipe(
