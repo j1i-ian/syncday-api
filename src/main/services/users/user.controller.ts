@@ -10,13 +10,15 @@ import {
     Param,
     ParseIntPipe,
     Patch,
-    Post
+    Post,
+    Put
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { User } from '@core/entities/users/user.entity';
 import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
 import { PatchUserRequestDto } from '@dto/users/patch-user-request.dto';
 import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
+import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { AuthUser } from '../../decorators/auth-user.decorator';
 import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
@@ -69,6 +71,19 @@ export class UserController {
         const result = await this.userService.patch(authUser.id, {
             name: patchUserBody.name
         });
+
+        if (result === false) {
+            throw new BadRequestException('Cannot update user data');
+        }
+    }
+
+    @Put(':userId(\\d+)/passwords')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async updateUserPassword(
+        @AuthUser() authUser: AppJwtPayload,
+        @Body() patchUserBody: UpdateUserPasswordsVO
+    ): Promise<void> {
+        const result = await this.userService.updateUserPassword(authUser.id, patchUserBody);
 
         if (result === false) {
             throw new BadRequestException('Cannot update user data');
