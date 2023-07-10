@@ -16,12 +16,14 @@ import { Weekday } from '@entity/availability/weekday.enum';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
+import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
 import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
+import { PasswordMismatchException } from '@exceptions/auth/password-mismatch.exception';
 import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
@@ -312,6 +314,42 @@ export class UserService {
 
     async patch(userId: number, partialUser: Partial<User>): Promise<boolean> {
         const updateResult = await this.userRepository.update(userId, partialUser);
+
+        return updateResult.affected ? updateResult.affected > 0 : false;
+    }
+
+    async updateUserPassword(userId: number, updateUserPasswords: UpdateUserPasswordsVO): Promise<boolean> {
+
+        const hashedPassword = this.utilService.hash(updateUserPasswords.newPassword);
+
+        const loadedUser = await this.userRepository.findOneOrFail({
+            select: {
+                id: true,
+                uuid: true,
+                email: true,
+                profileImage: true,
+                hashedPassword: true
+            },
+            where: {
+                id: userId
+            }
+        });
+
+        const result = await this.tokenService.comparePassword(
+            updateUserPasswords.password,
+            loadedUser.hashedPassword
+        );
+
+        if (result === false) {
+            throw new PasswordMismatchException('password is wrong.');
+        }
+
+        const updateUser = {
+            ...loadedUser,
+            hashedPassword
+        } as User;
+
+        const updateResult = await this.userRepository.update(userId, updateUser);
 
         return updateResult.affected ? updateResult.affected > 0 : false;
     }
