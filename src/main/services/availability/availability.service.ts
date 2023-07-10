@@ -131,7 +131,7 @@ export class AvailabilityService {
     async create(
         userId: number,
         userUUID: string,
-        { name, availableTimes, overrides }: CreateAvailabilityRequestDto
+        { name, availableTimes, overrides, timezone }: CreateAvailabilityRequestDto
     ): Promise<Availability> {
         const newAvailabilityBody = {
             availableTimes,
@@ -140,7 +140,8 @@ export class AvailabilityService {
 
         const savedAvailability = await this.availabilityRepository.save({
             userId,
-            name
+            name,
+            timezone
         });
 
         await this.availabilityRedisRepository.save(
