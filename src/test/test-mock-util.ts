@@ -73,6 +73,10 @@ export class TestMockUtil {
         });
     }
 
+    getGoogleScheduleMock(recurrenceRulesString = 'RRULE:FREQ=YEARLY'): calendar_v3.Schema$Event {
+        return JSON.parse(`{"kind":"calendar#event","etag":"\\"3263178453827000\\"","id":"_74q34c1o61336b9g60rj6b9k6ss44ba26ssj6b9l6h0k6h9p6534ae2174","status":"confirmed","htmlLink":"https://www.google.com/calendar/event?eid=Xzc0cTM0YzFvNjEzMzZiOWc2MHJqNmI5azZzczQ0YmEyNnNzajZiOWw2aDBrNmg5cDY1MzRhZTIxNzRfMjAxOTA5MTUgNHRoc3RvbkBt","created":"2021-09-07T18:14:35.000Z","updated":"2021-09-14T03:13:46.943Z","summary":"친구 생일","creator":{"email":"alan@gmail.com","self":true},"organizer":{"email":"alan@gmail.com","self":true},"start":{"date":"2019-09-15"},"end":{"date":"2019-09-16"},"recurrence":[\"${recurrenceRulesString}\"],"iCalUID":"942080F3-0073-478B-B793-54ACE91FE8A9","sequence":0,"reminders":{"useDefault":false},"eventType":"default"}`);
+    }
+
     getBearerTokenMock(): string {
         // eslint-disable-next-line max-len
         return 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImppaGFuLmxlZTIiLCJzdWIiOiJqaWhhbi5sZWUyK0UwMTY3OEY3LTI4NUYtNDQ4MC1BMDA2LUIzOUY1NjJBMThBOSIsImlhdCI6MTY1MTE5OTAxMSwiZXhwIjoxNjUxODAzODExfQ.umhNz65cHTMgC_05gxqTqWVdSmxZYQviV3Lb_Mw9P34';

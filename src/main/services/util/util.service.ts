@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { EventType } from '@interfaces/events/event-type.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { DateTimeOrderFormat } from '@entity/users/date-time-format-order.enum';
@@ -80,7 +81,7 @@ export class UtilService {
         const emailReminderUUID = this.generateUUID();
 
         const initialEventDetail = new EventDetail({
-            description: 'default',
+            description: null,
             inviteeQuestions: [],
             eventSetting: {
                 enforceInviteePhoneInput: false
@@ -153,16 +154,18 @@ export class UtilService {
             timezone: undefined
         }
     ): Partial<UserSetting> {
-        let workspaceName = '';
+        let workspaceName: string | undefined = user.userSetting?.workspace;
 
-        if (user.name) {
-            workspaceName = user.name;
-        } else if (user.email) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-            const extractedWorkspaceNameFromEmail = user.email.split('@')[0];
-            workspaceName = extractedWorkspaceNameFromEmail;
-        } else {
-            workspaceName = this.generateUUID();
+        if (!workspaceName) {
+            if (user.email) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+                const extractedWorkspaceNameFromEmail = user.email.split('@')[0];
+                workspaceName = extractedWorkspaceNameFromEmail;
+            } else if (user.name) {
+                workspaceName = user.name;
+            } else {
+                workspaceName = this.generateUUID();
+            }
         }
 
         if (randomSuffix) {
@@ -248,5 +251,9 @@ export class UtilService {
         const fullname = `${this.configService.get<string>('ENV') as string}:${key}`;
 
         return fullname;
+    }
+
+    getRedisKey(store: RedisStores, value: string[]): string {
+        return [store, ...value].join(':');
     }
 }

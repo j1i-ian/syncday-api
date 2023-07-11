@@ -2,6 +2,9 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AvailabilityModule } from '@services/availability/availability.module';
 import { EventsModule } from '@services/events/events.module';
+import { IntegrationsModule } from '@services/integrations/integrations.module';
+import { SchedulesModule } from '@services/schedules/schedules.module';
+import { GoogleIntegrationModule } from '@services/integrations/google-integration/google-integration.module';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
@@ -23,7 +26,10 @@ import { SyncdayRedisModule } from '../syncday-redis/syncday-redis.module';
         SyncdayRedisModule,
         TemporaryUsersModule,
         AvailabilityModule,
-        EventsModule
+        EventsModule,
+        IntegrationsModule,
+        GoogleIntegrationModule,
+        SchedulesModule
     ],
     controllers: [UserController],
     providers: [UserService],

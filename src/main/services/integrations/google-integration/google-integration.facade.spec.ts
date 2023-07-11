@@ -2,12 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from '@nestjs/common';
-import { Auth } from 'googleapis';
+import { Auth, calendar_v3 } from 'googleapis';
 import { AppConfigService } from '@config/app-config.service';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
 import { GoogleOAuthTokenService } from '@services/integrations/google-integration/facades/google-oauth-token.service';
 import { GoogleOAuthUserService } from '@services/integrations/google-integration/facades/google-oauth-user.service';
 import { GoogleCalendarListService } from '@services/integrations/google-integration/facades/google-calendar-list.service';
+import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
 import { GoogleOAuth2Setting } from '@app/interfaces/auth/google-oauth2-setting.interface';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { TestMockUtil } from '@test/test-mock-util';
@@ -24,6 +25,7 @@ describe('GoogleIntegrationFacade', () => {
     let issueGoogleTokenByAuthorizationCodeStub: sinon.SinonStub;
     let getGoogleUserInfoStub: sinon.SinonStub;
     let googleCalendarListServiceSearchStub: sinon.SinonStub;
+    let googleCalendarEventListServiceSearchStub: sinon.SinonStub;
 
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
@@ -74,6 +76,23 @@ describe('GoogleIntegrationFacade', () => {
             'search'
         );
 
+        googleCalendarListServiceSearchStub.resolves({
+            items: [
+                {
+                    id: 'calendarMockId'
+                } as calendar_v3.Schema$CalendarListEntry
+            ]
+        });
+
+        googleCalendarEventListServiceSearchStub = serviceSandbox.stub(
+            GoogleCalendarEventListService.prototype,
+            'search'
+        );
+
+        googleCalendarEventListServiceSearchStub.resolves({
+            items: []
+        });
+
         serviceSandbox.stub(AppConfigService, 'getGoogleCredentials').returns({
             redirectURI: 'fakeSignInOrUpRedirectURI'
         } as GoogleOAuth2Setting);
@@ -84,6 +103,7 @@ describe('GoogleIntegrationFacade', () => {
         issueGoogleTokenByAuthorizationCodeStub.reset();
         getGoogleUserInfoStub.reset();
         googleCalendarListServiceSearchStub.reset();
+        googleCalendarEventListServiceSearchStub.reset();
 
         serviceSandbox.restore();
     });
@@ -113,6 +133,7 @@ describe('GoogleIntegrationFacade', () => {
         expect(oauth2ClientStub.setCredentials.called).true;
         expect(getGoogleUserInfoStub.called).true;
         expect(googleCalendarListServiceSearchStub.called).true;
+        expect(googleCalendarEventListServiceSearchStub.called).true;
     });
 
     it('should be generated google oauth Authorization url', () => {

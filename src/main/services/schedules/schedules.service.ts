@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, from, iif, map, mergeMap, of, throwError } from 'rxjs';
-import { Between, Repository } from 'typeorm';
+import { Observable, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
+import { Between, EntityManager, Repository } from 'typeorm';
+import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { UtilService } from '@services/util/util.service';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { ScheduleSearchOption } from '@app/interfaces/schedules/schedule-search-option.interface';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 
@@ -16,17 +18,35 @@ export class SchedulesService {
         private readonly utilService: UtilService,
         private readonly eventsService: EventsService,
         private readonly scheduleRedisRepository: SchedulesRedisRepository,
-        @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>
+        @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>,
+        @InjectRepository(GoogleIntegrationSchedule) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>
     ) {}
 
-    search(scheduleSearchOption: ScheduleSearchOption): Observable<Schedule[]> {
-        return from(this.scheduleRepository.findBy({
+    search(scheduleSearchOption: Partial<ScheduleSearchOption>): Observable<InviteeSchedule[]> {
+
+        const inviteeSchedule$ = from(this.scheduleRepository.findBy({
             eventDetail: {
                 event: {
                     uuid: scheduleSearchOption.eventUUID
                 }
             }
         }));
+
+        const googleIntegrationSchedule$ = from(this.googleIntegrationScheduleRepository.findBy({
+            googleCalendarIntegration: {
+                googleIntegration: {
+                    users: {
+                        userSetting: {
+                            workspace: scheduleSearchOption.workspace
+                        }
+                    }
+                }
+            }
+        }));
+
+        return forkJoin([inviteeSchedule$, googleIntegrationSchedule$]).pipe(
+            map(([inviteeSchedules, googleCalendarSchedules]) => [...inviteeSchedules, ...googleCalendarSchedules])
+        );
     }
 
     findOne(scheduleUUID: string): Observable<Schedule> {
@@ -36,13 +56,22 @@ export class SchedulesService {
     }
 
     create(userWorkspace: string, eventUUID: string, newSchedule: Schedule): Observable<Schedule> {
+        return this._create(
+            this.scheduleRepository.manager,
+            userWorkspace,
+            eventUUID,
+            newSchedule
+        );
+    }
+
+    _create(entityManager: EntityManager, userWorkspace: string, eventUUID: string, newSchedule: Schedule): Observable<Schedule> {
 
         return from(
             this.eventsService.findOneByUserWorkspaceAndUUID(userWorkspace, eventUUID)
         ).pipe(
             map((event) => this.utilService.getPatchedScheduledEvent(event, newSchedule)),
             mergeMap((patchedSchedule) => this.validate(patchedSchedule)),
-            mergeMap((patchedSchedule) => this.scheduleRepository.save(patchedSchedule)),
+            mergeMap((patchedSchedule) => entityManager.getRepository(Schedule).save(patchedSchedule)),
             mergeMap((createdSchedule) =>
                 this.scheduleRedisRepository.save(createdSchedule.uuid, {
                     inviteeAnswers: newSchedule.inviteeAnswers,

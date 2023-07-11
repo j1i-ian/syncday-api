@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { IntegrationsService } from './integrations.service';
 import { MeetingModule } from './meetings/meetings.module';
@@ -17,7 +18,7 @@ import { CalendarIntegrationsModule } from './calendar-integrations/calendar-int
         ConfigModule
     ],
     controllers: [IntegrationsController],
-    providers: [IntegrationsService],
-    exports: [IntegrationsService]
+    providers: [IntegrationsService, IntegrationsRedisRepository],
+    exports: [IntegrationsService, IntegrationsRedisRepository]
 })
 export class IntegrationsModule {}

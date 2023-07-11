@@ -6,6 +6,10 @@ import { firstValueFrom } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
+import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
+import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
+import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
@@ -32,7 +36,11 @@ describe('Test User Service', () => {
     let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
+    let googleIntegrationSchedulesService: sinon.SinonStubbedInstance<GoogleIntegrationSchedulesService>;
+    let googleConverterService: sinon.SinonStubbedInstance<GoogleConverterService>;
+    let googleIntegrationsService: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let eventsRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
+    let integrationsRedisRepositoryStub: sinon.SinonStubbedInstance<Repository<IntegrationsRedisRepository>>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
@@ -56,7 +64,11 @@ describe('Test User Service', () => {
         userSettingServiceStub = sinon.createStubInstance(UserSettingService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
         availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
+        googleIntegrationSchedulesService = sinon.createStubInstance(GoogleIntegrationSchedulesService);
+        googleConverterService = sinon.createStubInstance(GoogleConverterService);
+        googleIntegrationsService = sinon.createStubInstance(GoogleIntegrationsService);
         eventsRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
+        integrationsRedisRepositoryStub = sinon.createStubInstance<Repository<IntegrationsRedisRepository>>(Repository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
@@ -86,8 +98,24 @@ describe('Test User Service', () => {
                     useValue: availabilityRedisRepositoryStub
                 },
                 {
+                    provide: GoogleIntegrationSchedulesService,
+                    useValue: googleIntegrationSchedulesService
+                },
+                {
+                    provide: GoogleConverterService,
+                    useValue: googleConverterService
+                },
+                {
+                    provide: GoogleIntegrationsService,
+                    useValue: googleIntegrationsService
+                },
+                {
                     provide: EventsRedisRepository,
                     useValue: eventsRedisRepositoryStub
+                },
+                {
+                    provide: IntegrationsRedisRepository,
+                    useValue: integrationsRedisRepositoryStub
                 },
                 {
                     provide: TokenService,
@@ -100,10 +128,6 @@ describe('Test User Service', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
-                },
-                {
-                    provide: EventsRedisRepository,
-                    useValue: eventsRedisRepositoryStub
                 },
                 {
                     provide: getRepositoryToken(User),
@@ -242,7 +266,10 @@ describe('Test User Service', () => {
 
         it('should be created user with email', async () => {
             const plainPassword = 'test';
+            const emailMock = TestMockUtil.faker.internet.email('test', '');
+            const emailId = emailMock.split('@').shift();
             const userStub = stubOne(User, {
+                email: emailMock,
                 hashedPassword: plainPassword
             });
             const languageDummy = Language.ENGLISH;
@@ -304,6 +331,8 @@ describe('Test User Service', () => {
 
             expect(createdUser).ok;
             expect(createdUser.email).ok;
+            expect(createdUser.email).equals(emailMock);
+            expect(createdUser.userSetting.workspace).equals(emailId);
         });
 
         it('should be not created user with email when user is already exist', async () => {
