@@ -5,6 +5,7 @@ WORKDIR /opt/syncday-api
 RUN apk add --no-cache tzdata curl
 
 ENV ENV development
+ENV TZ UTC
 
 COPY . .
 

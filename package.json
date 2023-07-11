@@ -78,6 +78,7 @@
     "pm2": "^5.3.0",
     "reflect-metadata": "^0.1.13",
     "resolve-accept-language": "^1.1.49",
+    "rrule": "^2.7.2",
     "rxjs": "^7.2.0",
     "typeorm": "^0.3.12",
     "typeorm-naming-strategies": "^4.1.0",

@@ -8,6 +8,8 @@ import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-re
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { SchedulesService } from './schedules.service';
@@ -22,6 +24,7 @@ describe('SchedulesService', () => {
     let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<SchedulesRedisRepository>;
 
     let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
+    let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
 
     before(async () => {
 
@@ -30,6 +33,9 @@ describe('SchedulesService', () => {
         schedulesRedisRepositoryStub = sinon.createStubInstance(SchedulesRedisRepository);
 
         scheduleRepositoryStub = sinon.createStubInstance<Repository<Schedule>>(Repository);
+        googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationSchedule>>(
+            Repository
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -49,6 +55,10 @@ describe('SchedulesService', () => {
                 {
                     provide: getRepositoryToken(Schedule),
                     useValue: scheduleRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(GoogleIntegrationSchedule),
+                    useValue: googleIntegrationScheduleRepositoryStub
                 }
             ]
         }).compile();
@@ -82,13 +92,17 @@ describe('SchedulesService', () => {
 
         it('should be searched scheduled events', async () => {
 
+            const workspaceMock = stubOne(UserSetting).workspace;
             const eventUUIDMock = stubOne(Event).uuid;
             const scheduleStubs = stub(Schedule);
+            const googleIntegartionScheduleStubs = stub(GoogleIntegrationSchedule);
 
             scheduleRepositoryStub.findBy.resolves(scheduleStubs);
+            googleIntegrationScheduleRepositoryStub.findBy.resolves(googleIntegartionScheduleStubs);
 
             const searchedSchedules = await firstValueFrom(
                 service.search({
+                    workspace: workspaceMock,
                     eventUUID: eventUUIDMock
                 })
             );
@@ -127,7 +141,10 @@ describe('SchedulesService', () => {
             schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
 
             const createdSchedule = await firstValueFrom(
-                service.create(
+                service._create(
+                    {
+                        getRepository: () => scheduleRepositoryStub
+                    } as unknown as any,
                     userWorkspaceMock, eventStub.uuid, scheduleStub
                 )
             );

@@ -4,11 +4,12 @@ import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-re
 import { SyncdayRedisModule } from '@services/syncday-redis/syncday-redis.module';
 import { EventsModule } from '@services/events/events.module';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { SchedulesService } from './schedules.service';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Schedule]),
+        TypeOrmModule.forFeature([Schedule, GoogleIntegrationSchedule]),
         SyncdayRedisModule,
         EventsModule
     ],

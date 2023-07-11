@@ -12,7 +12,7 @@
     "baseUrl": "./",
     "incremental": true,
     "lib": [
-      "ES2020"
+      "ES2022"
     ],
     "skipLibCheck": true,
     "strictNullChecks": true,

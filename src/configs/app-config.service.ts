@@ -52,6 +52,25 @@ export class AppConfigService {
         return origin;
     }
 
+    static getHost(): string {
+
+        let host = '';
+        switch (process.env.ENV) {
+            case NodeEnv.PRODUCTION:
+                host = 'https://api.sync.day';
+                break;
+            case NodeEnv.DEVELOP:
+                host = 'https://api.dev.sync.day';
+                break;
+            case NodeEnv.LOCAL:
+                host = 'http://localhost:3011';
+                break;
+        }
+
+        // tmp
+        return 'https://62ae-121-135-254-245.ngrok-free.app';
+    }
+
     static getJwtModuleOptions(): JwtModuleAsyncOptions {
         return {
             imports: [ConfigModule],

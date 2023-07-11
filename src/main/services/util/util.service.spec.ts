@@ -112,25 +112,26 @@ describe('UtilService', () => {
     });
 
     describe('Test Getting default user setting', () => {
-        it('should be got default user setting which has workspace name when there is user name', () => {
+        it('should be got default user setting which has email as workspace when there is user email', () => {
+            const emailPrefix = 'foobar';
             const userMock = stubOne(User, {
-                name: faker.name.fullName()
+                email: faker.internet.email(emailPrefix)
             });
             const languageMock = Language.ENGLISH;
 
             const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock);
 
             expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.workspace).contains(userMock.name);
+            expect(defaultUserSetting.workspace).contains(emailPrefix);
             expect(defaultUserSetting.preferredLanguage).equals(languageMock);
         });
 
-        it('should be got default user setting which has workspace name when there is no user name but email prefix', () => {
-            const emailPrefix = 'foobar';
+        it('should be got default user setting which has email as workspace when there is no email id but has name', () => {
+            const nameStub = faker.name.fullName();
 
             const userMock = stubOne(User, {
-                name: undefined,
-                email: faker.internet.email(emailPrefix)
+                name: nameStub,
+                email: undefined
             });
             const languageMock = Language.ENGLISH;
 
@@ -139,7 +140,7 @@ describe('UtilService', () => {
             });
 
             expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.workspace).contains(emailPrefix);
+            expect(defaultUserSetting.workspace).equals(nameStub);
             expect(defaultUserSetting.preferredLanguage).equals(languageMock);
         });
 
@@ -156,14 +157,13 @@ describe('UtilService', () => {
 
             expect(defaultUserSetting).ok;
             expect(defaultUserSetting.workspace).ok;
-            expect(defaultUserSetting.workspace).not.contain(userMock.name);
-            expect(defaultUserSetting.workspace).not.contain(userMock.email);
             expect(defaultUserSetting.preferredLanguage).equals(languageMock);
         });
 
-        it('should be got default user setting which has workspace name with generated number when option random suffix is enabled', () => {
+        it('should be got default user setting which has email as workspace with generated number when option random suffix is enabled', () => {
+            const emailPrefix = 'foobar';
             const userMock = stubOne(User, {
-                name: faker.name.fullName()
+                email: faker.internet.email(emailPrefix)
             });
             const languageMock = Language.ENGLISH;
 
@@ -172,8 +172,9 @@ describe('UtilService', () => {
             });
 
             expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.workspace).contains(userMock.name);
-            expect(defaultUserSetting.workspace).not.equals(userMock.name);
+            expect(defaultUserSetting.workspace).contains(emailPrefix);
+            expect(defaultUserSetting.workspace).not.equals(emailPrefix);
+            expect(defaultUserSetting.workspace).not.equals(userMock.email);
             expect(defaultUserSetting.preferredLanguage).equals(languageMock);
         });
 

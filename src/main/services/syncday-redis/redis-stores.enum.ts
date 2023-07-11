@@ -10,5 +10,8 @@ export enum RedisStores {
     AVAILABILITY = 'availability',
     INVITEE_QUESTION = 'invitee-question',
     NOTIFICATION_INFO = 'notifications',
-    SCHEDULES = 'schedules'
+    SCHEDULES = 'schedules',
+    GOOGLE_INTEGRATIONS = 'integrations:google',
+    GOOGLE_CALENDARS = 'calendars',
+    CALENDAR_SUBSCRIPTION = 'calendars-subscription'
 }

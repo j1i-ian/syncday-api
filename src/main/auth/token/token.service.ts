@@ -49,8 +49,10 @@ export class TokenService {
         authorizationCode: string,
         language: Language
     ): Promise<{ issuedToken: CreateTokenResponseDto; isNewbie: boolean }> {
-        const { googleUser, calendars, tokens } =
-            await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode);
+        const { googleUser, calendars, schedules, tokens } =
+            await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode, {
+                onlyPrimaryCalendarSchedule: true
+            });
 
         let loadedUserOrNull = await this.userService.findUserByEmail(googleUser.email);
 
@@ -67,6 +69,10 @@ export class TokenService {
                 createUserRequestDto,
                 tokens,
                 newGoogleCalendarIntegrations,
+                {
+                    calendars,
+                    schedules
+                },
                 language
             );
 
@@ -78,9 +84,13 @@ export class TokenService {
             ensuredUser.googleIntergrations &&
             ensuredUser.googleIntergrations.length > 0;
 
+            // TODO: This logic cannot support multiple google integrations. After collecting google integration, we should update this block.
             // old user but has no google integration
             if (hasUserGoogleIntegration === false) {
-                await this.googleIntegrationService.createGoogleIntegration(ensuredUser, tokens, newGoogleCalendarIntegrations);
+                await this.googleIntegrationService.createGoogleIntegration(ensuredUser, tokens, newGoogleCalendarIntegrations, {
+                    calendars,
+                    schedules
+                });
             }
         }
 

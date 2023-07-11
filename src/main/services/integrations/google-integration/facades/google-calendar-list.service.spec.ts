@@ -9,7 +9,7 @@ describe('GoogleCalendarListService', () => {
             providers: [GoogleCalendarListService]
         }).compile();
 
-        service = module.get<GoogleCalendarListService>(GoogleCalendarListService);
+        service = await module.resolve<GoogleCalendarListService>(GoogleCalendarListService);
     });
 
     it('should be defined', () => {

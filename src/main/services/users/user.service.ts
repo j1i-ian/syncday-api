@@ -7,10 +7,10 @@ import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
+import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
-import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { EventDetail } from '@entity/events/event-detail.entity';
@@ -19,6 +19,7 @@ import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
+import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
@@ -45,6 +46,7 @@ export class UserService {
         private readonly syncdayRedisService: SyncdayRedisService,
         private readonly utilService: UtilService,
         private readonly eventRedisRepository: EventsRedisRepository,
+        private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
@@ -186,17 +188,23 @@ export class UserService {
         const createdUser = this.userRepository.create(newUser);
 
         const emailId = createdUser.email.split('@').shift();
+        const workspace = emailId || newUser.name;
 
         const alreadyUsedIn = await this.userSettingService.fetchUserWorkspaceStatus(
-            emailId || newUser.name
+            workspace
         );
         const shouldAddRandomSuffix = alreadyUsedIn;
 
+        createdUser.userSetting = {
+            ...createdUser.userSetting,
+            workspace
+        } as UserSetting;
+
         const defaultUserSetting = this.utilService.getUserDefaultSetting(createdUser, language, {
             randomSuffix: shouldAddRandomSuffix
-        });
+        }) as UserSetting;
 
-        const userSetting = newUser.userSetting ?? defaultUserSetting;
+        const userSetting = defaultUserSetting;
 
         const hashedPassword = plainPassword && this.utilService.hash(plainPassword);
 
@@ -234,7 +242,7 @@ export class UserService {
         initialAvailability.default = true;
         initialAvailability.name = this.utilService.getDefaultAvailabilityName(language);
         initialAvailability.user = savedUser;
-        initialAvailability.timezone = userSetting?.preferredTimezone;
+        initialAvailability.timezone = userSetting.preferredTimezone;
 
         const savedAvailability = await _availabilityRepository.save(initialAvailability);
         await this.availabilityRedisRepository.save(savedUser.uuid, savedAvailability.uuid, {
@@ -269,12 +277,12 @@ export class UserService {
         createUserRequestDto: CreateUserRequestDto,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
+        googleIntegrationBody: GoogleIntegrationBody,
         language: Language
     ): Promise<User> {
+
         const createdUser = await this.datasource.transaction(async (manager) => {
             const newUser = createUserRequestDto as User;
-
-            const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
 
             newUser.userSetting = this.utilService.getUserDefaultSetting(newUser, language, {
                 randomSuffix: false,
@@ -289,16 +297,15 @@ export class UserService {
 
             _createdUser.patchPromotedPropertyFromUserSetting();
 
-            await _googleIntegrationRepository.save({
-                accessToken: googleAuthToken.accessToken,
-                refreshToken: googleAuthToken.refreshToken,
-                email: createUserRequestDto.email,
-                users: [_createdUser],
-                googleCalendarIntegrations: googleCalendarIntegrations.map((calendar) => {
-                    calendar.users = [_createdUser];
-                    return calendar;
-                })
-            });
+            const _createdGoogleIntegration = await this.googleIntegrationService._createGoogleIntegration(
+                manager,
+                _createdUser,
+                googleAuthToken,
+                googleCalendarIntegrations,
+                googleIntegrationBody
+            );
+
+            _createdUser.googleIntergrations = [_createdGoogleIntegration];
 
             await this.userSettingService.createUserWorkspaceStatus(
                 manager,
