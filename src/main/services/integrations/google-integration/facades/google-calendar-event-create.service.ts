@@ -8,7 +8,8 @@ export class GoogleCalendarEventCreateService {
     async create(
         oauthClient: Auth.OAuth2Client,
         calendarId: string,
-        newGoogleCalendarEventBody: calendar_v3.Schema$Event
+        newGoogleCalendarEventBody: calendar_v3.Schema$Event,
+        hangoutLink = false
     ): Promise<calendar_v3.Schema$Events> {
         const googleCalendar = google.calendar({
             version: 'v3',
@@ -17,7 +18,8 @@ export class GoogleCalendarEventCreateService {
 
         const { data: createdGoogleCalendarLink } = await googleCalendar.events.insert({
             calendarId,
-            requestBody: newGoogleCalendarEventBody
+            requestBody: newGoogleCalendarEventBody,
+            conferenceDataVersion: hangoutLink ? 1 : 0
         });
 
         return createdGoogleCalendarLink;
