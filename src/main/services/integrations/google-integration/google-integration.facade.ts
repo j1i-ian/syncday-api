@@ -25,7 +25,7 @@ export class GoogleIntegrationFacade {
     async fetchGoogleUsersWithToken(authorizationCode: string, {
         onlyPrimaryCalendarSchedule
     } = {
-        onlyPrimaryCalendarSchedule: true
+        onlyPrimaryCalendarSchedule: false
     }): Promise<GoogleOAuth2UserWithToken> {
         const googleOAuthClientService = new GoogleOAuthClientService();
         const googleOAuthTokenService = new GoogleOAuthTokenService();

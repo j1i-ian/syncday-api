@@ -129,11 +129,16 @@ describe('GoogleConverterService', () => {
                 iCalUID: googleScheduleMock.iCalUID as string
             });
 
+            const startDatetime = new Date('2023-09-14T15:00:00.000Z'),;
+            const endDatetime = new Date('2022-09-13T15:00:00.000Z');
+
             serviceSandbox.stub(service, '_convertGoogleScheduleToGoogleIntegrationSchedule').returns(googleIntegrationScheduleStub);
 
-            const convertedSchedule = service.convertToGoogleIntegrationSchedule(
+            const convertedSchedule = service._convertGoogleScheduleToGoogleIntegrationSchedule(
                 calendarIdMock,
-                googleScheduleMock
+                googleScheduleMock,
+                startDatetime,
+                endDatetime
             );
 
             expect(convertedSchedule).ok;
