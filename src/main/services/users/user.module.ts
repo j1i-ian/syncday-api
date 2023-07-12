@@ -17,6 +17,10 @@ import { UserSettingModule } from './user-setting/user-setting.module';
 import { TemporaryUsersModule } from './temporary-users/temporary-users.module';
 import { SyncdayRedisModule } from '../syncday-redis/syncday-redis.module';
 
+/**
+ * In the future, Redis repositories will be abstracted
+ * in a similar way to feature modules in TypeORM
+ */
 @Module({
     imports: [
         TypeOrmModule.forFeature([User,EventGroup, Event, EventDetail]),
