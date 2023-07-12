@@ -67,8 +67,7 @@ export class AppConfigService {
                 break;
         }
 
-        // tmp
-        return 'https://62ae-121-135-254-245.ngrok-free.app';
+        return host;
     }
 
     static getJwtModuleOptions(): JwtModuleAsyncOptions {
