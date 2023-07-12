@@ -101,7 +101,7 @@ export class EventsService {
     findOneByUserWorkspaceAndUUID(userWorkspace: string, eventUUID: string): Observable<Event> {
         return from(
             this.eventRepository.findOneOrFail({
-                relations: ['eventDetail'],
+                relations: ['eventDetail', 'availability'],
                 where: {
                     uuid: eventUUID,
                     availability: {

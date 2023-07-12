@@ -23,6 +23,7 @@ import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { EventSetting } from '@interfaces/events/event-setting';
 import { Verification } from '@entity/verifications/verification.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { Weekday } from '@entity/availability/weekday.enum';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
 import { Faker, faker } from '@faker-js/faker';
@@ -119,18 +120,19 @@ export class TestMockUtil {
 
     getScheduleTimeMock(date?: Date): Pick<Schedule, 'scheduledTime' | 'scheduledBufferTime'> {
 
+        const now = new Date(date ?? Date.now());
         const _1hourAfter = new Date();
         _1hourAfter.setHours(_1hourAfter.getHours() + 1);
 
-        const ensuredDate = date ?? _1hourAfter;
+        const ensuredDate = _1hourAfter;
 
         return {
             scheduledTime: {
-                startTimestamp: ensuredDate,
+                startTimestamp: now,
                 endTimestamp: ensuredDate
             },
             scheduledBufferTime: {
-                startBufferTimestamp: ensuredDate,
+                startBufferTimestamp: now,
                 endBufferTimestamp: ensuredDate
             }
         };
@@ -153,7 +155,7 @@ export class TestMockUtil {
         }
 
         return {
-            availableTimes: [],
+            availableTimes: [ { day: Weekday.SUNDAY, timeRanges: [ { startTime: '09:00:00', endTime: '21:00:00' } ] } ],
             overrides: []
         } as AvailabilityBody;
     }

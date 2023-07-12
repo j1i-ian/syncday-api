@@ -19,6 +19,10 @@ import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { ZoomBasicAuth } from '../../interfaces/zoom-basic-auth.interface';
 
+type LocalizedDate = {
+    [key in keyof Intl.DateTimeFormatOptions]: string;
+};
+
 interface UserDefaultSettingOption {
     randomSuffix: boolean;
     timezone?: string;
@@ -45,6 +49,63 @@ type EventDetailInit = Omit<EventDetail,
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
+
+    dateToTimeString(
+        date: Date,
+        timezone: string
+    ): string {
+
+        const formatPartObject = this.localizeDateTimeFormatPartObject(date, timezone);
+
+        const localizedHour = String(formatPartObject.hour).padStart(2, '0');
+        const localizedMins = String(formatPartObject.minute).padStart(2, '0');
+
+        return `${localizedHour}:${localizedMins}`;
+    }
+
+    /**
+     * @param timeString ex) 10:00
+     */
+    localizeDateTime(
+        date: Date,
+        timezone: string,
+        timeString: string
+    ): Date {
+
+        const formatPartObject = this.localizeDateTimeFormatPartObject(date, timezone);
+
+        const year = formatPartObject['year'] as string;
+        const month = formatPartObject['month'] as string;
+        const day = formatPartObject['day'] as string;
+        const GMTShortString = formatPartObject['timeZoneName'] as string;
+
+        const YYYYMMDD = `${year}-${month}-${day}`;
+        const parsedDate = new Date(`${YYYYMMDD} ${timeString}:00 ${GMTShortString}`);
+
+        return parsedDate;
+    }
+
+    localizeDateTimeFormatPartObject(
+        date: Date,
+        timezone: string
+    ): LocalizedDate {
+
+        const formatPartEntries = new Intl.DateTimeFormat('en-GB', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZone: timezone,
+            timeZoneName: 'short'
+        }).formatToParts(date)
+            .map((_formatPart) => [_formatPart.type, _formatPart.value]);
+
+        const formatPartObject = Object.fromEntries(formatPartEntries);
+
+        return formatPartObject;
+    }
 
     generateUUID(): string {
         return uuidv4();
