@@ -62,4 +62,17 @@ export class SchedulesRedisRepository {
                 )
             );
     }
+
+    async removeSchedules(scheduleUUIDs: string[]): Promise<boolean> {
+        const scheduleBodyKeys = scheduleUUIDs.map((scheduleUUID) =>
+            this.syncdayRedisService._getScheduleBodyKey(scheduleUUID)
+        );
+
+        const deletedScheduledNode = await this.cluster.del(...scheduleBodyKeys);
+
+        const deleteSuccess = deletedScheduledNode >= 0;
+
+        return deleteSuccess;
+    }
+
 }

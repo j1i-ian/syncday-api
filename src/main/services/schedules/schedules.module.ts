@@ -16,6 +16,6 @@ import { SchedulesService } from './schedules.service';
         EventsModule
     ],
     providers: [SchedulesService, SchedulesRedisRepository],
-    exports: [SchedulesService]
+    exports: [SchedulesService, SchedulesRedisRepository]
 })
 export class SchedulesModule {}

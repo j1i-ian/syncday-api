@@ -143,7 +143,21 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         return createdGoogleIntegration;
     }
 
-    async remove(googleIntegrationId: number, userId:number ): Promise<boolean> {
+    async remove(
+        googleIntegrationId: number,
+        userId:number
+    ): Promise<boolean> {
+        return this._remove(
+            this.googleIntegrationRepository.manager,
+            googleIntegrationId,
+            userId
+        );
+    }
+
+    async _remove(
+        manager: EntityManager,
+        googleIntegrationId: number,
+        userId:number ): Promise<boolean> {
         const googleIntegration = await this.googleIntegrationRepository.find({
             where: {
                 users: {
@@ -161,44 +175,33 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
 
         }, [] as number[]);
 
-        const deleteSuccess = await this.datasource.transaction(async (transactionManager) => {
-            const _googleIntegrationRepository = transactionManager.getRepository(GoogleIntegration);
-            const _googleCalendarIntegrationRepository = transactionManager.getRepository(GoogleCalendarIntegration);
+        const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
+        const _googleCalendarIntegrationRepository = manager.getRepository(GoogleCalendarIntegration);
 
-            const _deleteGoogleCalendarIntegrationUsersUserResult = await _googleCalendarIntegrationRepository
-                .createQueryBuilder()
-                .delete()
-                .from('google_calendar_integration_users_user')
-                .where('user_id = :userId', { userId })
-                .execute();
+        const _deleteGoogleCalendarIntegrationResult = await _googleCalendarIntegrationRepository.delete(googleCalendarIntegrationIds);
 
-            const _deleteGoogleCalendarIntegrationResult = await _googleCalendarIntegrationRepository.delete(googleCalendarIntegrationIds);
+        const _deleteGoogleIntegrationUserResult = await _googleIntegrationRepository
+            .createQueryBuilder()
+            .delete()
+            .from('google_integration_users')
+            .where('google_integration_id = :googleIntegrationId', { googleIntegrationId })
+            .execute();
+        const _deleteGoogleIntegrationResult = await _googleIntegrationRepository.delete({ id:googleIntegrationId });
 
-            const _deleteGoogleIntegrationUserResult = await _googleIntegrationRepository
-                .createQueryBuilder()
-                .delete()
-                .from('google_integration_users')
-                .where('google_integration_id = :googleIntegrationId', { googleIntegrationId })
-                .execute();
-            const _deleteGoogleIntegrationResult = await _googleIntegrationRepository.delete({ id:googleIntegrationId });
+        const isDeleteResultList = [
+            _deleteGoogleCalendarIntegrationResult,
+            _deleteGoogleIntegrationUserResult,
+            _deleteGoogleIntegrationResult
+        ];
 
-            const isDeleteResultList = [
-                _deleteGoogleCalendarIntegrationUsersUserResult,
-                _deleteGoogleCalendarIntegrationResult,
-                _deleteGoogleIntegrationUserResult,
-                _deleteGoogleIntegrationResult
-            ];
-
-            for (const deleteResult of isDeleteResultList) {
-                const deleteSuccess = deleteResult.affected && deleteResult.affected >= 0;
-                if (deleteSuccess === false) {
-                    throw new InternalServerErrorException('Delete GoogleIntegration detail or GoogleIntegration is failed');
-                }
+        let deleteSuccess: boolean | 0 | null | undefined;
+        for (const deleteResult of isDeleteResultList) {
+            deleteSuccess = deleteResult.affected && deleteResult.affected >= 0;
+            if (deleteSuccess === false) {
+                throw new InternalServerErrorException('Delete GoogleIntegration detail or GoogleIntegration is failed');
             }
+        }
 
-            return true;
-        });
-
-        return deleteSuccess;
+        return deleteSuccess as boolean;
     }
 }
