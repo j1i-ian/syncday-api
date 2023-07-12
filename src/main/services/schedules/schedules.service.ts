@@ -7,11 +7,17 @@ import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { UtilService } from '@services/util/util.service';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
+import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { User } from '@entity/users/user.entity';
+import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
+import { AvailableTime } from '@entity/availability/availability-time.entity';
+import { TimeRange } from '@entity/events/time-range.entity';
 import { ScheduleSearchOption } from '@app/interfaces/schedules/schedule-search-option.interface';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
+import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
 @Injectable()
 export class SchedulesService {
@@ -21,6 +27,7 @@ export class SchedulesService {
         private readonly eventsService: EventsService,
         private readonly scheduleRedisRepository: SchedulesRedisRepository,
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
+        private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>,
         @InjectRepository(GoogleIntegrationSchedule) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>
     ) {}
@@ -58,13 +65,14 @@ export class SchedulesService {
         }));
     }
 
-    create(userWorkspace: string, eventUUID: string, newSchedule: Schedule, hostTimezone: string ): Observable<Schedule> {
+    create(userWorkspace: string, eventUUID: string, newSchedule: Schedule, hostTimezone: string, host: User): Observable<Schedule> {
         return this._create(
             this.scheduleRepository.manager,
             userWorkspace,
             eventUUID,
             newSchedule,
-            hostTimezone
+            hostTimezone,
+            host
         );
     }
 
@@ -73,14 +81,20 @@ export class SchedulesService {
         userWorkspace: string,
         eventUUID: string,
         newSchedule: Schedule,
-        hostTimezone: string
+        hostTimezone: string,
+        host: User
     ): Observable<Schedule> {
 
         return from(
             this.eventsService.findOneByUserWorkspaceAndUUID(userWorkspace, eventUUID)
         ).pipe(
-            mergeMap((event) => of(this.utilService.getPatchedScheduledEvent(event, newSchedule))),
-            mergeMap((patchedSchedule) => this.validate(patchedSchedule)),
+            mergeMap(
+                (event) => forkJoin([
+                    this.availabilityRedisRepository.getAvailabilityBody(host.uuid, event.availability.uuid),
+                    of(this.utilService.getPatchedScheduledEvent(event, newSchedule))
+                ])
+            ),
+            mergeMap(([availabilityBody, patchedSchedule]) => this.validate(patchedSchedule, hostTimezone, availabilityBody)),
             mergeMap((patchedSchedule) => entityManager.getRepository(Schedule).save(patchedSchedule)),
             mergeMap((createdSchedule) =>
                 this.scheduleRedisRepository.save(createdSchedule.uuid, {
@@ -109,7 +123,7 @@ export class SchedulesService {
         );
     }
 
-    validate(schedule: Schedule): Observable<Schedule> {
+    validate(schedule: Schedule, hostTimezone: string, availabilityBody: AvailabilityBody): Observable<Schedule> {
 
         const { scheduledTime, scheduledBufferTime } = schedule;
         const { startBufferTimestamp, endBufferTimestamp } = scheduledBufferTime;
@@ -118,12 +132,35 @@ export class SchedulesService {
         const ensuredBufferStartDatetime = startBufferTimestamp && new Date(startBufferTimestamp);
         const ensuredBufferEndDatetime = endBufferTimestamp && new Date(endBufferTimestamp);
 
-        const ensuredStartDatetime = ensuredBufferStartDatetime ?? new Date(startTimestamp);
-        const ensuredEndDatetime = ensuredBufferEndDatetime ?? new Date(endTimestamp);
+        const ensuredStartDateTime = ensuredBufferStartDatetime ?? new Date(startTimestamp);
+        const ensuredStartDateTimestamp = ensuredStartDateTime.getTime();
+        const ensuredEndDateTime = ensuredBufferEndDatetime ?? new Date(endTimestamp);
+        const ensuredEndDateTimestamp = ensuredEndDateTime.getTime();
 
-        if (
-            ensuredStartDatetime.getTime() < Date.now() ||
-            ensuredEndDatetime.getTime() < Date.now()) {
+        const isNotConcatenatedTimes = ensuredEndDateTimestamp <= ensuredStartDateTimestamp;
+        const isPast = this._isPastTimestamp(ensuredStartDateTimestamp, ensuredEndDateTimestamp);
+
+        const { availableTimes, overrides } = availabilityBody;
+
+        const isTimeOverlappingWithOverrides = this._isTimeOverlappingWithOverrides(
+            hostTimezone,
+            overrides,
+            ensuredStartDateTimestamp,
+            ensuredEndDateTimestamp
+        );
+        const isNotTimeOverlappingWithOverrides = !isTimeOverlappingWithOverrides;
+
+        const isTimeOverlappingWithAvailableTimes = this._isTimeOverlappingWithAvailableTimes(
+            availableTimes,
+            hostTimezone,
+            ensuredStartDateTime,
+            ensuredEndDateTime
+        );
+        const isNotTimeOverlappingWithAvailableTimes = !isTimeOverlappingWithAvailableTimes;
+
+        const isInvalid = isPast || isNotConcatenatedTimes || (isNotTimeOverlappingWithOverrides && isNotTimeOverlappingWithAvailableTimes);
+
+        if (isInvalid) {
             throw new CannotCreateByInvalidTimeRange();
         }
 
@@ -131,25 +168,25 @@ export class SchedulesService {
             [
                 {
                     scheduledBufferTime: {
-                        startBufferTimestamp: Between(ensuredStartDatetime, ensuredEndDatetime)
+                        startBufferTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
                     },
                     eventDetailId: schedule.eventDetailId
                 },
                 {
                     scheduledBufferTime: {
-                        endBufferTimestamp: Between(ensuredStartDatetime, ensuredEndDatetime)
+                        endBufferTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
                     },
                     eventDetailId: schedule.eventDetailId
                 },
                 {
                     scheduledTime: {
-                        startTimestamp: Between(ensuredStartDatetime, ensuredEndDatetime)
+                        startTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
                     },
                     eventDetailId: schedule.eventDetailId
                 },
                 {
                     scheduledTime: {
-                        endTimestamp: Between(ensuredStartDatetime, ensuredEndDatetime)
+                        endTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
                     },
                     eventDetailId: schedule.eventDetailId
                 }
@@ -163,5 +200,118 @@ export class SchedulesService {
                 )
             )
         );
+    }
+
+    _isPastTimestamp(startDateTimestamp: number, ensuredEndDateTimestamp: number): boolean {
+        return startDateTimestamp < Date.now() ||
+            ensuredEndDateTimestamp < Date.now();
+    }
+
+    _isTimeOverlappingWithOverrides(
+        timezone: string,
+        overrides: OverridedAvailabilityTime[],
+        startDateTimestamp: number,
+        endDateTimestamp: number
+    ): boolean {
+
+        const isTimeOverlappedWithOverrides = overrides
+            .some(({
+                targetDate: _targetDate,
+                timeRanges: _timeRanges
+            }) => _timeRanges.some((__timeRange) => {
+                const { startTime, endTime } = __timeRange as { startTime: string; endTime: string };
+                const _startDateTime = this.utilService.localizeDateTime(
+                    new Date(_targetDate),
+                    timezone,
+                    startTime
+                );
+
+                const _endDateTime = this.utilService.localizeDateTime(
+                    new Date(_targetDate),
+                    timezone,
+                    endTime
+                );
+
+                return _startDateTime.getTime() <= startDateTimestamp &&
+                    endDateTimestamp <= _endDateTime.getTime();
+            }));
+
+        return isTimeOverlappedWithOverrides;
+    }
+
+    _isTimeOverlappingWithAvailableTimes(
+        availableTimes: AvailableTime[],
+        hostTimezone: string,
+        startDateTime: Date,
+        endDateTime: Date
+    ): boolean {
+
+        const startTimeString = this.utilService.dateToTimeString(startDateTime, hostTimezone);
+        const endTimeString = this.utilService.dateToTimeString(endDateTime, hostTimezone);
+
+        const localizedStartDateTime = this.utilService.localizeDateTime(
+            startDateTime,
+            hostTimezone,
+            startTimeString
+        );
+
+        const localizedEndDateTime = this.utilService.localizeDateTime(
+            endDateTime,
+            hostTimezone,
+            endTimeString
+        );
+
+        const startWeekday = localizedStartDateTime.getDay();
+        const endWeekday = localizedEndDateTime.getDay();
+
+        const startWeekdayAvailableTime = availableTimes.find((_availableTime) => _availableTime.day === startWeekday);
+        const endWeekdayAvailableTime = availableTimes.find((_availableTime) => _availableTime.day === endWeekday);
+
+        let isTimeOverlapping;
+
+        if (startWeekdayAvailableTime && endWeekdayAvailableTime) {
+            const isTimeOverlappingWithStartDateTime = this._isTimeOverlappingWithAvailableTimeRange(localizedStartDateTime, hostTimezone, startWeekdayAvailableTime.timeRanges);
+            const isTimeOverlappingWithEndDateTime = this._isTimeOverlappingWithAvailableTimeRange(localizedStartDateTime, hostTimezone, endWeekdayAvailableTime.timeRanges);
+
+            isTimeOverlapping = isTimeOverlappingWithStartDateTime && isTimeOverlappingWithEndDateTime;
+        } else {
+            isTimeOverlapping = false;
+        }
+
+        return isTimeOverlapping;
+    }
+
+    _isTimeOverlappingWithAvailableTimeRange(dateTime: Date, timezone: string, timeRanges: TimeRange[]): boolean {
+
+        const isTimeOverlappingDateTime = timeRanges.some((_timeRange) => {
+            const {
+                startTime: timeRangeStartTime,
+                endTime: timeRangeEndTime
+            } = _timeRange as { startTime: string; endTime: string };
+
+            const localizedTimeRangeStartDateTime = this.utilService.localizeDateTime(
+                dateTime,
+                timezone,
+                timeRangeStartTime
+            );
+
+            const localizedTimeRangeEndDateTime = this.utilService.localizeDateTime(
+                dateTime,
+                timezone,
+                timeRangeEndTime
+            );
+
+            if ((localizedTimeRangeStartDateTime.getTime() < dateTime.getTime() &&
+            dateTime.getTime() < localizedTimeRangeEndDateTime.getTime()) === true) {
+
+                console.log('localizedTimeRangeStartDateTime:', localizedTimeRangeStartDateTime);
+                console.log('dateTime:', dateTime);
+            }
+
+            return localizedTimeRangeStartDateTime.getTime() < dateTime.getTime() &&
+                dateTime.getTime() < localizedTimeRangeEndDateTime.getTime();
+        });
+
+        return isTimeOverlappingDateTime;
     }
 }

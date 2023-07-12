@@ -33,6 +33,27 @@ describe('UtilService', () => {
         expect(service).ok;
     });
 
+    it('should be converted date that is applied timezone', () => {
+
+        const hostTimezone = 'America/New_York';
+        const hostAvailableStartTimeString = '10:00';
+
+        const availableStartTime = new Date('2023-07-13 10:00:00 GMT-04:00');
+
+        // 2023-07-13 03:00:00 GMT-04:00
+        const scheduledEventStartTimeByInvitee = new Date('2023-07-13 16:00:00 GMT+09:00');
+
+        const localizedStartTime = service.localizeDateTime(
+            availableStartTime,
+            hostTimezone,
+            hostAvailableStartTimeString
+        );
+
+        const isValidStartTime = localizedStartTime.getTime() < scheduledEventStartTimeByInvitee.getTime();
+
+        expect(isValidStartTime).false;
+    });
+
     it('should be generated for uuid', () => {
         const uuidMap = new Map<string, boolean>();
 

@@ -62,7 +62,8 @@ export class BookingsService {
                         userWorkspace,
                         eventUUID,
                         newSchedule,
-                        loadedUser.userSetting.preferredTimezone
+                        loadedUser.userSetting.preferredTimezone,
+                        loadedUser
                     )
                 )
             );
