@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Observable, map } from 'rxjs';
+import { Observable, from, map, mergeMap } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { UserService } from '@services/users/user.service';
 import { EventsService } from '@services/events/events.service';
@@ -54,6 +54,17 @@ export class BookingsService {
     }
 
     createScheduledEvent(userWorkspace: string, eventUUID: string, newSchedule: Schedule): Observable<Schedule> {
-        return this.scheduleService.create(userWorkspace, eventUUID, newSchedule);
+
+        return from(this.userService.findUserByWorkspace(userWorkspace))
+            .pipe(
+                mergeMap(
+                    (loadedUser) => this.scheduleService.create(
+                        userWorkspace,
+                        eventUUID,
+                        newSchedule,
+                        loadedUser.userSetting.preferredTimezone
+                    )
+                )
+            );
     }
 }

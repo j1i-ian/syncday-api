@@ -16,7 +16,6 @@ import { GoogleCalendarIntegration } from '@entity/integrations/google/google-ca
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
-import { User } from '@entity/users/user.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarIntegrationSearchOption } from '@app/interfaces/integrations/google/google-calendar-integration-search-option.interface';
 import { GoogleCalendarDetail } from '@app/interfaces/integrations/google/google-calendar-detail.interface';
@@ -219,12 +218,11 @@ export class GoogleCalendarIntegrationsService {
     async createGoogleCalendarEvent(
         googleIntegration: GoogleIntegration,
         googleCalendarIntegration: GoogleCalendarIntegration,
-        user: User,
+        hostTimezone: string,
         schedule: Schedule
     ): Promise<void> {
 
         const calendarId = googleCalendarIntegration.name;
-        const loadedHost = user;
 
         const userRefreshToken = googleIntegration.refreshToken;
 
@@ -236,7 +234,7 @@ export class GoogleCalendarIntegrationsService {
          * TODO: PreferredTimezone should be replaced as schedule value.
          */
         const newGoogleEventBody = this.googleConverterService.convertScheduledEventToGoogleCalendarEvent(
-            loadedHost.userSetting.preferredTimezone,
+            hostTimezone,
             schedule
         );
 

@@ -5,7 +5,6 @@ import { Repository } from 'typeorm';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
-import { UserService } from '@services/users/user.service';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
@@ -24,7 +23,6 @@ describe('SchedulesService', () => {
 
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
-    let userServiceStub: sinon.SinonStubbedInstance<UserService>;
 
     let googleCalendarIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleCalendarIntegrationsService>;
     let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<SchedulesRedisRepository>;
@@ -35,7 +33,6 @@ describe('SchedulesService', () => {
 
         utilServiceStub = sinon.createStubInstance(UtilService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
-        userServiceStub = sinon.createStubInstance(UserService);
 
         googleCalendarIntegrationsServiceStub = sinon.createStubInstance(GoogleCalendarIntegrationsService);
         schedulesRedisRepositoryStub = sinon.createStubInstance(SchedulesRedisRepository);
@@ -58,10 +55,6 @@ describe('SchedulesService', () => {
                 {
                     provide: GoogleCalendarIntegrationsService,
                     useValue: googleCalendarIntegrationsServiceStub
-                },
-                {
-                    provide: UserService,
-                    useValue: userServiceStub
                 },
                 {
                     provide: SchedulesRedisRepository,
@@ -97,7 +90,6 @@ describe('SchedulesService', () => {
             eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
             googleCalendarIntegrationsServiceStub.findOne.reset();
-            userServiceStub.findUserByWorkspace.reset();
             googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.reset();
             schedulesRedisRepositoryStub.save.reset();
             scheduleRepositoryStub.save.reset();
@@ -146,14 +138,16 @@ describe('SchedulesService', () => {
 
         it('should be created scheduled event', async () => {
 
-            const userStub = stubOne(User);
+            const userSettingStub = stubOne(UserSetting);
+            const userStub = stubOne(User, {
+                userSetting: userSettingStub
+            });
             const eventStub = stubOne(Event);
             const scheduleStub = stubOne(Schedule);
             const googleCalendarIntegrationStub = stubOne(GoogleCalendarIntegration);
 
             eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
             utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
-            userServiceStub.findUserByWorkspace.resolves(userStub);
             googleCalendarIntegrationsServiceStub.findOne.returns(of(googleCalendarIntegrationStub));
             googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves();
 
@@ -169,7 +163,8 @@ describe('SchedulesService', () => {
                     } as unknown as any,
                     userStub.workspace as string,
                     eventStub.uuid,
-                    scheduleStub
+                    scheduleStub,
+                    userSettingStub.preferredTimezone
                 )
             );
 
@@ -177,7 +172,6 @@ describe('SchedulesService', () => {
             expect(eventsServiceStub.findOneByUserWorkspaceAndUUID.called).true;
             expect(utilServiceStub.getPatchedScheduledEvent.called).true;
             expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
-            expect(userServiceStub.findUserByWorkspace.called).true;
             expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).true;
             expect(validateStub.called).true;
             expect(scheduleRepositoryStub.save.called).true;
