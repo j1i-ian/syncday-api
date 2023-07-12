@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { calendar_v3 } from 'googleapis';
+import { UtilService } from '@services/util/util.service';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
@@ -11,10 +12,20 @@ const testMockUtil = new TestMockUtil();
 
 describe('GoogleConverterService', () => {
     let service: GoogleConverterService;
+    let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
-    beforeEach(async () => {
+    before(async () => {
+
+        utilServiceStub = sinon.createStubInstance(UtilService);
+
         const module: TestingModule = await Test.createTestingModule({
-            providers: [GoogleConverterService]
+            providers: [
+                GoogleConverterService,
+                {
+                    provide: UtilService,
+                    useValue: utilServiceStub
+                }
+            ]
         }).compile();
 
         service = module.get<GoogleConverterService>(GoogleConverterService);
@@ -47,6 +58,8 @@ describe('GoogleConverterService', () => {
 
         afterEach(() => {
             serviceSandbox.restore();
+
+            utilServiceStub.generateUUID.reset();
         });
 
         it('should be converted date from rrule', () => {
@@ -134,7 +147,8 @@ describe('GoogleConverterService', () => {
 
             const convertedGoogleSchedule = service.convertScheduledEventToGoogleCalendarEvent(
                 hostTimezoneMock,
-                scheduleMock
+                scheduleMock,
+                true
             );
 
             const {
@@ -151,6 +165,8 @@ describe('GoogleConverterService', () => {
             expect(convertedStartDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
             expect(convertedEndDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
             expect(convertedGoogleSchedule).ok;
+
+            expect(utilServiceStub.generateUUID.called).true;
         });
 
         it('should be converted google integration schedules from google schedule although google schedule has no summary', () => {
@@ -161,7 +177,7 @@ describe('GoogleConverterService', () => {
                 iCalUID: googleScheduleMock.iCalUID as string
             });
 
-            const startDatetime = new Date('2023-09-14T15:00:00.000Z'),;
+            const startDatetime = new Date('2023-09-14T15:00:00.000Z');
             const endDatetime = new Date('2022-09-13T15:00:00.000Z');
 
             serviceSandbox.stub(service, '_convertGoogleScheduleToGoogleIntegrationSchedule').returns(googleIntegrationScheduleStub);

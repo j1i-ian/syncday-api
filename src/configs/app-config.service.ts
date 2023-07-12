@@ -64,6 +64,7 @@ export class AppConfigService {
                 break;
             case NodeEnv.TEST:
             case NodeEnv.LOCAL:
+            default:
                 host = process.env.HOST as string;
                 break;
         }

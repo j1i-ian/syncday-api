@@ -9,6 +9,7 @@ import { UtilService } from '@services/util/util.service';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { ScheduleSearchOption } from '@app/interfaces/schedules/schedule-search-option.interface';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 
@@ -92,13 +93,15 @@ export class SchedulesService {
                     outboundWriteSync: true,
                     userWorkspace
                 }).pipe(
-                    mergeMap((loadedGoogleCalendarIntegration) =>
-                        this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
-                            loadedGoogleCalendarIntegration.googleIntegration,
-                            loadedGoogleCalendarIntegration,
-                            hostTimezone,
-                            createdSchedule
-                        )
+                    mergeMap((loadedGoogleCalendarIntegration: GoogleCalendarIntegration | null) =>
+                        loadedGoogleCalendarIntegration ?
+                            from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
+                                (loadedGoogleCalendarIntegration ).googleIntegration,
+                                (loadedGoogleCalendarIntegration ),
+                                hostTimezone,
+                                createdSchedule
+                            )) :
+                            of({})
                     ),
                     map(() => createdSchedule)
                 )

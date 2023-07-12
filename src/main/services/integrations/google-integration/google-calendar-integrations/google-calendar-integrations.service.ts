@@ -131,12 +131,12 @@ export class GoogleCalendarIntegrationsService {
         );
     }
 
-    findOne(searchOptions: Partial<GoogleCalendarIntegrationSearchOption>): Observable<GoogleCalendarIntegration> {
+    findOne(searchOptions: Partial<GoogleCalendarIntegrationSearchOption>): Observable<GoogleCalendarIntegration | null> {
 
         const options = this.__patchSearchOption(searchOptions);
 
         return from(
-            this.googleCalendarIntegrationRepository.findOneOrFail({
+            this.googleCalendarIntegrationRepository.findOne({
                 relations: [
                     'googleIntegration',
                     'googleIntegration.users',
@@ -235,7 +235,8 @@ export class GoogleCalendarIntegrationsService {
          */
         const newGoogleEventBody = this.googleConverterService.convertScheduledEventToGoogleCalendarEvent(
             hostTimezone,
-            schedule
+            schedule,
+            true
         );
 
         const googleCalendarEventCreateService = new GoogleCalendarEventCreateService();
@@ -243,7 +244,8 @@ export class GoogleCalendarIntegrationsService {
         await googleCalendarEventCreateService.create(
             ensuredOAuthClient,
             calendarId,
-            newGoogleEventBody
+            newGoogleEventBody,
+            true
         );
     }
 

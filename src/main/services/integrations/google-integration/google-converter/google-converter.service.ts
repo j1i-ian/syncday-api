@@ -2,6 +2,7 @@ import { RRule } from 'rrule';
 
 import { Injectable } from '@nestjs/common';
 import { calendar_v3 } from 'googleapis';
+import { UtilService } from '@services/util/util.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
@@ -9,6 +10,10 @@ import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/
 
 @Injectable()
 export class GoogleConverterService {
+
+    constructor(
+        private readonly utilService: UtilService
+    ) {}
 
     convertToGoogleCalendarIntegration(
         googleCalendars: calendar_v3.Schema$CalendarList
@@ -160,9 +165,26 @@ export class GoogleConverterService {
 
     convertScheduledEventToGoogleCalendarEvent(
         hostTimezone: string,
-        schedule: Schedule
+        schedule: Schedule,
+        hangoutLink = false
     ): calendar_v3.Schema$Event {
         const { startTimestamp, endTimestamp } = schedule.scheduledTime;
+
+        let conferenceData;
+
+        if (hangoutLink) {
+
+            const generatedUUID = this.utilService.generateUUID();
+
+            conferenceData = {
+                createRequest: {
+                    requestId: generatedUUID,
+                    conferenceSolutionKey: {
+                        type: 'hangoutsMeet'
+                    }
+                }
+            } as calendar_v3.Schema$ConferenceData;
+        }
 
         return {
             summary: schedule.name,
@@ -174,7 +196,8 @@ export class GoogleConverterService {
             end: {
                 dateTime: new Date(endTimestamp).toISOString(),
                 timeZone: hostTimezone
-            }
+            },
+            conferenceData
         };
     }
 
