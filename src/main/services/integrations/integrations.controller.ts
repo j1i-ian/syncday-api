@@ -6,7 +6,6 @@ import { Integration } from '@entity/integrations/integration.entity';
 /**
  * Sign up with Google API is located on token controller.
  */
-
 @Controller(':vendor')
 export class IntegrationsController {
     constructor(

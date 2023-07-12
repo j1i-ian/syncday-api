@@ -64,7 +64,13 @@ export const routes: Routes = [
         children: [
             {
                 path: 'calendars',
-                module: CalendarIntegrationsModule
+                module: CalendarIntegrationsModule,
+                children: [
+                    {
+                        path: 'notifications/google',
+                        module: GoogleCalendarIntegrationsModule
+                    }
+                ]
             },
             {
                 path: 'meetings',
@@ -75,10 +81,6 @@ export const routes: Routes = [
                         module: ZoomModule
                     }
                 ]
-            },
-            {
-                path: 'notifications',
-                module: GoogleCalendarIntegrationsModule
             }
         ]
     }

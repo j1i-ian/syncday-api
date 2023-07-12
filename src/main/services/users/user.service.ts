@@ -297,7 +297,7 @@ export class UserService {
 
             _createdUser.patchPromotedPropertyFromUserSetting();
 
-            const _createdGoogleIntegration = await this.googleIntegrationService._createGoogleIntegration(
+            const _createdGoogleIntegration = await this.googleIntegrationService._create(
                 manager,
                 _createdUser,
                 googleAuthToken,

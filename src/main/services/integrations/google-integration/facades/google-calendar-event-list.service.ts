@@ -13,6 +13,7 @@ export class GoogleCalendarEventListService {
 
         const { data: events } = await googleCalendar.events.list({
             calendarId,
+            maxResults: 1000,
             timeMin: new Date().toISOString()
         });
 
