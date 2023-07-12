@@ -6,6 +6,8 @@ import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.int
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { UtilService } from '@services/util/util.service';
+import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
+import { UserService } from '@services/users/user.service';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { ScheduleSearchOption } from '@app/interfaces/schedules/schedule-search-option.interface';
@@ -17,7 +19,9 @@ export class SchedulesService {
     constructor(
         private readonly utilService: UtilService,
         private readonly eventsService: EventsService,
+        private readonly userService: UserService,
         private readonly scheduleRedisRepository: SchedulesRedisRepository,
+        private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
         @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>,
         @InjectRepository(GoogleIntegrationSchedule) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>
     ) {}
@@ -69,14 +73,36 @@ export class SchedulesService {
         return from(
             this.eventsService.findOneByUserWorkspaceAndUUID(userWorkspace, eventUUID)
         ).pipe(
-            map((event) => this.utilService.getPatchedScheduledEvent(event, newSchedule)),
-            mergeMap((patchedSchedule) => this.validate(patchedSchedule)),
-            mergeMap((patchedSchedule) => entityManager.getRepository(Schedule).save(patchedSchedule)),
-            mergeMap((createdSchedule) =>
-                this.scheduleRedisRepository.save(createdSchedule.uuid, {
-                    inviteeAnswers: newSchedule.inviteeAnswers,
-                    scheduledNotificationInfo: newSchedule.scheduledNotificationInfo
-                }).pipe(map(() => createdSchedule))
+            mergeMap((event) => of(this.utilService.getPatchedScheduledEvent(event, newSchedule))
+                .pipe(
+                    mergeMap((patchedSchedule) => this.validate(patchedSchedule)),
+                    mergeMap((patchedSchedule) => entityManager.getRepository(Schedule).save(patchedSchedule)),
+                    mergeMap((createdSchedule) =>
+                        this.scheduleRedisRepository.save(createdSchedule.uuid, {
+                            inviteeAnswers: newSchedule.inviteeAnswers,
+                            scheduledNotificationInfo: newSchedule.scheduledNotificationInfo
+                        }).pipe(map(() => createdSchedule))
+                    ),
+                    mergeMap((createdSchedule) =>
+                        forkJoin([
+                            this.googleCalendarIntegrationsService.findOne({
+                                outboundWriteSync: true,
+                                userWorkspace
+                            }),
+                            this.userService.findUserByWorkspace(userWorkspace)
+                        ]).pipe(
+                            mergeMap(([loadedGoogleCalendarIntegration, loadedUser]) =>
+                                this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
+                                    loadedGoogleCalendarIntegration.googleIntegration,
+                                    loadedGoogleCalendarIntegration,
+                                    loadedUser,
+                                    createdSchedule
+                                )
+                            ),
+                            map(() => createdSchedule)
+                        )
+                    )
+                )
             )
         );
     }

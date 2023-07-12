@@ -9,6 +9,7 @@ import { IntegrationsRedisRepository } from '@services/integrations/integrations
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
 import { GoogleCalendarEventWatchService } from '@services/integrations/google-integration/facades/google-calendar-event-watch.service';
 import { GoogleCalendarEventWatchStopService } from '@services/integrations/google-integration/facades/google-calendar-event-watch-stop.service';
+import { GoogleCalendarEventCreateService } from '@services/integrations/google-integration/facades/google-calendar-event-create.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleOAuthTokenService } from './facades/google-oauth-token.service';
 import { GoogleCalendarListService } from './facades/google-calendar-list.service';
@@ -36,7 +37,9 @@ import { GoogleCalendarIntegrationsModule } from './google-calendar-integrations
         GoogleCalendarEventWatchService,
         GoogleCalendarEventWatchStopService,
 
-        IntegrationsRedisRepository
+        IntegrationsRedisRepository,
+
+        GoogleCalendarEventCreateService
     ],
     exports: [GoogleIntegrationFacade, GoogleConverterService, GoogleIntegrationsService, GoogleIntegrationSchedulesService]
 })

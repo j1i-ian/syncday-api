@@ -11,9 +11,12 @@ import { GoogleCalendarEventWatchService } from '@services/integrations/google-i
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { IntegrationUtilsService } from '@services/util/integration-utils/integration-utils.service';
+import { GoogleCalendarEventCreateService } from '@services/integrations/google-integration/facades/google-calendar-event-create.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { Schedule } from '@entity/schedules/schedule.entity';
+import { User } from '@entity/users/user.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarIntegrationSearchOption } from '@app/interfaces/integrations/google/google-calendar-integration-search-option.interface';
 import { GoogleCalendarDetail } from '@app/interfaces/integrations/google/google-calendar-detail.interface';
@@ -129,45 +132,17 @@ export class GoogleCalendarIntegrationsService {
         );
     }
 
-    findOne({
-        googleCalendarIntegrationUUID,
-        conflictCheck,
-        outboundWriteSync,
-        googleCalendarAccessRole
-    }: Partial<GoogleCalendarIntegrationSearchOption> = {}): Observable<GoogleCalendarIntegration | null> {
+    findOne(searchOptions: Partial<GoogleCalendarIntegrationSearchOption>): Observable<GoogleCalendarIntegration> {
 
-        let options: FindOptionsWhere<GoogleCalendarIntegration> | Array<FindOptionsWhere<GoogleCalendarIntegration>> = {
-            uuid: googleCalendarIntegrationUUID,
-            setting: {
-                conflictCheck,
-                outboundWriteSync
-            }
-        };
-
-        if (googleCalendarAccessRole) {
-            if (googleCalendarAccessRole === GoogleCalendarAccessRole.WRITER) {
-                const readerAccessOption = {
-                    ...options,
-                    googleCalendarAccessRole: GoogleCalendarAccessRole.WRITER
-                };
-                options = [
-                    readerAccessOption,
-                    {
-                        ...readerAccessOption,
-                        googleCalendarAccessRole: GoogleCalendarAccessRole.OWNER
-                    }
-                ] as Array<FindOptionsWhere<GoogleCalendarIntegration>>;
-            } else {
-                options = {
-                    ...options,
-                    googleCalendarAccessRole
-                };
-            }
-        }
+        const options = this.__patchSearchOption(searchOptions);
 
         return from(
-            this.googleCalendarIntegrationRepository.findOne({
-                relations: ['googleIntegration', 'googleIntegration.users'],
+            this.googleCalendarIntegrationRepository.findOneOrFail({
+                relations: [
+                    'googleIntegration',
+                    'googleIntegration.users',
+                    'googleIntegration.users.userSetting'
+                ],
                 where: options
             })
         );
@@ -239,6 +214,39 @@ export class GoogleCalendarIntegrationsService {
         }
 
         return true;
+    }
+
+    async createGoogleCalendarEvent(
+        googleIntegration: GoogleIntegration,
+        googleCalendarIntegration: GoogleCalendarIntegration,
+        user: User,
+        schedule: Schedule
+    ): Promise<void> {
+
+        const calendarId = googleCalendarIntegration.name;
+        const loadedHost = user;
+
+        const userRefreshToken = googleIntegration.refreshToken;
+
+        const ensuredOAuthClient = this.integrationUtilService.getGoogleOAuthClient(
+            userRefreshToken
+        );
+
+        /**
+         * TODO: PreferredTimezone should be replaced as schedule value.
+         */
+        const newGoogleEventBody = this.googleConverterService.convertScheduledEventToGoogleCalendarEvent(
+            loadedHost.userSetting.preferredTimezone,
+            schedule
+        );
+
+        const googleCalendarEventCreateService = new GoogleCalendarEventCreateService();
+
+        await googleCalendarEventCreateService.create(
+            ensuredOAuthClient,
+            calendarId,
+            newGoogleEventBody
+        );
     }
 
     async resubscriptionCalendar(
@@ -375,5 +383,51 @@ export class GoogleCalendarIntegrationsService {
         const status = await this.integrationsRedisRepository.getGoogleCalendarSubscriptionStatus(googleChannelId);
 
         return status;
+    }
+
+    __patchSearchOption({
+        userWorkspace,
+        googleCalendarIntegrationUUID,
+        conflictCheck,
+        outboundWriteSync,
+        googleCalendarAccessRole
+    }: Partial<GoogleCalendarIntegrationSearchOption> = {}):
+        FindOptionsWhere<GoogleCalendarIntegration> |
+        Array<FindOptionsWhere<GoogleCalendarIntegration>> {
+        let options: FindOptionsWhere<GoogleCalendarIntegration> | Array<FindOptionsWhere<GoogleCalendarIntegration>> = {
+            uuid: googleCalendarIntegrationUUID,
+            setting: {
+                conflictCheck,
+                outboundWriteSync
+            },
+            users: {
+                userSetting: {
+                    workspace: userWorkspace
+                }
+            }
+        };
+
+        if (googleCalendarAccessRole) {
+            if (googleCalendarAccessRole === GoogleCalendarAccessRole.WRITER) {
+                const readerAccessOption = {
+                    ...options,
+                    googleCalendarAccessRole: GoogleCalendarAccessRole.WRITER
+                };
+                options = [
+                    readerAccessOption,
+                    {
+                        ...readerAccessOption,
+                        googleCalendarAccessRole: GoogleCalendarAccessRole.OWNER
+                    }
+                ] as Array<FindOptionsWhere<GoogleCalendarIntegration>>;
+            } else {
+                options = {
+                    ...options,
+                    googleCalendarAccessRole
+                };
+            }
+        }
+
+        return options;
     }
 }

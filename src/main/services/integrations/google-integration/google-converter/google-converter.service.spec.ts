@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { calendar_v3 } from 'googleapis';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { Schedule } from '@entity/schedules/schedule.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleConverterService } from './google-converter.service';
 
@@ -119,6 +123,34 @@ describe('GoogleConverterService', () => {
 
             expect(convertedDates).ok;
             expect(convertedDates.length).greaterThan(0);
+        });
+
+        it('should be converted to google calendar event from sync scheduled event', () => {
+            const hostTimezoneMock = stubOne(UserSetting).preferredTimezone;
+            const scheduledTimeMock = stubOne(ScheduledTimeset);
+            const scheduleMock = stubOne(Schedule, {
+                scheduledTime: scheduledTimeMock
+            });
+
+            const convertedGoogleSchedule = service.convertScheduledEventToGoogleCalendarEvent(
+                hostTimezoneMock,
+                scheduleMock
+            );
+
+            const {
+                start: convertedStartDatetimeString,
+                end: convertedEndDatetimeString
+            } = convertedGoogleSchedule as {
+                start: calendar_v3.Schema$EventDateTime;
+                end: calendar_v3.Schema$EventDateTime;
+            };
+            const convertedStartDatetime = new Date(convertedStartDatetimeString.dateTime as string);
+            const convertedEndDatetime = new Date(convertedEndDatetimeString.dateTime as string);
+
+            expect(convertedGoogleSchedule).ok;
+            expect(convertedStartDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
+            expect(convertedEndDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
+            expect(convertedGoogleSchedule).ok;
         });
 
         it('should be converted google integration schedules from google schedule although google schedule has no summary', () => {
