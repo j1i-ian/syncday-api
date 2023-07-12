@@ -116,8 +116,8 @@ export class UtilService {
 
         const initialEvent = new Event({
             type: EventType.ONE_ON_ONE,
-            link: 'default',
-            name: 'default',
+            link: '30 Minute Meeting',
+            name: '30 Minute Meeting',
             bufferTime: initialBufferTime,
             dateRange: initialDateRange,
             contacts: [],
