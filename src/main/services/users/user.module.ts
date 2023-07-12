@@ -3,7 +3,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AvailabilityModule } from '@services/availability/availability.module';
 import { EventsModule } from '@services/events/events.module';
 import { IntegrationsModule } from '@services/integrations/integrations.module';
-import { SchedulesModule } from '@services/schedules/schedules.module';
 import { GoogleIntegrationModule } from '@services/integrations/google-integration/google-integration.module';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
@@ -28,8 +27,7 @@ import { SyncdayRedisModule } from '../syncday-redis/syncday-redis.module';
         AvailabilityModule,
         EventsModule,
         IntegrationsModule,
-        GoogleIntegrationModule,
-        SchedulesModule
+        GoogleIntegrationModule
     ],
     controllers: [UserController],
     providers: [UserService],

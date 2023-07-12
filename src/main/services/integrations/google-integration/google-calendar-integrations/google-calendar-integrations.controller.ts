@@ -1,7 +1,6 @@
 import { BadRequestException, Controller, Headers, Inject, Logger, Param, Post } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
-import { IntegrationUtilsService } from '@services/util/integration-utils/integration-utils.service';
 import { Public } from '@app/auth/strategy/jwt/public.decorator';
 
 @Controller()
@@ -9,7 +8,6 @@ export class GoogleCalendarIntegrationsController {
 
     constructor(
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
-        private readonly integrationUtilsService: IntegrationUtilsService,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 

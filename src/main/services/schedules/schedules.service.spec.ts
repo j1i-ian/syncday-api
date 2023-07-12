@@ -5,11 +5,14 @@ import { Repository } from 'typeorm';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
+import { UserService } from '@services/users/user.service';
+import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { SchedulesService } from './schedules.service';
@@ -21,8 +24,10 @@ describe('SchedulesService', () => {
 
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
-    let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<SchedulesRedisRepository>;
+    let userServiceStub: sinon.SinonStubbedInstance<UserService>;
 
+    let googleCalendarIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleCalendarIntegrationsService>;
+    let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<SchedulesRedisRepository>;
     let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
     let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
 
@@ -30,8 +35,10 @@ describe('SchedulesService', () => {
 
         utilServiceStub = sinon.createStubInstance(UtilService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
-        schedulesRedisRepositoryStub = sinon.createStubInstance(SchedulesRedisRepository);
+        userServiceStub = sinon.createStubInstance(UserService);
 
+        googleCalendarIntegrationsServiceStub = sinon.createStubInstance(GoogleCalendarIntegrationsService);
+        schedulesRedisRepositoryStub = sinon.createStubInstance(SchedulesRedisRepository);
         scheduleRepositoryStub = sinon.createStubInstance<Repository<Schedule>>(Repository);
         googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationSchedule>>(
             Repository
@@ -47,6 +54,14 @@ describe('SchedulesService', () => {
                 {
                     provide: EventsService,
                     useValue: eventsServiceStub
+                },
+                {
+                    provide: GoogleCalendarIntegrationsService,
+                    useValue: googleCalendarIntegrationsServiceStub
+                },
+                {
+                    provide: UserService,
+                    useValue: userServiceStub
                 },
                 {
                     provide: SchedulesRedisRepository,
@@ -81,6 +96,9 @@ describe('SchedulesService', () => {
         afterEach(() => {
             eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
+            googleCalendarIntegrationsServiceStub.findOne.reset();
+            userServiceStub.findUserByWorkspace.reset();
+            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.reset();
             schedulesRedisRepositoryStub.save.reset();
             scheduleRepositoryStub.save.reset();
             scheduleRepositoryStub.findBy.reset();
@@ -128,12 +146,16 @@ describe('SchedulesService', () => {
 
         it('should be created scheduled event', async () => {
 
-            const userWorkspaceMock = stubOne(User).workspace as string;
+            const userStub = stubOne(User);
             const eventStub = stubOne(Event);
             const scheduleStub = stubOne(Schedule);
+            const googleCalendarIntegrationStub = stubOne(GoogleCalendarIntegration);
 
             eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
             utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+            userServiceStub.findUserByWorkspace.resolves(userStub);
+            googleCalendarIntegrationsServiceStub.findOne.returns(of(googleCalendarIntegrationStub));
+            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves();
 
             const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
 
@@ -145,13 +167,18 @@ describe('SchedulesService', () => {
                     {
                         getRepository: () => scheduleRepositoryStub
                     } as unknown as any,
-                    userWorkspaceMock, eventStub.uuid, scheduleStub
+                    userStub.workspace as string,
+                    eventStub.uuid,
+                    scheduleStub
                 )
             );
 
             expect(createdSchedule).ok;
             expect(eventsServiceStub.findOneByUserWorkspaceAndUUID.called).true;
             expect(utilServiceStub.getPatchedScheduledEvent.called).true;
+            expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
+            expect(userServiceStub.findUserByWorkspace.called).true;
+            expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).true;
             expect(validateStub.called).true;
             expect(scheduleRepositoryStub.save.called).true;
             expect(schedulesRedisRepositoryStub.save.called).true;

@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { calendar_v3 } from 'googleapis';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
 
 @Injectable()
@@ -155,6 +156,26 @@ export class GoogleConverterService {
         });
 
         return convertedDates;
+    }
+
+    convertScheduledEventToGoogleCalendarEvent(
+        hostTimezone: string,
+        schedule: Schedule
+    ): calendar_v3.Schema$Event {
+        const { startTimestamp, endTimestamp } = schedule.scheduledTime;
+
+        return {
+            summary: schedule.name,
+            description: schedule.name,
+            start: {
+                dateTime: new Date(startTimestamp).toISOString(),
+                timeZone: hostTimezone
+            },
+            end: {
+                dateTime: new Date(endTimestamp).toISOString(),
+                timeZone: hostTimezone
+            }
+        };
     }
 
     _convertGoogleScheduleToGoogleIntegrationSchedule(

@@ -3,6 +3,7 @@ import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google
 export interface GoogleCalendarIntegrationSearchOption {
     userId: number;
     userUUID: string;
+    userWorkspace: string;
     googleCalendarIntegrationUUID: string;
     conflictCheck: boolean;
     outboundWriteSync: boolean;
