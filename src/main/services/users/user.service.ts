@@ -8,6 +8,7 @@ import { AvailableTime } from '@core/entities/availability/availability-time.ent
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
@@ -15,6 +16,8 @@ import { GoogleCalendarIntegration } from '@entity/integrations/google/google-ca
 import { Weekday } from '@entity/availability/weekday.enum';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { Schedule } from '@entity/schedules/schedule.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
@@ -44,10 +47,12 @@ export class UserService {
         private readonly verificationService: VerificationService,
         private readonly userSettingService: UserSettingService,
         private readonly syncdayRedisService: SyncdayRedisService,
+        private readonly googleIntegrationsService: GoogleIntegrationsService,
         private readonly utilService: UtilService,
         private readonly eventRedisRepository: EventsRedisRepository,
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
+        private readonly schedulesRedisRepository: SchedulesRedisRepository,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
 
@@ -375,25 +380,49 @@ export class UserService {
                 userSetting: true,
                 eventGroup: {
                     events: {
-                        eventDetail: true
+                        eventDetail: {
+                            schedules: true
+                        }
                     }
                 },
-                availabilities: true
+                availabilities: true,
+                googleIntergrations: true
             }
         });
 
-        const { eventGroup: eventGroups, userSetting, availabilities } = user;
+        const { eventGroup: eventGroups, userSetting, availabilities, googleIntergrations } = user;
+
         const eventGroup = eventGroups.pop() as EventGroup ;
+
         const { events } = eventGroup;
+
+        const { scheduleIds, scheduleUUIDs } = events.flatMap((event) => event.eventDetail.schedules)
+            .reduce(({ scheduleIds, scheduleUUIDs }, schedule) => ({
+                scheduleIds: scheduleIds.concat(schedule.id),
+                scheduleUUIDs: scheduleUUIDs.concat(schedule.uuid)
+            }), { scheduleIds: [] as number[], scheduleUUIDs: [] as string[] });
+
         const { eventDetailIds, eventDetailUUIDs } = events.reduce((eventDetailIdAndEventDetailUUIDArray, event) => {
             const { eventDetailIds, eventDetailUUIDs } = eventDetailIdAndEventDetailUUIDArray;
             eventDetailIds.push(event.eventDetail.id);
             eventDetailUUIDs.push(event.eventDetail.uuid);
             return { eventDetailIds, eventDetailUUIDs };
         }, { eventDetailIds: [] as number[], eventDetailUUIDs:[] as string[] });
+
         const availabilityUUIDs = availabilities.map((availability) => availability.uuid);
 
+        const googleIntergration = googleIntergrations.pop() as GoogleIntegration;
+
         const deleteSuccess = await this.datasource.transaction(async (transactionManager) => {
+
+            if (googleIntergration) {
+                await this.googleIntegrationsService._remove(transactionManager, googleIntergration.id, userId);
+            }
+
+            if (scheduleIds.length > 0) {
+                const _scheduleRepository = transactionManager.getRepository(Schedule);
+                await _scheduleRepository.delete(scheduleIds);
+            }
 
             const deleteEntityMapList = [
                 { EntityClass: EventDetail, deleteCriteria: eventDetailIds },
@@ -416,12 +445,16 @@ export class UserService {
                     throw new InternalServerErrorException('Delete user is failed');
                 }
             }
-            // TODO: Transaction processing is required for event processing.
-            await this.availabilityRedisRepository.deleteAll(user.uuid, availabilityUUIDs);
-            await this.eventRedisRepository.removeEventDetails(eventDetailUUIDs);
 
             return true;
         });
+
+        // TODO: Transaction processing is required for event processing.
+        await this.schedulesRedisRepository.removeSchedules(scheduleUUIDs);
+        await this.availabilityRedisRepository.deleteAll(user.uuid, availabilityUUIDs);
+        await this.eventRedisRepository.removeEventDetails(eventDetailUUIDs);
+        await this.syncdayRedisService.deleteWorkspaceStatus(userSetting.workspace);
+
         return deleteSuccess;
     }
 }

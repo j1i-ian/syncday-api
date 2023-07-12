@@ -10,11 +10,14 @@ import { GoogleIntegrationSchedulesService } from '@services/integrations/google
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
+import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
+import { Schedule } from '@entity/schedules/schedule.entity';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Language } from '@app/enums/language.enum';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { TokenService } from '../../auth/token/token.service';
@@ -40,6 +43,7 @@ describe('Test User Service', () => {
     let googleConverterService: sinon.SinonStubbedInstance<GoogleConverterService>;
     let googleIntegrationsService: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let eventsRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
+    let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<SchedulesRedisRepository>;
     let integrationsRedisRepositoryStub: sinon.SinonStubbedInstance<Repository<IntegrationsRedisRepository>>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
@@ -49,6 +53,7 @@ describe('Test User Service', () => {
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
     let eventDetaiRepositoryStub: sinon.SinonStubbedInstance<Repository<EventDetail>>;
     let availabilityRepositoryStub: sinon.SinonStubbedInstance<Repository<Availability>>;
+    let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
 
     const _getRepository = (EntityClass: new () => any) =>
         module.get(getRepositoryToken(EntityClass));
@@ -68,6 +73,7 @@ describe('Test User Service', () => {
         googleConverterService = sinon.createStubInstance(GoogleConverterService);
         googleIntegrationsService = sinon.createStubInstance(GoogleIntegrationsService);
         eventsRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
+        schedulesRedisRepositoryStub = sinon.createStubInstance(SchedulesRedisRepository);
         integrationsRedisRepositoryStub = sinon.createStubInstance<Repository<IntegrationsRedisRepository>>(Repository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
@@ -77,6 +83,7 @@ describe('Test User Service', () => {
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
         eventDetaiRepositoryStub = sinon.createStubInstance<Repository<EventDetail>>(Repository);
         availabilityRepositoryStub = sinon.createStubInstance<Repository<Availability>>(Repository);
+        scheduleRepositoryStub = sinon.createStubInstance<Repository<Schedule>>(Repository);
 
         module = await Test.createTestingModule({
             providers: [
@@ -112,6 +119,10 @@ describe('Test User Service', () => {
                 {
                     provide: EventsRedisRepository,
                     useValue: eventsRedisRepositoryStub
+                },
+                {
+                    provide: SchedulesRedisRepository,
+                    useValue: schedulesRedisRepositoryStub
                 },
                 {
                     provide: IntegrationsRedisRepository,
@@ -152,7 +163,12 @@ describe('Test User Service', () => {
                 {
                     provide: getRepositoryToken(Availability),
                     useValue: availabilityRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(Schedule),
+                    useValue: scheduleRepositoryStub
                 }
+
             ]
         }).compile();
 
@@ -452,6 +468,7 @@ describe('Test User Service', () => {
     describe('Test User delete', () => {
         afterEach(() => {
             userRepositoryStub.findOneOrFail.reset();
+            scheduleRepositoryStub.delete.reset();
             eventDetaiRepositoryStub.delete.reset();
             eventRepositoryStub.delete.reset();
             eventGroupRepositoryStub.delete.reset();
@@ -461,7 +478,10 @@ describe('Test User Service', () => {
         });
 
         it('should be removed a user', async () => {
-            const eventDetail = stubOne(EventDetail);
+            const schedules = stub(Schedule);
+            const eventDetail = stubOne(EventDetail, {
+                schedules
+            });
             const events = stub(Event, 2, {
                 eventDetail
             });
@@ -470,11 +490,13 @@ describe('Test User Service', () => {
             });
 
             const availabilities = stub(Availability);
+            const googleIntergrations = stub(GoogleIntegration);
             const userSetting = stubOne(UserSetting);
             const userStub = stubOne(User, {
                 eventGroup: [eventGroup],
                 userSetting,
-                availabilities
+                availabilities,
+                googleIntergrations
             });
 
             const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
@@ -482,6 +504,7 @@ describe('Test User Service', () => {
             userRepositoryStub.findOneOrFail.resolves(userStub);
 
             const repositoryStubs = [
+                scheduleRepositoryStub,
                 eventDetaiRepositoryStub,
                 eventRepositoryStub,
                 eventGroupRepositoryStub,
