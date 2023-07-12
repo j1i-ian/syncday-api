@@ -5,6 +5,7 @@ import { IntegrationsRedisRepository } from '@services/integrations/integrations
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
+import { IntegrationsServiceInterface } from '@services/integrations/integrations.service.interface';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
@@ -13,7 +14,7 @@ import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
 
 @Injectable()
-export class GoogleIntegrationsService {
+export class GoogleIntegrationsService implements IntegrationsServiceInterface {
     constructor(
         private readonly googleConverterService: GoogleConverterService,
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
@@ -41,13 +42,13 @@ export class GoogleIntegrationsService {
      * @returns
      */
     /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
-    async createGoogleIntegration(
+    async create(
         user: User,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
         googleIntegrationBody: GoogleIntegrationBody
     ): Promise<GoogleIntegration> {
-        return this._createGoogleIntegration(
+        return this._create(
             this.googleIntegrationRepository.manager,
             user,
             googleAuthToken,
@@ -57,7 +58,7 @@ export class GoogleIntegrationsService {
     }
     /* eslint-enable @typescript-eslint/no-explicit-any */
 
-    async _createGoogleIntegration(
+    async _create(
         manager: EntityManager,
         user: User,
         googleAuthToken: OAuthToken,

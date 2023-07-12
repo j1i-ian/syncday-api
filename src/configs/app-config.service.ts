@@ -62,8 +62,9 @@ export class AppConfigService {
             case NodeEnv.DEVELOP:
                 host = 'https://api.dev.sync.day';
                 break;
+            case NodeEnv.TEST:
             case NodeEnv.LOCAL:
-                host = 'http://localhost:3011';
+                host = process.env.HOST as string;
                 break;
         }
 
