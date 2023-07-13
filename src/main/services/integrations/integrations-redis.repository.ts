@@ -28,11 +28,45 @@ export class IntegrationsRedisRepository {
         return result === 'OK';
     }
 
+    /**
+     * TODO: In most deletion scenarios, there is no need to use a pipeline for delete.
+     * However, when dealing with an ID array that doesn't exist in Redis, the direct delete method doesn't work.
+     */
+    async deleteGoogleCalendarSubscriptionsStatus(googleChannelIds: string[]): Promise<boolean> {
+        const deletePipeline = this.cluster.pipeline();
+
+        googleChannelIds.forEach((googleChannelId) => {
+            const _redisPipelineKey = this.getGoogleCalendarSubscriptionStatusKey(googleChannelId);
+            deletePipeline.del(_redisPipelineKey);
+
+        });
+
+        await deletePipeline.exec();
+
+        return true;
+    }
+
     async deleteGoogleCalendarSubscriptionStatus(googleChannelId: string): Promise<boolean> {
         const calendarSubscriptionStatusKey = this.getGoogleCalendarSubscriptionStatusKey(googleChannelId);
         const result = await this.cluster.del(calendarSubscriptionStatusKey);
 
         return result === 1;
+    }
+
+    async getGoogleCalendarsDetailAll(googleIntegrationUUID: string): Promise<Record<string, GoogleCalendarDetail>> {
+
+        const googleCalendarIntegrationHashMapKey = this.getGoogleCalendarIntegrationKey(googleIntegrationUUID);
+
+        const googleCalendarsDetailAllRecords = await this.cluster.hgetall(
+            googleCalendarIntegrationHashMapKey
+        );
+
+        const parsedGoogleCalendarsDetailAllRecords =
+            this.__parseHashmapRecords<GoogleCalendarDetail>(
+                googleCalendarsDetailAllRecords
+            );
+
+        return parsedGoogleCalendarsDetailAllRecords;
     }
 
     async getGoogleCalendarDetail(
@@ -84,6 +118,17 @@ export class IntegrationsRedisRepository {
         return true;
     }
 
+    async deleteGoogleCalendarDetails(
+        googleIntegrationUUID: string
+    ): Promise<boolean> {
+
+        const googleCalendarIntegrationHashMapKey = this.getGoogleCalendarIntegrationKey(googleIntegrationUUID);
+
+        await this.cluster.del(googleCalendarIntegrationHashMapKey);
+
+        return true;
+    }
+
     getGoogleIntegrationKey(userUUID: string): RedisKey {
         return this.utilService.getRedisKey(RedisStores.USERS, [userUUID, RedisStores.GOOGLE_INTEGRATIONS]);
     }
@@ -98,7 +143,19 @@ export class IntegrationsRedisRepository {
 
     getGoogleCalendarSubscriptionStatusKey(googleChannelId: string): RedisKey {
         return this.utilService.getRedisKey(RedisStores.CALENDAR_SUBSCRIPTION, [
-            String(googleChannelId)
+            googleChannelId
         ]);
+    }
+
+    __parseHashmapRecords<T>(hashmapRecords: Record<string, string>): Record<string, T> {
+        const entries = Object.entries(hashmapRecords).reduce<Record<string, T>>(
+            (acc, [key, value]) => ({
+                ...acc,
+                [key]: JSON.parse(value)
+            }),
+            {}
+        );
+
+        return entries;
     }
 }
