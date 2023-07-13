@@ -57,6 +57,10 @@ export class BookingsService {
 
         return from(this.userService.findUserByWorkspace(userWorkspace))
             .pipe(
+                map((loadedUser) => {
+                    newSchedule.hostTimezone = loadedUser.userSetting.preferredTimezone;
+                    return loadedUser;
+                }),
                 mergeMap(
                     (loadedUser) => this.scheduleService.create(
                         userWorkspace,

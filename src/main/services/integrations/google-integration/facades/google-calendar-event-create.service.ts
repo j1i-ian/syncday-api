@@ -10,7 +10,7 @@ export class GoogleCalendarEventCreateService {
         calendarId: string,
         newGoogleCalendarEventBody: calendar_v3.Schema$Event,
         hangoutLink = false
-    ): Promise<calendar_v3.Schema$Events> {
+    ): Promise<calendar_v3.Schema$Event> {
         const googleCalendar = google.calendar({
             version: 'v3',
             auth: oauthClient

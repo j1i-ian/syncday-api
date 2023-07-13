@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { calendar_v3 } from 'googleapis';
+import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { UtilService } from '@services/util/util.service';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
@@ -142,13 +144,21 @@ describe('GoogleConverterService', () => {
             const hostTimezoneMock = stubOne(UserSetting).preferredTimezone;
             const scheduledTimeMock = stubOne(ScheduledTimeset);
             const scheduleMock = stubOne(Schedule, {
-                scheduledTime: scheduledTimeMock
+                scheduledTime: scheduledTimeMock,
+                scheduledNotificationInfo: {
+                    invitee: [
+                        {
+                            type: NotificationType.EMAIL,
+                            reminders: [ { typeValue: 'alan@sync.day' } ]
+                        }
+                    ]
+                },
+                conferenceLinks: [{ type: IntegrationVendor.GOOGLE, link: 'https://video.sync.day', serviceName: 'Syncday Living Streaming Service' }]
             });
 
             const convertedGoogleSchedule = service.convertScheduledEventToGoogleCalendarEvent(
                 hostTimezoneMock,
-                scheduleMock,
-                true
+                scheduleMock
             );
 
             const {
