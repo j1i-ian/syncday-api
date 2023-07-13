@@ -12,7 +12,7 @@
     "baseUrl": "./",
     "incremental": true,
     "lib": [
-      "ES2020"
+      "ES2022"
     ],
     "skipLibCheck": true,
     "strictNullChecks": true,
@@ -33,6 +33,10 @@
       ],
       "@criteria/*": [
         "src/main/criteria/*",
+      ],
+      "@exceptions/*": [
+        "src/@core/src/exceptions/*",
+        "src/@core/@share/src/@exceptions/*"
       ],
       "@decorators/*": [
         "src/@core/src/decorators/*",

@@ -1,7 +1,9 @@
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
-import { Reminder } from '@core/entities/reminders/reminder.entity';
+import { EventSetting } from '@interfaces/events/event-setting';
+import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 
 export interface EventsDetailBody {
     inviteeQuestions: InviteeQuestion[];
-    reminders: Reminder[];
+    notificationInfo: NotificationInfo;
+    eventSetting: EventSetting;
 }

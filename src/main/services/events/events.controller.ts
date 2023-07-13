@@ -21,23 +21,23 @@ import { Event } from '@core/entities/events/event.entity';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
-import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-request.dto';
-import { GetEventResponseDto } from '@dto/event-groups/events/get-event-response.dto';
+import { PatchEventRequestDto } from '@dto/event-groups/events/patch-event-request.dto';
+import { FetchEventResponseDto } from '@dto/event-groups/events/fetch-event-response.dto';
 import { EventsService } from './events.service';
 
-@Controller('events')
+@Controller()
 export class EventsController {
     constructor(private readonly eventsService: EventsService) {}
 
     @Get()
-    findAll(@AuthUser('id') userId: number): Observable<GetEventResponseDto[]> {
+    findAll(@AuthUser('id') userId: number): Observable<FetchEventResponseDto[]> {
         return this.eventsService
             .search({
                 userId
             })
             .pipe(
                 map((list) =>
-                    plainToInstance(GetEventResponseDto, list, {
+                    plainToInstance(FetchEventResponseDto, list, {
                         excludeExtraneousValues: true
                     })
                 )
@@ -45,26 +45,30 @@ export class EventsController {
     }
 
     @Get(':eventId')
-    findOne(@Param('eventId', ParseIntPipe) eventId: number): Observable<Event> {
-        return this.eventsService.findOne(eventId);
+    findOne(
+        @AuthUser('id') userId: number,
+        @Param('eventId', ParseIntPipe) eventId: number
+    ): Observable<Event> {
+        return this.eventsService.findOne(eventId, userId);
     }
 
     @Post()
     create(
         @AuthUser('id') userId: number,
+        @AuthUser('uuid') userUUID: string,
         @Body() createEventDto: CreateEventRequestDto
     ): Promise<Event> {
-        return this.eventsService.create(userId, createEventDto as Event);
+        return this.eventsService.create(userUUID, userId, createEventDto as Event);
     }
 
     @Patch(':eventId')
     @HttpCode(HttpStatus.NO_CONTENT)
-    async update(
+    async patch(
         @AuthUser('id') userId: number,
         @Param('eventId', ParseIntPipe) eventId: number,
-        @Body() updateEventRequestDto: UpdateEventRequestDto
+        @Body() patchEventRequestDto: PatchEventRequestDto
     ): Promise<void> {
-        await this.eventsService.update(eventId, userId, updateEventRequestDto as Partial<Event>);
+        await this.eventsService.patch(eventId, userId, patchEventRequestDto as Partial<Event>);
     }
 
     @Delete(':eventId')
@@ -76,8 +80,8 @@ export class EventsController {
         await this.eventsService.remove(eventId, userId);
     }
 
-    clone(userId: number, eventId: number): Promise<Event> {
-        return this.eventsService.clone(eventId, userId);
+    clone(eventId: number, userId: number, userUUID: string): Promise<Event> {
+        return this.eventsService.clone(eventId, userId, userUUID);
     }
 
     connectToAvailability(
@@ -98,6 +102,7 @@ export class EventsController {
         @Req() req: Request,
         @Res() response: Response,
         @AuthUser('id') userId: number,
+        @AuthUser('uuid') userUUID: string,
         @Matrix({
             key: 'availabilityId',
             parseInt: true,
@@ -114,7 +119,7 @@ export class EventsController {
 
         switch (req.method) {
             case 'COPY':
-                responseBody = await this.clone(userId, parsedEventId);
+                responseBody = await this.clone(parsedEventId, userId, userUUID);
                 statusCode = HttpStatus.CREATED;
                 break;
             case 'LINK':

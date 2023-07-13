@@ -65,9 +65,9 @@ export class AvailabilityService {
     }
 
     fetchDetail(
-        availabilityId: number,
         userId: number,
-        userUUID: string
+        userUUID: string,
+        availabilityId: number
     ): Observable<Availability> {
         return from(
             this.availabilityRepository.findOneByOrFail({
@@ -78,8 +78,44 @@ export class AvailabilityService {
             mergeMap((availability) =>
                 from(
                     this.availabilityRedisRepository.getAvailabilityBody(
-                        availability.uuid,
-                        userUUID
+                        userUUID,
+                        availability.uuid
+                    )
+                ).pipe(
+                    map((availabilityBody) => {
+                        availability.availableTimes = availabilityBody.availableTimes;
+                        availability.overrides = availabilityBody.overrides;
+                        return availability;
+                    })
+                )
+            )
+        );
+    }
+
+    fetchDetailByUserWorkspaceAndLink(
+        userWorkspace: string,
+        eventLink: string
+    ): Observable<Availability> {
+        return from(
+            this.availabilityRepository.findOneOrFail({
+                relations: ['user'],
+                where: {
+                    user: {
+                        userSetting: {
+                            workspace: userWorkspace
+                        }
+                    },
+                    events: {
+                        link: eventLink
+                    }
+                }
+            })
+        ).pipe(
+            mergeMap((availability) =>
+                from(
+                    this.availabilityRedisRepository.getAvailabilityBody(
+                        availability.user.uuid,
+                        availability.uuid
                     )
                 ).pipe(
                     map((availabilityBody) => {
@@ -95,7 +131,7 @@ export class AvailabilityService {
     async create(
         userId: number,
         userUUID: string,
-        { name, availableTimes, overrides }: CreateAvailabilityRequestDto
+        { name, availableTimes, overrides, timezone }: CreateAvailabilityRequestDto
     ): Promise<Availability> {
         const newAvailabilityBody = {
             availableTimes,
@@ -104,12 +140,13 @@ export class AvailabilityService {
 
         const savedAvailability = await this.availabilityRepository.save({
             userId,
-            name
+            name,
+            timezone
         });
 
         await this.availabilityRedisRepository.save(
-            savedAvailability.uuid,
             userUUID,
+            savedAvailability.uuid,
             newAvailabilityBody
         );
 
@@ -120,8 +157,9 @@ export class AvailabilityService {
     }
 
     async update(
-        availabilityId: number,
+        userId: number,
         userUUID: string,
+        availabilityId: number,
         updateAvailabilityDto: UpdateAvailabilityRequestDto
     ): Promise<boolean> {
         const {
@@ -131,6 +169,8 @@ export class AvailabilityService {
             timezone,
             default: availabilityDefault
         } = updateAvailabilityDto;
+
+        await this.validator.validate(userId, availabilityId, Availability);
 
         const availability = await this.availabilityRepository.findOneByOrFail({
             id: availabilityId
@@ -143,7 +183,7 @@ export class AvailabilityService {
         });
 
         if (updateResult.affected && updateResult.affected > 0) {
-            await this.availabilityRedisRepository.save(availability.uuid, userUUID, {
+            await this.availabilityRedisRepository.set(userUUID, availability.uuid, {
                 availableTimes,
                 overrides
             });
@@ -157,9 +197,9 @@ export class AvailabilityService {
     }
 
     async patch(
-        availabilityId: number,
         userId: number,
         userUUID: string,
+        availabilityId: number,
         patchAvailabilityDto: PatchAvailabilityRequestDto
     ): Promise<boolean> {
         const {
@@ -215,13 +255,37 @@ export class AvailabilityService {
          * Notice availability uuid is fetched from rdb
          */
         if (availableTimes && overrides) {
-            await this.availabilityRedisRepository.save(availability.uuid, userUUID, {
+            await this.availabilityRedisRepository.update(userUUID, availability.uuid, {
                 availableTimes,
                 overrides
             });
         }
 
         return true;
+    }
+
+    async patchAll(
+        userId: number,
+        userUUID: string,
+        { availableTimes, overrides }: PatchAvailabilityRequestDto
+    ): Promise<boolean> {
+        /**
+         * TDDO: it should be split into another api.
+         * Notice availability uuid is fetched from rdb
+         */
+        let availabilityBodyUpdateSuccess = false;
+
+        if (availableTimes && overrides) {
+            availabilityBodyUpdateSuccess = await this.availabilityRedisRepository.updateAll(
+                userUUID,
+                {
+                    availableTimes,
+                    overrides
+                }
+            );
+        }
+
+        return availabilityBodyUpdateSuccess;
     }
 
     async remove(availabilityId: number, userId: number, userUUID: string): Promise<boolean> {
@@ -240,8 +304,8 @@ export class AvailabilityService {
 
         if (loadedAvailability && deleteResult.affected && deleteResult.affected > 0) {
             await this.availabilityRedisRepository.deleteAvailabilityBody(
-                loadedAvailability.uuid,
-                userUUID
+                userUUID,
+                loadedAvailability.uuid
             );
         }
 

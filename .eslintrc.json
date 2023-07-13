@@ -12,23 +12,27 @@
     ],
     "extends": [
         "plugin:@typescript-eslint/recommended",
-        "plugin:@typescript-eslint/recommended-requiring-type-checking",
-        "plugin:prettier/recommended"
+        "plugin:@typescript-eslint/recommended-requiring-type-checking"
     ],
     "root": true,
     "env": {
         "node": true
     },
     "rules": {
-        "prettier/prettier": [
+        "indent": "off",
+        "@typescript-eslint/indent": [
             "error",
-            {},
+            4,
             {
-                "usePrettierrc": true
+                "SwitchCase": 1,
+                "flatTernaryExpressions": false,
+                "ignoredNodes": [
+                    "PropertyDefinition[decorators]",
+                    "TSUnionType",
+                    "FunctionExpression[params]:has(Identifier[decorators])"
+                ]
             }
         ],
-        "indent": "off",
-        "@typescript-eslint/indent": "off",
         "@typescript-eslint/restrict-plus-operands": "error",
         "@typescript-eslint/naming-convention": [
             "error",

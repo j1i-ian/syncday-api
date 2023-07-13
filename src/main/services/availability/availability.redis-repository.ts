@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cluster } from 'ioredis';
-import { Observable, from, switchMap } from 'rxjs';
+import { Observable, from, mergeMap } from 'rxjs';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
@@ -13,6 +14,8 @@ export class AvailabilityRedisRepository {
         private readonly syncdayRedisService: SyncdayRedisService,
         @AppInjectCluster() private readonly cluster: Cluster
     ) {}
+
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
 
     async getAvailabilityBodyRecord(userUUID: string): Promise<Record<string, AvailabilityBody>> {
         const availabilityListKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
@@ -27,8 +30,8 @@ export class AvailabilityRedisRepository {
     }
 
     async getAvailabilityBody(
-        availabilityUUID: string,
-        userUUID: string
+        userUUID: string,
+        availabilityUUID: string
     ): Promise<AvailabilityBody> {
         const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
 
@@ -38,8 +41,10 @@ export class AvailabilityRedisRepository {
         );
 
         if (!availabilityBodyJsonString) {
+            this.logger.error(`CannotFindAvailabilityBody: availabilityUUID is ${availabilityUUID}, user uuid: ${userUUID}, availabilityUserKey: ${availabilityUserKey as string}`);
             throw new CannotFindAvailabilityBody();
         }
+
         const availabilityBody =
             (JSON.parse(availabilityBodyJsonString as unknown as string) as AvailabilityBody) ??
             null;
@@ -48,10 +53,38 @@ export class AvailabilityRedisRepository {
     }
 
     async save(
-        availabilityUUID: string,
         userUUID: string,
+        availabilityUUID: string,
         availabilityBody: AvailabilityBody
     ): Promise<AvailabilityBody> {
+        const createdHashFieldCount = await this.set(userUUID, availabilityUUID, availabilityBody);
+
+        if (createdHashFieldCount !== 1) {
+            throw new AvailabilityBodySaveFail();
+        } else {
+            return availabilityBody;
+        }
+    }
+
+    async update(
+        userUUID: string,
+        availabilityUUID: string,
+        availabilityBody: AvailabilityBody
+    ): Promise<boolean> {
+        const createdHashFieldCount = await this.set(userUUID, availabilityUUID, availabilityBody);
+
+        if (createdHashFieldCount !== 0) {
+            throw new AvailabilityBodySaveFail();
+        } else {
+            return true;
+        }
+    }
+
+    async set(
+        userUUID: string,
+        availabilityUUID: string,
+        availabilityBody: AvailabilityBody
+    ): Promise<number> {
         availabilityBody.availableTimes = availabilityBody.availableTimes.sort(
             (availableTimeA, availableTimeB) => availableTimeA.day - availableTimeB.day
         );
@@ -66,24 +99,69 @@ export class AvailabilityRedisRepository {
             );
 
         const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
-        const updatedHashFields = await this.cluster.hset(
+        const createdHashFields = await this.cluster.hset(
             availabilityUserKey,
             availabilityUUID,
             JSON.stringify(availabilityBody)
         );
 
-        if (updatedHashFields !== 1) {
+        return createdHashFields;
+    }
+
+    async updateAll(userUUID: string, updateAvailabilityBody: AvailabilityBody): Promise<boolean> {
+        const allAvailabilityRecordOfUser = await this.getAvailabilityBodyRecord(userUUID);
+
+        // sort
+        updateAvailabilityBody.availableTimes = updateAvailabilityBody.availableTimes.sort(
+            (availableTimeA, availableTimeB) => availableTimeA.day - availableTimeB.day
+        );
+
+        // ascending
+        updateAvailabilityBody.overrides = updateAvailabilityBody.overrides
+            .filter((override) => new Date(override.targetDate).getTime() > Date.now())
+            .sort(
+                (overrideA, overrideB) =>
+                    new Date(overrideB.targetDate).getTime() -
+                    new Date(overrideA.targetDate).getTime()
+            );
+
+        const updatedAvailabilityMap: Map<string, string> = Object.keys(
+            allAvailabilityRecordOfUser
+        ).reduce((_availabilityBodyMap, availabilityUUIDKey) => {
+            _availabilityBodyMap.set(availabilityUUIDKey, JSON.stringify(updateAvailabilityBody));
+            return _availabilityBodyMap;
+        }, new Map());
+
+        const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
+
+        /**
+         * all fields should be updated, so the created item should not exist
+         */
+        const createdFieldsCount = await this.cluster.hset(
+            availabilityUserKey,
+            updatedAvailabilityMap
+        );
+
+        if (createdFieldsCount !== 0) {
             throw new AvailabilityBodySaveFail();
         } else {
-            return availabilityBody;
+            return true;
         }
     }
 
-    async deleteAvailabilityBody(availabilityUUID: string, userUUID: string): Promise<boolean> {
+    async deleteAvailabilityBody(userUUID: string, availabilityUUID: string): Promise<boolean> {
         const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
         const deleteCount = await this.cluster.hdel(availabilityUserKey, availabilityUUID);
 
         return deleteCount === 1;
+    }
+
+    async deleteAll(userUUID: string, availabilityUUIDs: string[]): Promise<boolean>{
+        const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(userUUID);
+        const deleteCount = await this.cluster.hdel(availabilityUserKey, ...availabilityUUIDs);
+
+        const deleteSuccess = deleteCount >= 1;
+        return deleteSuccess;
     }
 
     clone(
@@ -91,8 +169,8 @@ export class AvailabilityRedisRepository {
         sourceAvailabilityUUID: string,
         newAvailabilityUUID: string
     ): Observable<AvailabilityBody> {
-        return from(this.getAvailabilityBody(sourceAvailabilityUUID, userUUID)).pipe(
-            switchMap((availabilityBody) =>
+        return from(this.getAvailabilityBody(userUUID, sourceAvailabilityUUID)).pipe(
+            mergeMap((availabilityBody) =>
                 this.save(userUUID, newAvailabilityUUID, availabilityBody)
             )
         );

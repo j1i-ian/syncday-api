@@ -1,13 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { SNSClient } from '@aws-sdk/client-sns';
+import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
+import { SyncdayAwsSdkSnsNotificationService } from '@core/interfaces/integrations/syncday-aws-sdk-sns-notification-service.enum';
+import { AppConfigService } from '@config/app-config.service';
+import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
+import { FileUtilsService } from '@services/util/file-utils/file-utils.service';
 import { Language } from '@app/enums/language.enum';
 import { TestMockUtil } from '@test/test-mock-util';
-import { MailerService } from '@nestjs-modules/mailer';
+import { faker } from '@faker-js/faker';
 import { IntegrationsService } from './integrations.service';
-import { FileUtilsService } from '../util/file-utils/file-utils.service';
 
 const testMockUtil = new TestMockUtil();
 
@@ -15,13 +17,19 @@ describe('IntegrationsService', () => {
     let service: IntegrationsService;
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
-    let fileUtilsServiceStub: sinon.SinonStubbedInstance<FileUtilsService>;
-    let mailerServiceStub: sinon.SinonStubbedInstance<MailerService>;
-    let googleIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegration>>;
+    let awsSnsClientStub: sinon.SinonStubbedInstance<SNSClient>;
+    let fileUtilsServiceStub: SinonStubbedInstance<FileUtilsService>;
+    let syncdayAwsSdkClientServiceStub: sinon.SinonStubbedInstance<SyncdayAwsSdkClientService>;
+
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
+        awsSnsClientStub = sinon.createStubInstance(SNSClient);
         fileUtilsServiceStub = sinon.createStubInstance(FileUtilsService);
-        mailerServiceStub = sinon.createStubInstance(MailerService);
+        syncdayAwsSdkClientServiceStub = sinon.createStubInstance(SyncdayAwsSdkClientService);
+
+        sinon.stub(AppConfigService, 'getAwsSnsTopicARNSyncdayNotification').returns(
+            'fakeAwsSnsTopicARNSyncdayNotification'
+        );
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -31,16 +39,16 @@ describe('IntegrationsService', () => {
                     useValue: configServiceStub
                 },
                 {
+                    provide: 'AWS_SERVICE_UNDEFINED',
+                    useValue: awsSnsClientStub
+                },
+                {
                     provide: FileUtilsService,
                     useValue: fileUtilsServiceStub
                 },
                 {
-                    provide: MailerService,
-                    useValue: mailerServiceStub
-                },
-                {
-                    provide: getRepositoryToken(GoogleIntegration),
-                    useValue: googleIntegrationRepositoryStub
+                    provide: SyncdayAwsSdkClientService,
+                    useValue: syncdayAwsSdkClientServiceStub
                 }
             ]
         }).compile();
@@ -48,32 +56,40 @@ describe('IntegrationsService', () => {
         service = module.get<IntegrationsService>(IntegrationsService);
     });
 
+    after(() => {
+        sinon.restore();
+    });
+
     it('should be defined', () => {
         expect(service).ok;
     });
 
     describe('Test Verification email sent', () => {
-        afterEach(() => {
-            fileUtilsServiceStub.getEmailTemplate.reset();
-            mailerServiceStub.sendMail.reset();
-        });
-
         it('should be sent verification email', async () => {
-            const emailSourceStub = '{{host}} {{email}} {{verificationCode}}';
-            const emailSubjectSourceStub = '[Sync] 이메일 주소를 확인해주세요';
-
+            const recipientMock = faker.internet.email();
+            const emailTemplateMock = EmailTemplate.VERIFICATION;
+            const languageMock = Language.ENGLISH;
             const verificationMock = testMockUtil.getVerificationMock();
 
-            fileUtilsServiceStub.getEmailTemplate.resolves(emailSourceStub);
-            fileUtilsServiceStub.getEmailSubject.resolves(emailSubjectSourceStub);
+            const publishCommandOutputStub = {
+                MessageId: 'a8b9c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d',
+                $metadata: {
+                    httpStatusCode: 200
+                }
+            };
 
-            mailerServiceStub.sendMail.resolves('success');
+            syncdayAwsSdkClientServiceStub.getSNSClient.returns(awsSnsClientStub);
+            awsSnsClientStub.send.resolves(publishCommandOutputStub);
 
-            const result = await service.sendVerificationEmail(verificationMock, Language.ENGLISH);
+            const result = await service.sendMessage(
+                SyncdayAwsSdkSnsNotificationService.EMAIL,
+                emailTemplateMock,
+                recipientMock,
+                languageMock,
+                JSON.stringify(verificationMock)
+            );
 
-            expect(fileUtilsServiceStub.getEmailTemplate.called).true;
-            expect(mailerServiceStub.sendMail.called).true;
-
+            expect(awsSnsClientStub.send.called).ok;
             expect(result).true;
         });
     });

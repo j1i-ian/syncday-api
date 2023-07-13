@@ -1,14 +1,16 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { Observable, firstValueFrom, forkJoin, from, map, mergeMap, of } from 'rxjs';
+import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { Event } from '@core/entities/events/event.entity';
 import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
+import { UtilService } from '@services/util/util.service';
 import { Availability } from '@entity/availability/availability.entity';
 import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
+import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { Validator } from '@criteria/validator';
 
 @Injectable()
@@ -16,6 +18,7 @@ export class EventsService {
     constructor(
         private readonly validator: Validator,
         private readonly eventRedisRepository: EventsRedisRepository,
+        private readonly utilService: UtilService,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(EventGroup) private readonly eventGroupRepository: Repository<EventGroup>,
         @InjectRepository(Event) private readonly eventRepository: Repository<Event>
@@ -24,29 +27,56 @@ export class EventsService {
     search(searchOption: EventsSearchOption): Observable<Event[]> {
         return from(
             this.eventRepository.find({
-                relations: ['eventGroup'],
+                relations: ['eventGroup', 'eventDetail'],
                 where: {
                     eventGroup: {
                         userId: searchOption.userId
                     },
-                    availabilityId: searchOption.availabilityId
+                    availability: {
+                        id: searchOption.availabilityId,
+                        user: {
+                            userSetting: {
+                                workspace: searchOption.userWorkspace
+                            }
+                        }
+                    }
                 },
                 order: {
                     priority: 'DESC'
                 }
             })
+        ).pipe(
+            // TODO: should be refactored
+            mergeMap((_events) => {
+                const eventDetailUUIDs = _events.map((_event) => _event.eventDetail.uuid);
+
+                return this.eventRedisRepository.getEventDetailRecords(eventDetailUUIDs)
+                    .pipe(
+                        map((eventDetailsRecord) => _events.map((__event) => {
+                            const eventDetailBody = eventDetailsRecord[__event.eventDetail.uuid];
+
+                            __event.eventDetail = {
+                                ...__event.eventDetail,
+                                ...eventDetailBody
+                            };
+                            return __event;
+                        }))
+                    );
+            })
         );
     }
 
-    findOne(eventId: number): Observable<Event> {
+    findOne(eventId: number, userId: number): Observable<Event> {
         return from(
-            this.eventRepository.findOneOrFail({
-                relations: ['eventDetail'],
-                where: {
-                    id: eventId
-                }
-            })
+            this.validator.validate(userId, eventId, Event)
         ).pipe(
+            mergeMap(() =>
+                this.eventRepository.findOneOrFail({
+                    relations: ['eventDetail'],
+                    where: {
+                        id: eventId
+                    }
+                })),
             mergeMap((loadedEvent) => {
                 const eventDetail = loadedEvent.eventDetail;
                 const eventDetailUUID = eventDetail.uuid;
@@ -54,49 +84,131 @@ export class EventsService {
                 return forkJoin({
                     inviteeQuestions:
                         this.eventRedisRepository.getInviteeQuestions(eventDetailUUID),
-                    reminders: this.eventRedisRepository.getReminders(eventDetailUUID),
-                    event: of(loadedEvent)
+                    notificationInfo: this.eventRedisRepository.getNotificationInfo(eventDetailUUID),
+                    eventSetting: this.eventRedisRepository.getEventSetting(eventDetailUUID)
                 }).pipe(
-                    map(({ inviteeQuestions, reminders, event }) => {
-                        event.eventDetail.inviteeQuestions = inviteeQuestions;
-                        event.eventDetail.reminders = reminders;
-                        return event;
+                    map(({ inviteeQuestions, notificationInfo, eventSetting }) => {
+                        loadedEvent.eventDetail.inviteeQuestions = inviteeQuestions;
+                        loadedEvent.eventDetail.notificationInfo = notificationInfo;
+                        loadedEvent.eventDetail.eventSetting = eventSetting;
+                        return loadedEvent;
                     })
                 );
             })
         );
     }
 
-    async create(userId: number, newEvent: Event): Promise<Event> {
-        const defaultEventGroup = await this.eventGroupRepository.findOneByOrFail({ userId });
+    findOneByUserWorkspaceAndUUID(userWorkspace: string, eventUUID: string): Observable<Event> {
+        return from(
+            this.eventRepository.findOneOrFail({
+                relations: ['eventDetail', 'availability'],
+                where: {
+                    uuid: eventUUID,
+                    availability: {
+                        user: {
+                            userSetting: {
+                                workspace: userWorkspace
+                            }
+                        }
+                    }
+                }
+            })
+        );
+    }
+
+    findOneByUserWorkspaceAndLink(userWorkspace: string, eventLink: string): Observable<Event> {
+
+        return from(this.eventRepository.findOneOrFail({
+            relations: ['eventDetail'],
+            where: {
+                link: eventLink,
+                availability: {
+                    user: {
+                        userSetting: {
+                            workspace: userWorkspace
+                        }
+                    }
+                }
+            }
+        })).pipe(
+            mergeMap((loadedEvent) => {
+                const eventDetail = loadedEvent.eventDetail;
+                const eventDetailUUID = eventDetail.uuid;
+
+                return forkJoin({
+                    inviteeQuestions:
+                        this.eventRedisRepository.getInviteeQuestions(eventDetailUUID),
+                    notificationInfo: this.eventRedisRepository.getNotificationInfo(eventDetailUUID),
+                    eventSetting: this.eventRedisRepository.getEventSetting(eventDetailUUID)
+                }).pipe(
+                    map(({ inviteeQuestions, notificationInfo, eventSetting }) => {
+                        loadedEvent.eventDetail.inviteeQuestions = inviteeQuestions;
+                        loadedEvent.eventDetail.notificationInfo = notificationInfo;
+                        loadedEvent.eventDetail.eventSetting = eventSetting;
+                        return loadedEvent;
+                    })
+                );
+            })
+        );
+    }
+
+    async create(userUUID: string, userId: number, newEvent: Event): Promise<Event> {
+        const defaultEventGroup = await this.eventGroupRepository.findOneOrFail({
+            relations: ['user', 'user.availabilities'],
+            where: {
+                userId,
+                user: {
+                    availabilities: {
+                        default: true
+                    }
+                }
+            }
+        });
+
+        const defaultAvailability = defaultEventGroup.user.availabilities.pop();
+
+        if (defaultAvailability) {
+            newEvent.availabilityId = defaultAvailability.id;
+        } else {
+            throw new NoDefaultAvailabilityException();
+        }
 
         newEvent.eventGroupId = defaultEventGroup.id;
 
+        const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(userUUID, newEvent.name);
+
+        if (isAlreadyUsedIn) {
+            const generatedEventSuffix = this.utilService.generateUniqueNumber();
+            newEvent.link = `${newEvent.name}-${generatedEventSuffix}`;
+        } else {
+            newEvent.link = newEvent.name;
+        }
+
+        const ensuredNewEvent = this.utilService.getDefaultEvent(newEvent);
+
         // save relation data
         // event detail is saved by orm cascading.
-        const savedEvent = await this.eventRepository.save(newEvent);
+        const savedEvent = await this.eventRepository.save(ensuredNewEvent);
 
         const savedEventDetail = savedEvent.eventDetail;
 
         // save consumption data
-        const newEventDetail = newEvent.eventDetail;
-        const { inviteeQuestions, reminders } = newEventDetail;
-        const savedEventDetailBody = await this.eventRedisRepository.save(
-            savedEventDetail.uuid,
-            inviteeQuestions,
-            reminders
-        );
+        const newEventDetail = ensuredNewEvent.eventDetail;
+        const { inviteeQuestions, notificationInfo, eventSetting } = newEventDetail;
+        const savedEventDetailBody = await this.eventRedisRepository.save(savedEventDetail.uuid, inviteeQuestions, notificationInfo, eventSetting);
 
         savedEvent.eventDetail.inviteeQuestions = savedEventDetailBody.inviteeQuestions;
-        savedEvent.eventDetail.reminders = savedEventDetailBody.reminders;
+        savedEvent.eventDetail.notificationInfo = savedEventDetailBody.notificationInfo;
+
+        await this.eventRedisRepository.setEventLinkSetStatus(userUUID, savedEvent.name);
 
         return savedEvent;
     }
 
-    async update(eventId: number, userId: number, updateEvent: Partial<Event>): Promise<boolean> {
+    async patch(eventId: number, userId: number, patchEvent: Partial<Event>): Promise<boolean> {
         await this.validator.validate(userId, eventId, Event);
 
-        const updateResult = await this.eventRepository.update(eventId, updateEvent);
+        const updateResult = await this.eventRepository.update(eventId, patchEvent);
 
         const updateSuccess = updateResult && updateResult.affected && updateResult.affected > 0;
 
@@ -133,7 +245,7 @@ export class EventsService {
         return deleteSuccess;
     }
 
-    async clone(eventId: number, userId: number): Promise<Event> {
+    async clone(eventId: number, userId: number, uesrUUID: string): Promise<Event> {
         const validatedEvent = await this.validator.validate(userId, eventId, Event);
 
         /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -152,7 +264,9 @@ export class EventsService {
         } = newEventBody.eventDetail;
         /* eslint-enable @typescript-eslint/no-unused-vars */
 
+        const generatedEventSuffix = this.utilService.generateUniqueNumber();
         newEventBody.eventDetail = newEventDetailBody as EventDetail;
+        newEventBody.link = `${validatedEvent.link}-${generatedEventSuffix}`;
 
         const clonedEvent = await this.eventRepository.save(newEventBody);
 
@@ -160,8 +274,11 @@ export class EventsService {
             this.eventRedisRepository.clone(eventDetailUUID, clonedEvent.eventDetail.uuid)
         );
 
+        await this.eventRedisRepository.setEventLinkSetStatus(uesrUUID, clonedEvent.link);
+
         clonedEvent.eventDetail.inviteeQuestions = clonedEventDetailBody.inviteeQuestions;
-        clonedEvent.eventDetail.reminders = clonedEventDetailBody.reminders;
+        clonedEvent.eventDetail.notificationInfo = clonedEventDetailBody.notificationInfo;
+        clonedEvent.eventDetail.eventSetting = clonedEventDetailBody.eventSetting;
 
         return clonedEvent;
     }

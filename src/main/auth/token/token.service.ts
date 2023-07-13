@@ -5,6 +5,7 @@ import { compare } from 'bcrypt';
 import { oauth2_v2 } from 'googleapis';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
+import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
@@ -18,11 +19,11 @@ export interface EnsuredGoogleTokenResponse {
 }
 
 export type EnsuredGoogleOAuth2User = oauth2_v2.Schema$Userinfo &
-    EnsuredGoogleTokenResponse & {
-        email: string;
-        name: string;
-        picture: string;
-    };
+EnsuredGoogleTokenResponse & {
+    email: string;
+    name: string;
+    picture: string;
+};
 
 @Injectable()
 export class TokenService {
@@ -32,6 +33,7 @@ export class TokenService {
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
         private readonly googleIntegrationFacade: GoogleIntegrationFacade,
+        private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly googleConverterService: GoogleConverterService
     ) {
         this.jwtOption = AppConfigService.getJwtOptions(this.configService);
@@ -46,35 +48,53 @@ export class TokenService {
     async issueTokenByGoogleOAuth(
         authorizationCode: string,
         language: Language
-    ): Promise<{
-        issuedToken: CreateTokenResponseDto;
-        isNewbie: boolean;
-    }> {
-        const { googleUser, calendars, tokens } =
-            await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode);
+    ): Promise<{ issuedToken: CreateTokenResponseDto; isNewbie: boolean }> {
+        const { googleUser, calendars, schedules, tokens } =
+            await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode, {
+                onlyPrimaryCalendarSchedule: true
+            });
 
-        let isNewbie = false;
         let loadedUserOrNull = await this.userService.findUserByEmail(googleUser.email);
 
-        if (loadedUserOrNull === null || loadedUserOrNull === undefined) {
+        const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
+        let isNewbie = loadedUserOrNull === null || loadedUserOrNull === undefined;
+
+        if (isNewbie) {
             const createUserRequestDto: CreateUserRequestDto = {
                 email: googleUser.email,
                 name: googleUser.name
             };
 
-            const newGoogleCalendarIntegrations =
-                this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
-
             loadedUserOrNull = await this.userService.createUserByGoogleOAuth2(
                 createUserRequestDto,
                 tokens,
                 newGoogleCalendarIntegrations,
+                {
+                    calendars,
+                    schedules
+                },
                 language
             );
+
             isNewbie = true;
+        } else {
+
+            const ensuredUser = loadedUserOrNull as User;
+            const hasUserGoogleIntegration =
+            ensuredUser.googleIntergrations &&
+            ensuredUser.googleIntergrations.length > 0;
+
+            // TODO: This logic cannot support multiple google integrations. After collecting google integration, we should update this block.
+            // old user but has no google integration
+            if (hasUserGoogleIntegration === false) {
+                await this.googleIntegrationService.create(ensuredUser, tokens, newGoogleCalendarIntegrations, {
+                    calendars,
+                    schedules
+                });
+            }
         }
 
-        const issuedToken = this.issueToken(loadedUserOrNull);
+        const issuedToken = this.issueToken(loadedUserOrNull as User);
         return { issuedToken, isNewbie };
     }
 

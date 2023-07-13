@@ -3,13 +3,12 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE, RouterModule } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WinstonModule } from 'nest-winston';
-import { AwsSdkModule } from 'nest-aws-sdk';
 import { routes } from '@config/routes';
 import { AppConfigService } from '@config/app-config.service';
 import { UserModule } from '@services/users/user.module';
+import { SyncdayAwsSdkClientModule } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.module';
 import { GlobalExceptionFilter } from '@app/filters/global-exception.filter';
 import { ClusterModule } from '@liaoliaots/nestjs-redis';
-import { MailerModule } from '@nestjs-modules/mailer';
 import { AppController } from './app.controller';
 import { AuthModule } from './main/auth/auth.module';
 import { JwtAuthGuard } from './main/auth/strategy/jwt/jwt-auth.guard';
@@ -18,6 +17,8 @@ import { IntegrationsModule } from './main/services/integrations/integrations.mo
 import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
 import { AvailabilityModule } from './main/services/availability/availability.module';
 import { EventsModule } from './main/services/events/events.module';
+import { BookingsModule } from './main/services/bookings/bookings.module';
+import { SchedulesModule } from './main/services/schedules/schedules.module';
 
 @Module({
     imports: [
@@ -28,8 +29,6 @@ import { EventsModule } from './main/services/events/events.module';
         TypeOrmModule.forRootAsync(AppConfigService.getDatabaseConfigs()),
         WinstonModule.forRootAsync(AppConfigService.getWinstonModuleSetting()),
         ClusterModule.forRootAsync(AppConfigService.getRedisModuleOptions()),
-        AwsSdkModule.forRootAsync(AppConfigService.getAWSSDKOptions()),
-        MailerModule.forRootAsync(AppConfigService.getNodeMailerModuleOptions()),
 
         UserModule,
 
@@ -43,7 +42,11 @@ import { EventsModule } from './main/services/events/events.module';
 
         AvailabilityModule,
 
-        EventsModule
+        EventsModule,
+
+        SyncdayAwsSdkClientModule,
+        BookingsModule,
+        SchedulesModule
     ],
     controllers: [AppController],
     providers: [

@@ -1,8 +1,9 @@
-import { Repository } from 'typeorm';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { EntityManager, Repository } from 'typeorm';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Observable, from } from 'rxjs';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
+import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { PatchUserSettingRequestDto } from '@share/@dto/users/user-settings/patch-user-setting-request.dto';
 import { UserSettingSearchOption } from '@share/@interfaces/users/user-settings/user-setting-search-option.interface';
@@ -48,26 +49,34 @@ export class UserSettingService {
         return updateResult.affected ? updateResult.affected > 0 : false;
     }
 
-    async createUserWorkspaceStatus(userId: number, newWorkspace: string): Promise<boolean> {
+    async createUserWorkspaceStatus(
+        manager: EntityManager,
+        userId: number,
+        newWorkspace: string
+    ): Promise<boolean> {
+
+        const _userSettingRepository = manager.getRepository(UserSetting);
+
         // for validation again
         const _workspaceUsageStatus = await this.syncdayRedisService.getWorkspaceStatus(
             newWorkspace
         );
 
         if (_workspaceUsageStatus === true) {
-            throw new BadRequestException('already used workspace');
+            throw new AlreadyUsedInWorkspace();
         }
 
-        const loadedUserSetting = await this.userSettingRepository.findOneByOrFail({
+        const loadedUserSetting = await _userSettingRepository.findOneByOrFail({
             userId
         });
         const previousWorkspace = loadedUserSetting.workspace;
 
+        // TODO: it should be wrapped by rxjs finalized.
         await this.syncdayRedisService.deleteWorkspaceStatus(previousWorkspace);
 
         const workspaceStatus = await this.syncdayRedisService.setWorkspaceStatus(newWorkspace);
 
-        await this.userSettingRepository.update({ userId }, { workspace: newWorkspace });
+        await _userSettingRepository.update({ userId }, { workspace: newWorkspace });
 
         return workspaceStatus;
     }

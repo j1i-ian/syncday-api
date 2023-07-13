@@ -54,10 +54,10 @@ describe('VerificationService', () => {
 
     describe('Test email verification', () => {
         afterEach(() => {
-            clusterStub.set.reset();
+            clusterStub.setex.reset();
             clusterStub.get.reset();
             utilServiceStub.generateRandomNumberString.reset();
-            integrationsServiceStub.sendVerificationEmail.reset();
+            integrationsServiceStub.sendMessage.reset();
             syncdayRedisServiceStub.getEmailVerificationKey.reset();
         });
 
@@ -70,15 +70,15 @@ describe('VerificationService', () => {
 
                 syncdayRedisServiceStub.getEmailVerificationKey.returns(fakeEmailKey);
                 utilServiceStub.generateRandomNumberString.returns('0123');
-                integrationsServiceStub.sendVerificationEmail.resolves(true);
-                clusterStub.set.resolves('OK');
+                integrationsServiceStub.sendMessage.resolves(true);
+                clusterStub.setex.resolves('OK');
 
                 const result = await service.createVerification(emailMock, languageMock);
 
                 expect(syncdayRedisServiceStub.getEmailVerificationKey.called).true;
                 expect(utilServiceStub.generateRandomNumberString.called).true;
-                expect(integrationsServiceStub.sendVerificationEmail.called).true;
-                expect(clusterStub.set.called).true;
+                expect(integrationsServiceStub.sendMessage.called).true;
+                expect(clusterStub.setex.called).true;
 
                 expect(result).true;
             });
@@ -89,15 +89,14 @@ describe('VerificationService', () => {
                 syncdayRedisServiceStub.getEmailVerificationKey.returns(fakeEmailKey);
 
                 utilServiceStub.generateRandomNumberString.returns('0123');
-                integrationsServiceStub.sendVerificationEmail.resolves(true);
-                clusterStub.set.resolves(null);
+                integrationsServiceStub.sendMessage.resolves(true);
 
                 const result = await service.createVerification(emailMock, languageMock);
 
                 expect(syncdayRedisServiceStub.getEmailVerificationKey.called).true;
                 expect(utilServiceStub.generateRandomNumberString.called).true;
-                expect(integrationsServiceStub.sendVerificationEmail.called).true;
-                expect(clusterStub.set.called).true;
+                expect(integrationsServiceStub.sendMessage.called).true;
+                expect(clusterStub.setex.called).true;
 
                 expect(result).false;
             });
@@ -137,6 +136,97 @@ describe('VerificationService', () => {
 
                 expect(syncdayRedisServiceStub.getEmailVerification.called).true;
                 expect(syncdayRedisServiceStub.getEmailVerificationStatus.called).true;
+
+                expect(result).false;
+            });
+        });
+    });
+
+    describe('Test phone verification', () => {
+        afterEach(() => {
+            clusterStub.setex.reset();
+            clusterStub.get.reset();
+            utilServiceStub.generateRandomNumberString.reset();
+            integrationsServiceStub.sendMessage.reset();
+            syncdayRedisServiceStub.getPhoneVerificationKey.reset();
+        });
+
+        describe('Test create verification test', () => {
+            const languageMock = Language.ENGLISH;
+            const fakePhoneKey = 'local:verifications:phone:+821012345678';
+
+            it('should be created phone verification when cluster saving is success', async () => {
+                const phoneMock = TestMockUtil.faker.phone.number();
+
+                syncdayRedisServiceStub.getPhoneVerificationKey.returns(fakePhoneKey);
+                utilServiceStub.generateRandomNumberString.returns('0123');
+                integrationsServiceStub.sendMessage.resolves(true);
+                clusterStub.setex.resolves('OK');
+
+                const result = await service.createVerificationWithPhoneNumber(phoneMock, languageMock);
+
+                expect(syncdayRedisServiceStub.getPhoneVerificationKey.called).true;
+                expect(utilServiceStub.generateRandomNumberString.called).true;
+                expect(integrationsServiceStub.sendMessage.called).true;
+                expect(clusterStub.setex.called).true;
+
+                expect(result).true;
+            });
+
+            it('should be not created phone verification when cluster saving is failed', async () => {
+                const phoneMock = TestMockUtil.faker.phone.number();
+
+                syncdayRedisServiceStub.getPhoneVerificationKey.returns(fakePhoneKey);
+
+                utilServiceStub.generateRandomNumberString.returns('0123');
+                integrationsServiceStub.sendMessage.resolves(true);
+                clusterStub.setex.resolves();
+
+                const result = await service.createVerificationWithPhoneNumber(phoneMock, languageMock);
+
+                expect(syncdayRedisServiceStub.getPhoneVerificationKey.called).true;
+                expect(utilServiceStub.generateRandomNumberString.called).true;
+                expect(integrationsServiceStub.sendMessage.called).true;
+                expect(clusterStub.setex.called).true;
+
+                expect(result).false;
+            });
+        });
+
+        describe('Test retrieving phone verification status', () => {
+            afterEach(() => {
+                syncdayRedisServiceStub.getPhoneVerification.reset();
+                syncdayRedisServiceStub.getPhoneVerificationStatus.reset();
+            });
+
+            it('should be got true when phone verification status is true', async () => {
+                const phoneMock = TestMockUtil.faker.phone.number();
+
+                const verificationStub = stubOne(Verification);
+
+                syncdayRedisServiceStub.getPhoneVerification.resolves(verificationStub);
+                syncdayRedisServiceStub.getPhoneVerificationStatus.resolves(true);
+
+                const result = await service.isVerifiedPhone(phoneMock);
+
+                expect(syncdayRedisServiceStub.getPhoneVerification.called).true;
+                expect(syncdayRedisServiceStub.getPhoneVerificationStatus.called).true;
+
+                expect(result).true;
+            });
+
+            it('should be got false when phone verification status is false', async () => {
+                const phoneMock = TestMockUtil.faker.phone.number();
+
+                const verificationStub = stubOne(Verification);
+
+                syncdayRedisServiceStub.getPhoneVerification.resolves(verificationStub);
+                syncdayRedisServiceStub.getPhoneVerificationStatus.resolves(false);
+
+                const result = await service.isVerifiedPhone(phoneMock);
+
+                expect(syncdayRedisServiceStub.getPhoneVerification.called).true;
+                expect(syncdayRedisServiceStub.getPhoneVerificationStatus.called).true;
 
                 expect(result).false;
             });

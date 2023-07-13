@@ -1,30 +1,20 @@
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Logger } from '@nestjs/common';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { GetObjectCommandOutput, S3 } from '@aws-sdk/client-s3';
-import { EmailTemplate } from '@app/enums/email-template.enum';
-import { Language } from '@app/enums/language.enum';
+import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { UtilService } from '../util.service';
 import { FileUtilsService } from './file-utils.service';
 
-describe('File Util Service Test', () => {
+describe('FileUtilsService', () => {
     let service: FileUtilsService;
 
-    const configServiceStub = {
-        get: () => {}
-    };
-
-    let awsS3ServiceStub: sinon.SinonStubbedInstance<S3>;
-
-    let logggerStub: sinon.SinonStubbedInstance<Logger>;
-
+    let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
+    let syncdayAwsSdkClientServiceStub: sinon.SinonStubbedInstance<SyncdayAwsSdkClientService>;
 
     before(async () => {
-        awsS3ServiceStub = sinon.createStubInstance(S3);
-        logggerStub = sinon.createStubInstance(Logger);
+        configServiceStub = sinon.createStubInstance(ConfigService);
         utilServiceStub = sinon.createStubInstance(UtilService);
+        syncdayAwsSdkClientServiceStub = sinon.createStubInstance(SyncdayAwsSdkClientService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -38,12 +28,8 @@ describe('File Util Service Test', () => {
                     useValue: utilServiceStub
                 },
                 {
-                    provide: 'AWS_SERVICE_UNDEFINED',
-                    useValue: awsS3ServiceStub
-                },
-                {
-                    provide: WINSTON_MODULE_PROVIDER,
-                    useValue: logggerStub
+                    provide: SyncdayAwsSdkClientService,
+                    useValue: syncdayAwsSdkClientServiceStub
                 }
             ]
         }).compile();
@@ -55,26 +41,10 @@ describe('File Util Service Test', () => {
         sinon.restore();
     });
 
-    it('Service Init Test', () => {
+    it('should be defined', () => {
         expect(service).ok;
     });
 
-    it('should got email template', async () => {
-        utilServiceStub.getMailAssetFullPath.returns('fakeFullPath');
-
-        const transformToStringSpy = sinon.spy();
-        const getObjectCommandOutputStub = {
-            Body: {
-                transformToString: () => transformToStringSpy
-            }
-        };
-        awsS3ServiceStub.getObject.resolves(
-            getObjectCommandOutputStub as unknown as GetObjectCommandOutput
-        );
-
-        const result = await service.getEmailTemplate(EmailTemplate.VERIFICATION, Language.ENGLISH);
-
-        expect(result).ok;
-        expect(getObjectCommandOutputStub).ok;
+    it.skip('should be get presignedurl', async () => {
     });
 });

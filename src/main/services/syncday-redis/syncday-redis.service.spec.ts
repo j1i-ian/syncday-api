@@ -193,12 +193,52 @@ describe('Redis Service Test', () => {
             expect(verification).true;
         });
 
+        it('coverage fill: getInviteeQuestionKey', () => {
+            const eventDetailUUIDMock = TestMockUtil.faker.datatype.uuid();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns(`local:event-detail:${eventDetailUUIDMock}:invitee-question`);
+
+            const result = service.getInviteeQuestionKey(eventDetailUUIDMock);
+
+            expect(result).ok;
+        });
+
+        it('coverage fill: getNotificationInfoKey', () => {
+            const eventDetailUUIDMock = TestMockUtil.faker.datatype.uuid();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns(`local:event-detail:${eventDetailUUIDMock}:notifications`);
+
+            const result = service.getNotificationInfoKey(eventDetailUUIDMock);
+
+            expect(result).ok;
+        });
+
+        it('coverage fill: getEventSettingKey', () => {
+            const eventDetailUUIDMock = TestMockUtil.faker.datatype.uuid();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns(`local:event-detail:${eventDetailUUIDMock}:event-setting`);
+
+            const result = service.getEventSettingKey(eventDetailUUIDMock);
+
+            expect(result).ok;
+        });
+
         it('coverage fill: getTemporaryUserKey', () => {
             const emailMock = TestMockUtil.faker.internet.email();
 
             serviceSandbox.stub(service, <any>'getRedisKey').returns('local:workspaces');
 
             const result = service.getTemporaryUserKey(emailMock);
+
+            expect(result).ok;
+        });
+
+        it('coverage fill: getEventLinkStatusKey', () => {
+            const userUUIDMock = TestMockUtil.faker.datatype.uuid();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns('local:workspaces');
+
+            const result = service.getEventLinkSetStatusKey(userUUIDMock);
 
             expect(result).ok;
         });
@@ -230,6 +270,97 @@ describe('Redis Service Test', () => {
             serviceSandbox.stub(service, <any>'getRedisKey').returns('local:something:redis:key');
 
             const result = service.getEmailVerificationStatusKey(emailMock, uuid);
+
+            expect(result).ok;
+        });
+
+        it('coverage fill: getRedisKey', () => {
+            const result = (service as any)['getRedisKey'](RedisStores.TOKENS_USERS, [
+                'test',
+                'test2'
+            ]);
+
+            expect(result).ok;
+        });
+    });
+
+    describe('Test Phone Verification', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            clusterStub.set.reset();
+            clusterStub.get.reset();
+            serviceSandbox.restore();
+        });
+
+        it('should be got phone verification', async () => {
+            const phoneMock = TestMockUtil.faker.phone.number();
+
+            const verificationStub = testMockUtil.getVerificationMock();
+            const verificationStubString = JSON.stringify(verificationStub);
+
+            serviceSandbox.stub(service, 'getPhoneVerificationKey').returns(phoneMock as RedisKey);
+            clusterStub.get.resolves(verificationStubString);
+
+            const verification = await service.getPhoneVerification(phoneMock);
+            expect(verification).ok;
+        });
+
+        it('should be got getphoneVerificationStatus', async () => {
+            const phoneMock = TestMockUtil.faker.phone.number();
+            const uuidMock = TestMockUtil.faker.datatype.uuid();
+
+            const statusJsonStringStub = 'true';
+
+            const keyStub = `local:+821012345678:${uuidMock}`;
+
+            serviceSandbox.stub(service, <any>'getPhoneVerificationStatusKey').returns(keyStub);
+
+            clusterStub.get.resolves(statusJsonStringStub);
+
+            const actualStatusJsonString = await service.getPhoneVerificationStatus(
+                phoneMock,
+                uuidMock
+            );
+
+            expect(actualStatusJsonString).true;
+        });
+
+        it('should be set phone verification status', async () => {
+            const phoneMock = TestMockUtil.faker.phone.number();
+            const uuidMock = TestMockUtil.faker.datatype.uuid();
+
+            serviceSandbox
+                .stub(service, 'getPhoneVerificationStatusKey')
+                .returns(phoneMock as RedisKey);
+
+            clusterStub.set.resolves('OK');
+
+            const verification = await service.setPhoneVerificationStatus(phoneMock, uuidMock);
+            expect(verification).true;
+        });
+
+        it('coverage fill: getPhoneVerificationKey', () => {
+            const phoneMock = TestMockUtil.faker.phone.number();
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns('local:something:redis:key');
+
+            const result = service.getPhoneVerificationKey(phoneMock);
+
+            expect(result).ok;
+        });
+
+        it('coverage fill: getPhoneVerificationStatusKey', () => {
+            const phoneMock = TestMockUtil.faker.phone.number();
+            const uuid = 'mockuuid';
+
+            serviceSandbox.stub(service, <any>'getRedisKey').returns('local:something:redis:key');
+
+            const result = service.getPhoneVerificationStatusKey(phoneMock, uuid);
 
             expect(result).ok;
         });

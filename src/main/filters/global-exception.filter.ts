@@ -4,6 +4,7 @@ import {
     ExceptionFilter,
     HttpException,
     Inject,
+    InternalServerErrorException,
     Logger,
     NotImplementedException,
     UnauthorizedException
@@ -32,10 +33,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let message = (exception as any).response?.message;
+        let exceptionType = InternalServerErrorException.name;
 
         const status = (exception as HttpException).getStatus?.() || 500;
 
         if (this.isWhiteListedException(exception as HttpException)) {
+            exceptionType = exception.name;
             message = exception.message || 'Unauthoized Information.';
         } else if (status / 100 === 5) {
             message = 'Server error happend.';
@@ -49,6 +52,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
         response.status(status).json({
             statusCode: status,
+            exception: exceptionType,
             message
         });
     }

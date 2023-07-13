@@ -1,29 +1,76 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
+import { ConfigService } from '@nestjs/config';
+import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
+import { IntegrationUtilsService } from '@services/util/integration-utils/integration-utils.service';
+import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
+import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
+import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleCalendarIntegrationsService } from './google-calendar-integrations.service';
 
 describe('GoogleCalendarIntegrationsService', () => {
+    let module: TestingModule;
     let service: GoogleCalendarIntegrationsService;
 
-    let gogoleCalendarIntegrationRepositoryStub: sinon.SinonStubbedInstance<
-        Repository<GoogleCalendarIntegration>
-    >;
+    let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
+    let integrationUtilsServiceStub: sinon.SinonStubbedInstance<IntegrationUtilsService>;
+    let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
+    let integrationsRedisRepositoryStub: sinon.SinonStubbedInstance<IntegrationsRedisRepository>;
+    let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
+    let googleCalendarIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleCalendarIntegration>>;
+
+    const _getRepository = (EntityClass: new () => any) =>
+        module.get(getRepositoryToken(EntityClass));
+
+    const datasourceMock = {
+        getRepository: _getRepository,
+        transaction: (callback: any) => Promise.resolve(callback({ getRepository: _getRepository }))
+    };
 
     before(async () => {
-        gogoleCalendarIntegrationRepositoryStub =
+        configServiceStub = sinon.createStubInstance(ConfigService);
+        integrationUtilsServiceStub = sinon.createStubInstance(IntegrationUtilsService);
+        googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
+
+        integrationsRedisRepositoryStub = sinon.createStubInstance<IntegrationsRedisRepository>(IntegrationsRedisRepository);
+        googleCalendarIntegrationRepositoryStub =
             sinon.createStubInstance<Repository<GoogleCalendarIntegration>>(Repository);
 
-        const module: TestingModule = await Test.createTestingModule({
+        module = await Test.createTestingModule({
             providers: [
                 GoogleCalendarIntegrationsService,
                 {
+                    provide: ConfigService,
+                    useValue: configServiceStub
+                },
+                {
+                    provide: IntegrationUtilsService,
+                    useValue: integrationUtilsServiceStub
+                },
+                {
+                    provide: GoogleConverterService,
+                    useValue: googleConverterServiceStub
+                },
+                {
+                    provide: IntegrationsRedisRepository,
+                    useValue: integrationsRedisRepositoryStub
+                },
+                {
+                    provide: getDataSourceToken(),
+                    useValue: datasourceMock
+                },
+                {
+                    provide: getRepositoryToken(GoogleIntegrationSchedule),
+                    useValue: googleIntegrationScheduleRepositoryStub
+                },
+                {
                     provide: getRepositoryToken(GoogleCalendarIntegration),
-                    useValue: gogoleCalendarIntegrationRepositoryStub
+                    useValue: googleCalendarIntegrationRepositoryStub
                 }
             ]
         }).compile();
@@ -37,15 +84,15 @@ describe('GoogleCalendarIntegrationsService', () => {
 
     describe('Test CRUD for google calendar integration', () => {
         afterEach(() => {
-            gogoleCalendarIntegrationRepositoryStub.find.reset();
-            gogoleCalendarIntegrationRepositoryStub.save.reset();
+            googleCalendarIntegrationRepositoryStub.find.reset();
+            googleCalendarIntegrationRepositoryStub.save.reset();
         });
 
         it('should be searched for calendar items', async () => {
             const userStub = stubOne(User);
             const calendarStubs = stub(GoogleCalendarIntegration);
 
-            gogoleCalendarIntegrationRepositoryStub.find.resolves(calendarStubs as any);
+            googleCalendarIntegrationRepositoryStub.find.resolves(calendarStubs as any);
 
             const calendars = await firstValueFrom(
                 service.search({
@@ -55,37 +102,57 @@ describe('GoogleCalendarIntegrationsService', () => {
 
             expect(calendars).ok;
             expect(calendars.length).greaterThan(0);
-            expect(gogoleCalendarIntegrationRepositoryStub.find.called).true;
+            expect(googleCalendarIntegrationRepositoryStub.find.called).true;
         });
 
         it('should be patched for calendar items', async () => {
             const userStub = stubOne(User);
-            const calendarStubs = stub(GoogleCalendarIntegration);
+            const calendarStubs = stub(GoogleCalendarIntegration, 5, {
+                setting: {
+                    conflictCheck: false,
+                    outboundWriteSync: true,
+                    inboundDecliningSync: false
+                }
+            });
 
-            gogoleCalendarIntegrationRepositoryStub.find.resolves(calendarStubs as any);
-            gogoleCalendarIntegrationRepositoryStub.save.resolves(calendarStubs as any);
+            const googleCalendarIntegrationsMock = calendarStubs[0];
 
-            const patchSuccess = await service.patch(userStub.id, calendarStubs);
+            googleCalendarIntegrationRepositoryStub.find.resolves([calendarStubs[0]] as any);
+            googleCalendarIntegrationRepositoryStub.save.resolves([calendarStubs[0]] as any);
+
+            const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+            googleCalendarIntegrationRepositoryStub.update.resolves(updateResultMock);
+
+            const patchSuccess = await service.patch(userStub.id, [googleCalendarIntegrationsMock]);
 
             expect(patchSuccess).true;
-            expect(gogoleCalendarIntegrationRepositoryStub.find.called).true;
-            expect(gogoleCalendarIntegrationRepositoryStub.save.called).true;
+            expect(googleCalendarIntegrationRepositoryStub.find.called).true;
+            expect(googleCalendarIntegrationRepositoryStub.save.called).true;
         });
 
         it('should be threw error when there is calendar in request array that is not owned of user', async () => {
             const userStub = stubOne(User);
-            const calendarStubs = stub(GoogleCalendarIntegration);
+            const calendarStubs = stub(GoogleCalendarIntegration, 1, {
+                setting: {
+                    conflictCheck: false,
+                    outboundWriteSync: true,
+                    inboundDecliningSync: false
+                }
+            });
+
+            const googleCalendarIntegrationsMock = calendarStubs[0];
+
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const [_first, ...rest] = calendarStubs;
 
-            gogoleCalendarIntegrationRepositoryStub.find.resolves(rest as any);
+            googleCalendarIntegrationRepositoryStub.find.resolves(rest as any);
 
-            await expect(service.patch(userStub.id, calendarStubs)).rejectedWith(
+            await expect(service.patch(userStub.id, [googleCalendarIntegrationsMock])).rejectedWith(
                 NotAnOwnerException
             );
 
-            expect(gogoleCalendarIntegrationRepositoryStub.find.called).true;
-            expect(gogoleCalendarIntegrationRepositoryStub.save.called).false;
+            expect(googleCalendarIntegrationRepositoryStub.find.called).true;
+            expect(googleCalendarIntegrationRepositoryStub.save.called).false;
         });
     });
 });

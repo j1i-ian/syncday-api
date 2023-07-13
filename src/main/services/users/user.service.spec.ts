@@ -2,14 +2,21 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, FindOneOptions, FindOptionsWhere, Repository } from 'typeorm';
+import { firstValueFrom } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
+import { EventsRedisRepository } from '@services/events/events.redis-repository';
+import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { EventDetail } from '@entity/events/event-detail.entity';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
 import { Language } from '@app/enums/language.enum';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
+import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { TestMockUtil } from '../../../test/test-mock-util';
@@ -28,12 +35,16 @@ describe('Test User Service', () => {
     let verificationServiceStub: sinon.SinonStubbedInstance<VerificationService>;
     let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
-    let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
-
+    let eventsRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
+    let googleIntegrationsService: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
+    let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
+
+    let userSettingRepositoryStub: sinon.SinonStubbedInstance<Repository<UserSetting>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
+    let eventDetaiRepositoryStub: sinon.SinonStubbedInstance<Repository<EventDetail>>;
     let availabilityRepositoryStub: sinon.SinonStubbedInstance<Repository<Availability>>;
 
     const _getRepository = (EntityClass: new () => any) =>
@@ -50,11 +61,15 @@ describe('Test User Service', () => {
         userSettingServiceStub = sinon.createStubInstance(UserSettingService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
         availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
+        googleIntegrationsService = sinon.createStubInstance(GoogleIntegrationsService);
+        eventsRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
+        userSettingRepositoryStub = sinon.createStubInstance<Repository<UserSetting>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
+        eventDetaiRepositoryStub = sinon.createStubInstance<Repository<EventDetail>>(Repository);
         availabilityRepositoryStub = sinon.createStubInstance<Repository<Availability>>(Repository);
 
         module = await Test.createTestingModule({
@@ -77,6 +92,14 @@ describe('Test User Service', () => {
                     useValue: availabilityRedisRepositoryStub
                 },
                 {
+                    provide: GoogleIntegrationsService,
+                    useValue: googleIntegrationsService
+                },
+                {
+                    provide: EventsRedisRepository,
+                    useValue: eventsRedisRepositoryStub
+                },
+                {
                     provide: TokenService,
                     useValue: tokenServiceStub
                 },
@@ -93,6 +116,10 @@ describe('Test User Service', () => {
                     useValue: userRepositoryStub
                 },
                 {
+                    provide: getRepositoryToken(UserSetting),
+                    useValue: userSettingRepositoryStub
+                },
+                {
                     provide: getRepositoryToken(EventGroup),
                     useValue: eventGroupRepositoryStub
                 },
@@ -101,9 +128,14 @@ describe('Test User Service', () => {
                     useValue: eventRepositoryStub
                 },
                 {
+                    provide: getRepositoryToken(EventDetail),
+                    useValue: eventDetaiRepositoryStub
+                },
+                {
                     provide: getRepositoryToken(Availability),
                     useValue: availabilityRepositoryStub
                 }
+
             ]
         }).compile();
 
@@ -122,6 +154,24 @@ describe('Test User Service', () => {
         afterEach(() => {
             userRepositoryStub.findOneOrFail.reset();
             userRepositoryStub.findOneBy.reset();
+        });
+
+        it('should be found user by user workspace', async () => {
+            const userStub = stubOne(User);
+
+            userRepositoryStub.findOneOrFail.resolves(userStub);
+
+            const loadedUser = await firstValueFrom(service.findUserByWorkspace(userStub.workspace as string));
+
+            const actualPassedParam = userRepositoryStub.findOneOrFail.getCall(0).args[0];
+            expect(
+                (
+                    (actualPassedParam.where as FindOptionsWhere<User>)
+                        .userSetting as FindOptionsWhere<UserSetting>
+                ).workspace
+            ).equals(userStub.workspace);
+
+            expect(loadedUser).equal(userStub);
         });
 
         it('should be found user by user id', async () => {
@@ -168,53 +218,104 @@ describe('Test User Service', () => {
     describe('Test user sign up', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
-        before(() => {
+        beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
         });
 
         afterEach(() => {
+
+            verificationServiceStub.isVerifiedUser.reset();
+
             userRepositoryStub.create.reset();
             userRepositoryStub.save.reset();
+            userSettingServiceStub.fetchUserWorkspaceStatus.reset();
+
             verificationServiceStub.isVerifiedUser.reset();
             availabilityRepositoryStub.save.reset();
+            availabilityRedisRepositoryStub.save.reset();
 
             utilServiceStub.getUserDefaultSetting.reset();
+            utilServiceStub.hash.reset();
+            utilServiceStub.getDefaultEvent.reset();
+            utilServiceStub.getDefaultAvailabilityName.reset();
+
+            eventGroupRepositoryStub.save.reset();
+            eventsRedisRepositoryStub.setEventLinkSetStatus.reset();
+            eventsRedisRepositoryStub.save.reset();
 
             serviceSandbox.reset();
-        });
-
-        after(() => {
             serviceSandbox.restore();
         });
 
         it('should be created user with email', async () => {
             const plainPassword = 'test';
+            const emailMock = TestMockUtil.faker.internet.email('test', '');
+            const emailId = emailMock.split('@').shift();
             const userStub = stubOne(User, {
+                email: emailMock,
                 hashedPassword: plainPassword
             });
             const languageDummy = Language.ENGLISH;
+            const defaultUserSettingStub = stubOne(UserSetting);
+            const eventDetailStub = stubOne(EventDetail);
+            const defaultEventStub = stubOne(Event, {
+                eventDetail: eventDetailStub
+            });
+            const eventGroupStub = stubOne(EventGroup, {
+                events: [defaultEventStub]
+            });
             const availabilityStub = stubOne(Availability);
+            const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
+
+            const findUserByEmailStub = serviceSandbox.stub(service, 'findUserByEmail');
 
             verificationServiceStub.isVerifiedUser.resolves(true);
+            findUserByEmailStub.resolves(null);
 
             userRepositoryStub.create.returns(userStub);
+            userSettingServiceStub.fetchUserWorkspaceStatus.resolves(true);
+            utilServiceStub.getUserDefaultSetting.returns(defaultUserSettingStub);
+            utilServiceStub.hash.returns(userStub.hashedPassword);
+
             userRepositoryStub.save.resolves(userStub);
+            utilServiceStub.getDefaultEvent.returns(defaultEventStub);
+            utilServiceStub.getDefaultAvailabilityName.returns(availabilityStub.name);
             availabilityRepositoryStub.save.resolves(availabilityStub);
+            availabilityRedisRepositoryStub.save.resolves(availabilityBodyStub);
+            eventGroupRepositoryStub.save.resolves(eventGroupStub);
+            eventsRedisRepositoryStub.setEventLinkSetStatus.resolves(true);
+            eventsRedisRepositoryStub.save.resolves(eventDetailStub);
 
             const createdUser = await service._createUser(
                 datasourceMock as EntityManager,
                 userStub,
                 languageDummy,
                 {
-                    plainPassword
+                    plainPassword,
+                    emailVerification: true,
+                    alreadySignedUpUserCheck: true
                 }
             );
 
+            expect(verificationServiceStub.isVerifiedUser.called).true;
+            expect(findUserByEmailStub.called).true;
+            expect(userRepositoryStub.create.called).true;
+            expect(userSettingServiceStub.fetchUserWorkspaceStatus.called).true;
             expect(utilServiceStub.getUserDefaultSetting.called).true;
+            expect(utilServiceStub.hash.called).true;
+            expect(userRepositoryStub.save.called).true;
+            expect(utilServiceStub.getDefaultEvent.called).true;
+            expect(utilServiceStub.getDefaultAvailabilityName.called).true;
             expect(availabilityRepositoryStub.save.called).true;
+            expect(availabilityRedisRepositoryStub.save.called).true;
+            expect(eventGroupRepositoryStub.save.called).true;
+            expect(eventsRedisRepositoryStub.setEventLinkSetStatus.called).true;
+            expect(eventsRedisRepositoryStub.save.called).true;
 
             expect(createdUser).ok;
             expect(createdUser.email).ok;
+            expect(createdUser.email).equals(emailMock);
+            expect(createdUser.userSetting.workspace).equals(emailId);
         });
 
         it('should be not created user with email when user is already exist', async () => {
@@ -331,6 +432,64 @@ describe('Test User Service', () => {
         });
     });
 
+    describe('Test User delete', () => {
+        afterEach(() => {
+            userRepositoryStub.findOneOrFail.reset();
+            eventDetaiRepositoryStub.delete.reset();
+            eventRepositoryStub.delete.reset();
+            eventGroupRepositoryStub.delete.reset();
+            availabilityRepositoryStub.delete.reset();
+            userSettingRepositoryStub.delete.reset();
+            userRepositoryStub.delete.reset();
+        });
+
+        it('should be removed a user', async () => {
+            const eventDetail = stubOne(EventDetail);
+            const events = stub(Event, 2, {
+                eventDetail
+            });
+            const eventGroup = stubOne(EventGroup,{
+                events
+            });
+
+            const availabilities = stub(Availability);
+            const googleIntergrations = stub(GoogleIntegration);
+            const userSetting = stubOne(UserSetting);
+            const userStub = stubOne(User, {
+                eventGroup: [eventGroup],
+                userSetting,
+                availabilities,
+                googleIntergrations
+            });
+
+            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            userRepositoryStub.findOneOrFail.resolves(userStub);
+
+            const repositoryStubs = [
+                eventDetaiRepositoryStub,
+                eventRepositoryStub,
+                eventGroupRepositoryStub,
+                availabilityRepositoryStub,
+                userSettingRepositoryStub,
+                userRepositoryStub
+            ];
+
+            repositoryStubs.forEach((_repositoryStub) => {
+                _repositoryStub.delete.resolves(deleteResultStub);
+            });
+
+            const deleteResult = await service.deleteUser(userStub.id);
+            expect(deleteResult).true;
+            expect(availabilityRedisRepositoryStub.deleteAll.called).true;
+            expect(eventsRedisRepositoryStub.removeEventDetails.called).true;
+
+            repositoryStubs.forEach((_repositoryStub) => {
+                expect(_repositoryStub.delete.called).true;
+            });
+        });
+    });
+
     describe.skip('Test user default setting', () => {
         it('Users want their base URL to be my email address minus the domain.', () => {
             expect(false).true;
@@ -404,6 +563,55 @@ describe('Test User Service', () => {
             );
 
             expect(validatedUserOrNull).not.ok;
+        });
+    });
+
+    describe('Test user phone update', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            serviceSandbox.reset();
+            serviceSandbox.restore();
+            syncdayRedisServiceStub.getPhoneVerification.reset();
+            syncdayRedisServiceStub.getPhoneVerificationStatus.reset();
+        });
+        it('should be updated phone with verificated'), async () => {
+            const userIdMock = 1;
+            const updatePhoneWithVerificationDtoMock = {
+                phone: TestMockUtil.faker.phone.number(),
+                verificationCode:'1423'
+            } as UpdatePhoneWithVerificationDto;
+
+            const verificationStub = testMockUtil.getVerificationMock();
+            syncdayRedisServiceStub.getPhoneVerification.resolves(verificationStub);
+
+            await expect(
+                service.updateUserPhone(userIdMock, updatePhoneWithVerificationDtoMock)
+            ).rejectedWith(PhoneVertificationFailException);
+
+            expect(syncdayRedisServiceStub.getPhoneVerification.called).true;
+            expect(syncdayRedisServiceStub.setPhoneVerificationStatus.called).false;
+        };
+
+        it('should be not verified when phone and verificationCode is not matched', async () => {
+            const userIdMock = 1;
+            const updatePhoneWithVerificationDtoMock = {
+                phone: TestMockUtil.faker.phone.number(),
+                verificationCode:'1423'
+            } as UpdatePhoneWithVerificationDto;
+
+            syncdayRedisServiceStub.getPhoneVerification.resolves(null);
+
+            await expect(
+                service.updateUserPhone(userIdMock, updatePhoneWithVerificationDtoMock)
+            ).rejectedWith(PhoneVertificationFailException);
+
+            expect(syncdayRedisServiceStub.getPhoneVerification.called).true;
+            expect(syncdayRedisServiceStub.setPhoneVerificationStatus.called).false;
         });
     });
 });

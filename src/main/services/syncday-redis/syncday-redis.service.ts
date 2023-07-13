@@ -77,12 +77,51 @@ export class SyncdayRedisService {
         return result === 'OK';
     }
 
+    async getPhoneVerification(phoneNumber: string): Promise<Verification | null> {
+        const phoneKey = this.getPhoneVerificationKey(phoneNumber);
+        const actualVerificationCodeJsonString = await this.cluster.get(phoneKey);
+
+        return actualVerificationCodeJsonString
+            ? (JSON.parse(actualVerificationCodeJsonString) as Verification)
+            : null;
+    }
+
+    async getPhoneVerificationStatus(phoneNumber: string, uuid: string): Promise<boolean> {
+        const phoneVerificationStatusKey = this.getPhoneVerificationStatusKey(phoneNumber, uuid);
+        const actualVerificationStatusJsonString = await this.cluster.get(
+            phoneVerificationStatusKey
+        );
+
+        return actualVerificationStatusJsonString
+            ? (JSON.parse(actualVerificationStatusJsonString) as boolean)
+            : false;
+    }
+
+    async setPhoneVerificationStatus(
+        phoneNumber: string,
+        uuid: string,
+        statusValue = true
+    ): Promise<boolean> {
+        const phoneVerificationStatusKey = this.getPhoneVerificationStatusKey(phoneNumber, uuid);
+        const result = await this.cluster.set(phoneVerificationStatusKey, String(statusValue));
+
+        return result === 'OK';
+    }
+
     getTemporaryUserKey(email: string): RedisKey {
         return this.getRedisKey(RedisStores.TEMPORARY_USER, [email]);
     }
 
+    getEventLinkSetStatusKey(userUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.USERS, [userUUID, RedisStores.EVENT_LINK]);
+    }
+
     getWorkspaceAssignStatusKey(workspace: string): RedisKey {
         return this.getRedisKey(RedisStores.WORKSPACES, [String(workspace)]);
+    }
+
+    getEventLinkStatusKey(workspace: string, eventLink: string): RedisKey {
+        return this.getRedisKey(RedisStores.WORKSPACES, [workspace, eventLink]);
     }
 
     getEmailVerificationKey(email: string): RedisKey {
@@ -93,6 +132,14 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.VERIFICATIONS_EMAIL, [String(email), uuid]);
     }
 
+    getPhoneVerificationKey(phoneNumber: string): RedisKey {
+        return this.getRedisKey(RedisStores.VERIFICATIONS_PHONE, [String(phoneNumber)]);
+    }
+
+    getPhoneVerificationStatusKey(phoneNumber: string, uuid: string): RedisKey {
+        return this.getRedisKey(RedisStores.VERIFICATIONS_PHONE, [String(phoneNumber), uuid]);
+    }
+
     getInviteeQuestionKey(eventDetailUUID: string): RedisKey {
         return this.getRedisKey(RedisStores.EVENT_DETAIL, [
             eventDetailUUID,
@@ -100,12 +147,20 @@ export class SyncdayRedisService {
         ]);
     }
 
-    getRemindersKey(eventDetailUUID: string): RedisKey {
-        return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.REMINDER]);
+    getNotificationInfoKey(eventDetailUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.NOTIFICATION_INFO]);
+    }
+
+    getEventSettingKey(eventDetailUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.EVENT_SETTING]);
     }
 
     _getAvailabilityHashMapKey(userUUID: string): RedisKey {
-        return this.getRedisKey(RedisStores.AVAILABILITY, [userUUID]);
+        return this.getRedisKey(RedisStores.USERS, [userUUID, RedisStores.AVAILABILITY]);
+    }
+
+    _getScheduleBodyKey(scheduleUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.SCHEDULES, [scheduleUUID]);
     }
 
     __parseHashmapRecords<T>(hashmapRecords: Record<string, string>): Record<string, T> {

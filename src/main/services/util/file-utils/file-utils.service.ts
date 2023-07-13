@@ -1,71 +1,35 @@
-import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
-import { AwsService, AwsServiceType, InjectAwsService } from 'nest-aws-sdk';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { GetObjectCommandInput, S3 } from '@aws-sdk/client-s3';
-import { Language } from '@app/enums/language.enum';
-import { EmailTemplate } from '@app/enums/email-template.enum';
-import { UtilService } from '../util.service';
-
-type EmailSubject = {
-    [key in EmailTemplate]: string;
-};
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { AppConfigService } from '@config/app-config.service';
+import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
+import { UtilService } from '@services/util/util.service';
 
 @Injectable()
 export class FileUtilsService {
     constructor(
         private configService: ConfigService,
         private utilService: UtilService,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        @InjectAwsService(S3 as AwsServiceType<AwsService>) private readonly s3: S3,
-        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
+        private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
     ) {
-        this.__s3BucketName = this.configService.get<string>('AWS_S3_BUCKET_NAME') as string;
+        this._s3ImageBucketName = AppConfigService.getAwsS3BucketName(this.configService);
     }
 
-    private __s3BucketName: string;
+    private _s3ImageBucketName: string;
 
-    async getEmailTemplate(emailTemplate: EmailTemplate, language: Language): Promise<string> {
-        const assetFullPath = this.utilService.getMailAssetFullPath(emailTemplate, language);
-        const params = {
-            Bucket: this.__s3BucketName,
-            Key: assetFullPath
-        } as GetObjectCommandInput;
+    async issuePresignedUrl(inputFilename: string, prefix = 'images'): Promise<string> {
+        const fileFullPath = this.utilService.generateFilePath(inputFilename, prefix);
 
-        const result = await this.s3.getObject(params);
+        const command = new PutObjectCommand({
+            Bucket: this._s3ImageBucketName,
+            Key: fileFullPath
+        });
 
-        if (!result.Body) {
-            throw new BadRequestException('Cannot found template type email');
-        }
+        const presignedUrl = await getSignedUrl(this.syncdayAwsSdkClientService.getS3Client(), command, {
+            expiresIn: 60
+        });
 
-        const hbsBody = await result.Body.transformToString();
-
-        return hbsBody;
-    }
-
-    async getEmailSubject(emailTemplate: EmailTemplate, language: Language): Promise<string> {
-        const emailSubjectFullPath = this.utilService.getMailSubjectsJsonPath(language);
-        const params = {
-            Bucket: this.__s3BucketName,
-            Key: emailSubjectFullPath
-        } as GetObjectCommandInput;
-
-        try {
-            const result = await this.s3.getObject(params);
-
-            if (!result.Body) {
-                throw new BadRequestException('Cannot found template type email');
-            }
-
-            const transformedJsonString = await result.Body.transformToString();
-            const emailSubjectJson: EmailSubject = JSON.parse(transformedJsonString);
-            const emailSubject = emailSubjectJson[emailTemplate];
-            return emailSubject;
-        } catch (error) {
-            const message = `Error while fetching bucket item: ${String(error)}`;
-            this.logger.error(message);
-            throw error;
-        }
+        return presignedUrl;
     }
 }

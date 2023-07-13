@@ -6,29 +6,19 @@ import { JwtModuleAsyncOptions, JwtModuleOptions } from '@nestjs/jwt';
 import { TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { WinstonModuleAsyncOptions } from 'nest-winston';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
-import {
-    AsyncModuleProvider,
-    AwsService,
-    AwsServiceConfigurationOptionsFactory,
-    AwsServiceType,
-    AwsServiceWithServiceOptions
-} from 'nest-aws-sdk';
+
+
 import { CloudWatchLogs, CloudWatchLogsClientConfig } from '@aws-sdk/client-cloudwatch-logs';
+import { S3ClientConfig } from '@aws-sdk/client-s3';
+import { SNSClientConfig } from '@aws-sdk/client-sns';
 import * as ormConfig from '@config/ormconfig.json';
 import { GoogleCredentials } from '@app/interfaces/integrations/google/google-credential.interface';
 import { ClusterModuleAsyncOptions } from '@liaoliaots/nestjs-redis';
 
 // eslint-disable-next-line import/no-internal-modules
-import { MailerAsyncOptions } from '@nestjs-modules/mailer/dist/interfaces/mailer-async-options.interface';
-import { MailerOptions } from '@nestjs-modules/mailer';
 import { NodeEnv } from './node-env.enum';
 import { ZoomBasicAuth } from '../main/interfaces/zoom-basic-auth.interface';
 import { GoogleOAuth2Setting } from '../main/interfaces/auth/google-oauth2-setting.interface';
-
-interface AWSSDKOptionType {
-    defaultServiceOptions?: AsyncModuleProvider<AwsServiceConfigurationOptionsFactory>;
-    services?: Array<AwsServiceType<AwsService> | AwsServiceWithServiceOptions>;
-}
 
 export class AppConfigService {
     static getGoogleOAuth2Setting(configService: ConfigService): GoogleOAuth2Setting {
@@ -46,6 +36,7 @@ export class AppConfigService {
             googleOAuth2SuccessRedirectURI
         };
     }
+
     static getCorsSettingByEnv(): string[] {
         let origin = [
             'https://dev.sync.day',
@@ -59,6 +50,26 @@ export class AppConfigService {
         }
 
         return origin;
+    }
+
+    static getHost(): string {
+
+        let host = '';
+        switch (process.env.ENV) {
+            case NodeEnv.PRODUCTION:
+                host = 'https://api.sync.day';
+                break;
+            case NodeEnv.DEVELOP:
+                host = 'https://api.dev.sync.day';
+                break;
+            case NodeEnv.TEST:
+            case NodeEnv.LOCAL:
+            default:
+                host = process.env.HOST as string;
+                break;
+        }
+
+        return host;
     }
 
     static getJwtModuleOptions(): JwtModuleAsyncOptions {
@@ -91,16 +102,20 @@ export class AppConfigService {
         let dotenvFilePath = '.env';
 
         switch (nodeEnv) {
-            case 'production':
+            case NodeEnv.PRODUCTION:
+            case NodeEnv.LOCAL_PRODUCTION:
                 dotenvFilePath = '.env.production';
                 break;
-            case 'development':
+            case NodeEnv.DEVELOP:
+            case NodeEnv.LOCAL_DEVELOP:
                 dotenvFilePath = '.env.dev';
                 break;
             case 'staging':
                 dotenvFilePath = '.env.staging';
                 break;
             default:
+            case NodeEnv.LOCAL:
+            case NodeEnv.TEST:
                 dotenvFilePath = '.env.local';
                 break;
         }
@@ -132,15 +147,18 @@ export class AppConfigService {
             useFactory: (configService: ConfigService) => {
                 const level = (configService.get<string>('LOG_LEVEL') as string) || 'debug';
                 const env = process.env.ENV;
+                const isLocal = env === NodeEnv.LOCAL
+                    || env === NodeEnv.LOCAL_DEVELOP
+                    || env === NodeEnv.LOCAL_PRODUCTION;
 
                 const transports: winston.transport[] =
-                    env === NodeEnv.PRODUCTION
+                    isLocal === false
                         ? [this._getWinstonModuleProductionTransports(configService)]
                         : [
-                              new winston.transports.Console({
-                                  format: winston.format.json()
-                              })
-                          ];
+                            new winston.transports.Console({
+                                format: winston.format.json()
+                            })
+                        ];
 
                 const winstonDefaultOption = {
                     level,
@@ -160,7 +178,13 @@ export class AppConfigService {
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => {
                 const redisHost = configService.get<string>('REDIS_HOST');
-                const env = configService.get<string>('ENV') as string;
+                let env = configService.get<string>('ENV') as NodeEnv;
+
+                if (env === NodeEnv.LOCAL_DEVELOP) {
+                    env = NodeEnv.DEVELOP;
+                } else if (env === NodeEnv.LOCAL_PRODUCTION) {
+                    env = NodeEnv.PRODUCTION;
+                }
 
                 return {
                     config: {
@@ -178,56 +202,42 @@ export class AppConfigService {
         };
     }
 
-    static getAWSSDKOptions(): AWSSDKOptionType {
-        return {
-            defaultServiceOptions: {
-                imports: [ConfigModule],
-                useFactory: (configService: ConfigService) => {
-                    const region = configService.get<string>('AWS_REGION');
-                    const accessKeyId = configService.get<string>('AWS_S3_ACCESS_KEY');
-                    const secretAccessKey = configService.get<string>('AWS_S3_SECRET_KEY');
+    static getAwsS3ClientConfig(configService: ConfigService): S3ClientConfig {
+        const region = configService.get<string>('AWS_REGION') as string;
+        const accessKeyId = configService.get<string>('AWS_S3_ACCESS_KEY') as string;
+        const secretAccessKey = configService.get<string>('AWS_S3_SECRET_KEY') as string;
 
-                    return {
-                        credentials: {
-                            accessKeyId,
-                            secretAccessKey
-                        },
-                        region
-                    } as AwsServiceConfigurationOptionsFactory;
-                },
-                inject: [ConfigService]
+        return {
+            region,
+            credentials: {
+                accessKeyId,
+                secretAccessKey
             }
         };
     }
 
-    static getNodeMailerModuleOptions(): MailerAsyncOptions {
-        return {
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => {
-                const emailHost = 'smtp.gmail.com';
-                const emailUser = configService.get<'string'>('EMAIL_USER');
-                const emailUserPassword = configService.get<'string'>('EMAIL_USER_PASSWORD');
+    static getAwsSNSClientConfig(configService: ConfigService): SNSClientConfig {
+        const region = configService.get<string>('AWS_REGION') as string;
+        const accessKeyId = configService.get<string>('AWS_SNS_ACCESS_KEY') as string;
+        const secretAccessKey = configService.get<string>('AWS_SNS_SECRET_KEY') as string;
 
-                return {
-                    transport: {
-                        host: emailHost,
-                        port: 587,
-                        secure: false,
-                        auth: {
-                            user: emailUser,
-                            pass: emailUserPassword
-                        }
-                    },
-                    defaults: {
-                        from: {
-                            name: 'Syncday',
-                            address: emailUser
-                        }
-                    }
-                } as MailerOptions;
-            },
-            inject: [ConfigService]
+        return {
+            region,
+            credentials: {
+                accessKeyId,
+                secretAccessKey
+            }
         };
+    }
+
+    static getAwsS3BucketName(configSerivce: ConfigService): string {
+        const awsS3BucketName = configSerivce.get<string>('AWS_S3_BUCKET_NAME') as string;
+        return awsS3BucketName;
+    }
+
+    static getAwsSnsTopicARNSyncdayNotification(configService: ConfigService): string {
+        const awsSnsTopicARNSyncdayNotification = configService.get<string>('AWS_SNS_TOPIC_ARN_SYNCDAY_NOTIFICATION') as string;
+        return awsSnsTopicARNSyncdayNotification;
     }
 
     static getGoogleCredentials(configService: ConfigService): GoogleCredentials {

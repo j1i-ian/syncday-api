@@ -2,7 +2,7 @@
     "type": "mariadb",
     "charset": "utf8mb4",
     "logger": "file",
-    "timezone": "+09:00",
+    "timezone": "+00:00",
     "entities": [
         "dist/@core/src/entities/**/*{.ts,.js}"
     ],
@@ -10,7 +10,7 @@
         "dist/@core/src/migrations/**/*{.ts,.js}"
     ],
     "subscribers": [
-        "dist/@core/src/subscriber/**/*{.ts,.js}"
+        "dist/main/subscribers/**/*{.ts,.js}"
     ],
     "cli": {
         "entitiesDir": [
