@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
+import { Observable, defer, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
 import { Between, EntityManager, Repository } from 'typeorm';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
@@ -10,7 +11,6 @@ import { GoogleCalendarIntegrationsService } from '@services/integrations/google
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
-import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
@@ -29,20 +29,21 @@ export class SchedulesService {
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>,
-        @InjectRepository(GoogleIntegrationSchedule) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>
+        @InjectRepository(GoogleIntegrationSchedule) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
     search(scheduleSearchOption: Partial<ScheduleSearchOption>): Observable<InviteeSchedule[]> {
 
-        const inviteeSchedule$ = from(this.scheduleRepository.findBy({
+        const inviteeSchedule$ = defer(() => from(this.scheduleRepository.findBy({
             eventDetail: {
                 event: {
                     uuid: scheduleSearchOption.eventUUID
                 }
             }
-        }));
+        })));
 
-        const googleIntegrationSchedule$ = from(this.googleIntegrationScheduleRepository.findBy({
+        const googleIntegrationSchedule$ = defer(() => from(this.googleIntegrationScheduleRepository.findBy({
             googleCalendarIntegration: {
                 googleIntegration: {
                     users: {
@@ -52,7 +53,7 @@ export class SchedulesService {
                     }
                 }
             }
-        }));
+        })));
 
         return forkJoin([inviteeSchedule$, googleIntegrationSchedule$]).pipe(
             map(([inviteeSchedules, googleCalendarSchedules]) => [...inviteeSchedules, ...googleCalendarSchedules])
@@ -85,45 +86,61 @@ export class SchedulesService {
         host: User
     ): Observable<Schedule> {
 
-        return from(
+        const loadUserWorkspace$ = from(
             this.eventsService.findOneByUserWorkspaceAndUUID(userWorkspace, eventUUID)
-        ).pipe(
+        );
+
+        const loadGoogleCalendarIntegration$ = from(this.googleCalendarIntegrationsService.findOne({
+            outboundWriteSync: true,
+            userWorkspace
+        }));
+
+        return loadUserWorkspace$.pipe(
             mergeMap(
                 (event) => forkJoin([
                     this.availabilityRedisRepository.getAvailabilityBody(host.uuid, event.availability.uuid),
-                    of(this.utilService.getPatchedScheduledEvent(event, newSchedule))
+                    of(this.utilService.getPatchedScheduledEvent(event, newSchedule)),
+                    loadGoogleCalendarIntegration$
                 ])
             ),
-            mergeMap(([availabilityBody, patchedSchedule]) => this.validate(patchedSchedule, hostTimezone, availabilityBody)),
-            mergeMap((patchedSchedule) => entityManager.getRepository(Schedule).save(patchedSchedule)),
-            mergeMap((createdSchedule) =>
-                this.scheduleRedisRepository.save(createdSchedule.uuid, {
-                    inviteeAnswers: newSchedule.inviteeAnswers,
-                    scheduledNotificationInfo: newSchedule.scheduledNotificationInfo
-                }).pipe(map(() => createdSchedule))
-            ),
-            mergeMap((createdSchedule) =>
-                this.googleCalendarIntegrationsService.findOne({
-                    outboundWriteSync: true,
-                    userWorkspace
-                }).pipe(
-                    mergeMap((loadedGoogleCalendarIntegration: GoogleCalendarIntegration | null) =>
-                        loadedGoogleCalendarIntegration ?
-                            from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
-                                (loadedGoogleCalendarIntegration ).googleIntegration,
-                                (loadedGoogleCalendarIntegration ),
-                                hostTimezone,
-                                createdSchedule
-                            )) :
-                            of({})
-                    ),
-                    map(() => createdSchedule)
-                )
+            mergeMap(
+                ([availabilityBody, patchedSchedule, loadedGoogleCalendarIntegrationOrNull]) =>
+                    this.validate(
+                        patchedSchedule,
+                        hostTimezone,
+                        availabilityBody,
+                        loadedGoogleCalendarIntegrationOrNull?.id
+                    ).pipe(
+                        mergeMap((patchedSchedule) =>
+                            from(entityManager.getRepository(Schedule).save(patchedSchedule))
+                        ),
+                        mergeMap((createdSchedule) =>
+                            this.scheduleRedisRepository.save(createdSchedule.uuid, {
+                                inviteeAnswers: newSchedule.inviteeAnswers,
+                                scheduledNotificationInfo: newSchedule.scheduledNotificationInfo
+                            }).pipe(map(() => createdSchedule))
+                        ),
+                        mergeMap((createdSchedule) =>
+                            loadedGoogleCalendarIntegrationOrNull ?
+                                from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
+                                    (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
+                                    (loadedGoogleCalendarIntegrationOrNull),
+                                    hostTimezone,
+                                    createdSchedule
+                                )).pipe(map(() => createdSchedule)) :
+                                of(createdSchedule)
+                        )
+                    )
             )
         );
     }
 
-    validate(schedule: Schedule, hostTimezone: string, availabilityBody: AvailabilityBody): Observable<Schedule> {
+    validate(
+        schedule: Schedule,
+        hostTimezone: string,
+        availabilityBody: AvailabilityBody,
+        googleCalendarIntegrationId?: number | undefined
+    ): Observable<Schedule> {
 
         const { scheduledTime, scheduledBufferTime } = schedule;
         const { startBufferTimestamp, endBufferTimestamp } = scheduledBufferTime;
@@ -160,11 +177,50 @@ export class SchedulesService {
 
         const isInvalid = isPast || isNotConcatenatedTimes || (isNotTimeOverlappingWithOverrides && isNotTimeOverlappingWithAvailableTimes);
 
+
         if (isInvalid) {
+
+            const results = `isPast: ${String(isPast)},
+            isNotConcatenatedTimes: ${String(isNotConcatenatedTimes)},
+            (${String(isNotTimeOverlappingWithOverrides)}
+                && ${String(isNotTimeOverlappingWithAvailableTimes)}`;
+
+            this.logger.debug(
+                `invalid reason: ${results}`
+            );
             throw new CannotCreateByInvalidTimeRange();
         }
 
-        return from(this.scheduleRepository.findOneBy(
+        const loadedGoogleIntegrationSchedules$ = defer(() => from(this.googleIntegrationScheduleRepository.findOneBy(
+            [
+                {
+                    scheduledBufferTime: {
+                        startBufferTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
+                    },
+                    googleCalendarIntegrationId
+                },
+                {
+                    scheduledBufferTime: {
+                        endBufferTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
+                    },
+                    googleCalendarIntegrationId
+                },
+                {
+                    scheduledTime: {
+                        startTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
+                    },
+                    googleCalendarIntegrationId
+                },
+                {
+                    scheduledTime: {
+                        endTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
+                    },
+                    googleCalendarIntegrationId
+                }
+            ]
+        )));
+
+        const loadedSchedules$ = defer(() => from(this.scheduleRepository.findOneBy(
             [
                 {
                     scheduledBufferTime: {
@@ -191,10 +247,17 @@ export class SchedulesService {
                     eventDetailId: schedule.eventDetailId
                 }
             ]
-        )).pipe(
-            mergeMap((loaded) =>
+        )));
+
+
+        const scheduleObservables = googleCalendarIntegrationId ?
+            [loadedSchedules$, loadedGoogleIntegrationSchedules$] :
+            [loadedSchedules$];
+
+        return forkJoin(scheduleObservables).pipe(
+            mergeMap(([loadedScheduleOrNull, loadedGoogleIntegrationScheduleOrNull]) =>
                 iif(
-                    () => !loaded,
+                    () => !loadedScheduleOrNull && !loadedGoogleIntegrationScheduleOrNull,
                     of(schedule),
                     throwError(() => new CannotCreateByInvalidTimeRange())
                 )
