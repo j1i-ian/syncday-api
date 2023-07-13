@@ -214,5 +214,24 @@ describe('UtilService', () => {
             expect(defaultUserSetting).ok;
             expect(defaultUserSetting.preferredTimezone).contains(timezoneMock);
         });
+
+        it('should be return the file path has specified format for bucket upload with filename', () => {
+            const sample = 'sample.jpg';
+            const prefix = 'myprefix';
+
+            const generated = service.generateFilePath(sample, prefix);
+
+            expect(generated).ok;
+            expect(generated).contains(prefix);
+        });
+
+        it('should be possible to convert to a date in YYYYMMDD format using toYYYYMMDD', () => {
+            const expected = '2022-03-24';
+            const sample = new Date(expected);
+
+            const actual = service.toYYYYMMDD(sample);
+
+            expect(actual).equal(expected);
+        });
     });
 });

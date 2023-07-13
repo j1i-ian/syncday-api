@@ -5,6 +5,7 @@ import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum
 import { SyncdayAwsSdkSnsNotificationService } from '@core/interfaces/integrations/syncday-aws-sdk-sns-notification-service.enum';
 import { AppConfigService } from '@config/app-config.service';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
+import { FileUtilsService } from '@services/util/file-utils/file-utils.service';
 import { Language } from '@app/enums/language.enum';
 import { TestMockUtil } from '@test/test-mock-util';
 import { faker } from '@faker-js/faker';
@@ -17,11 +18,13 @@ describe('IntegrationsService', () => {
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let awsSnsClientStub: sinon.SinonStubbedInstance<SNSClient>;
+    let fileUtilsServiceStub: SinonStubbedInstance<FileUtilsService>;
     let syncdayAwsSdkClientServiceStub: sinon.SinonStubbedInstance<SyncdayAwsSdkClientService>;
 
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         awsSnsClientStub = sinon.createStubInstance(SNSClient);
+        fileUtilsServiceStub = sinon.createStubInstance(FileUtilsService);
         syncdayAwsSdkClientServiceStub = sinon.createStubInstance(SyncdayAwsSdkClientService);
 
         sinon.stub(AppConfigService, 'getAwsSnsTopicARNSyncdayNotification').returns(
@@ -38,6 +41,10 @@ describe('IntegrationsService', () => {
                 {
                     provide: 'AWS_SERVICE_UNDEFINED',
                     useValue: awsSnsClientStub
+                },
+                {
+                    provide: FileUtilsService,
+                    useValue: fileUtilsServiceStub
                 },
                 {
                     provide: SyncdayAwsSdkClientService,

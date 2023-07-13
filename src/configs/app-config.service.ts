@@ -230,6 +230,11 @@ export class AppConfigService {
         };
     }
 
+    static getAwsS3BucketName(configSerivce: ConfigService): string {
+        const awsS3BucketName = configSerivce.get<string>('AWS_S3_BUCKET_NAME') as string;
+        return awsS3BucketName;
+    }
+
     static getAwsSnsTopicARNSyncdayNotification(configService: ConfigService): string {
         const awsSnsTopicARNSyncdayNotification = configService.get<string>('AWS_SNS_TOPIC_ARN_SYNCDAY_NOTIFICATION') as string;
         return awsSnsTopicARNSyncdayNotification;
