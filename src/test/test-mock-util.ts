@@ -124,16 +124,14 @@ export class TestMockUtil {
         const _1hourAfter = new Date();
         _1hourAfter.setHours(_1hourAfter.getHours() + 1);
 
-        const ensuredDate = _1hourAfter;
-
         return {
             scheduledTime: {
                 startTimestamp: now,
-                endTimestamp: ensuredDate
+                endTimestamp: _1hourAfter
             },
             scheduledBufferTime: {
-                startBufferTimestamp: now,
-                endBufferTimestamp: ensuredDate
+                startBufferTimestamp: null,
+                endBufferTimestamp: null
             }
         };
     }
