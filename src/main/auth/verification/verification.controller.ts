@@ -16,7 +16,20 @@ export class VerificationController {
         @Body() createVerificationDto: CreateVerificationDto,
         @BCP47AcceptLanguage() language: Language
     ): Promise<boolean> {
-        const { email } = createVerificationDto;
-        return this.verificationService.createVerification(email as string, language);
+        const { email, phoneNumber } = createVerificationDto;
+
+        const isEmail = !!email && !phoneNumber;
+        const isPhone = !email && !!phoneNumber;
+
+        let result;
+        if (isEmail) {
+            result = this.verificationService.createVerification(email, language);
+        } else if (isPhone) {
+            result = this.verificationService.createVerificationWithPhoneNumber(phoneNumber, language);
+        } else {
+            result = Promise.resolve(false);
+        }
+
+        return result;
     }
 }

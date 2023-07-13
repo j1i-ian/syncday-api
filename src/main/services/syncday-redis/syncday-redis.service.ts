@@ -77,6 +77,37 @@ export class SyncdayRedisService {
         return result === 'OK';
     }
 
+    async getPhoneVerification(phoneNumber: string): Promise<Verification | null> {
+        const phoneKey = this.getPhoneVerificationKey(phoneNumber);
+        const actualVerificationCodeJsonString = await this.cluster.get(phoneKey);
+
+        return actualVerificationCodeJsonString
+            ? (JSON.parse(actualVerificationCodeJsonString) as Verification)
+            : null;
+    }
+
+    async getPhoneVerificationStatus(phoneNumber: string, uuid: string): Promise<boolean> {
+        const phoneVerificationStatusKey = this.getPhoneVerificationStatusKey(phoneNumber, uuid);
+        const actualVerificationStatusJsonString = await this.cluster.get(
+            phoneVerificationStatusKey
+        );
+
+        return actualVerificationStatusJsonString
+            ? (JSON.parse(actualVerificationStatusJsonString) as boolean)
+            : false;
+    }
+
+    async setPhoneVerificationStatus(
+        phoneNumber: string,
+        uuid: string,
+        statusValue = true
+    ): Promise<boolean> {
+        const phoneVerificationStatusKey = this.getPhoneVerificationStatusKey(phoneNumber, uuid);
+        const result = await this.cluster.set(phoneVerificationStatusKey, String(statusValue));
+
+        return result === 'OK';
+    }
+
     getTemporaryUserKey(email: string): RedisKey {
         return this.getRedisKey(RedisStores.TEMPORARY_USER, [email]);
     }
@@ -99,6 +130,14 @@ export class SyncdayRedisService {
 
     getEmailVerificationStatusKey(email: string, uuid: string): RedisKey {
         return this.getRedisKey(RedisStores.VERIFICATIONS_EMAIL, [String(email), uuid]);
+    }
+
+    getPhoneVerificationKey(phoneNumber: string): RedisKey {
+        return this.getRedisKey(RedisStores.VERIFICATIONS_PHONE, [String(phoneNumber)]);
+    }
+
+    getPhoneVerificationStatusKey(phoneNumber: string, uuid: string): RedisKey {
+        return this.getRedisKey(RedisStores.VERIFICATIONS_PHONE, [String(phoneNumber), uuid]);
     }
 
     getInviteeQuestionKey(eventDetailUUID: string): RedisKey {

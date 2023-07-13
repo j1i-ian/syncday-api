@@ -20,9 +20,11 @@ import { GoogleIntegration } from '@entity/integrations/google/google-integratio
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
+import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
+import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
@@ -368,6 +370,31 @@ export class UserService {
 
     async updateUser(userId: number): Promise<boolean> {
         return await Promise.resolve(!!userId);
+    }
+
+    async updateUserPhone(userId: number, updatePhoneWithVerificationDto: UpdatePhoneWithVerificationDto): Promise<boolean> {
+        const verificationOrNull = await this.syncdayRedisService.getPhoneVerification(updatePhoneWithVerificationDto.phone);
+
+        const isCodeMatched =
+            verificationOrNull !== null && verificationOrNull.verificationCode === updatePhoneWithVerificationDto.verificationCode;
+
+        let isUpdated = false;
+        if (isCodeMatched) {
+            await this.syncdayRedisService.setPhoneVerificationStatus(
+                updatePhoneWithVerificationDto.phone,
+                verificationOrNull.uuid
+            );
+
+            const updateResult =  await this.userRepository.update(userId, {
+                phone: updatePhoneWithVerificationDto.phone
+            });
+
+            isUpdated = updateResult.affected ? updateResult.affected > 0 : false;
+        } else {
+            throw new PhoneVertificationFailException();
+        }
+
+        return isUpdated;
     }
 
     async deleteUser(userId: number): Promise<boolean> {

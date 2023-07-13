@@ -3,6 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
 import { SyncdayEmailAwsSnsRequest } from '@core/interfaces/integrations/syncday-email-aws-sns-request.interface';
+import { SyncdayTwilioSmsAwsSnsRequest } from '@core/interfaces/integrations/syncday-twilio-sms-aws-sns-request.interface';
+import { TwilioContentTemplate } from '@core/interfaces/integrations/twilio-content-template.enum';
+import { SyncdayAwsSdkSnsNotificationService } from '@core/interfaces/integrations/syncday-aws-sdk-sns-notification-service.enum';
 import { AppConfigService } from '@config/app-config.service';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { Language } from '@app/enums/language.enum';
@@ -14,18 +17,34 @@ export class IntegrationsService {
         private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
     ) {}
 
-    async sendEmail(recipient: string, emailTemplate: EmailTemplate, language: Language, data: string): Promise<boolean> {
+    async sendMessage(
+        syncdayAwsSdkSnsNotificationService: SyncdayAwsSdkSnsNotificationService,
+        templateType: EmailTemplate | TwilioContentTemplate,
+        receiver: string,
+        language: Language,
+        data: string
+    ): Promise<boolean> {
         const notificationService: MessageAttributeValue = {
             DataType: 'String.Array',
-            StringValue: JSON.stringify(['email'])
+            StringValue: JSON.stringify([syncdayAwsSdkSnsNotificationService])
         };
 
-        const body: SyncdayEmailAwsSnsRequest = {
-            recipient,
-            emailTemplate,
-            language,
-            data
-        };
+        let body: SyncdayEmailAwsSnsRequest | SyncdayTwilioSmsAwsSnsRequest;
+        if (syncdayAwsSdkSnsNotificationService === SyncdayAwsSdkSnsNotificationService.EMAIL) {
+            body = {
+                recipient: receiver,
+                emailTemplate: templateType as EmailTemplate,
+                language,
+                data
+            } as SyncdayEmailAwsSnsRequest;
+        } else {
+            body = {
+                phoneNumber: receiver,
+                templateName: templateType as TwilioContentTemplate,
+                language,
+                data
+            } as SyncdayTwilioSmsAwsSnsRequest;
+        }
 
         const params: PublishCommandInput = {
             Message: JSON.stringify(body),

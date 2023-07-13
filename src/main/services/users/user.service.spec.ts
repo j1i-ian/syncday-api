@@ -18,8 +18,10 @@ import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
 import { Language } from '@app/enums/language.enum';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
+import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { TestMockUtil } from '../../../test/test-mock-util';
@@ -601,6 +603,55 @@ describe('Test User Service', () => {
             );
 
             expect(validatedUserOrNull).not.ok;
+        });
+    });
+
+    describe('Test user phone update', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            serviceSandbox.reset();
+            serviceSandbox.restore();
+            syncdayRedisServiceStub.getPhoneVerification.reset();
+            syncdayRedisServiceStub.getPhoneVerificationStatus.reset();
+        });
+        it('should be updated phone with verificated'), async () => {
+            const userIdMock = 1;
+            const updatePhoneWithVerificationDtoMock = {
+                phone: TestMockUtil.faker.phone.number(),
+                verificationCode:'1423'
+            } as UpdatePhoneWithVerificationDto;
+
+            const verificationStub = testMockUtil.getVerificationMock();
+            syncdayRedisServiceStub.getPhoneVerification.resolves(verificationStub);
+
+            await expect(
+                service.updateUserPhone(userIdMock, updatePhoneWithVerificationDtoMock)
+            ).rejectedWith(PhoneVertificationFailException);
+
+            expect(syncdayRedisServiceStub.getPhoneVerification.called).true;
+            expect(syncdayRedisServiceStub.setPhoneVerificationStatus.called).false;
+        };
+
+        it('should be not verified when phone and verificationCode is not matched', async () => {
+            const userIdMock = 1;
+            const updatePhoneWithVerificationDtoMock = {
+                phone: TestMockUtil.faker.phone.number(),
+                verificationCode:'1423'
+            } as UpdatePhoneWithVerificationDto;
+
+            syncdayRedisServiceStub.getPhoneVerification.resolves(null);
+
+            await expect(
+                service.updateUserPhone(userIdMock, updatePhoneWithVerificationDtoMock)
+            ).rejectedWith(PhoneVertificationFailException);
+
+            expect(syncdayRedisServiceStub.getPhoneVerification.called).true;
+            expect(syncdayRedisServiceStub.setPhoneVerificationStatus.called).false;
         });
     });
 });

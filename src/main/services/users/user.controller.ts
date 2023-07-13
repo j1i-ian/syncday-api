@@ -19,6 +19,7 @@ import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-wi
 import { PatchUserRequestDto } from '@dto/users/patch-user-request.dto';
 import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
+import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
 import { AuthUser } from '../../decorators/auth-user.decorator';
 import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
@@ -84,6 +85,19 @@ export class UserController {
         @Body() patchUserBody: UpdateUserPasswordsVO
     ): Promise<void> {
         const result = await this.userService.updateUserPassword(authUser.id, patchUserBody);
+
+        if (result === false) {
+            throw new BadRequestException('Cannot update user data');
+        }
+    }
+
+    @Put(':userId(\\d+)/phone')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async updateUserPhone(
+        @AuthUser() authUser: AppJwtPayload,
+        @Body() patchUserBody: UpdatePhoneWithVerificationDto
+    ): Promise<void> {
+        const result = await this.userService.updateUserPhone(authUser.id, patchUserBody);
 
         if (result === false) {
             throw new BadRequestException('Cannot update user data');
