@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Logger } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
@@ -31,6 +33,7 @@ describe('SchedulesService', () => {
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
     let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
     let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
+    let loggerStub: sinon.SinonStubbedInstance<Logger>;
 
     before(async () => {
 
@@ -44,6 +47,7 @@ describe('SchedulesService', () => {
         googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationSchedule>>(
             Repository
         );
+        loggerStub = sinon.createStubInstance(Logger);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -75,6 +79,10 @@ describe('SchedulesService', () => {
                 {
                     provide: getRepositoryToken(GoogleIntegrationSchedule),
                     useValue: googleIntegrationScheduleRepositoryStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: loggerStub
                 }
             ]
         }).compile();
@@ -104,6 +112,7 @@ describe('SchedulesService', () => {
             scheduleRepositoryStub.findBy.reset();
             scheduleRepositoryStub.findOneBy.reset();
             scheduleRepositoryStub.findOneByOrFail.reset();
+            googleIntegrationScheduleRepositoryStub.findOneBy.reset();
 
             serviceSandbox.restore();
         });
@@ -207,6 +216,7 @@ describe('SchedulesService', () => {
             const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(true);
 
             scheduleRepositoryStub.findOneBy.resolves(null);
+            googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
 
             const validatedSchedule = await firstValueFrom(
                 service.validate(
@@ -218,6 +228,7 @@ describe('SchedulesService', () => {
 
             expect(validatedSchedule).ok;
             expect(scheduleRepositoryStub.findOneBy.called).true;
+            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
 
             expect(_isPastTimestampStub.called).true;
             expect(_isTimeOverlappingWithOverridesStub.called).true;
@@ -241,6 +252,7 @@ describe('SchedulesService', () => {
             expect(() => service.validate(scheduleMock, timezoneMock, availabilityBodyMock)).throws(CannotCreateByInvalidTimeRange);
 
             expect(scheduleRepositoryStub.findOneBy.called).false;
+            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
 
             expect(_isPastTimestampStub.called).true;
             expect(_isTimeOverlappingWithOverridesStub.called).true;
@@ -256,6 +268,7 @@ describe('SchedulesService', () => {
             const timezoneMock = stubOne(UserSetting).preferredTimezone;
 
             scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
+            googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
 
             const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(false);
             const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(true);
@@ -272,6 +285,45 @@ describe('SchedulesService', () => {
             ).rejectedWith(CannotCreateByInvalidTimeRange);
 
             expect(scheduleRepositoryStub.findOneBy.called).true;
+            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
+
+            expect(_isPastTimestampStub.called).true;
+            expect(_isTimeOverlappingWithOverridesStub.called).true;
+            expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
+        });
+
+        it('should be not passed when there are conflicted schedules ', async () => {
+
+            const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
+            const scheduleMock = stubOne(Schedule, scheduleTimeMock);
+            const googleCalendarIntegrationMock = stubOne(GoogleCalendarIntegration);
+            const conflictedGoogleIntegrationScheduleStub = stubOne(GoogleIntegrationSchedule, {
+                googleCalendarIntegration: googleCalendarIntegrationMock,
+                googleCalendarIntegrationId: googleCalendarIntegrationMock.id
+            });
+            const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
+            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+
+            scheduleRepositoryStub.findOneBy.resolves(null);
+            googleIntegrationScheduleRepositoryStub.findOneBy.resolves(conflictedGoogleIntegrationScheduleStub);
+
+            const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(false);
+            const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(true);
+            const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(true);
+
+            await expect(
+                firstValueFrom(
+                    service.validate(
+                        scheduleMock,
+                        timezoneMock,
+                        availabilityBodyMock,
+                        googleCalendarIntegrationMock.id
+                    )
+                )
+            ).rejectedWith(CannotCreateByInvalidTimeRange);
+
+            expect(scheduleRepositoryStub.findOneBy.called).true;
+            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).true;
 
             expect(_isPastTimestampStub.called).true;
             expect(_isTimeOverlappingWithOverridesStub.called).true;
@@ -286,6 +338,7 @@ describe('SchedulesService', () => {
             const timezoneMock = stubOne(UserSetting).preferredTimezone;
 
             scheduleRepositoryStub.findOneBy.resolves(null);
+            googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
 
             const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(false);
             const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(false);
@@ -301,6 +354,7 @@ describe('SchedulesService', () => {
 
             expect(validatedSchedule).ok;
             expect(scheduleRepositoryStub.findOneBy.called).true;
+            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
 
             expect(_isPastTimestampStub.called).true;
             expect(_isTimeOverlappingWithOverridesStub.called).true;
@@ -315,6 +369,7 @@ describe('SchedulesService', () => {
             const timezoneMock = stubOne(UserSetting).preferredTimezone;
 
             scheduleRepositoryStub.findOneBy.resolves(null);
+            googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
 
             const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(false);
             const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(true);
@@ -330,6 +385,7 @@ describe('SchedulesService', () => {
 
             expect(validatedSchedule).ok;
             expect(scheduleRepositoryStub.findOneBy.called).true;
+            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
 
             expect(_isPastTimestampStub.called).true;
             expect(_isTimeOverlappingWithOverridesStub.called).true;
