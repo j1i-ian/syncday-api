@@ -2,10 +2,15 @@ import { RRule } from 'rrule';
 
 import { Injectable } from '@nestjs/common';
 import { calendar_v3 } from 'googleapis';
+import { Notification } from '@interfaces/notifications/notification';
+import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { UtilService } from '@services/util/util.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { ConferenceLink } from '@entity/schedules/conference-link.entity';
 import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
 
 @Injectable()
@@ -14,6 +19,35 @@ export class GoogleConverterService {
     constructor(
         private readonly utilService: UtilService
     ) {}
+
+    convertToGoogleConferenceData(conferenceLink: ConferenceLink): calendar_v3.Schema$ConferenceData {
+
+        const googleConferenceLink = conferenceLink.link as string;
+
+        const label = googleConferenceLink.replace('https://', '');
+        const generatedUUID = this.utilService.generateUUID();
+
+        return {
+            createRequest: {
+                requestId: generatedUUID,
+                conferenceSolutionKey: {
+                    type: 'hangoutsMeet'
+                }
+            },
+            entryPoints: [
+                {
+                    entryPointType: 'video',
+                    uri: googleConferenceLink,
+                    label
+                }
+            ],
+            conferenceSolution: {
+                key: {
+                    type: 'hangoutsMeet'
+                }
+            }
+        } as calendar_v3.Schema$ConferenceData;
+    }
 
     convertToGoogleCalendarIntegration(
         googleCalendars: calendar_v3.Schema$CalendarList
@@ -165,30 +199,23 @@ export class GoogleConverterService {
 
     convertScheduledEventToGoogleCalendarEvent(
         hostTimezone: string,
-        schedule: Schedule,
-        hangoutLink = false
+        schedule: Schedule
     ): calendar_v3.Schema$Event {
         const { startTimestamp, endTimestamp } = schedule.scheduledTime;
 
-        let conferenceData;
+        const inviteeEmailAnswer = (schedule.scheduledNotificationInfo.invitee as Notification[]).find((_item) => _item.type === NotificationType.EMAIL) as Notification;
+        const inviteeEmail = (inviteeEmailAnswer.reminders[0] as ScheduledReminder).typeValue;
 
-        if (hangoutLink) {
+        const googleConferenceLink = schedule.conferenceLinks.find((link) => link.type === IntegrationVendor.GOOGLE) as ConferenceLink;
 
-            const generatedUUID = this.utilService.generateUUID();
-
-            conferenceData = {
-                createRequest: {
-                    requestId: generatedUUID,
-                    conferenceSolutionKey: {
-                        type: 'hangoutsMeet'
-                    }
-                }
-            } as calendar_v3.Schema$ConferenceData;
-        }
-
-        return {
+        const eventRequestBody: calendar_v3.Schema$Event = {
             summary: schedule.name,
-            description: schedule.name,
+            description: schedule.description,
+            attendees: [
+                {
+                    email: inviteeEmail
+                }
+            ],
             start: {
                 dateTime: new Date(startTimestamp).toISOString(),
                 timeZone: hostTimezone
@@ -196,9 +223,17 @@ export class GoogleConverterService {
             end: {
                 dateTime: new Date(endTimestamp).toISOString(),
                 timeZone: hostTimezone
-            },
-            conferenceData
+            }
         };
+
+        if (googleConferenceLink) {
+
+            const converted = this.convertToGoogleConferenceData(googleConferenceLink);
+            eventRequestBody.conferenceData = converted;
+            eventRequestBody.hangoutLink = converted.entryPoints && converted.entryPoints[0].uri;
+        }
+
+        return eventRequestBody;
     }
 
     _convertGoogleScheduleToGoogleIntegrationSchedule(

@@ -112,7 +112,9 @@ describe('SchedulesService', () => {
             scheduleRepositoryStub.findBy.reset();
             scheduleRepositoryStub.findOneBy.reset();
             scheduleRepositoryStub.findOneByOrFail.reset();
+            scheduleRepositoryStub.update.reset();
             googleIntegrationScheduleRepositoryStub.findOneBy.reset();
+
 
             serviceSandbox.restore();
         });
@@ -202,6 +204,30 @@ describe('SchedulesService', () => {
             expect(validateStub.called).true;
             expect(scheduleRepositoryStub.save.called).true;
             expect(schedulesRedisRepositoryStub.save.called).true;
+        });
+
+        it('should be updated scheduled event', async () => {
+
+            const scheduleStub = stubOne(Schedule);
+
+            const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+            scheduleRepositoryStub.update.resolves(updateResultMock);
+
+            const scheduleUpdateResult = await firstValueFrom(
+                service._update(
+                    {
+                        getRepository: () => scheduleRepositoryStub
+                    } as unknown as any,
+                    scheduleStub.id,
+                    {
+                        color: '#000000'
+                    }
+                )
+            );
+
+            expect(scheduleRepositoryStub.update.called).true;
+            expect(scheduleUpdateResult).true;
+
         });
 
         it('should be passed when there is no conflicted schedule ', async () => {

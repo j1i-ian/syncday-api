@@ -4,6 +4,7 @@ import { Observable, defer, forkJoin, from, iif, map, mergeMap, of, throwError }
 import { Between, EntityManager, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { UtilService } from '@services/util/util.service';
@@ -15,6 +16,8 @@ import { User } from '@entity/users/user.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
+import { InviteeAnswer } from '@entity/schedules/invitee-answer.entity';
+import { ConferenceLink } from '@entity/schedules/conference-link.entity';
 import { ScheduleSearchOption } from '@app/interfaces/schedules/schedule-search-option.interface';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
@@ -86,6 +89,8 @@ export class SchedulesService {
         host: User
     ): Observable<Schedule> {
 
+        const _scheduleRepository = entityManager.getRepository(Schedule);
+
         const loadUserWorkspace$ = from(
             this.eventsService.findOneByUserWorkspaceAndUUID(userWorkspace, eventUUID)
         );
@@ -111,14 +116,30 @@ export class SchedulesService {
                         availabilityBody,
                         loadedGoogleCalendarIntegrationOrNull?.id
                     ).pipe(
-                        mergeMap((patchedSchedule) =>
-                            from(entityManager.getRepository(Schedule).save(patchedSchedule))
-                        ),
+                        mergeMap((patchedSchedule) => {
+
+                            if (loadedGoogleCalendarIntegrationOrNull) {
+                                const generatedGoogleMeetLink = this.utilService.generenateGoogleMeetLink();
+                                const syncdayGoogleMeetConferenceLink: ConferenceLink = {
+                                    type: IntegrationVendor.GOOGLE,
+                                    serviceName: 'Google Meet',
+                                    link: generatedGoogleMeetLink
+                                };
+                                newSchedule.conferenceLinks = [syncdayGoogleMeetConferenceLink];
+                            }
+
+                            return from(_scheduleRepository.save(patchedSchedule));
+                        }),
                         mergeMap((createdSchedule) =>
                             this.scheduleRedisRepository.save(createdSchedule.uuid, {
                                 inviteeAnswers: newSchedule.inviteeAnswers,
                                 scheduledNotificationInfo: newSchedule.scheduledNotificationInfo
-                            }).pipe(map(() => createdSchedule))
+                            }).pipe(map((_createdScheduleBody) => {
+                                createdSchedule.inviteeAnswers = _createdScheduleBody.inviteeAnswers as InviteeAnswer[];
+                                createdSchedule.scheduledNotificationInfo = _createdScheduleBody.scheduledNotificationInfo;
+
+                                return createdSchedule;
+                            }))
                         ),
                         mergeMap((createdSchedule) =>
                             loadedGoogleCalendarIntegrationOrNull ?
@@ -133,6 +154,20 @@ export class SchedulesService {
                     )
             )
         );
+    }
+
+    _update(
+        entityManager: EntityManager,
+        scheduleId: number,
+        partialSchedule: Partial<Schedule>
+    ): Observable<boolean> {
+
+        const _scheduleRepository = entityManager.getRepository(Schedule);
+
+        return from(_scheduleRepository.update(scheduleId, partialSchedule))
+            .pipe(
+                map((updateResult) => !!updateResult.affected && updateResult.affected > 0)
+            );
     }
 
     validate(
@@ -248,7 +283,6 @@ export class SchedulesService {
                 }
             ]
         )));
-
 
         const scheduleObservables = googleCalendarIntegrationId ?
             [loadedSchedules$, loadedGoogleIntegrationSchedules$] :

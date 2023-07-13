@@ -220,7 +220,7 @@ export class GoogleCalendarIntegrationsService {
         googleCalendarIntegration: GoogleCalendarIntegration,
         hostTimezone: string,
         schedule: Schedule
-    ): Promise<void> {
+    ): Promise<calendar_v3.Schema$Event> {
 
         const calendarId = googleCalendarIntegration.name;
 
@@ -235,18 +235,19 @@ export class GoogleCalendarIntegrationsService {
          */
         const newGoogleEventBody = this.googleConverterService.convertScheduledEventToGoogleCalendarEvent(
             hostTimezone,
-            schedule,
-            true
+            schedule
         );
 
         const googleCalendarEventCreateService = new GoogleCalendarEventCreateService();
 
-        await googleCalendarEventCreateService.create(
+        const createdGoogleEvent = await googleCalendarEventCreateService.create(
             ensuredOAuthClient,
             calendarId,
             newGoogleEventBody,
             true
         );
+
+        return createdGoogleEvent;
     }
 
     async resubscriptionCalendar(

@@ -107,6 +107,30 @@ export class UtilService {
         return formatPartObject;
     }
 
+    generenateGoogleMeetLink(): string {
+        const meetCode = this.generenateGoogleMeetCode();
+
+        return `https://meet.google.com/${meetCode}`;
+    }
+
+    generenateGoogleMeetCode(): string {
+
+        const first = this.generateRandomAlphabet(3);
+        const middle = this.generateRandomAlphabet(4);
+        const last = this.generateRandomAlphabet(3);
+
+        return `${first}-${middle}-${last}`;
+    }
+
+    generateRandomAlphabet(num: number): string {
+
+        const alphabetDiff = ('z'.charCodeAt(0) - 'a'.charCodeAt(0));
+
+        return Array(num).fill(0)
+            .map(() => String.fromCharCode(Math.floor(Math.random() * 100 % alphabetDiff) + 'a'.charCodeAt(0)))
+            .join('');
+    }
+
     generateUUID(): string {
         return uuidv4();
     }
