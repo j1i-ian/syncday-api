@@ -301,13 +301,6 @@ export class SchedulesService {
                 timeRangeEndTime
             );
 
-            if ((localizedTimeRangeStartDateTime.getTime() < dateTime.getTime() &&
-            dateTime.getTime() < localizedTimeRangeEndDateTime.getTime()) === true) {
-
-                console.log('localizedTimeRangeStartDateTime:', localizedTimeRangeStartDateTime);
-                console.log('dateTime:', dateTime);
-            }
-
             return localizedTimeRangeStartDateTime.getTime() < dateTime.getTime() &&
                 dateTime.getTime() < localizedTimeRangeEndDateTime.getTime();
         });
