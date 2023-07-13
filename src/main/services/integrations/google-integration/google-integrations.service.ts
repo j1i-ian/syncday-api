@@ -1,6 +1,6 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
@@ -21,8 +21,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         private readonly googleIntegrationSchedulesService: GoogleIntegrationSchedulesService,
         private readonly integrationsRedisRepository: IntegrationsRedisRepository,
         @InjectRepository(GoogleIntegration)
-        private readonly googleIntegrationRepository: Repository<GoogleIntegration>,
-        @InjectDataSource() private datasource: DataSource
+        private readonly googleIntegrationRepository: Repository<GoogleIntegration>
     ) {}
 
     async search({ userId }: SearchByUserOption): Promise<GoogleIntegration[]> {
@@ -145,7 +144,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
 
     async remove(
         googleIntegrationId: number,
-        userId:number
+        userId: number
     ): Promise<boolean> {
         return this._remove(
             this.googleIntegrationRepository.manager,
@@ -157,51 +156,51 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
     async _remove(
         manager: EntityManager,
         googleIntegrationId: number,
-        userId:number ): Promise<boolean> {
-        const googleIntegration = await this.googleIntegrationRepository.find({
+        userId: number
+    ): Promise<boolean> {
+
+        const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
+
+        const googleIntegration = await _googleIntegrationRepository.findOneOrFail({
+            relations: {
+                googleCalendarIntegrations: true
+            },
             where: {
+                id: googleIntegrationId,
                 users: {
                     id: userId
                 }
-            },
-            relations: {
-                googleCalendarIntegrations: true
             }
         });
 
-        const googleCalendarIntegrationIds  = googleIntegration.reduce((googleCalendarIntegrationIds, googleIntegrations) => {
-            const calendarIds = googleIntegrations.googleCalendarIntegrations.map((_calIntegration) => _calIntegration.id);
-            return googleCalendarIntegrationIds.concat(calendarIds);
+        await _googleIntegrationRepository.delete(googleIntegrationId);
 
-        }, [] as number[]);
+        await this.integrationsRedisRepository.deleteGoogleCalendarDetails(googleIntegration.uuid);
 
-        const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
-        const _googleCalendarIntegrationRepository = manager.getRepository(GoogleCalendarIntegration);
+        const googleChannelIds = googleIntegration.googleCalendarIntegrations.map((_cal) => _cal.name);
 
-        const _deleteGoogleCalendarIntegrationResult = await _googleCalendarIntegrationRepository.delete(googleCalendarIntegrationIds);
+        await this.integrationsRedisRepository.deleteGoogleCalendarSubscriptionsStatus(googleChannelIds);
 
-        const _deleteGoogleIntegrationUserResult = await _googleIntegrationRepository
-            .createQueryBuilder()
-            .delete()
-            .from('google_integration_users')
-            .where('google_integration_id = :googleIntegrationId', { googleIntegrationId })
-            .execute();
-        const _deleteGoogleIntegrationResult = await _googleIntegrationRepository.delete({ id:googleIntegrationId });
+        // The user can have a only one Google Integration
+        const loadedGoogleCalendarDetailRecords = await this.integrationsRedisRepository.getGoogleCalendarsDetailAll(googleIntegration.uuid);
 
-        const isDeleteResultList = [
-            _deleteGoogleCalendarIntegrationResult,
-            _deleteGoogleIntegrationUserResult,
-            _deleteGoogleIntegrationResult
-        ];
+        // TODO: it should be improved in future.
+        for (const googleCalendarIntegration of googleIntegration.googleCalendarIntegrations) {
+            const loadedGoogleCalendarDetailRecord = loadedGoogleCalendarDetailRecords[googleCalendarIntegration.uuid];
 
-        let deleteSuccess: boolean | 0 | null | undefined;
-        for (const deleteResult of isDeleteResultList) {
-            deleteSuccess = deleteResult.affected && deleteResult.affected >= 0;
-            if (deleteSuccess === false) {
-                throw new InternalServerErrorException('Delete GoogleIntegration detail or GoogleIntegration is failed');
+            if (loadedGoogleCalendarDetailRecord) {
+
+                await this.googleCalendarIntegrationsService.unsubscribeCalendar(
+                    loadedGoogleCalendarDetailRecord,
+                    googleIntegration,
+                    googleCalendarIntegration,
+                    {
+                        userRefreshToken: googleIntegration.refreshToken
+                    }
+                );
             }
         }
 
-        return deleteSuccess as boolean;
+        return true;
     }
 }

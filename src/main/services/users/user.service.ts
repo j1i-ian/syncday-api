@@ -8,7 +8,6 @@ import { AvailableTime } from '@core/entities/availability/availability-time.ent
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
-import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
@@ -17,7 +16,6 @@ import { Weekday } from '@entity/availability/weekday.enum';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
@@ -49,12 +47,10 @@ export class UserService {
         private readonly verificationService: VerificationService,
         private readonly userSettingService: UserSettingService,
         private readonly syncdayRedisService: SyncdayRedisService,
-        private readonly googleIntegrationsService: GoogleIntegrationsService,
         private readonly utilService: UtilService,
         private readonly eventRedisRepository: EventsRedisRepository,
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
-        private readonly schedulesRedisRepository: SchedulesRedisRepository,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
 
@@ -423,12 +419,6 @@ export class UserService {
 
         const { events } = eventGroup;
 
-        const { scheduleIds, scheduleUUIDs } = events.flatMap((event) => event.eventDetail.schedules)
-            .reduce(({ scheduleIds, scheduleUUIDs }, schedule) => ({
-                scheduleIds: scheduleIds.concat(schedule.id),
-                scheduleUUIDs: scheduleUUIDs.concat(schedule.uuid)
-            }), { scheduleIds: [] as number[], scheduleUUIDs: [] as string[] });
-
         const { eventDetailIds, eventDetailUUIDs } = events.reduce((eventDetailIdAndEventDetailUUIDArray, event) => {
             const { eventDetailIds, eventDetailUUIDs } = eventDetailIdAndEventDetailUUIDArray;
             eventDetailIds.push(event.eventDetail.id);
@@ -443,12 +433,7 @@ export class UserService {
         const deleteSuccess = await this.datasource.transaction(async (transactionManager) => {
 
             if (googleIntergration) {
-                await this.googleIntegrationsService._remove(transactionManager, googleIntergration.id, userId);
-            }
-
-            if (scheduleIds.length > 0) {
-                const _scheduleRepository = transactionManager.getRepository(Schedule);
-                await _scheduleRepository.delete(scheduleIds);
+                await this.googleIntegrationService._remove(transactionManager, googleIntergration.id, userId);
             }
 
             const deleteEntityMapList = [
@@ -477,7 +462,6 @@ export class UserService {
         });
 
         // TODO: Transaction processing is required for event processing.
-        await this.schedulesRedisRepository.removeSchedules(scheduleUUIDs);
         await this.availabilityRedisRepository.deleteAll(user.uuid, availabilityUUIDs);
         await this.eventRedisRepository.removeEventDetails(eventDetailUUIDs);
         await this.syncdayRedisService.deleteWorkspaceStatus(userSetting.workspace);
