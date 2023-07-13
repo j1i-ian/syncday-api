@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -340,5 +341,34 @@ export class UtilService {
 
     getRedisKey(store: RedisStores, value: string[]): string {
         return [store, ...value].join(':');
+    }
+
+    generateFilePath(inputFilename: string, prefix = 'images'): string {
+        const yyyymmdd = this.toYYYYMMDD(new Date(), '');
+        const fileUuid = this.uuid(36, '-', '-');
+        const filename = `${yyyymmdd}/${fileUuid}/${inputFilename}`;
+        const fileFullPath = `${prefix}/${filename}`;
+
+        return fileFullPath;
+    }
+
+    toYYYYMMDD(target: Date, joiner = '-'): string {
+        const YYYY = target.getFullYear();
+
+        const _MM = target.getMonth() + 1;
+        const MM = _MM < 10 ? `0${_MM}` : _MM;
+
+        const _DD = target.getDate();
+        const DD = _DD < 10 ? `0${_DD}` : _DD;
+
+        return [YYYY, MM, DD].join(joiner);
+    }
+
+    uuid(length = 36, splitter = '-', joiner = ''): string {
+        const randomUUID = crypto
+            .randomUUID({ disableEntropyCache: false })
+            .split(splitter)
+            .join(joiner);
+        return randomUUID.toUpperCase().slice(0, length);
     }
 }

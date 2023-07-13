@@ -2,7 +2,6 @@ import { BadRequestException, Controller, Delete, Get, HttpCode, HttpStatus, Par
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { Integration } from '@entity/integrations/integration.entity';
-
 /**
  * Sign up with Google API is located on token controller.
  */

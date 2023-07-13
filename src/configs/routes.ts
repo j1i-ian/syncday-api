@@ -7,6 +7,7 @@ import { EventsModule } from '@services/events/events.module';
 import { EventDetailsModule } from '@services/events/event-details/event-details.module';
 import { BookingsModule } from '@services/bookings/bookings.module';
 import { GoogleCalendarIntegrationsModule } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.module';
+import { UtilModule } from '@services/util/util.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
@@ -83,5 +84,9 @@ export const routes: Routes = [
                 ]
             }
         ]
+    },
+    {
+        path: 'utils',
+        module: UtilModule
     }
 ];
