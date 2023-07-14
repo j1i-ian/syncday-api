@@ -247,10 +247,6 @@ export class AppConfigService {
         };
     }
 
-    static getGoogleCalendarWebhookUrl(configService: ConfigService): string {
-        return configService.get<string>('GOOGLE_CALENDAR_WEBHOOK_URL') as string;
-    }
-
     static getZoomBasicAuthValue(configService: ConfigService): ZoomBasicAuth {
         const zoomBasicAuth: ZoomBasicAuth = {
             clientId: configService.get<string>('ZOOM_CLIENT_ID') as string,
