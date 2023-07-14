@@ -173,7 +173,7 @@ describe('GoogleConverterService', () => {
 
             expect(convertedGoogleSchedule).ok;
             expect(convertedStartDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
-            expect(convertedEndDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
+            expect(convertedEndDatetime.getTime()).equals(scheduleMock.scheduledTime.endTimestamp.getTime());
             expect(convertedGoogleSchedule).ok;
 
             expect(utilServiceStub.generateUUID.called).true;

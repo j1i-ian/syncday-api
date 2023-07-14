@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, defer, forkJoin, from, iif, map, mergeMap, of, tap, throwError } from 'rxjs';
+import { Observable, defer, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
 import { Between, EntityManager, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
@@ -38,25 +38,23 @@ export class SchedulesService {
 
     search(scheduleSearchOption: Partial<ScheduleSearchOption>): Observable<InviteeSchedule[]> {
 
-        const {
-            workspace: hostWorkspace,
-            eventUUID
-        } = scheduleSearchOption;
-
         const inviteeSchedule$ = defer(() => from(this.scheduleRepository.findBy({
             eventDetail: {
                 event: {
-                    uuid: eventUUID
+                    uuid: scheduleSearchOption.eventUUID
                 }
-            },
-            host: {
-                workspace: hostWorkspace
             }
         })));
 
         const googleIntegrationSchedule$ = defer(() => from(this.googleIntegrationScheduleRepository.findBy({
-            host: {
-                workspace: hostWorkspace
+            googleCalendarIntegration: {
+                googleIntegration: {
+                    users: {
+                        userSetting: {
+                            workspace: scheduleSearchOption.workspace
+                        }
+                    }
+                }
             }
         })));
 

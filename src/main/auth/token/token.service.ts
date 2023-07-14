@@ -62,7 +62,8 @@ export class TokenService {
         if (isNewbie) {
             const createUserRequestDto: CreateUserRequestDto = {
                 email: googleUser.email,
-                name: googleUser.name
+                name: googleUser.name,
+                timezone: ''
             };
 
             loadedUserOrNull = await this.userService.createUserByGoogleOAuth2(
