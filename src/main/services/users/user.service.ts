@@ -285,7 +285,7 @@ export class UserService {
     ): Promise<User> {
 
         const createdUser = await this.datasource.transaction(async (manager) => {
-            const newUser = createUserRequestDto as User;
+            const newUser = createUserRequestDto as unknown as User;
 
             newUser.userSetting = this.utilService.getUserDefaultSetting(newUser, language, {
                 randomSuffix: false,
