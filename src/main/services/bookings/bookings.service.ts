@@ -39,8 +39,9 @@ export class BookingsService {
         return this.availabilityService.fetchDetailByUserWorkspaceAndLink(userWorkspace, eventLink);
     }
 
-    searchScheduledEvents(eventUUID: string): Observable<ScheduledEventResponseDto[]> {
+    searchScheduledEvents(workspace: string, eventUUID: string): Observable<ScheduledEventResponseDto[]> {
         return this.scheduleService.search({
+            workspace,
             eventUUID
         }).pipe(
             map((schedules) => schedules.map(
@@ -58,7 +59,10 @@ export class BookingsService {
         return from(this.userService.findUserByWorkspace(userWorkspace))
             .pipe(
                 map((loadedUser) => {
-                    newSchedule.hostTimezone = loadedUser.userSetting.preferredTimezone;
+                    newSchedule.host = {
+                        workspace: loadedUser.userSetting.workspace,
+                        timezone: loadedUser.userSetting.preferredTimezone
+                    };
                     return loadedUser;
                 }),
                 mergeMap(

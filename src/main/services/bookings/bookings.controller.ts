@@ -11,6 +11,7 @@ import { HostAvailabilityDto } from '@dto/bookings/host-availability.dto';
 import { CreateScheduledRequestDto } from '@dto/schedules/create-scheduled-request.dto';
 import { ScheduledEventResponseDto } from '@dto/schedules/scheduled-event-response.dto';
 import { Public } from '@app/auth/strategy/jwt/public.decorator';
+import { ValidateQueryParamPipe } from '@app/pipes/validate-query-param/validate-query-param.pipe';
 
 @Controller()
 @Public({ ignoreInvalidJwtToken: true })
@@ -22,7 +23,7 @@ export class BookingsController {
 
     @Get('host')
     fetchHost(
-        @Query('workspace') userWorkspace: string
+        @Query('workspace', ValidateQueryParamPipe) userWorkspace: string
     ): Observable<FetchHostResponseDto> {
         return this.bookingsService.fetchHost(userWorkspace)
             .pipe(map((user) => plainToInstance(FetchHostResponseDto, user, {
@@ -32,7 +33,7 @@ export class BookingsController {
 
     @Get('events')
     fetchHostEvents(
-        @Query('workspace') userWorkspace: string
+        @Query('workspace', ValidateQueryParamPipe) userWorkspace: string
     ): Observable<HostEventDto[]> {
         return this.bookingsService.searchHostEvents(userWorkspace)
             .pipe(
@@ -46,7 +47,7 @@ export class BookingsController {
 
     @Get('events/:eventLink')
     fetchHostEventDetail(
-        @Query('workspace') userWorkspace: string,
+        @Query('workspace', ValidateQueryParamPipe) userWorkspace: string,
         @Param('eventLink') eventLink: string
     ): Observable<HostEventDto> {
         return this.bookingsService.fetchHostEventDetail(userWorkspace, eventLink)
@@ -59,7 +60,7 @@ export class BookingsController {
 
     @Get('availabilities')
     searchHostAvailabilities(
-        @Query('workspace') userWorkspace: string,
+        @Query('workspace', ValidateQueryParamPipe) userWorkspace: string,
         @Param('eventLink') eventLink: string
     ): Observable<HostAvailabilityDto> {
         return this.bookingsService.fetchHostAvailabilityDetail(userWorkspace, eventLink)
@@ -72,9 +73,10 @@ export class BookingsController {
 
     @Get('scheduled-events')
     searchScheduledEvents(
+        @Query('workspace', ValidateQueryParamPipe) workspace: string,
         @Query('eventUUID') eventUUID: string
     ): Observable<ScheduledEventResponseDto[]> {
-        return this.bookingsService.searchScheduledEvents(eventUUID)
+        return this.bookingsService.searchScheduledEvents(workspace, eventUUID)
             .pipe(
                 map((searchedScheduledEvents) =>
                     searchedScheduledEvents.map((
