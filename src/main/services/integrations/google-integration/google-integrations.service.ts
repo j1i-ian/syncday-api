@@ -9,6 +9,7 @@ import { IntegrationsServiceInterface } from '@services/integrations/integration
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
@@ -43,7 +44,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
     /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
     async create(
         user: User,
-        timezone: string,
+        userSetting: UserSetting,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
         googleIntegrationBody: GoogleIntegrationBody
@@ -51,7 +52,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         return this._create(
             this.googleIntegrationRepository.manager,
             user,
-            timezone,
+            userSetting,
             googleAuthToken,
             googleCalendarIntegrations,
             googleIntegrationBody
@@ -62,11 +63,12 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
     async _create(
         manager: EntityManager,
         user: User,
-        timezone: string,
+        userSetting: UserSetting,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
         googleIntegrationBody: GoogleIntegrationBody
     ): Promise<GoogleIntegration> {
+        const { workspace, preferredTimezone: timezone } = userSetting;
 
         const newGoogleIngration: GoogleIntegration = {
             accessToken: googleAuthToken.accessToken,
@@ -117,7 +119,10 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
                         __createdGoogleCalendarIntegration.name === _googleIntegrationSchedule.originatedCalendarId
                 );
 
-                _googleIntegrationSchedule.host = { timezone };
+                _googleIntegrationSchedule.host = {
+                    workspace,
+                    timezone
+                };
                 _googleIntegrationSchedule.googleCalendarIntegrationId = _googleCalendarIntegration?.id as number;
 
                 return _googleIntegrationSchedule;

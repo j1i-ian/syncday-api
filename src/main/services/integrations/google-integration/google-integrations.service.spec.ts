@@ -94,7 +94,7 @@ describe('GoogleIntegrationsService', () => {
         it('should be created google integration schedule', async () => {
 
             const userMock = stubOne(User);
-            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const userSettingMock = stubOne(UserSetting);
             const googleCalendarIntegrationsMock = stub(GoogleCalendarIntegration);
             googleCalendarIntegrationsMock[0].primary = true;
 
@@ -113,7 +113,7 @@ describe('GoogleIntegrationsService', () => {
             const createdGoogleIntegrationSchedule = await service._create(
                 datasourceMock as EntityManager,
                 userMock,
-                timezoneMock,
+                userSettingMock,
                 googleOAuthTokenMock,
                 googleCalendarIntegrationsMock,
                 googleIntegrationBodyMock

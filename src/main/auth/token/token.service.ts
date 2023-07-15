@@ -91,7 +91,8 @@ export class TokenService {
             // TODO: This logic cannot support multiple google integrations. After collecting google integration, we should update this block.
             // old user but has no google integration
             if (hasUserGoogleIntegration === false) {
-                await this.googleIntegrationService.create(ensuredUser, timezone, tokens, newGoogleCalendarIntegrations, {
+
+                await this.googleIntegrationService.create(ensuredUser, ensuredUser.userSetting, tokens, newGoogleCalendarIntegrations, {
                     calendars,
                     schedules
                 });

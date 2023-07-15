@@ -291,7 +291,7 @@ export class UserService {
             const newUser = createUserRequestDto as unknown as User;
             const timezone = createUserRequestDto.timezone;
 
-            newUser.userSetting = this.utilService.getUserDefaultSetting(newUser, language, {
+            const userSetting = this.utilService.getUserDefaultSetting(newUser, language, {
                 randomSuffix: false,
                 timezone
             }) as UserSetting;
@@ -307,7 +307,7 @@ export class UserService {
             const _createdGoogleIntegration = await this.googleIntegrationService._create(
                 manager,
                 _createdUser,
-                timezone,
+                userSetting,
                 googleAuthToken,
                 googleCalendarIntegrations,
                 googleIntegrationBody
