@@ -60,6 +60,7 @@ export class BookingsService {
             .pipe(
                 map((loadedUser) => {
                     newSchedule.host = {
+                        workspace: loadedUser.userSetting.workspace,
                         timezone: loadedUser.userSetting.preferredTimezone
                     };
 
