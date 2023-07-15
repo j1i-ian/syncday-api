@@ -1,7 +1,8 @@
 import { RRule } from 'rrule';
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { calendar_v3 } from 'googleapis';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Notification } from '@interfaces/notifications/notification';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
@@ -19,6 +20,8 @@ export class GoogleConverterService {
     constructor(
         private readonly utilService: UtilService
     ) {}
+
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
 
     convertToGoogleConferenceData(conferenceLink: ConferenceLink): calendar_v3.Schema$ConferenceData {
 
@@ -71,35 +74,44 @@ export class GoogleConverterService {
 
         return Object.entries(googleCalendarScheduleBody)
             .flatMap(([_calendarId, _googleSchedules]) =>
-                _googleSchedules.reduce((_allSchedules, _googleSchedule) => {
+                _googleSchedules
+                    .filter((_googleSchedule) => _googleSchedule.recurrence || (_googleSchedule.start && _googleSchedule.end))
+                    .reduce((_allSchedules, _googleSchedule) => {
 
 
-                    let convertedSchedules: GoogleIntegrationSchedule[] = [];
+                        let convertedSchedules: GoogleIntegrationSchedule[] = [];
 
-                    const { startDatetime, endDatetime } = this.convertGoogleScheduleToDateTimes(_googleSchedule);
+                        const { startDatetime, endDatetime } = this.convertGoogleScheduleToDateTimes(_googleSchedule);
 
-                    if (_googleSchedule.recurrence && _googleSchedule.recurrence.length > 0) {
-                        convertedSchedules = this.convertRRuleGoogleEventToGoogleIntegrationSchedules(
-                            _calendarId,
-                            _googleSchedule,
-                            startDatetime,
-                            endDatetime
-                        );
+                        try {
 
-                    } else {
+                            if (_googleSchedule.recurrence && _googleSchedule.recurrence.length > 0) {
+                                convertedSchedules = this.convertRRuleGoogleEventToGoogleIntegrationSchedules(
+                                    _calendarId,
+                                    _googleSchedule,
+                                    startDatetime,
+                                    endDatetime
+                                );
 
-                        const convertedSchedule = this._convertGoogleScheduleToGoogleIntegrationSchedule(
-                            _calendarId,
-                            _googleSchedule,
-                            startDatetime,
-                            endDatetime
-                        );
-                        convertedSchedules.push(convertedSchedule);
+                            } else {
 
-                    }
+                                const convertedSchedule = this._convertGoogleScheduleToGoogleIntegrationSchedule(
+                                    _calendarId,
+                                    _googleSchedule,
+                                    startDatetime,
+                                    endDatetime
+                                );
+                                convertedSchedules.push(convertedSchedule);
+                            }
+                        } catch (error) {
+                            this.logger.error({
+                                message: 'Invalid Google Schedule is detetced',
+                                error
+                            });
+                        }
 
-                    return _allSchedules.concat(convertedSchedules);
-                }, [] as GoogleIntegrationSchedule[])
+                        return _allSchedules.concat(convertedSchedules);
+                    }, [] as GoogleIntegrationSchedule[])
             );
     }
 

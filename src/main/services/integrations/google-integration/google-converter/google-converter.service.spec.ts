@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { calendar_v3 } from 'googleapis';
+import { Logger } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { UtilService } from '@services/util/util.service';
@@ -14,11 +16,15 @@ const testMockUtil = new TestMockUtil();
 
 describe('GoogleConverterService', () => {
     let service: GoogleConverterService;
+
+    let loggerStub: sinon.SinonStubbedInstance<Logger>;
+
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     before(async () => {
 
         utilServiceStub = sinon.createStubInstance(UtilService);
+        loggerStub = sinon.createStubInstance(Logger);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -26,6 +32,10 @@ describe('GoogleConverterService', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: loggerStub
                 }
             ]
         }).compile();
@@ -62,6 +72,32 @@ describe('GoogleConverterService', () => {
             serviceSandbox.restore();
 
             utilServiceStub.generateUUID.reset();
+        });
+
+        it('should be refused invalid google schedules', () => {
+
+            const recurrenceGoogleScheduleCount = 1;
+            const normalGoogleScheduleCount = 1;
+
+            const expectedConvertedScheduleCount = recurrenceGoogleScheduleCount + normalGoogleScheduleCount;
+
+            const convertGoogleScheduleToDateTimesStub = serviceSandbox.stub(service, 'convertGoogleScheduleToDateTimes');
+            convertGoogleScheduleToDateTimesStub.returns({
+                startDatetime: new Date(),
+                endDatetime: new Date()
+            });
+            const convertRRuleGoogleEventToGoogleIntegrationSchedulesStub = serviceSandbox.stub(service, 'convertRRuleGoogleEventToGoogleIntegrationSchedules');
+            const convertGoogleScheduleToGoogleIntegrationScheduleStub = serviceSandbox.stub(service, '_convertGoogleScheduleToGoogleIntegrationSchedule');
+
+            const googleCalendarScheduleBodyMock = testMockUtil.getGoogleCalendarScheduleBodyMock();
+
+            const converted = service.convertToGoogleIntegrationSchedules(googleCalendarScheduleBodyMock);
+            expect(converted).ok;
+            expect(converted.length).equals(expectedConvertedScheduleCount);
+
+            expect(convertGoogleScheduleToDateTimesStub.called).true;
+            expect(convertRRuleGoogleEventToGoogleIntegrationSchedulesStub.called).true;
+            expect(convertGoogleScheduleToGoogleIntegrationScheduleStub.called).true;
         });
 
         it('should be converted date from rrule', () => {
