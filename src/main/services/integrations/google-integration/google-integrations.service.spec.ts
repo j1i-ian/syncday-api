@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
@@ -7,6 +7,13 @@ import { GoogleConverterService } from '@services/integrations/google-integratio
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { User } from '@entity/users/user.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { TestMockUtil } from '@test/test-mock-util';
+
+const testMockUtil = new TestMockUtil();
 
 describe('GoogleIntegrationsService', () => {
     let module: TestingModule;
@@ -73,6 +80,52 @@ describe('GoogleIntegrationsService', () => {
     it('should be defined', () => {
         expect(service).ok;
     });
+
+    describe('Test Creating Google Calendar Schedule', () => {
+
+        afterEach(() => {
+            integrationsRedisRepositoryStub.setGoogleCalendarSubscriptionStatus.reset();
+            gogoleIntegrationRepositoryStub.save.reset();
+            googleIntegrationSchedulesServiceStub._saveAll.reset();
+            googleConverterServiceStub.convertToGoogleIntegrationSchedules.reset();
+            googleCalendarIntegrationsServiceStub.subscribeCalendar.reset();
+        });
+
+        it('should be created google integration schedule', async () => {
+
+            const userMock = stubOne(User);
+            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const googleCalendarIntegrationsMock = stub(GoogleCalendarIntegration);
+            googleCalendarIntegrationsMock[0].primary = true;
+
+            const googleIntegrationBodyMock = testMockUtil.getGoogleIntegrationBodyMock();
+            const googleOAuthTokenMock = testMockUtil.getGoogleOAuthTokenMock();
+
+            const googleIntegrationStub = stubOne(GoogleIntegration, {
+                googleCalendarIntegrations: googleCalendarIntegrationsMock
+            });
+
+            const googleSchedules = stub(GoogleIntegrationSchedule);
+
+            gogoleIntegrationRepositoryStub.save.resolves(googleIntegrationStub);
+            googleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(googleSchedules);
+
+            const createdGoogleIntegrationSchedule = await service._create(
+                datasourceMock as EntityManager,
+                userMock,
+                timezoneMock,
+                googleOAuthTokenMock,
+                googleCalendarIntegrationsMock,
+                googleIntegrationBodyMock
+            );
+
+            expect(createdGoogleIntegrationSchedule).ok;
+
+            expect(gogoleIntegrationRepositoryStub.save.called).true;
+            expect(integrationsRedisRepositoryStub.setGoogleCalendarSubscriptionStatus.called).true;
+            expect(googleConverterServiceStub.convertToGoogleIntegrationSchedules.called).true;
+            expect(googleIntegrationSchedulesServiceStub._saveAll.called).true;
+            expect(googleCalendarIntegrationsServiceStub.subscribeCalendar.called).true;
+        });
+    });
 });
-
-

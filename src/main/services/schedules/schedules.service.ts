@@ -217,7 +217,7 @@ export class SchedulesService {
 
             const results = `isPast: ${String(isPast)},
             isNotConcatenatedTimes: ${String(isNotConcatenatedTimes)},
-            (${String(isNotTimeOverlappingWithOverrides)}
+            (isNotTimeOverlappingWithOverrides && isNotTimeOverlappingWithAvailableTimes: ${String(isNotTimeOverlappingWithOverrides)}
                 && ${String(isNotTimeOverlappingWithAvailableTimes)}`;
 
             this.logger.debug(
