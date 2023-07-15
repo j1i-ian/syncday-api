@@ -70,9 +70,7 @@ export class UserController {
         @AuthUser() authUser: AppJwtPayload,
         @Body() patchUserBody: PatchUserRequestDto
     ): Promise<void> {
-        const result = await this.userService.patch(authUser.id, {
-            name: patchUserBody.name
-        });
+        const result = await this.userService.patch(authUser.id, patchUserBody);
 
         if (result === false) {
             throw new BadRequestException('Cannot update user data');
