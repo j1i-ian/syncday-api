@@ -52,10 +52,11 @@ export class UserController {
     async createUserWithEmailVerification(
         @Body() createUserWithVerificationDto: CreateUserWithVerificationDto
     ): Promise<CreateUserResponseDto> {
-        const { email, verificationCode } = createUserWithVerificationDto;
+        const { email, verificationCode, timezone } = createUserWithVerificationDto;
         const createdUser = await this.userService.createUserWithVerificationByEmail(
             email,
-            verificationCode
+            verificationCode,
+            timezone
         );
 
         return plainToInstance(CreateUserResponseDto, createdUser, {

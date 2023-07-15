@@ -79,7 +79,7 @@ export class GoogleIntegrationFacade {
         return {
             googleUser: googleUserInfo as GoogleOAuth2UserWithToken['googleUser'],
             tokens,
-            calendars,
+            calendars: calendars as GoogleOAuth2UserWithToken['calendars'],
             schedules
         };
     }

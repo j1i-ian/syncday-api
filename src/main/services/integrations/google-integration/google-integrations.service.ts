@@ -43,6 +43,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
     /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
     async create(
         user: User,
+        timezone: string,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
         googleIntegrationBody: GoogleIntegrationBody
@@ -50,6 +51,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         return this._create(
             this.googleIntegrationRepository.manager,
             user,
+            timezone,
             googleAuthToken,
             googleCalendarIntegrations,
             googleIntegrationBody
@@ -60,6 +62,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
     async _create(
         manager: EntityManager,
         user: User,
+        timezone: string,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
         googleIntegrationBody: GoogleIntegrationBody
@@ -93,13 +96,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
 
         const { schedules } = googleIntegrationBody;
 
-        let hasSchedules = false;
-        for (const prop in schedules) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-            if (Object.hasOwn(schedules, prop)) {
-                hasSchedules = true;
-            }
-        }
+        const hasSchedules = Object.keys(schedules).length > 0;
 
         // Google Channel Id is same to google calendar integration uuid.
         const primaryCalendarIntegration = createdGoogleIntegration.googleCalendarIntegrations.find((_calendar) => _calendar.primary) as GoogleCalendarIntegration;
@@ -120,6 +117,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
                         __createdGoogleCalendarIntegration.name === _googleIntegrationSchedule.originatedCalendarId
                 );
 
+                _googleIntegrationSchedule.host = { timezone };
                 _googleIntegrationSchedule.googleCalendarIntegrationId = _googleCalendarIntegration?.id as number;
 
                 return _googleIntegrationSchedule;
