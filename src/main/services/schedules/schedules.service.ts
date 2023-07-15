@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Observable, defer, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
 import { Between, EntityManager, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { calendar_v3 } from 'googleapis';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { EventsService } from '@services/events/events.service';
@@ -118,20 +119,33 @@ export class SchedulesService {
                         availabilityBody,
                         loadedGoogleCalendarIntegrationOrNull?.id
                     ).pipe(
-                        mergeMap((patchedSchedule) => {
+                        mergeMap((patchedSchedule) =>
+                            loadedGoogleCalendarIntegrationOrNull ?
+                                from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
+                                    (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
+                                    (loadedGoogleCalendarIntegrationOrNull),
+                                    hostTimezone,
+                                    patchedSchedule
+                                )).pipe(mergeMap((createdGoogleCalendarEvent) => {
+                                    const googleMeetConferenceLink = createdGoogleCalendarEvent.conferenceData as calendar_v3.Schema$ConferenceData;
+                                    const generatedGoogleMeetLink = (googleMeetConferenceLink.entryPoints as calendar_v3.Schema$EntryPoint[])[0].uri;
+                                    const convertedConferenceLink: ConferenceLink = {
+                                        type: IntegrationVendor.GOOGLE,
+                                        serviceName: 'Google Meet',
+                                        link: generatedGoogleMeetLink
+                                    };
+                                    patchedSchedule.conferenceLinks = [ convertedConferenceLink ];
 
-                            if (loadedGoogleCalendarIntegrationOrNull) {
-                                const generatedGoogleMeetLink = this.utilService.generenateGoogleMeetLink();
-                                const syncdayGoogleMeetConferenceLink: ConferenceLink = {
-                                    type: IntegrationVendor.GOOGLE,
-                                    serviceName: 'Google Meet',
-                                    link: generatedGoogleMeetLink
-                                };
-                                newSchedule.conferenceLinks = [syncdayGoogleMeetConferenceLink];
-                            }
-
-                            return from(_scheduleRepository.save(patchedSchedule));
-                        }),
+                                    return this.googleCalendarIntegrationsService.patchGoogleCalendarEvent(
+                                        (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
+                                        (loadedGoogleCalendarIntegrationOrNull),
+                                        createdGoogleCalendarEvent.id as string,
+                                        patchedSchedule
+                                    );
+                                }), map(() => patchedSchedule)) :
+                                of(patchedSchedule)
+                        ),
+                        mergeMap((patchedSchedule) => from(_scheduleRepository.save(patchedSchedule))),
                         mergeMap((createdSchedule) =>
                             this.scheduleRedisRepository.save(createdSchedule.uuid, {
                                 inviteeAnswers: newSchedule.inviteeAnswers,
@@ -142,16 +156,6 @@ export class SchedulesService {
 
                                 return createdSchedule;
                             }))
-                        ),
-                        mergeMap((createdSchedule) =>
-                            loadedGoogleCalendarIntegrationOrNull ?
-                                from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
-                                    (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
-                                    (loadedGoogleCalendarIntegrationOrNull),
-                                    hostTimezone,
-                                    createdSchedule
-                                )).pipe(map(() => createdSchedule)) :
-                                of(createdSchedule)
                         )
                     )
             )
