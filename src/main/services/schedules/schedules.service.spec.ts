@@ -168,11 +168,13 @@ describe('SchedulesService', () => {
             const scheduleStub = stubOne(Schedule);
             const googleCalendarIntegrationStub = stubOne(GoogleCalendarIntegration);
             const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
+            const googleScheduleMock = testMockUtil.getGoogleScheduleMock();
 
             eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
             utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
             googleCalendarIntegrationsServiceStub.findOne.returns(of(googleCalendarIntegrationStub));
-            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves();
+            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves(googleScheduleMock);
+            googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.resolves(googleScheduleMock);
 
             const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
 
@@ -201,6 +203,7 @@ describe('SchedulesService', () => {
             expect(utilServiceStub.getPatchedScheduledEvent.called).true;
             expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
             expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).true;
+            expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).true;
             expect(validateStub.called).true;
             expect(scheduleRepositoryStub.save.called).true;
             expect(schedulesRedisRepositoryStub.save.called).true;

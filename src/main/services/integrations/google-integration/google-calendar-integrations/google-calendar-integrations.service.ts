@@ -12,6 +12,7 @@ import { GoogleCalendarEventListService } from '@services/integrations/google-in
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { IntegrationUtilsService } from '@services/util/integration-utils/integration-utils.service';
 import { GoogleCalendarEventCreateService } from '@services/integrations/google-integration/facades/google-calendar-event-create.service';
+import { GoogleCalendarEventPatchService } from '@services/integrations/google-integration/facades/google-calendar-event-patch.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
@@ -248,6 +249,35 @@ export class GoogleCalendarIntegrationsService {
         );
 
         return createdGoogleEvent;
+    }
+
+    async patchGoogleCalendarEvent(
+        googleIntegration: GoogleIntegration,
+        googleCalendarIntegration: GoogleCalendarIntegration,
+        googleCalendarEventId: string,
+        patchedSchedule: Schedule
+    ): Promise<calendar_v3.Schema$Event> {
+
+        const calendarId = googleCalendarIntegration.name;
+
+        const userRefreshToken = googleIntegration.refreshToken;
+
+        const ensuredOAuthClient = this.integrationUtilService.getGoogleOAuthClient(
+            userRefreshToken
+        );
+
+        const googleCalendarEventPatchService = new GoogleCalendarEventPatchService();
+
+        const patchedGoogleCalendarEvent = await googleCalendarEventPatchService.patch(
+            ensuredOAuthClient,
+            calendarId,
+            googleCalendarEventId,
+            {
+                description: patchedSchedule.description
+            }
+        );
+
+        return patchedGoogleCalendarEvent;
     }
 
     async resubscriptionCalendar(
