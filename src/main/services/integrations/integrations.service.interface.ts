@@ -11,6 +11,7 @@ export interface IntegrationsServiceInterface {
 
     create(
         user: User,
+        timezone: string,
         authToken: OAuthToken,
         calendarIntegrations: GoogleCalendarIntegration[],
         integrationBody: GoogleIntegrationBody
@@ -19,6 +20,7 @@ export interface IntegrationsServiceInterface {
     _create(
         manager: EntityManager,
         user: User,
+        timezone: string,
         authToken: OAuthToken,
         calendarIntegrations: GoogleCalendarIntegration[],
         integrationBody: GoogleIntegrationBody

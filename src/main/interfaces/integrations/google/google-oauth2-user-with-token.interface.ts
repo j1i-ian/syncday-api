@@ -8,7 +8,9 @@ export interface GoogleOAuth2UserWithToken {
         name: string;
         picture: string;
     };
-    calendars: calendar_v3.Schema$CalendarList;
+    calendars: calendar_v3.Schema$CalendarList & {
+        items: calendar_v3.Schema$CalendarListEntry[];
+    };
     schedules: GoogleCalendarScheduleBody;
 
     tokens: OAuthToken;

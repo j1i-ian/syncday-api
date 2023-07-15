@@ -122,7 +122,8 @@ export class UserService {
 
     async createUserWithVerificationByEmail(
         email: string,
-        verificationCode: string
+        verificationCode: string,
+        timezone: string
     ): Promise<User | null> {
         const verificationOrNull = await this.syncdayRedisService.getEmailVerification(email);
 
@@ -142,7 +143,7 @@ export class UserService {
 
             const manager = this.userRepository.manager;
 
-            createdUser = await this._createUser(manager, newUser, temporaryUser.language, {
+            createdUser = await this._createUser(manager, newUser, temporaryUser.language, timezone, {
                 plainPassword: temporaryUser.plainPassword,
                 emailVerification: true
             });
@@ -163,6 +164,7 @@ export class UserService {
         manager: EntityManager,
         newUser: User,
         language: Language,
+        timezone: string,
         { plainPassword, emailVerification, alreadySignedUpUserCheck }: CreateUserOptions = {
             plainPassword: undefined,
             emailVerification: false,
@@ -204,7 +206,8 @@ export class UserService {
         } as UserSetting;
 
         const defaultUserSetting = this.utilService.getUserDefaultSetting(createdUser, language, {
-            randomSuffix: shouldAddRandomSuffix
+            randomSuffix: shouldAddRandomSuffix,
+            timezone
         }) as UserSetting;
 
         const userSetting = defaultUserSetting;
@@ -286,13 +289,14 @@ export class UserService {
 
         const createdUser = await this.datasource.transaction(async (manager) => {
             const newUser = createUserRequestDto as unknown as User;
+            const timezone = createUserRequestDto.timezone;
 
             newUser.userSetting = this.utilService.getUserDefaultSetting(newUser, language, {
                 randomSuffix: false,
-                timezone: createUserRequestDto.timezone
+                timezone
             }) as UserSetting;
 
-            const _createdUser = await this._createUser(manager, newUser, language, {
+            const _createdUser = await this._createUser(manager, newUser, language, timezone, {
                 plainPassword: undefined,
                 alreadySignedUpUserCheck: false,
                 emailVerification: false
@@ -303,6 +307,7 @@ export class UserService {
             const _createdGoogleIntegration = await this.googleIntegrationService._create(
                 manager,
                 _createdUser,
+                timezone,
                 googleAuthToken,
                 googleCalendarIntegrations,
                 googleIntegrationBody
