@@ -69,7 +69,16 @@ export class SchedulesService {
     findOne(scheduleUUID: string): Observable<Schedule> {
         return from(this.scheduleRepository.findOneByOrFail({
             uuid: scheduleUUID
-        }));
+        })).pipe(
+            mergeMap((scheduledEvent) => this.scheduleRedisRepository.getScheduleBody(scheduledEvent.uuid)
+                .pipe(
+                    map((scheduleBody) => {
+                        scheduledEvent.inviteeAnswers = scheduleBody.inviteeAnswers;
+                        return scheduledEvent;
+                    })
+                )
+            )
+        );
     }
 
     create(userWorkspace: string, eventUUID: string, newSchedule: Schedule, hostTimezone: string, host: User): Observable<Schedule> {

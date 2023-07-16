@@ -144,8 +144,10 @@ describe('SchedulesService', () => {
         it('should be fetched scheduled event one', async () => {
 
             const scheduleStub = stubOne(Schedule);
+            const scheduleBodyStub = testMockUtil.getScheduleBodyMock();
 
             scheduleRepositoryStub.findOneByOrFail.resolves(scheduleStub);
+            schedulesRedisRepositoryStub.getScheduleBody.returns(of(scheduleBodyStub));
 
             const fetchedScheduledEvent = await firstValueFrom(
                 service.findOne(scheduleStub.uuid)
