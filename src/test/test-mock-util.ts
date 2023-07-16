@@ -25,6 +25,7 @@ import { Verification } from '@entity/verifications/verification.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
@@ -350,6 +351,18 @@ export class TestMockUtil {
             name: faker.name.fullName(),
             plainPassword: faker.word.noun(),
             language: Language.ENGLISH
+        };
+    }
+
+    getOverridedAvailabilityTimeMock(): OverridedAvailabilityTime {
+        return {
+            targetDate: new Date('2023-07-17 00:00:00'),
+            timeRanges: [
+                {
+                    startTime: '2023-07-17 09:00:00',
+                    endTime: '2023-07-17 17:00:00'
+                }
+            ]
         };
     }
 }
