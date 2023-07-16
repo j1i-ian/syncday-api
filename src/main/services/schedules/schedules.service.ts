@@ -201,7 +201,7 @@ export class SchedulesService {
 
         // for exclusive query, reduce 1 second
         const ensuredStartDateTime = ensuredBufferStartDatetime ?? new Date(startTimestamp);
-        ensuredStartDateTime.setSeconds(ensuredStartDateTime.getSeconds() - 1);
+        ensuredStartDateTime.setSeconds(ensuredStartDateTime.getSeconds() + 1);
         const ensuredStartDateTimestamp = ensuredStartDateTime.getTime();
 
         const ensuredEndDateTime = ensuredBufferEndDatetime ?? new Date(endTimestamp);
@@ -309,7 +309,14 @@ export class SchedulesService {
         return forkJoin(scheduleObservables).pipe(
             mergeMap(([loadedScheduleOrNull, loadedGoogleIntegrationScheduleOrNull]) =>
                 iif(
-                    () => !loadedScheduleOrNull && !loadedGoogleIntegrationScheduleOrNull,
+                    () => {
+                        this.logger.debug({
+                            message: 'a previous engagement is detected: !loadedScheduleOrNull && !loadedGoogleIntegrationScheduleOrNull is true',
+                            loadedScheduleOrNull,
+                            loadedGoogleIntegrationScheduleOrNull
+                        });
+                        return !loadedScheduleOrNull && !loadedGoogleIntegrationScheduleOrNull;
+                    },
                     of(schedule),
                     throwError(() => new CannotCreateByInvalidTimeRange())
                 )
