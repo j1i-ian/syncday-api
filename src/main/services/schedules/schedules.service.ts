@@ -199,9 +199,13 @@ export class SchedulesService {
         const ensuredBufferStartDatetime = startBufferTimestamp && new Date(startBufferTimestamp);
         const ensuredBufferEndDatetime = endBufferTimestamp && new Date(endBufferTimestamp);
 
+        // for exclusive query, reduce 1 second
         const ensuredStartDateTime = ensuredBufferStartDatetime ?? new Date(startTimestamp);
+        ensuredStartDateTime.setSeconds(ensuredStartDateTime.getSeconds() - 1);
         const ensuredStartDateTimestamp = ensuredStartDateTime.getTime();
+
         const ensuredEndDateTime = ensuredBufferEndDatetime ?? new Date(endTimestamp);
+        ensuredEndDateTime.setSeconds(ensuredEndDateTime.getSeconds() - 1);
         const ensuredEndDateTimestamp = ensuredEndDateTime.getTime();
 
         const isNotConcatenatedTimes = ensuredEndDateTimestamp <= ensuredStartDateTimestamp;
@@ -226,7 +230,6 @@ export class SchedulesService {
         const isNotTimeOverlappingWithAvailableTimes = !isTimeOverlappingWithAvailableTimes;
 
         const isInvalid = isPast || isNotConcatenatedTimes || (isNotTimeOverlappingWithOverrides && isNotTimeOverlappingWithAvailableTimes);
-
 
         if (isInvalid) {
 
@@ -319,6 +322,16 @@ export class SchedulesService {
             ensuredEndDateTimestamp < Date.now();
     }
 
+    /**
+     * This method returns true if given params are valid
+     * nor returns false for invalid
+     *
+     * @param timezone
+     * @param overrides
+     * @param startDateTimestamp
+     * @param endDateTimestamp
+     * @returns
+     */
     _isTimeOverlappingWithOverrides(
         timezone: string,
         overrides: OverridedAvailabilityTime[],
@@ -326,27 +339,33 @@ export class SchedulesService {
         endDateTimestamp: number
     ): boolean {
 
-        const isTimeOverlappedWithOverrides = overrides
-            .some(({
-                targetDate: _targetDate,
-                timeRanges: _timeRanges
-            }) => _timeRanges.some((__timeRange) => {
-                const { startTime, endTime } = __timeRange as { startTime: string; endTime: string };
-                const _startDateTime = this.utilService.localizeDateTime(
-                    new Date(_targetDate),
-                    timezone,
-                    startTime
-                );
+        let isTimeOverlappedWithOverrides: boolean;
 
-                const _endDateTime = this.utilService.localizeDateTime(
-                    new Date(_targetDate),
-                    timezone,
-                    endTime
-                );
+        if (overrides.length > 0) {
+            isTimeOverlappedWithOverrides = overrides
+                .some(({
+                    targetDate: _targetDate,
+                    timeRanges: _timeRanges
+                }) => _timeRanges.some((__timeRange) => {
+                    const { startTime, endTime } = __timeRange as { startTime: string; endTime: string };
+                    const _startDateTime = this.utilService.localizeDateTime(
+                        new Date(_targetDate),
+                        timezone,
+                        startTime
+                    );
 
-                return _startDateTime.getTime() <= startDateTimestamp &&
-                    endDateTimestamp <= _endDateTime.getTime();
-            }));
+                    const _endDateTime = this.utilService.localizeDateTime(
+                        new Date(_targetDate),
+                        timezone,
+                        endTime
+                    );
+
+                    return _startDateTime.getTime() <= startDateTimestamp &&
+                        endDateTimestamp <= _endDateTime.getTime();
+                }));
+        } else {
+            isTimeOverlappedWithOverrides = true;
+        }
 
         return isTimeOverlappedWithOverrides;
     }
