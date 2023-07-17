@@ -9,6 +9,7 @@ import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { EventStatus } from '@entity/events/event-status.enum';
 import { ScheduledEventResponseDto } from '@dto/schedules/scheduled-event-response.dto';
 
 @Injectable()
@@ -27,6 +28,7 @@ export class BookingsService {
 
     searchHostEvents(userWorkspace: string): Observable<Event[]> {
         return this.eventService.search({
+            status: EventStatus.OPENED,
             userWorkspace
         });
     }
