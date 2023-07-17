@@ -277,6 +277,51 @@ describe('GoogleConverterService', () => {
             expect(convertedGoogleIntegrationSchedule).ok;
             expect(convertedGoogleIntegrationSchedule.iCalUID).ok;
         });
+
+        it('should be converted google integration schedule with source date time', () => {
+            const recurrenceRulesString = 'RRULE:FREQ=DAILY';
+            const googleScheduleMock = testMockUtil.getGoogleScheduleMock(recurrenceRulesString);
+            const calendarIdMock = 'alan@sync.day';
+
+            const convertedDatesStubs = [
+                {
+                    startDatetime: new Date('2023-07-18T00:00:00+09:00'),
+                    endDatetime: new Date('2023-07-18T00:00:00+09:00')
+                }
+            ];
+            const googleIntegrationScheduleStub = stubOne(GoogleIntegrationSchedule, {
+                iCalUID: googleScheduleMock.iCalUID as string,
+                scheduledTime: {
+                    startTimestamp: convertedDatesStubs[0].startDatetime,
+                    endTimestamp: convertedDatesStubs[0].endDatetime
+                }
+            });
+
+            const convertRecurrenceRuleToDatesStub = serviceSandbox.stub(service, 'convertRecurrenceRuleToDates');
+
+            convertRecurrenceRuleToDatesStub.returns(convertedDatesStubs);
+            serviceSandbox.stub(service, '_convertGoogleScheduleToGoogleIntegrationSchedule').returns(googleIntegrationScheduleStub);
+
+            const startDate = new Date('2023-07-18T12:30:00+09:00');
+            const endDate = new Date('2023-07-18T13:00:00+09:00');
+
+            const convertedGoogleIntegrationSchedules = service.convertRRuleGoogleEventToGoogleIntegrationSchedules(
+                calendarIdMock,
+                googleScheduleMock,
+                startDate,
+                endDate
+            );
+            expect(convertedGoogleIntegrationSchedules).ok;
+            expect(convertedGoogleIntegrationSchedules.length).greaterThan(0);
+
+            const convertedGoogleIntegrationSchedule = convertedGoogleIntegrationSchedules[0];
+            expect(convertedGoogleIntegrationSchedule).ok;
+            expect(convertedGoogleIntegrationSchedule.iCalUID).ok;
+
+            const passedMinDate = convertRecurrenceRuleToDatesStub.args[0][1];
+            expect(passedMinDate.getHours()).equals(startDate.getHours());
+            expect(passedMinDate.getMinutes()).equals(startDate.getMinutes());
+        });
     });
 
 });

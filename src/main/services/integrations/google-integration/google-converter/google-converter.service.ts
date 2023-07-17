@@ -128,7 +128,7 @@ export class GoogleConverterService {
         // TODO: apply dateRange.until
         const minDate = new Date(Math.max(startDate.getTime(), Date.now()));
         minDate.setMonth(startDate.getMonth(), startDate.getDate());
-        minDate.setHours(0, 0, 0);
+        minDate.setHours(startDate.getHours(), startDate.getMinutes(), startDate.getSeconds());
 
         const maxDate = new Date(Date.now () + new Date(0).setMonth(3));
 
