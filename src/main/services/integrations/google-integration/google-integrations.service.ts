@@ -83,7 +83,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
                 if (calendar.primary) {
                     calendar.setting = {
                         conflictCheck: true,
-                        outboundWriteSync: false,
+                        outboundWriteSync: true,
                         inboundDecliningSync: false
                     };
                 }
