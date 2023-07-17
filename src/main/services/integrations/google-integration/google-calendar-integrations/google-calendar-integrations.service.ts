@@ -50,6 +50,10 @@ export class GoogleCalendarIntegrationsService {
 
         const loadedGoogleIntegration = loadedGoogleCalendarIntegration.googleIntegration;
 
+        // As of now, User can have only one Google Integration
+        const loadedUser = loadedGoogleIntegration.users[0];
+        const loadedUserSetting = loadedUser.userSetting;
+
         const googleOAuthClient = this.integrationUtilService.getGoogleOAuthClient(loadedGoogleIntegration.refreshToken);
 
         const googleCalendarEventListService = new GoogleCalendarEventListService();
@@ -83,6 +87,10 @@ export class GoogleCalendarIntegrationsService {
         }).map((_newSchedule) => {
             _newSchedule.originatedCalendarId = loadedGoogleCalendarIntegration.name;
             _newSchedule.googleCalendarIntegrationId = loadedGoogleCalendarIntegration.id;
+            _newSchedule.host = {
+                timezone: loadedUserSetting.preferredTimezone,
+                workspace: loadedUserSetting.workspace
+            };
             return _newSchedule;
         });
 
@@ -97,7 +105,8 @@ export class GoogleCalendarIntegrationsService {
 
             // delete old schedules
             await _googleIntegrationScheduleRepository.delete({
-                iCalUID: Not(In(loadedGoogleEventICalUIDs))
+                iCalUID: Not(In(loadedGoogleEventICalUIDs)),
+                googleCalendarIntegrationId: loadedGoogleCalendarIntegration.id
             });
         });
     }

@@ -11,6 +11,7 @@ import { GoogleCalendarIntegration } from '@entity/integrations/google/google-ca
 import { User } from '@entity/users/user.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleCalendarIntegrationsService } from './google-calendar-integrations.service';
@@ -109,8 +110,14 @@ describe('GoogleCalendarIntegrationsService', () => {
         });
 
         it('should be searched for calendar items', async () => {
+            const userSettingStub = stubOne(UserSetting);
+            const userStub = stubOne(User, {
+                userSetting: userSettingStub
+            });
+            const googleIntegrationStub = stubOne(GoogleIntegration, {
+                users: [userStub]
+            });
 
-            const googleIntegrationStub = stubOne(GoogleIntegration);
             const oldGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
             const newGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
             newGoogleIntegrationScheduleStubs[0] = oldGoogleIntegrationScheduleStubs[0];
