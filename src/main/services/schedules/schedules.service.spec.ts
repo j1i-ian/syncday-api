@@ -105,6 +105,7 @@ describe('SchedulesService', () => {
         afterEach(() => {
             eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
+            utilServiceStub.localizeDateTime.reset();
             googleCalendarIntegrationsServiceStub.findOne.reset();
             googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.reset();
             schedulesRedisRepositoryStub.save.reset();
@@ -114,7 +115,6 @@ describe('SchedulesService', () => {
             scheduleRepositoryStub.findOneByOrFail.reset();
             scheduleRepositoryStub.update.reset();
             googleIntegrationScheduleRepositoryStub.findOneBy.reset();
-
 
             serviceSandbox.restore();
         });
@@ -144,8 +144,10 @@ describe('SchedulesService', () => {
         it('should be fetched scheduled event one', async () => {
 
             const scheduleStub = stubOne(Schedule);
+            const scheduleBodyStub = testMockUtil.getScheduleBodyMock();
 
             scheduleRepositoryStub.findOneByOrFail.resolves(scheduleStub);
+            schedulesRedisRepositoryStub.getScheduleBody.returns(of(scheduleBodyStub));
 
             const fetchedScheduledEvent = await firstValueFrom(
                 service.findOne(scheduleStub.uuid)
@@ -168,11 +170,13 @@ describe('SchedulesService', () => {
             const scheduleStub = stubOne(Schedule);
             const googleCalendarIntegrationStub = stubOne(GoogleCalendarIntegration);
             const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
+            const googleScheduleMock = testMockUtil.getGoogleScheduleMock();
 
             eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
             utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
             googleCalendarIntegrationsServiceStub.findOne.returns(of(googleCalendarIntegrationStub));
-            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves();
+            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves(googleScheduleMock);
+            googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.resolves(googleScheduleMock);
 
             const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
 
@@ -201,6 +205,7 @@ describe('SchedulesService', () => {
             expect(utilServiceStub.getPatchedScheduledEvent.called).true;
             expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
             expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).true;
+            expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).true;
             expect(validateStub.called).true;
             expect(scheduleRepositoryStub.save.called).true;
             expect(schedulesRedisRepositoryStub.save.called).true;
@@ -416,6 +421,49 @@ describe('SchedulesService', () => {
             expect(_isPastTimestampStub.called).true;
             expect(_isTimeOverlappingWithOverridesStub.called).true;
             expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
+        });
+
+        it('should be returned true for no overlapping with overrides', () => {
+
+            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const overridedAvailabilityTimeMock = testMockUtil.getOverridedAvailabilityTimeMock();
+            const timeRangeMock = overridedAvailabilityTimeMock.timeRanges[0];
+
+            const startDateTimeStub = new Date(timeRangeMock.startTime);
+            startDateTimeStub.setHours(startDateTimeStub.getHours() + 1);
+            const endDateTimeStub = new Date(timeRangeMock.endTime);
+            endDateTimeStub.setHours(endDateTimeStub.getHours() - 1);
+            const startDateTimestampMock = startDateTimeStub.getTime();
+            const endDateTimestampMock = endDateTimeStub.getTime();
+
+            utilServiceStub.localizeDateTime.onFirstCall().returns(startDateTimeStub);
+            utilServiceStub.localizeDateTime.onSecondCall().returns(endDateTimeStub);
+
+            const isTimeOverlappedWithOverrides = service._isTimeOverlappingWithOverrides(
+                timezoneMock,
+                [overridedAvailabilityTimeMock],
+                startDateTimestampMock,
+                endDateTimestampMock
+            );
+
+            expect(isTimeOverlappedWithOverrides).true;
+            expect(utilServiceStub.localizeDateTime.calledTwice).true;
+        });
+
+        it('should be returned true with empty overrides', () => {
+
+            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const timestampDummy = Date.now();
+
+            const isTimeOverlappedWithOverrides = service._isTimeOverlappingWithOverrides(
+                timezoneMock,
+                [],
+                timestampDummy,
+                timestampDummy
+            );
+
+            expect(isTimeOverlappedWithOverrides).true;
+            expect(utilServiceStub.localizeDateTime.called).false;
         });
     });
 

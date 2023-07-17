@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import { calendar_v3 } from 'googleapis';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
@@ -8,6 +9,8 @@ import { GoogleIntegrationsService } from '@services/integrations/google-integra
 import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { GoogleOAuth2UserWithToken } from '@app/interfaces/integrations/google/google-oauth2-user-with-token.interface';
+import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
+import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { UserService } from '../../services/users/user.service';
 import { faker } from '@faker-js/faker';
 import { TokenService } from './token.service';
@@ -111,7 +114,16 @@ describe('TokenService', () => {
             };
 
             googleIntegrationFacadeStub.fetchGoogleUsersWithToken.resolves({
-                googleUser: googleUserStub
+                googleUser: googleUserStub,
+                calendars: {
+                    items: [
+                        { primary: true, timeZone: 'Asia/Seoul' }
+                    ]
+                } as calendar_v3.Schema$CalendarList,
+                schedules: {
+                    'primary': []
+                } as GoogleCalendarScheduleBody,
+                tokens: {} as OAuthToken
             } as GoogleOAuth2UserWithToken);
 
             userServiceStub.findUserByEmail.resolves(null);

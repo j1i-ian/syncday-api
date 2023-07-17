@@ -8,6 +8,7 @@ import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { UtilService } from '@services/util/util.service';
 import { Availability } from '@entity/availability/availability.entity';
+import { EventStatus } from '@entity/events/event-status.enum';
 import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
@@ -29,6 +30,7 @@ export class EventsService {
             this.eventRepository.find({
                 relations: ['eventGroup', 'eventDetail'],
                 where: {
+                    status: searchOption.status,
                     eventGroup: {
                         userId: searchOption.userId
                     },
@@ -104,6 +106,7 @@ export class EventsService {
                 relations: ['eventDetail', 'availability'],
                 where: {
                     uuid: eventUUID,
+                    status: EventStatus.OPENED,
                     availability: {
                         user: {
                             userSetting: {
@@ -121,6 +124,7 @@ export class EventsService {
         return from(this.eventRepository.findOneOrFail({
             relations: ['eventDetail'],
             where: {
+                status: EventStatus.OPENED,
                 link: eventLink,
                 availability: {
                     user: {

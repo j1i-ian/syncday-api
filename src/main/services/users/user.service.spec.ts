@@ -290,6 +290,7 @@ describe('Test User Service', () => {
                 datasourceMock as EntityManager,
                 userStub,
                 languageDummy,
+                defaultUserSettingStub.preferredTimezone,
                 {
                     plainPassword,
                     emailVerification: true,
@@ -319,6 +320,7 @@ describe('Test User Service', () => {
         });
 
         it('should be not created user with email when user is already exist', async () => {
+            const timezoneMock = stubOne(UserSetting).preferredTimezone;
             const alreadySignedUpUser = stubOne(User, {
                 name: 'foo'
             });
@@ -331,10 +333,12 @@ describe('Test User Service', () => {
             });
 
             await expect(
-                service._createUser(datasourceMock as EntityManager, userStub, languageDummy, {
-                    plainPassword: plainPasswordDummy,
-                    emailVerification: true
-                })
+                service._createUser(datasourceMock as EntityManager, userStub, languageDummy,
+                    timezoneMock,
+                    {
+                        plainPassword: plainPasswordDummy,
+                        emailVerification: true
+                    })
             ).rejectedWith(BadRequestException);
         });
 
@@ -345,6 +349,7 @@ describe('Test User Service', () => {
 
         it('should be not created user with email when user verification status is false', async () => {
             const plainPassword = 'test';
+            const timezoneMock = stubOne(UserSetting).preferredTimezone;
             const userStub = stubOne(User, {
                 hashedPassword: plainPassword
             });
@@ -357,7 +362,7 @@ describe('Test User Service', () => {
             userRepositoryStub.save.resolves(userStub);
 
             await expect(
-                service._createUser(datasourceMock as EntityManager, userStub, languageDummy, {
+                service._createUser(datasourceMock as EntityManager, userStub, languageDummy, timezoneMock, {
                     plainPassword: plainPasswordDummy,
                     emailVerification: true
                 })
@@ -404,7 +409,8 @@ describe('Test User Service', () => {
 
                 const createdUser = (await service.createUserWithVerificationByEmail(
                     emailMock,
-                    verificationStub.verificationCode
+                    verificationStub.verificationCode,
+                    userSettingStub.preferredTimezone
                 )) as User;
 
                 expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).true;
@@ -416,6 +422,7 @@ describe('Test User Service', () => {
 
             it('should be not verified when email and verification is not matched', async () => {
                 const emailMock = TestMockUtil.faker.internet.email();
+                const timezoneMcok = stubOne(UserSetting).preferredTimezone;
                 const verificationCodeMock = '1423';
 
                 syncdayRedisServiceStub.getEmailVerification.resolves(null);
@@ -423,7 +430,7 @@ describe('Test User Service', () => {
                 serviceSandbox.stub(service, '_createUser');
 
                 await expect(
-                    service.createUserWithVerificationByEmail(emailMock, verificationCodeMock)
+                    service.createUserWithVerificationByEmail(emailMock, verificationCodeMock, timezoneMcok)
                 ).rejectedWith(EmailVertificationFailException);
 
                 expect(syncdayRedisServiceStub.getEmailVerification.called).true;

@@ -9,6 +9,7 @@ import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { EventStatus } from '@entity/events/event-status.enum';
 import { ScheduledEventResponseDto } from '@dto/schedules/scheduled-event-response.dto';
 
 @Injectable()
@@ -27,6 +28,7 @@ export class BookingsService {
 
     searchHostEvents(userWorkspace: string): Observable<Event[]> {
         return this.eventService.search({
+            status: EventStatus.OPENED,
             userWorkspace
         });
     }
@@ -39,8 +41,9 @@ export class BookingsService {
         return this.availabilityService.fetchDetailByUserWorkspaceAndLink(userWorkspace, eventLink);
     }
 
-    searchScheduledEvents(eventUUID: string): Observable<ScheduledEventResponseDto[]> {
+    searchScheduledEvents(workspace: string, eventUUID: string): Observable<ScheduledEventResponseDto[]> {
         return this.scheduleService.search({
+            workspace,
             eventUUID
         }).pipe(
             map((schedules) => schedules.map(
@@ -58,7 +61,11 @@ export class BookingsService {
         return from(this.userService.findUserByWorkspace(userWorkspace))
             .pipe(
                 map((loadedUser) => {
-                    newSchedule.hostTimezone = loadedUser.userSetting.preferredTimezone;
+                    newSchedule.host = {
+                        workspace: loadedUser.userSetting.workspace,
+                        timezone: loadedUser.userSetting.preferredTimezone
+                    };
+
                     return loadedUser;
                 }),
                 mergeMap(

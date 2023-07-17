@@ -7,8 +7,6 @@ import {
     Header,
     HttpCode,
     HttpStatus,
-    Param,
-    ParseIntPipe,
     Patch,
     Post,
     Put
@@ -52,10 +50,11 @@ export class UserController {
     async createUserWithEmailVerification(
         @Body() createUserWithVerificationDto: CreateUserWithVerificationDto
     ): Promise<CreateUserResponseDto> {
-        const { email, verificationCode } = createUserWithVerificationDto;
+        const { email, verificationCode, timezone } = createUserWithVerificationDto;
         const createdUser = await this.userService.createUserWithVerificationByEmail(
             email,
-            verificationCode
+            verificationCode,
+            timezone
         );
 
         return plainToInstance(CreateUserResponseDto, createdUser, {
@@ -69,9 +68,7 @@ export class UserController {
         @AuthUser() authUser: AppJwtPayload,
         @Body() patchUserBody: PatchUserRequestDto
     ): Promise<void> {
-        const result = await this.userService.patch(authUser.id, {
-            name: patchUserBody.name
-        });
+        const result = await this.userService.patch(authUser.id, patchUserBody);
 
         if (result === false) {
             throw new BadRequestException('Cannot update user data');
@@ -107,7 +104,7 @@ export class UserController {
     @Delete(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteUser(
-        @Param('userId', ParseIntPipe) userId: number
+        @AuthUser('id') userId: number
     ): Promise<void> {
         await this.userService.deleteUser(userId);
     }

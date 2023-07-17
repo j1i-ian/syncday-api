@@ -9,6 +9,7 @@ import { IntegrationsServiceInterface } from '@services/integrations/integration
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
@@ -43,6 +44,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
     /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
     async create(
         user: User,
+        userSetting: UserSetting,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
         googleIntegrationBody: GoogleIntegrationBody
@@ -50,6 +52,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         return this._create(
             this.googleIntegrationRepository.manager,
             user,
+            userSetting,
             googleAuthToken,
             googleCalendarIntegrations,
             googleIntegrationBody
@@ -60,10 +63,12 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
     async _create(
         manager: EntityManager,
         user: User,
+        userSetting: UserSetting,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
         googleIntegrationBody: GoogleIntegrationBody
     ): Promise<GoogleIntegration> {
+        const { workspace, preferredTimezone: timezone } = userSetting;
 
         const newGoogleIngration: GoogleIntegration = {
             accessToken: googleAuthToken.accessToken,
@@ -78,7 +83,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
                 if (calendar.primary) {
                     calendar.setting = {
                         conflictCheck: true,
-                        outboundWriteSync: false,
+                        outboundWriteSync: true,
                         inboundDecliningSync: false
                     };
                 }
@@ -91,15 +96,9 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
         const createdGoogleIntegration = await _googleIntegrationRepository.save(newGoogleIngration);
 
-        const { schedules } = googleIntegrationBody;
+        const { schedules: googleCalendarScheduleBody } = googleIntegrationBody;
 
-        let hasSchedules = false;
-        for (const prop in schedules) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-            if (Object.hasOwn(schedules, prop)) {
-                hasSchedules = true;
-            }
-        }
+        const hasSchedules = Object.keys(googleCalendarScheduleBody).length > 0;
 
         // Google Channel Id is same to google calendar integration uuid.
         const primaryCalendarIntegration = createdGoogleIntegration.googleCalendarIntegrations.find((_calendar) => _calendar.primary) as GoogleCalendarIntegration;
@@ -110,7 +109,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
                 primaryCalendarIntegration.uuid
             );
 
-            const googleIntegrationSchedules = this.googleConverterService.convertToGoogleIntegrationSchedules(schedules);
+            const googleIntegrationSchedules = this.googleConverterService.convertToGoogleIntegrationSchedules(googleCalendarScheduleBody);
 
             const _createdGoogleCalendarIntegrations = createdGoogleIntegration.googleCalendarIntegrations;
 
@@ -120,6 +119,10 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
                         __createdGoogleCalendarIntegration.name === _googleIntegrationSchedule.originatedCalendarId
                 );
 
+                _googleIntegrationSchedule.host = {
+                    workspace,
+                    timezone
+                };
                 _googleIntegrationSchedule.googleCalendarIntegrationId = _googleCalendarIntegration?.id as number;
 
                 return _googleIntegrationSchedule;

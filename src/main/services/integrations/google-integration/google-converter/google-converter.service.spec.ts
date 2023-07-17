@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { calendar_v3 } from 'googleapis';
+import { Logger } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { UtilService } from '@services/util/util.service';
@@ -14,11 +16,15 @@ const testMockUtil = new TestMockUtil();
 
 describe('GoogleConverterService', () => {
     let service: GoogleConverterService;
+
+    let loggerStub: sinon.SinonStubbedInstance<Logger>;
+
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     before(async () => {
 
         utilServiceStub = sinon.createStubInstance(UtilService);
+        loggerStub = sinon.createStubInstance(Logger);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -26,6 +32,10 @@ describe('GoogleConverterService', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: loggerStub
                 }
             ]
         }).compile();
@@ -62,6 +72,32 @@ describe('GoogleConverterService', () => {
             serviceSandbox.restore();
 
             utilServiceStub.generateUUID.reset();
+        });
+
+        it('should be refused invalid google schedules', () => {
+
+            const recurrenceGoogleScheduleCount = 1;
+            const normalGoogleScheduleCount = 1;
+
+            const expectedConvertedScheduleCount = recurrenceGoogleScheduleCount + normalGoogleScheduleCount;
+
+            const convertGoogleScheduleToDateTimesStub = serviceSandbox.stub(service, 'convertGoogleScheduleToDateTimes');
+            convertGoogleScheduleToDateTimesStub.returns({
+                startDatetime: new Date(),
+                endDatetime: new Date()
+            });
+            const convertRRuleGoogleEventToGoogleIntegrationSchedulesStub = serviceSandbox.stub(service, 'convertRRuleGoogleEventToGoogleIntegrationSchedules');
+            const convertGoogleScheduleToGoogleIntegrationScheduleStub = serviceSandbox.stub(service, '_convertGoogleScheduleToGoogleIntegrationSchedule');
+
+            const googleCalendarScheduleBodyMock = testMockUtil.getGoogleCalendarScheduleBodyMock();
+
+            const converted = service.convertToGoogleIntegrationSchedules(googleCalendarScheduleBodyMock);
+            expect(converted).ok;
+            expect(converted.length).equals(expectedConvertedScheduleCount);
+
+            expect(convertGoogleScheduleToDateTimesStub.called).true;
+            expect(convertRRuleGoogleEventToGoogleIntegrationSchedulesStub.called).true;
+            expect(convertGoogleScheduleToGoogleIntegrationScheduleStub.called).true;
         });
 
         it('should be converted date from rrule', () => {
@@ -173,7 +209,7 @@ describe('GoogleConverterService', () => {
 
             expect(convertedGoogleSchedule).ok;
             expect(convertedStartDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
-            expect(convertedEndDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
+            expect(convertedEndDatetime.getTime()).equals(scheduleMock.scheduledTime.endTimestamp.getTime());
             expect(convertedGoogleSchedule).ok;
 
             expect(utilServiceStub.generateUUID.called).true;
@@ -240,6 +276,51 @@ describe('GoogleConverterService', () => {
             const convertedGoogleIntegrationSchedule = convertedGoogleIntegrationSchedules[0];
             expect(convertedGoogleIntegrationSchedule).ok;
             expect(convertedGoogleIntegrationSchedule.iCalUID).ok;
+        });
+
+        it('should be converted google integration schedule with source date time', () => {
+            const recurrenceRulesString = 'RRULE:FREQ=DAILY';
+            const googleScheduleMock = testMockUtil.getGoogleScheduleMock(recurrenceRulesString);
+            const calendarIdMock = 'alan@sync.day';
+
+            const convertedDatesStubs = [
+                {
+                    startDatetime: new Date('2023-07-18T00:00:00+09:00'),
+                    endDatetime: new Date('2023-07-18T00:00:00+09:00')
+                }
+            ];
+            const googleIntegrationScheduleStub = stubOne(GoogleIntegrationSchedule, {
+                iCalUID: googleScheduleMock.iCalUID as string,
+                scheduledTime: {
+                    startTimestamp: convertedDatesStubs[0].startDatetime,
+                    endTimestamp: convertedDatesStubs[0].endDatetime
+                }
+            });
+
+            const convertRecurrenceRuleToDatesStub = serviceSandbox.stub(service, 'convertRecurrenceRuleToDates');
+
+            convertRecurrenceRuleToDatesStub.returns(convertedDatesStubs);
+            serviceSandbox.stub(service, '_convertGoogleScheduleToGoogleIntegrationSchedule').returns(googleIntegrationScheduleStub);
+
+            const startDate = new Date('2023-07-18T12:30:00+09:00');
+            const endDate = new Date('2023-07-18T13:00:00+09:00');
+
+            const convertedGoogleIntegrationSchedules = service.convertRRuleGoogleEventToGoogleIntegrationSchedules(
+                calendarIdMock,
+                googleScheduleMock,
+                startDate,
+                endDate
+            );
+            expect(convertedGoogleIntegrationSchedules).ok;
+            expect(convertedGoogleIntegrationSchedules.length).greaterThan(0);
+
+            const convertedGoogleIntegrationSchedule = convertedGoogleIntegrationSchedules[0];
+            expect(convertedGoogleIntegrationSchedule).ok;
+            expect(convertedGoogleIntegrationSchedule.iCalUID).ok;
+
+            const passedMinDate = convertRecurrenceRuleToDatesStub.args[0][1];
+            expect(passedMinDate.getHours()).equals(startDate.getHours());
+            expect(passedMinDate.getMinutes()).equals(startDate.getMinutes());
         });
     });
 

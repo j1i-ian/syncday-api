@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Observable, defer, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
 import { Between, EntityManager, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { calendar_v3 } from 'googleapis';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { EventsService } from '@services/events/events.service';
@@ -38,23 +39,25 @@ export class SchedulesService {
 
     search(scheduleSearchOption: Partial<ScheduleSearchOption>): Observable<InviteeSchedule[]> {
 
+        const {
+            workspace: hostWorkspace,
+            eventUUID
+        } = scheduleSearchOption;
+
         const inviteeSchedule$ = defer(() => from(this.scheduleRepository.findBy({
             eventDetail: {
                 event: {
-                    uuid: scheduleSearchOption.eventUUID
+                    uuid: eventUUID
                 }
+            },
+            host: {
+                workspace: hostWorkspace
             }
         })));
 
         const googleIntegrationSchedule$ = defer(() => from(this.googleIntegrationScheduleRepository.findBy({
-            googleCalendarIntegration: {
-                googleIntegration: {
-                    users: {
-                        userSetting: {
-                            workspace: scheduleSearchOption.workspace
-                        }
-                    }
-                }
+            host: {
+                workspace: hostWorkspace
             }
         })));
 
@@ -66,7 +69,16 @@ export class SchedulesService {
     findOne(scheduleUUID: string): Observable<Schedule> {
         return from(this.scheduleRepository.findOneByOrFail({
             uuid: scheduleUUID
-        }));
+        })).pipe(
+            mergeMap((scheduledEvent) => this.scheduleRedisRepository.getScheduleBody(scheduledEvent.uuid)
+                .pipe(
+                    map((scheduleBody) => {
+                        scheduledEvent.inviteeAnswers = scheduleBody.inviteeAnswers;
+                        return scheduledEvent;
+                    })
+                )
+            )
+        );
     }
 
     create(userWorkspace: string, eventUUID: string, newSchedule: Schedule, hostTimezone: string, host: User): Observable<Schedule> {
@@ -116,20 +128,33 @@ export class SchedulesService {
                         availabilityBody,
                         loadedGoogleCalendarIntegrationOrNull?.id
                     ).pipe(
-                        mergeMap((patchedSchedule) => {
+                        mergeMap((patchedSchedule) =>
+                            loadedGoogleCalendarIntegrationOrNull ?
+                                from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
+                                    (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
+                                    (loadedGoogleCalendarIntegrationOrNull),
+                                    hostTimezone,
+                                    patchedSchedule
+                                )).pipe(mergeMap((createdGoogleCalendarEvent) => {
+                                    const googleMeetConferenceLink = createdGoogleCalendarEvent.conferenceData as calendar_v3.Schema$ConferenceData;
+                                    const generatedGoogleMeetLink = (googleMeetConferenceLink.entryPoints as calendar_v3.Schema$EntryPoint[])[0].uri;
+                                    const convertedConferenceLink: ConferenceLink = {
+                                        type: IntegrationVendor.GOOGLE,
+                                        serviceName: 'Google Meet',
+                                        link: generatedGoogleMeetLink
+                                    };
+                                    patchedSchedule.conferenceLinks = [ convertedConferenceLink ];
 
-                            if (loadedGoogleCalendarIntegrationOrNull) {
-                                const generatedGoogleMeetLink = this.utilService.generenateGoogleMeetLink();
-                                const syncdayGoogleMeetConferenceLink: ConferenceLink = {
-                                    type: IntegrationVendor.GOOGLE,
-                                    serviceName: 'Google Meet',
-                                    link: generatedGoogleMeetLink
-                                };
-                                newSchedule.conferenceLinks = [syncdayGoogleMeetConferenceLink];
-                            }
-
-                            return from(_scheduleRepository.save(patchedSchedule));
-                        }),
+                                    return this.googleCalendarIntegrationsService.patchGoogleCalendarEvent(
+                                        (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
+                                        (loadedGoogleCalendarIntegrationOrNull),
+                                        createdGoogleCalendarEvent.id as string,
+                                        patchedSchedule
+                                    );
+                                }), map(() => patchedSchedule)) :
+                                of(patchedSchedule)
+                        ),
+                        mergeMap((patchedSchedule) => from(_scheduleRepository.save(patchedSchedule))),
                         mergeMap((createdSchedule) =>
                             this.scheduleRedisRepository.save(createdSchedule.uuid, {
                                 inviteeAnswers: newSchedule.inviteeAnswers,
@@ -140,16 +165,6 @@ export class SchedulesService {
 
                                 return createdSchedule;
                             }))
-                        ),
-                        mergeMap((createdSchedule) =>
-                            loadedGoogleCalendarIntegrationOrNull ?
-                                from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
-                                    (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
-                                    (loadedGoogleCalendarIntegrationOrNull),
-                                    hostTimezone,
-                                    createdSchedule
-                                )).pipe(map(() => createdSchedule)) :
-                                of(createdSchedule)
                         )
                     )
             )
@@ -184,9 +199,13 @@ export class SchedulesService {
         const ensuredBufferStartDatetime = startBufferTimestamp && new Date(startBufferTimestamp);
         const ensuredBufferEndDatetime = endBufferTimestamp && new Date(endBufferTimestamp);
 
+        // for exclusive query, reduce 1 second
         const ensuredStartDateTime = ensuredBufferStartDatetime ?? new Date(startTimestamp);
+        ensuredStartDateTime.setSeconds(ensuredStartDateTime.getSeconds() + 1);
         const ensuredStartDateTimestamp = ensuredStartDateTime.getTime();
+
         const ensuredEndDateTime = ensuredBufferEndDatetime ?? new Date(endTimestamp);
+        ensuredEndDateTime.setSeconds(ensuredEndDateTime.getSeconds() - 1);
         const ensuredEndDateTimestamp = ensuredEndDateTime.getTime();
 
         const isNotConcatenatedTimes = ensuredEndDateTimestamp <= ensuredStartDateTimestamp;
@@ -212,12 +231,11 @@ export class SchedulesService {
 
         const isInvalid = isPast || isNotConcatenatedTimes || (isNotTimeOverlappingWithOverrides && isNotTimeOverlappingWithAvailableTimes);
 
-
         if (isInvalid) {
 
             const results = `isPast: ${String(isPast)},
             isNotConcatenatedTimes: ${String(isNotConcatenatedTimes)},
-            (${String(isNotTimeOverlappingWithOverrides)}
+            (isNotTimeOverlappingWithOverrides && isNotTimeOverlappingWithAvailableTimes: ${String(isNotTimeOverlappingWithOverrides)}
                 && ${String(isNotTimeOverlappingWithAvailableTimes)}`;
 
             this.logger.debug(
@@ -291,7 +309,14 @@ export class SchedulesService {
         return forkJoin(scheduleObservables).pipe(
             mergeMap(([loadedScheduleOrNull, loadedGoogleIntegrationScheduleOrNull]) =>
                 iif(
-                    () => !loadedScheduleOrNull && !loadedGoogleIntegrationScheduleOrNull,
+                    () => {
+                        this.logger.debug({
+                            message: 'a previous engagement is detected: !loadedScheduleOrNull && !loadedGoogleIntegrationScheduleOrNull is true',
+                            loadedScheduleOrNull,
+                            loadedGoogleIntegrationScheduleOrNull
+                        });
+                        return !loadedScheduleOrNull && !loadedGoogleIntegrationScheduleOrNull;
+                    },
                     of(schedule),
                     throwError(() => new CannotCreateByInvalidTimeRange())
                 )
@@ -304,6 +329,16 @@ export class SchedulesService {
             ensuredEndDateTimestamp < Date.now();
     }
 
+    /**
+     * This method returns true if given params are valid
+     * nor returns false for invalid
+     *
+     * @param timezone
+     * @param overrides
+     * @param startDateTimestamp
+     * @param endDateTimestamp
+     * @returns
+     */
     _isTimeOverlappingWithOverrides(
         timezone: string,
         overrides: OverridedAvailabilityTime[],
@@ -311,27 +346,33 @@ export class SchedulesService {
         endDateTimestamp: number
     ): boolean {
 
-        const isTimeOverlappedWithOverrides = overrides
-            .some(({
-                targetDate: _targetDate,
-                timeRanges: _timeRanges
-            }) => _timeRanges.some((__timeRange) => {
-                const { startTime, endTime } = __timeRange as { startTime: string; endTime: string };
-                const _startDateTime = this.utilService.localizeDateTime(
-                    new Date(_targetDate),
-                    timezone,
-                    startTime
-                );
+        let isTimeOverlappedWithOverrides: boolean;
 
-                const _endDateTime = this.utilService.localizeDateTime(
-                    new Date(_targetDate),
-                    timezone,
-                    endTime
-                );
+        if (overrides.length > 0) {
+            isTimeOverlappedWithOverrides = overrides
+                .some(({
+                    targetDate: _targetDate,
+                    timeRanges: _timeRanges
+                }) => _timeRanges.some((__timeRange) => {
+                    const { startTime, endTime } = __timeRange as { startTime: string; endTime: string };
+                    const _startDateTime = this.utilService.localizeDateTime(
+                        new Date(_targetDate),
+                        timezone,
+                        startTime
+                    );
 
-                return _startDateTime.getTime() <= startDateTimestamp &&
-                    endDateTimestamp <= _endDateTime.getTime();
-            }));
+                    const _endDateTime = this.utilService.localizeDateTime(
+                        new Date(_targetDate),
+                        timezone,
+                        endTime
+                    );
+
+                    return _startDateTime.getTime() <= startDateTimestamp &&
+                        endDateTimestamp <= _endDateTime.getTime();
+                }));
+        } else {
+            isTimeOverlappedWithOverrides = true;
+        }
 
         return isTimeOverlappedWithOverrides;
     }

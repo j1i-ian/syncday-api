@@ -2,6 +2,7 @@ import { EntityManager } from 'typeorm';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
 import { Integration } from '@entity/integrations/integration.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
@@ -11,6 +12,7 @@ export interface IntegrationsServiceInterface {
 
     create(
         user: User,
+        userSetting: UserSetting,
         authToken: OAuthToken,
         calendarIntegrations: GoogleCalendarIntegration[],
         integrationBody: GoogleIntegrationBody
@@ -19,6 +21,7 @@ export interface IntegrationsServiceInterface {
     _create(
         manager: EntityManager,
         user: User,
+        userSetting: UserSetting,
         authToken: OAuthToken,
         calendarIntegrations: GoogleCalendarIntegration[],
         integrationBody: GoogleIntegrationBody

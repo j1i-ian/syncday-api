@@ -62,6 +62,8 @@ export class AppConfigService {
             case NodeEnv.DEVELOP:
                 host = 'https://api.dev.sync.day';
                 break;
+            case NodeEnv.LOCAL_DEVELOP:
+            case NodeEnv.LOCAL_PRODUCTION:
             case NodeEnv.TEST:
             case NodeEnv.LOCAL:
             default:
@@ -103,17 +105,21 @@ export class AppConfigService {
 
         switch (nodeEnv) {
             case NodeEnv.PRODUCTION:
-            case NodeEnv.LOCAL_PRODUCTION:
                 dotenvFilePath = '.env.production';
                 break;
             case NodeEnv.DEVELOP:
-            case NodeEnv.LOCAL_DEVELOP:
                 dotenvFilePath = '.env.dev';
                 break;
             case 'staging':
                 dotenvFilePath = '.env.staging';
                 break;
             default:
+            case NodeEnv.LOCAL_PRODUCTION:
+                dotenvFilePath = '.env.local.production';
+                break;
+            case NodeEnv.LOCAL_DEVELOP:
+                dotenvFilePath = '.env.local.dev';
+                break;
             case NodeEnv.LOCAL:
             case NodeEnv.TEST:
                 dotenvFilePath = '.env.local';
@@ -245,10 +251,6 @@ export class AppConfigService {
             clientId: configService.get<string>('GOOGLE_CLIENT_ID') as string,
             clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET') as string
         };
-    }
-
-    static getGoogleCalendarWebhookUrl(configService: ConfigService): string {
-        return configService.get<string>('GOOGLE_CALENDAR_WEBHOOK_URL') as string;
     }
 
     static getZoomBasicAuthValue(configService: ConfigService): ZoomBasicAuth {

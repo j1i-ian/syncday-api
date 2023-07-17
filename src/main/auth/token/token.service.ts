@@ -2,7 +2,7 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { compare } from 'bcrypt';
-import { oauth2_v2 } from 'googleapis';
+import { calendar_v3, oauth2_v2 } from 'googleapis';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -59,10 +59,14 @@ export class TokenService {
         const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
         let isNewbie = loadedUserOrNull === null || loadedUserOrNull === undefined;
 
+        const primaryGoogleCalendar = calendars.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
+        const timezone = primaryGoogleCalendar.timeZone as string;
+
         if (isNewbie) {
             const createUserRequestDto: CreateUserRequestDto = {
                 email: googleUser.email,
-                name: googleUser.name
+                name: googleUser.name,
+                timezone
             };
 
             loadedUserOrNull = await this.userService.createUserByGoogleOAuth2(
@@ -87,7 +91,8 @@ export class TokenService {
             // TODO: This logic cannot support multiple google integrations. After collecting google integration, we should update this block.
             // old user but has no google integration
             if (hasUserGoogleIntegration === false) {
-                await this.googleIntegrationService.create(ensuredUser, tokens, newGoogleCalendarIntegrations, {
+
+                await this.googleIntegrationService.create(ensuredUser, ensuredUser.userSetting, tokens, newGoogleCalendarIntegrations, {
                     calendars,
                     schedules
                 });

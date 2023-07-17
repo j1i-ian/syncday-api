@@ -9,7 +9,7 @@ import { plainToInstance } from 'class-transformer';
 import { UpdateResult } from 'typeorm';
 import { TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { calendar_v3 } from 'googleapis';
+import { Auth, calendar_v3 } from 'googleapis';
 import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -24,8 +24,13 @@ import { EventSetting } from '@interfaces/events/event-setting';
 import { Verification } from '@entity/verifications/verification.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
+import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
+import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
+import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { Faker, faker } from '@faker-js/faker';
 import { DataSourceMock } from '@test/datasource-mock.interface';
 import { Language } from '../main/enums/language.enum';
@@ -75,7 +80,14 @@ export class TestMockUtil {
     }
 
     getGoogleScheduleMock(recurrenceRulesString = 'RRULE:FREQ=YEARLY'): calendar_v3.Schema$Event {
-        return JSON.parse(`{"kind":"calendar#event","etag":"\\"3263178453827000\\"","id":"_74q34c1o61336b9g60rj6b9k6ss44ba26ssj6b9l6h0k6h9p6534ae2174","status":"confirmed","htmlLink":"https://www.google.com/calendar/event?eid=Xzc0cTM0YzFvNjEzMzZiOWc2MHJqNmI5azZzczQ0YmEyNnNzajZiOWw2aDBrNmg5cDY1MzRhZTIxNzRfMjAxOTA5MTUgNHRoc3RvbkBt","created":"2021-09-07T18:14:35.000Z","updated":"2021-09-14T03:13:46.943Z","summary":"친구 생일","creator":{"email":"alan@gmail.com","self":true},"organizer":{"email":"alan@gmail.com","self":true},"start":{"date":"2019-09-15"},"end":{"date":"2019-09-16"},"recurrence":[\"${recurrenceRulesString}\"],"iCalUID":"942080F3-0073-478B-B793-54ACE91FE8A9","sequence":0,"reminders":{"useDefault":false},"eventType":"default"}`);
+        const defaultGoogleScheduleMock: calendar_v3.Schema$Event = JSON.parse('{"kind":"calendar#event","etag":"\\"3263178453827000\\"","id":"_74q34c1o61336b9g60rj6b9k6ss44ba26ssj6b9l6h0k6h9p6534ae2174","status":"confirmed","htmlLink":"https://www.google.com/calendar/event?eid=Xzc0cTM0YzFvNjEzMzZiOWc2MHJqNmI5azZzczQ0YmEyNnNzajZiOWw2aDBrNmg5cDY1MzRhZTIxNzRfMjAxOTA5MTUgNHRoc3RvbkBt","created":"2021-09-07T18:14:35.000Z","updated":"2021-09-14T03:13:46.943Z","summary":"친구 생일","creator":{"email":"alan@gmail.com","self":true},"organizer":{"email":"alan@gmail.com","self":true},"start":{"date":"2019-09-15"},"end":{"date":"2019-09-16"},"iCalUID":"942080F3-0073-478B-B793-54ACE91FE8A9","sequence":0,"reminders":{"useDefault":false},"eventType":"default"}');
+
+        defaultGoogleScheduleMock.recurrence = recurrenceRulesString ? [recurrenceRulesString] : [];
+        defaultGoogleScheduleMock.conferenceData = {
+            entryPoints: [ {uri: 'sampleGoogleMeetLink'} ]
+        };
+
+        return defaultGoogleScheduleMock;
     }
 
     getBearerTokenMock(): string {
@@ -124,16 +136,14 @@ export class TestMockUtil {
         const _1hourAfter = new Date();
         _1hourAfter.setHours(_1hourAfter.getHours() + 1);
 
-        const ensuredDate = _1hourAfter;
-
         return {
             scheduledTime: {
                 startTimestamp: now,
-                endTimestamp: ensuredDate
+                endTimestamp: _1hourAfter
             },
             scheduledBufferTime: {
-                startBufferTimestamp: now,
-                endBufferTimestamp: ensuredDate
+                startBufferTimestamp: null,
+                endBufferTimestamp: null
             }
         };
     }
@@ -211,6 +221,19 @@ export class TestMockUtil {
         };
     }
 
+    getGoogleOAuthClientMock(): Auth.OAuth2Client {
+        return {} as Auth.OAuth2Client;
+    }
+
+    getGoogleOAuthTokenMock(): OAuthToken {
+        const googleIntegrationMock = stubOne(GoogleIntegration);
+
+        return {
+            accessToken: googleIntegrationMock.accessToken,
+            refreshToken: googleIntegrationMock.refreshToken
+        };
+    }
+
     getGoogleCalendarMock(): calendar_v3.Schema$CalendarList {
         return {
             nextSyncToken: faker.datatype.uuid(),
@@ -221,6 +244,51 @@ export class TestMockUtil {
                     description: 'testDescription'
                 }
             ]
+        };
+    }
+
+    getGoogleIntegrationBodyMock(): GoogleIntegrationBody {
+
+        const calendarsMock = this.getGoogleCalendarMock();
+        const googleCalendarScheduleBody = this.getGoogleCalendarScheduleBodyMock();
+
+        return {
+            calendars: calendarsMock,
+            schedules: googleCalendarScheduleBody
+        };
+    }
+
+    getGoogleCalendarScheduleBodyMock(): GoogleCalendarScheduleBody {
+
+        const cancelledGoogleScheduleMock = this.getCancelledGoogleScheduleMock();
+        const recurrenceGoogleScheduleMock = this.getRecurrenceGoogleScheduleMock();
+        const googleScheduleMock = this.getGoogleScheduleMock('');
+
+        return {
+            'primary': [ cancelledGoogleScheduleMock, recurrenceGoogleScheduleMock, googleScheduleMock ]
+        };
+    }
+
+    getRecurrenceGoogleScheduleMock(): calendar_v3.Schema$Event {
+
+        const rrule = 'RRULE:FREQ=WEEKLY;WKST=SU;COUNT=5;BYDAY=TU';
+
+        return {
+            recurrence: [rrule],
+            id: '5vqgu90q66itlhsdiopn13ine6_20230717T013000Z',
+            kind: 'calendar#event',
+            status: 'cancelled'
+        };
+    }
+
+    getCancelledGoogleScheduleMock(): calendar_v3.Schema$Event {
+        return {
+            etag: '"337672944432000"',
+            id: '4vqgu90q66itlhsdiopn13ine6_20230717T013000Z',
+            kind: 'calendar#event',
+            originalStartTime: { dateTime: '2023-07-17T10:30:00+09:00' },
+            recurringEventId: '4vqgu90q66itlhsdiopn13ine6_R20230501T0130',
+            status: 'cancelled'
         };
     }
 
@@ -283,6 +351,18 @@ export class TestMockUtil {
             name: faker.name.fullName(),
             plainPassword: faker.word.noun(),
             language: Language.ENGLISH
+        };
+    }
+
+    getOverridedAvailabilityTimeMock(): OverridedAvailabilityTime {
+        return {
+            targetDate: new Date('2023-07-17 00:00:00'),
+            timeRanges: [
+                {
+                    startTime: '2023-07-17 09:00:00',
+                    endTime: '2023-07-17 17:00:00'
+                }
+            ]
         };
     }
 }
