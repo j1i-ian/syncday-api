@@ -7,8 +7,6 @@ import {
     Header,
     HttpCode,
     HttpStatus,
-    Param,
-    ParseIntPipe,
     Patch,
     Post,
     Put
@@ -106,7 +104,7 @@ export class UserController {
     @Delete(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteUser(
-        @Param('userId', ParseIntPipe) userId: number
+        @AuthUser('id') userId: number
     ): Promise<void> {
         await this.userService.deleteUser(userId);
     }
