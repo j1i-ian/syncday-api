@@ -11,6 +11,7 @@ import { UserSetting } from '@entity/users/user-setting.entity';
 import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleConverterService } from './google-converter.service';
+import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 
 const testMockUtil = new TestMockUtil();
 
@@ -178,6 +179,7 @@ describe('GoogleConverterService', () => {
 
         it('should be converted to google calendar event from sync scheduled event', () => {
             const hostTimezoneMock = stubOne(UserSetting).preferredTimezone;
+            const googleCalendarIntegrationEmailMock = stubOne(GoogleCalendarIntegration).name;
             const scheduledTimeMock = stubOne(ScheduledTimeset);
             const scheduleMock = stubOne(Schedule, {
                 scheduledTime: scheduledTimeMock,
@@ -194,6 +196,7 @@ describe('GoogleConverterService', () => {
 
             const convertedGoogleSchedule = service.convertScheduledEventToGoogleCalendarEvent(
                 hostTimezoneMock,
+                googleCalendarIntegrationEmailMock,
                 scheduleMock
             );
 
