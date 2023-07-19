@@ -5,6 +5,9 @@ import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { EventType } from '@interfaces/events/event-type.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
+import { Notification } from '@interfaces/notifications/notification';
+import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -16,6 +19,8 @@ import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
+import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
+import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { ZoomBasicAuth } from '../../interfaces/zoom-basic-auth.interface';
@@ -234,7 +239,31 @@ export class UtilService {
             timezone
         };
 
+        newSchedule.scheduledEventNotifications = this.getPatchedScheduleNotification(newSchedule.scheduledNotificationInfo);
+
         return newSchedule;
+    }
+
+    getPatchedScheduleNotification(notificationInfo: NotificationInfo): ScheduledEventNotification[] {
+
+        const allScheduledEventNotifications = Object.entries(notificationInfo)
+            .flatMap(([hostOrInvitee, notifications]: [string, Notification[]]) => {
+                const notificationTarget: NotificationTarget = hostOrInvitee === 'host' ? NotificationTarget.HOST : NotificationTarget.INVITEE;
+
+                const _scheduledEventNotifications = notifications.flatMap(
+                    (_notification) => _notification.reminders.map((__reminder) => ({
+                        notificationTarget,
+                        notificationType: _notification.type,
+                        reminderType: __reminder.type,
+                        reminderValue: (__reminder as ScheduledReminder).typeValue,
+                        remindAt: __reminder.remindBefore
+                    } as ScheduledEventNotification))
+                );
+
+                return _scheduledEventNotifications;
+            });
+
+        return allScheduledEventNotifications;
     }
 
     getUserDefaultSetting(

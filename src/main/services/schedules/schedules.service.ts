@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Observable, defer, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
-import { Between, EntityManager, LessThan, LessThanOrEqual, MoreThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { Between, EntityManager, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { calendar_v3 } from 'googleapis';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
