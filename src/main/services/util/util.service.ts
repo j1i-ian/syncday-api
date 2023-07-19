@@ -221,13 +221,18 @@ export class UtilService {
         return Buffer.from(basicAuthValue).toString('base64');
     }
 
-    getPatchedScheduledEvent(sourceEvent: Event, newSchedule: Schedule): Schedule {
+    getPatchedScheduledEvent(sourceEvent: Event, newSchedule: Schedule, workspace: string, timezone: string): Schedule {
         newSchedule.name = sourceEvent.name;
         newSchedule.color = sourceEvent.color;
         newSchedule.status = ScheduledStatus.OPENED;
         newSchedule.contacts = sourceEvent.contacts;
         newSchedule.type = sourceEvent.type;
         newSchedule.eventDetailId = sourceEvent.eventDetail.id;
+
+        newSchedule.host = {
+            workspace,
+            timezone
+        };
 
         return newSchedule;
     }

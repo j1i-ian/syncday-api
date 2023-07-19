@@ -81,13 +81,12 @@ export class SchedulesService {
         );
     }
 
-    create(userWorkspace: string, eventUUID: string, newSchedule: Schedule, hostTimezone: string, host: User): Observable<Schedule> {
+    create(userWorkspace: string, eventUUID: string, newSchedule: Schedule, host: User): Observable<Schedule> {
         return this._create(
             this.scheduleRepository.manager,
             userWorkspace,
             eventUUID,
             newSchedule,
-            hostTimezone,
             host
         );
     }
@@ -97,34 +96,39 @@ export class SchedulesService {
         userWorkspace: string,
         eventUUID: string,
         newSchedule: Schedule,
-        hostTimezone: string,
         host: User
     ): Observable<Schedule> {
 
         const _scheduleRepository = entityManager.getRepository(Schedule);
 
-        const loadUserWorkspace$ = from(
+        const loadedEventByUserWorkspace$ = from(
             this.eventsService.findOneByUserWorkspaceAndUUID(userWorkspace, eventUUID)
         );
 
-        const loadGoogleCalendarIntegration$ = from(this.googleCalendarIntegrationsService.findOne({
+        const loadedGoogleCalendarIntegration$ = from(this.googleCalendarIntegrationsService.findOne({
             outboundWriteSync: true,
             userWorkspace
         }));
 
-        return loadUserWorkspace$.pipe(
+        return loadedEventByUserWorkspace$.pipe(
             mergeMap(
                 (event) => forkJoin([
                     this.availabilityRedisRepository.getAvailabilityBody(host.uuid, event.availability.uuid),
-                    of(this.utilService.getPatchedScheduledEvent(event, newSchedule)),
-                    loadGoogleCalendarIntegration$
+                    of(this.utilService.getPatchedScheduledEvent(
+                        event,
+                        newSchedule,
+                        userWorkspace,
+                        event.availability.timezone
+                    )),
+                    loadedGoogleCalendarIntegration$,
+                    of(event.availability.timezone)
                 ])
             ),
             mergeMap(
-                ([availabilityBody, patchedSchedule, loadedGoogleCalendarIntegrationOrNull]) =>
+                ([availabilityBody, patchedSchedule, loadedGoogleCalendarIntegrationOrNull, availabilityTimezone]) =>
                     this.validate(
                         patchedSchedule,
-                        hostTimezone,
+                        availabilityTimezone,
                         availabilityBody,
                         loadedGoogleCalendarIntegrationOrNull?.id
                     ).pipe(
@@ -133,7 +137,7 @@ export class SchedulesService {
                                 from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
                                     (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
                                     (loadedGoogleCalendarIntegrationOrNull),
-                                    hostTimezone,
+                                    availabilityTimezone,
                                     patchedSchedule
                                 )).pipe(mergeMap((createdGoogleCalendarEvent) => {
                                     const googleMeetConferenceLink = createdGoogleCalendarEvent.conferenceData as calendar_v3.Schema$ConferenceData;
@@ -187,7 +191,7 @@ export class SchedulesService {
 
     validate(
         schedule: Schedule,
-        hostTimezone: string,
+        availabilityTimezone: string,
         availabilityBody: AvailabilityBody,
         googleCalendarIntegrationId?: number | undefined
     ): Observable<Schedule> {
@@ -214,7 +218,7 @@ export class SchedulesService {
         const { availableTimes, overrides } = availabilityBody;
 
         const isTimeOverlappingWithOverrides = this._isTimeOverlappingWithOverrides(
-            hostTimezone,
+            availabilityTimezone,
             overrides,
             ensuredStartDateTimestamp,
             ensuredEndDateTimestamp
@@ -223,7 +227,7 @@ export class SchedulesService {
 
         const isTimeOverlappingWithAvailableTimes = this._isTimeOverlappingWithAvailableTimes(
             availableTimes,
-            hostTimezone,
+            availabilityTimezone,
             ensuredStartDateTime,
             ensuredEndDateTime
         );
@@ -379,23 +383,23 @@ export class SchedulesService {
 
     _isTimeOverlappingWithAvailableTimes(
         availableTimes: AvailableTime[],
-        hostTimezone: string,
+        availabilityTimezone: string,
         startDateTime: Date,
         endDateTime: Date
     ): boolean {
 
-        const startTimeString = this.utilService.dateToTimeString(startDateTime, hostTimezone);
-        const endTimeString = this.utilService.dateToTimeString(endDateTime, hostTimezone);
+        const startTimeString = this.utilService.dateToTimeString(startDateTime, availabilityTimezone);
+        const endTimeString = this.utilService.dateToTimeString(endDateTime, availabilityTimezone);
 
         const localizedStartDateTime = this.utilService.localizeDateTime(
             startDateTime,
-            hostTimezone,
+            availabilityTimezone,
             startTimeString
         );
 
         const localizedEndDateTime = this.utilService.localizeDateTime(
             endDateTime,
-            hostTimezone,
+            availabilityTimezone,
             endTimeString
         );
 
@@ -408,8 +412,16 @@ export class SchedulesService {
         let isTimeOverlapping;
 
         if (startWeekdayAvailableTime && endWeekdayAvailableTime) {
-            const isTimeOverlappingWithStartDateTime = this._isTimeOverlappingWithAvailableTimeRange(localizedStartDateTime, hostTimezone, startWeekdayAvailableTime.timeRanges);
-            const isTimeOverlappingWithEndDateTime = this._isTimeOverlappingWithAvailableTimeRange(localizedStartDateTime, hostTimezone, endWeekdayAvailableTime.timeRanges);
+            const isTimeOverlappingWithStartDateTime = this._isTimeOverlappingWithAvailableTimeRange(
+                localizedStartDateTime,
+                availabilityTimezone,
+                startWeekdayAvailableTime.timeRanges
+            );
+            const isTimeOverlappingWithEndDateTime = this._isTimeOverlappingWithAvailableTimeRange(
+                localizedStartDateTime,
+                availabilityTimezone,
+                endWeekdayAvailableTime.timeRanges
+            );
 
             isTimeOverlapping = isTimeOverlappingWithStartDateTime && isTimeOverlappingWithEndDateTime;
         } else {
@@ -439,8 +451,8 @@ export class SchedulesService {
                 timeRangeEndTime
             );
 
-            return localizedTimeRangeStartDateTime.getTime() < dateTime.getTime() &&
-                dateTime.getTime() < localizedTimeRangeEndDateTime.getTime();
+            return localizedTimeRangeStartDateTime.getTime() <= dateTime.getTime() &&
+                dateTime.getTime() <= localizedTimeRangeEndDateTime.getTime();
         });
 
         return isTimeOverlappingDateTime;

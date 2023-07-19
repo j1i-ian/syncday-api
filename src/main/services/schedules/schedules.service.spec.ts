@@ -194,7 +194,6 @@ describe('SchedulesService', () => {
                     userMock.workspace as string,
                     eventStub.uuid,
                     scheduleStub,
-                    userSettingStub.preferredTimezone,
                     userMock
                 )
             );
@@ -238,7 +237,7 @@ describe('SchedulesService', () => {
         it('should be passed when there is no conflicted schedule ', async () => {
 
             const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
-            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const timezoneMock = stubOne(Availability).timezone;
             const scheduleMock = stubOne(Schedule, scheduleTimeMock);
             const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
 
@@ -268,7 +267,7 @@ describe('SchedulesService', () => {
 
         it('should be not passed when requested schedule has old start/end datetime', () => {
 
-            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const timezoneMock = stubOne(Availability).timezone;
             const _1minBefore = new Date();
             _1minBefore.setMinutes(_1minBefore.getMinutes() - 5);
 
@@ -296,7 +295,7 @@ describe('SchedulesService', () => {
             const scheduleMock = stubOne(Schedule, scheduleTimeMock);
             const conflictedScheduleStub = stubOne(Schedule);
             const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
-            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const timezoneMock = stubOne(Availability).timezone;
 
             scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
             googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
@@ -333,7 +332,7 @@ describe('SchedulesService', () => {
                 googleCalendarIntegrationId: googleCalendarIntegrationMock.id
             });
             const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
-            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const timezoneMock = stubOne(Availability).timezone;
 
             scheduleRepositoryStub.findOneBy.resolves(null);
             googleIntegrationScheduleRepositoryStub.findOneBy.resolves(conflictedGoogleIntegrationScheduleStub);
@@ -366,7 +365,7 @@ describe('SchedulesService', () => {
             const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
             const scheduleMock = stubOne(Schedule, scheduleTimeMock);
             const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
-            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const timezoneMock = stubOne(Availability).timezone;
 
             scheduleRepositoryStub.findOneBy.resolves(null);
             googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
@@ -397,7 +396,7 @@ describe('SchedulesService', () => {
             const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
             const scheduleMock = stubOne(Schedule, scheduleTimeMock);
             const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
-            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const timezoneMock = stubOne(Availability).timezone;
 
             scheduleRepositoryStub.findOneBy.resolves(null);
             googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
@@ -425,7 +424,7 @@ describe('SchedulesService', () => {
 
         it('should be returned true for no overlapping with overrides', () => {
 
-            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const timezoneMock = stubOne(Availability).timezone;
             const overridedAvailabilityTimeMock = testMockUtil.getOverridedAvailabilityTimeMock();
             const timeRangeMock = overridedAvailabilityTimeMock.timeRanges[0];
 
@@ -452,7 +451,7 @@ describe('SchedulesService', () => {
 
         it('should be returned true with empty overrides', () => {
 
-            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const timezoneMock = stubOne(Availability).timezone;
             const timestampDummy = Date.now();
 
             const isTimeOverlappedWithOverrides = service._isTimeOverlappingWithOverrides(
@@ -465,6 +464,22 @@ describe('SchedulesService', () => {
             expect(isTimeOverlappedWithOverrides).true;
             expect(utilServiceStub.localizeDateTime.called).false;
         });
+    });
+
+    it('should be returned true for time calculation with inclusively', () => {
+        const date = new Date('2023-07-21T13:00:00.000Z');
+        const timezone = 'America/New_York';
+
+        const overridedAvailabilityTimeMock = testMockUtil.getOverridedAvailabilityTimeMock();
+        const timeRangesMock = overridedAvailabilityTimeMock.timeRanges;
+
+        const localizedDateStub = new Date('2023-07-21T13:00:00.000Z');
+        utilServiceStub.localizeDateTime.returns(localizedDateStub);
+
+        const result = service._isTimeOverlappingWithAvailableTimeRange(date, timezone, timeRangesMock);
+
+        expect(result).true;
+        expect(utilServiceStub.localizeDateTime.called).true;
     });
 
 });
