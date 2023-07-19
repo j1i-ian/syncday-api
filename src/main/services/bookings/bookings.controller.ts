@@ -61,7 +61,7 @@ export class BookingsController {
     @Get('availabilities')
     searchHostAvailabilities(
         @Query('workspace', ValidateQueryParamPipe) userWorkspace: string,
-        @Param('eventLink') eventLink: string
+        @Query('eventLink') eventLink: string
     ): Observable<HostAvailabilityDto> {
         return this.bookingsService.fetchHostAvailabilityDetail(userWorkspace, eventLink)
             .pipe(
