@@ -245,6 +245,7 @@ export class GoogleCalendarIntegrationsService {
          */
         const newGoogleEventBody = this.googleConverterService.convertScheduledEventToGoogleCalendarEvent(
             hostTimezone,
+            googleCalendarIntegration.name,
             schedule
         );
 
