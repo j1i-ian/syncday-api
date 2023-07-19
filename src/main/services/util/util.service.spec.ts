@@ -4,12 +4,12 @@ import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
-import { Language } from '../../enums/language.enum';
-import { faker } from '@faker-js/faker';
-import { UtilService } from './util.service';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
+import { Language } from '../../enums/language.enum';
+import { faker } from '@faker-js/faker';
+import { UtilService } from './util.service';
 
 describe('UtilService', () => {
     let service: UtilService;
@@ -142,7 +142,7 @@ describe('UtilService', () => {
             const newScheduleMock = stubOne(Schedule);
             const scheduledEventNotificationStubs = stub(ScheduledEventNotification);
 
-            serviceSandbox.stub(service, 'getPatchedScheduleNotification').returns(scheduledEventNotificationStubs)
+            serviceSandbox.stub(service, 'getPatchedScheduleNotification').returns(scheduledEventNotificationStubs);
 
             const patchedSchedule = service.getPatchedScheduledEvent(
                 eventMock,
@@ -155,7 +155,7 @@ describe('UtilService', () => {
             expect(patchedSchedule.name).contains(eventMock.name);
             expect(patchedSchedule.color).equals(eventMock.color);
         });
-    })
+    });
 
 
     describe('Test Getting default user setting', () => {
