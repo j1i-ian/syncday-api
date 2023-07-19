@@ -89,9 +89,13 @@ export class AvailabilityRedisRepository {
             (availableTimeA, availableTimeB) => availableTimeA.day - availableTimeB.day
         );
 
+        // Get today's date based on UTC
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
         // ascending
         availabilityBody.overrides = availabilityBody.overrides
-            .filter((override) => new Date(override.targetDate).getTime() > Date.now())
+            .filter((override) => new Date(override.targetDate).getTime() > yesterday.getTime())
             .sort(
                 (overrideA, overrideB) =>
                     new Date(overrideB.targetDate).getTime() -
