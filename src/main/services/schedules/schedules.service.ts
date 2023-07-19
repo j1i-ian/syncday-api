@@ -294,6 +294,20 @@ export class SchedulesService {
         const loadedSchedules$ = defer(() => from(this.scheduleRepository.findOneBy(
             [
                 {
+                    scheduledTime: {
+                        startTimestamp: MoreThanOrEqual(ensuredStartDateTime),
+                        endTimestamp: LessThanOrEqual(ensuredEndDateTime)
+                    },
+                    eventDetailId: schedule.eventDetailId
+                },
+                {
+                    scheduledTime: {
+                        startTimestamp: LessThanOrEqual(ensuredStartDateTime),
+                        endTimestamp: MoreThanOrEqual(ensuredEndDateTime)
+                    },
+                    eventDetailId: schedule.eventDetailId
+                },
+                {
                     scheduledBufferTime: {
                         startBufferTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
                     },
