@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Observable, defer, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
-import { Between, EntityManager, Repository } from 'typeorm';
+import { Between, EntityManager, LessThan, LessThanOrEqual, MoreThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { calendar_v3 } from 'googleapis';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
@@ -250,6 +250,20 @@ export class SchedulesService {
 
         const loadedGoogleIntegrationSchedules$ = defer(() => from(this.googleIntegrationScheduleRepository.findOneBy(
             [
+                {
+                    scheduledTime: {
+                        startTimestamp: MoreThanOrEqual(ensuredStartDateTime),
+                        endTimestamp: LessThanOrEqual(ensuredEndDateTime)
+                    },
+                    googleCalendarIntegrationId
+                },
+                {
+                    scheduledTime: {
+                        startTimestamp: LessThanOrEqual(ensuredStartDateTime),
+                        endTimestamp: MoreThanOrEqual(ensuredEndDateTime)
+                    },
+                    googleCalendarIntegrationId
+                },
                 {
                     scheduledBufferTime: {
                         startBufferTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
