@@ -276,14 +276,12 @@ export class UtilService {
                         (_sourceNotification: { type: NotificationType }) => _sourceNotification.type === _scheduleNotification.type
                     ) as Notification;
 
-                    _scheduleNotification.reminders = _scheduleNotification.reminders.map((_scheduleNotificationReminder) => {
-                        const matchedReminder = matchedHostNotification?.reminders.find((__hostReminder) => __hostReminder.type === _scheduleNotificationReminder.type);
+                    const sourceReminder = matchedHostNotification?.reminders[0];
 
-                        return {
-                            ..._scheduleNotificationReminder,
-                            ...matchedReminder
-                        };
-                    }) as ScheduledReminder[];
+                    _scheduleNotification.reminders = _scheduleNotification.reminders.map((_scheduleNotificationReminder) => ({
+                        ..._scheduleNotificationReminder,
+                        ...sourceReminder
+                    })) as ScheduledReminder[];
 
                     return _scheduleNotification;
 
