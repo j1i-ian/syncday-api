@@ -65,7 +65,7 @@ build:
       - dist/
     expire_in: 1 week
   rules:
-    - if: '$CI_COMMIT_REF_NAME == "main" || $CI_COMMIT_REF_NAME == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
 
 lint:
   <<: *resolve-submodule

@@ -56,7 +56,10 @@ export class GoogleIntegrationFacade {
 
         const googleScheduleRecordArray = await Promise.all(
             (calendars.items as calendar_v3.Schema$CalendarListEntry[])
-                .filter((_calendar) => !!_calendar.id)
+                .filter((_calendar) =>
+                    !!_calendar.id &&
+                    _calendar.id.includes('group.v.calendar.google.com') === false
+                )
                 .filter((_calendar) => onlyPrimaryCalendarSchedule ? _calendar.primary : true)
                 .map(async (_calendar) => {
                     const _calendarId = _calendar.id as string;

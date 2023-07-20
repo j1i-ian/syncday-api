@@ -5,6 +5,9 @@ import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { EventType } from '@interfaces/events/event-type.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
+import { Notification } from '@interfaces/notifications/notification';
+import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -16,6 +19,8 @@ import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
+import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
+import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { ZoomBasicAuth } from '../../interfaces/zoom-basic-auth.interface';
@@ -221,15 +226,149 @@ export class UtilService {
         return Buffer.from(basicAuthValue).toString('base64');
     }
 
-    getPatchedScheduledEvent(sourceEvent: Event, newSchedule: Schedule): Schedule {
+    getPatchedScheduledEvent(
+        host: User,
+        sourceEvent: Event,
+        newSchedule: Schedule,
+        workspace: string,
+        timezone: string
+    ): Schedule {
         newSchedule.name = sourceEvent.name;
         newSchedule.color = sourceEvent.color;
         newSchedule.status = ScheduledStatus.OPENED;
         newSchedule.contacts = sourceEvent.contacts;
         newSchedule.type = sourceEvent.type;
         newSchedule.eventDetailId = sourceEvent.eventDetail.id;
+        newSchedule.scheduledNotificationInfo.host = sourceEvent.eventDetail.notificationInfo?.host;
+
+        newSchedule.host = {
+            workspace,
+            timezone
+        };
+
+        newSchedule.scheduledEventNotifications = this.getPatchedScheduleNotification(
+            host,
+            newSchedule,
+            sourceEvent.eventDetail.notificationInfo,
+            newSchedule.scheduledNotificationInfo
+        );
 
         return newSchedule;
+    }
+
+    // FIXME: it should be replaced with scheduled event notification creating directly.
+    getPatchedScheduleNotification(
+        host: User,
+        schedule: Schedule,
+        sourceNotificationInfo: NotificationInfo,
+        notificationInfo: NotificationInfo
+    ): ScheduledEventNotification[] {
+
+        const allScheduledEventNotifications = Object.entries(notificationInfo)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            .filter(([_hostOrInvitee, _notifications]: [string, Notification[]]) => !!_notifications)
+            // merge notification info
+            .map(([_hostOrInvitee, _notifications]: [string, Notification[]]) => {
+
+                const mergedNotifications: Notification[] = _notifications.map((_scheduleNotification) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any
+                    const matchedHostNotification = (sourceNotificationInfo as any)[_hostOrInvitee]?.find(
+                        (_sourceNotification: { type: NotificationType }) => _sourceNotification.type === _scheduleNotification.type
+                    ) as Notification;
+
+                    const sourceReminder = matchedHostNotification?.reminders[0];
+
+                    _scheduleNotification.reminders = _scheduleNotification.reminders.map((_scheduleNotificationReminder) => ({
+                        ..._scheduleNotificationReminder,
+                        ...sourceReminder
+                    })) as ScheduledReminder[];
+
+                    return _scheduleNotification;
+
+                });
+
+                return [_hostOrInvitee, mergedNotifications] as [string, Notification[]];
+            })
+            .flatMap(([hostOrInvitee, notifications]: [string, Notification[]]) => {
+                const isHost = hostOrInvitee === 'host';
+                const notificationTarget: NotificationTarget = isHost ? NotificationTarget.HOST : NotificationTarget.INVITEE;
+
+                const _scheduledEventNotifications = notifications.filter((_notification) => {
+
+                    let isValid = false;
+                    if (isHost) {
+                        const noHostPhone =
+                            _notification.type === NotificationType.TEXT
+                            && !host.phone;
+                        isValid = !noHostPhone;
+                    } else {
+                        isValid = true;
+                    }
+
+                    return isValid;
+                }).flatMap(
+                    (_notification) => _notification.reminders
+                        .map((__reminder) => {
+
+                            const hostOrInviteeReminderValue = isHost ?
+                                this.getHostValue(
+                                    host,
+                                    _notification.type
+                                ) : (__reminder as ScheduledReminder).typeValue;
+
+                            const remindAt = new Date(schedule.scheduledTime.startTimestamp);
+
+                            if (__reminder.remindBefore) {
+                                const [ hour, minute ] = (__reminder.remindBefore as string).split(':');
+                                remindAt.setHours(remindAt.getHours() - +hour);
+                                remindAt.setMinutes(remindAt.getMinutes() - +minute);
+                            }
+
+                            let deletedAt: Date | null = null;
+
+                            if (isHost === false) {
+
+                                const found = sourceNotificationInfo.invitee?.some((_inviteeNotification) =>
+                                    _notification.type === _inviteeNotification.type ||
+                                    _inviteeNotification.reminders.some(
+                                        (___inviteeReminder) => ___inviteeReminder.type === __reminder.type
+                                    )
+                                );
+
+                                deletedAt = found ? null : new Date();
+                            }
+
+                            return {
+                                notificationTarget,
+                                notificationType: _notification.type,
+                                reminderType: __reminder.type,
+                                reminderValue: hostOrInviteeReminderValue,
+                                remindAt,
+                                deletedAt
+                            } as ScheduledEventNotification;
+                        })
+                );
+
+                return _scheduledEventNotifications;
+            });
+
+        return allScheduledEventNotifications;
+    }
+
+    getHostValue(
+        host: User,
+        notificationType: NotificationType
+    ): string {
+
+        let value;
+
+        if (notificationType === NotificationType.EMAIL) {
+            value = host.email;
+        } else {
+            value = host.phone;
+        }
+
+        return value;
     }
 
     getUserDefaultSetting(

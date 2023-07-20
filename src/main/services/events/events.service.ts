@@ -31,6 +31,7 @@ export class EventsService {
                 relations: ['eventGroup', 'eventDetail'],
                 where: {
                     status: searchOption.status,
+                    public: searchOption.public,
                     eventGroup: {
                         userId: searchOption.userId
                     },
@@ -115,6 +116,19 @@ export class EventsService {
                         }
                     }
                 }
+            })
+        ).pipe(
+            mergeMap((loadedEvent) => {
+                const eventDetail = loadedEvent.eventDetail;
+                const eventDetailUUID = eventDetail.uuid;
+
+                return this.eventRedisRepository.getNotificationInfo(eventDetailUUID)
+                    .pipe(
+                        map((notificationInfo) => {
+                            loadedEvent.eventDetail.notificationInfo = notificationInfo;
+                            return loadedEvent;
+                        })
+                    );
             })
         );
     }

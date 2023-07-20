@@ -29,6 +29,7 @@ export class BookingsService {
     searchHostEvents(userWorkspace: string): Observable<Event[]> {
         return this.eventService.search({
             status: EventStatus.OPENED,
+            public: true,
             userWorkspace
         });
     }
@@ -60,20 +61,11 @@ export class BookingsService {
 
         return from(this.userService.findUserByWorkspace(userWorkspace))
             .pipe(
-                map((loadedUser) => {
-                    newSchedule.host = {
-                        workspace: loadedUser.userSetting.workspace,
-                        timezone: loadedUser.userSetting.preferredTimezone
-                    };
-
-                    return loadedUser;
-                }),
                 mergeMap(
                     (loadedUser) => this.scheduleService.create(
                         userWorkspace,
                         eventUUID,
                         newSchedule,
-                        loadedUser.userSetting.preferredTimezone,
                         loadedUser
                     )
                 )

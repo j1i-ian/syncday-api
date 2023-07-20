@@ -32,7 +32,7 @@ export class GoogleConverterService {
                     name: item.id,
                     description: item.summary,
                     googleCalendarAccessRole: item.accessRole,
-                    color: item.foregroundColor || '#2962ff',
+                    color: item.backgroundColor || '#2962ff',
                     primary: item.primary || false,
                     raw: item
                 } as GoogleCalendarIntegration)
@@ -180,6 +180,7 @@ export class GoogleConverterService {
 
     convertScheduledEventToGoogleCalendarEvent(
         hostTimezone: string,
+        organizerEmail: string,
         schedule: Schedule
     ): calendar_v3.Schema$Event {
         const { startTimestamp, endTimestamp } = schedule.scheduledTime;
@@ -192,6 +193,10 @@ export class GoogleConverterService {
             summary: schedule.name,
             description: schedule.description,
             attendees: [
+                {
+                    email: organizerEmail,
+                    responseStatus: 'accepted'
+                },
                 {
                     email: inviteeEmail
                 }

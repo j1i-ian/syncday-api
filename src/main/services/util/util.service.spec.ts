@@ -4,6 +4,9 @@ import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { Availability } from '@entity/availability/availability.entity';
+import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { UtilService } from './util.service';
@@ -115,22 +118,49 @@ describe('UtilService', () => {
         expect(defaultEvent.bufferTime).ok;
     });
 
-    it('should be got patched schedule with source event', () => {
-        const eventDetailMock = stubOne(EventDetail);
-        const eventMock = stubOne(Event, {
-            name: faker.name.fullName(),
-            color: faker.color.rgb(),
-            contacts: [],
-            eventDetail: eventDetailMock
+    describe('Test convert', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
         });
-        const newScheduleMock = stubOne(Schedule);
 
-        const patchedSchedule = service.getPatchedScheduledEvent(eventMock, newScheduleMock);
+        afterEach(() => {
+            serviceSandbox.restore();
+        });
 
-        expect(patchedSchedule).ok;
-        expect(patchedSchedule.name).contains(eventMock.name);
-        expect(patchedSchedule.color).equals(eventMock.color);
+        it('should be got patched schedule with source event', () => {
+            const userMock = stubOne(User);
+            const eventDetailMock = stubOne(EventDetail);
+            const userSetting = stubOne(UserSetting);
+            const availability = stubOne(Availability);
+            const eventMock = stubOne(Event, {
+                name: faker.name.fullName(),
+                color: faker.color.rgb(),
+                contacts: [],
+                eventDetail: eventDetailMock
+            });
+            const newScheduleMock = stubOne(Schedule, {
+                scheduledNotificationInfo: {}
+            });
+            const scheduledEventNotificationStubs = stub(ScheduledEventNotification);
+
+            serviceSandbox.stub(service, 'getPatchedScheduleNotification').returns(scheduledEventNotificationStubs);
+
+            const patchedSchedule = service.getPatchedScheduledEvent(
+                userMock,
+                eventMock,
+                newScheduleMock,
+                userSetting.workspace,
+                availability.timezone
+            );
+
+            expect(patchedSchedule).ok;
+            expect(patchedSchedule.name).contains(eventMock.name);
+            expect(patchedSchedule.color).equals(eventMock.color);
+        });
     });
+
 
     describe('Test Getting default user setting', () => {
         it('should be got default user setting which has email as workspace when there is user email', () => {

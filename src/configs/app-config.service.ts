@@ -113,13 +113,13 @@ export class AppConfigService {
             case 'staging':
                 dotenvFilePath = '.env.staging';
                 break;
-            default:
             case NodeEnv.LOCAL_PRODUCTION:
                 dotenvFilePath = '.env.local.production';
                 break;
             case NodeEnv.LOCAL_DEVELOP:
                 dotenvFilePath = '.env.local.dev';
                 break;
+            default:
             case NodeEnv.LOCAL:
             case NodeEnv.TEST:
                 dotenvFilePath = '.env.local';
