@@ -31,6 +31,7 @@ export class EventsService {
                 relations: ['eventGroup', 'eventDetail'],
                 where: {
                     status: searchOption.status,
+                    public: searchOption.public,
                     eventGroup: {
                         userId: searchOption.userId
                     },

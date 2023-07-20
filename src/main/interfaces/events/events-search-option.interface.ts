@@ -6,4 +6,5 @@ export interface EventsSearchOption {
     userWorkspace?: string;
     availabilityId?: number;
     status?: EventStatus;
+    public?: boolean;
 }

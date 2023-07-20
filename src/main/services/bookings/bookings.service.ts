@@ -29,6 +29,7 @@ export class BookingsService {
     searchHostEvents(userWorkspace: string): Observable<Event[]> {
         return this.eventService.search({
             status: EventStatus.OPENED,
+            public: true,
             userWorkspace
         });
     }
