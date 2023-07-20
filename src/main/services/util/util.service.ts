@@ -226,44 +226,151 @@ export class UtilService {
         return Buffer.from(basicAuthValue).toString('base64');
     }
 
-    getPatchedScheduledEvent(sourceEvent: Event, newSchedule: Schedule, workspace: string, timezone: string): Schedule {
+    getPatchedScheduledEvent(
+        host: User,
+        sourceEvent: Event,
+        newSchedule: Schedule,
+        workspace: string,
+        timezone: string
+    ): Schedule {
         newSchedule.name = sourceEvent.name;
         newSchedule.color = sourceEvent.color;
         newSchedule.status = ScheduledStatus.OPENED;
         newSchedule.contacts = sourceEvent.contacts;
         newSchedule.type = sourceEvent.type;
         newSchedule.eventDetailId = sourceEvent.eventDetail.id;
+        newSchedule.scheduledNotificationInfo.host = sourceEvent.eventDetail.notificationInfo?.host;
 
         newSchedule.host = {
             workspace,
             timezone
         };
 
-        newSchedule.scheduledEventNotifications = this.getPatchedScheduleNotification(newSchedule.scheduledNotificationInfo);
+        newSchedule.scheduledEventNotifications = this.getPatchedScheduleNotification(
+            host,
+            newSchedule,
+            sourceEvent.eventDetail.notificationInfo,
+            newSchedule.scheduledNotificationInfo
+        );
 
         return newSchedule;
     }
 
-    getPatchedScheduleNotification(notificationInfo: NotificationInfo): ScheduledEventNotification[] {
+    // FIXME: it should be replaced with scheduled event notification creating directly.
+    getPatchedScheduleNotification(
+        host: User,
+        schedule: Schedule,
+        sourceNotificationInfo: NotificationInfo,
+        notificationInfo: NotificationInfo
+    ): ScheduledEventNotification[] {
 
         const allScheduledEventNotifications = Object.entries(notificationInfo)
-            .flatMap(([hostOrInvitee, notifications]: [string, Notification[]]) => {
-                const notificationTarget: NotificationTarget = hostOrInvitee === 'host' ? NotificationTarget.HOST : NotificationTarget.INVITEE;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            .filter(([_hostOrInvitee, _notifications]: [string, Notification[]]) => !!_notifications)
+            // merge notification info
+            .map(([_hostOrInvitee, _notifications]: [string, Notification[]]) => {
 
-                const _scheduledEventNotifications = notifications.flatMap(
-                    (_notification) => _notification.reminders.map((__reminder) => ({
-                        notificationTarget,
-                        notificationType: _notification.type,
-                        reminderType: __reminder.type,
-                        reminderValue: (__reminder as ScheduledReminder).typeValue,
-                        remindAt: __reminder.remindBefore
-                    } as ScheduledEventNotification))
+                const mergedNotifications: Notification[] = _notifications.map((_scheduleNotification) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any
+                    const matchedHostNotification = (sourceNotificationInfo as any)[_hostOrInvitee]?.find(
+                        (_sourceNotification: { type: NotificationType }) => _sourceNotification.type === _scheduleNotification.type
+                    ) as Notification;
+
+                    _scheduleNotification.reminders = _scheduleNotification.reminders.map((_scheduleNotificationReminder) => {
+                        const matchedReminder = matchedHostNotification?.reminders.find((__hostReminder) => __hostReminder.type === _scheduleNotificationReminder.type);
+
+                        return {
+                            ..._scheduleNotificationReminder,
+                            ...matchedReminder
+                        };
+                    }) as ScheduledReminder[];
+
+                    return _scheduleNotification;
+
+                });
+
+                return [_hostOrInvitee, mergedNotifications] as [string, Notification[]];
+            })
+            .flatMap(([hostOrInvitee, notifications]: [string, Notification[]]) => {
+                const isHost = hostOrInvitee === 'host';
+                const notificationTarget: NotificationTarget = isHost ? NotificationTarget.HOST : NotificationTarget.INVITEE;
+
+                const _scheduledEventNotifications = notifications.filter((_notification) => {
+
+                    let isValid = false;
+                    if (isHost) {
+                        const noHostPhone =
+                            _notification.type === NotificationType.TEXT
+                            && !host.phone;
+                        isValid = !noHostPhone;
+                    } else {
+                        isValid = true;
+                    }
+
+                    return isValid;
+                }).flatMap(
+                    (_notification) => _notification.reminders
+                        .map((__reminder) => {
+
+                            const hostOrInviteeReminderValue = isHost ?
+                                this.getHostValue(
+                                    host,
+                                    _notification.type
+                                ) : (__reminder as ScheduledReminder).typeValue;
+
+                            const remindAt = new Date(schedule.scheduledTime.startTimestamp);
+
+                            if (__reminder.remindBefore) {
+                                const [ hour, minute ] = (__reminder.remindBefore as string).split(':');
+                                remindAt.setHours(remindAt.getHours() - +hour);
+                                remindAt.setMinutes(remindAt.getMinutes() - +minute);
+                            }
+
+                            let deletedAt: Date | null = null;
+
+                            if (isHost === false) {
+
+                                const found = sourceNotificationInfo.invitee?.some((_inviteeNotification) =>
+                                    _notification.type === _inviteeNotification.type ||
+                                    _inviteeNotification.reminders.some(
+                                        (___inviteeReminder) => ___inviteeReminder.type === __reminder.type
+                                    )
+                                );
+
+                                deletedAt = found ? null : new Date();
+                            }
+
+                            return {
+                                notificationTarget,
+                                notificationType: _notification.type,
+                                reminderType: __reminder.type,
+                                reminderValue: hostOrInviteeReminderValue,
+                                remindAt,
+                                deletedAt
+                            } as ScheduledEventNotification;
+                        })
                 );
 
                 return _scheduledEventNotifications;
             });
 
         return allScheduledEventNotifications;
+    }
+
+    getHostValue(
+        host: User,
+        notificationType: NotificationType
+    ): string {
+
+        let value;
+
+        if (notificationType === NotificationType.EMAIL) {
+            value = host.email;
+        } else {
+            value = host.phone;
+        }
+
+        return value;
     }
 
     getUserDefaultSetting(

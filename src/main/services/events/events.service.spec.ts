@@ -192,9 +192,11 @@ describe('EventsService', () => {
             const eventStub = stubOne(Event, {
                 eventDetail: eventDetailStub
             });
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
             validatorStub.validate.resolves();
             eventRepositoryStub.findOneOrFail.resolves(eventStub);
+            eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
 
             const loadedEventWithDetail = await firstValueFrom(
                 service.findOneByUserWorkspaceAndUUID(
@@ -206,6 +208,7 @@ describe('EventsService', () => {
             expect(loadedEventWithDetail).ok;
             expect(loadedEventWithDetail.eventDetail).ok;
             expect(eventRepositoryStub);
+            expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
         });
 
         it('should be fetched event by user workspace and event link with detail', async () => {

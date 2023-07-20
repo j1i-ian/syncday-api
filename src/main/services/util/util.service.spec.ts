@@ -130,6 +130,7 @@ describe('UtilService', () => {
         });
 
         it('should be got patched schedule with source event', () => {
+            const userMock = stubOne(User);
             const eventDetailMock = stubOne(EventDetail);
             const userSetting = stubOne(UserSetting);
             const availability = stubOne(Availability);
@@ -139,12 +140,15 @@ describe('UtilService', () => {
                 contacts: [],
                 eventDetail: eventDetailMock
             });
-            const newScheduleMock = stubOne(Schedule);
+            const newScheduleMock = stubOne(Schedule, {
+                scheduledNotificationInfo: {}
+            });
             const scheduledEventNotificationStubs = stub(ScheduledEventNotification);
 
             serviceSandbox.stub(service, 'getPatchedScheduleNotification').returns(scheduledEventNotificationStubs);
 
             const patchedSchedule = service.getPatchedScheduledEvent(
+                userMock,
                 eventMock,
                 newScheduleMock,
                 userSetting.workspace,
