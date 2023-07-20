@@ -210,7 +210,6 @@ export class GoogleCalendarIntegrationsService {
         });
         const loadedCalendarIds = loadedCalendars.map((_loadedCalendar) => _loadedCalendar.id);
 
-
         const noPermissionCalendar = googleCalendarIntegrationIds.find(
             (_calendarId) => loadedCalendarIds.includes(_calendarId) === false
         );
@@ -293,7 +292,7 @@ export class GoogleCalendarIntegrationsService {
                                 }
                             );
 
-                            return await this.resubscriptionCalendar(__googleCalendarIntegration as GoogleCalendarIntegration);
+                            return await this.resubscriptionCalendar(__googleCalendarIntegration);
                         })
                 );
             }
