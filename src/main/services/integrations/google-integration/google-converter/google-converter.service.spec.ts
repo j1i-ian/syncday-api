@@ -9,9 +9,9 @@ import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
+import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleConverterService } from './google-converter.service';
-import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 
 const testMockUtil = new TestMockUtil();
 
