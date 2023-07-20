@@ -117,6 +117,19 @@ export class EventsService {
                     }
                 }
             })
+        ).pipe(
+            mergeMap((loadedEvent) => {
+                const eventDetail = loadedEvent.eventDetail;
+                const eventDetailUUID = eventDetail.uuid;
+
+                return this.eventRedisRepository.getNotificationInfo(eventDetailUUID)
+                    .pipe(
+                        map((notificationInfo) => {
+                            loadedEvent.eventDetail.notificationInfo = notificationInfo;
+                            return loadedEvent;
+                        })
+                    );
+            })
         );
     }
 

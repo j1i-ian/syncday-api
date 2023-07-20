@@ -115,6 +115,7 @@ export class SchedulesService {
                 (event) => forkJoin([
                     this.availabilityRedisRepository.getAvailabilityBody(host.uuid, event.availability.uuid),
                     of(this.utilService.getPatchedScheduledEvent(
+                        host,
                         event,
                         newSchedule,
                         userWorkspace,
