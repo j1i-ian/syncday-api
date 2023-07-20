@@ -12,6 +12,7 @@ import { CreateScheduledRequestDto } from '@dto/schedules/create-scheduled-reque
 import { ScheduledEventResponseDto } from '@dto/schedules/scheduled-event-response.dto';
 import { Public } from '@app/auth/strategy/jwt/public.decorator';
 import { ValidateQueryParamPipe } from '@app/pipes/validate-query-param/validate-query-param.pipe';
+import { ParseUrlDecodedPipe } from '@app/pipes/parse-url-decoded/parse-url-decoded.pipe';
 
 @Controller()
 @Public({ ignoreInvalidJwtToken: true })
@@ -61,7 +62,7 @@ export class BookingsController {
     @Get('availabilities')
     searchHostAvailabilities(
         @Query('workspace', ValidateQueryParamPipe) userWorkspace: string,
-        @Query('eventLink') eventLink: string
+        @Query('eventLink', ParseUrlDecodedPipe) eventLink: string
     ): Observable<HostAvailabilityDto> {
         return this.bookingsService.fetchHostAvailabilityDetail(userWorkspace, eventLink)
             .pipe(
