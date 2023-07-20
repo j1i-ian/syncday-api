@@ -1,8 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom, of } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Auth } from 'googleapis';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { IntegrationUtilsService } from '@services/util/integration-utils/integration-utils.service';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
@@ -23,6 +26,7 @@ describe('GoogleCalendarIntegrationsService', () => {
     let service: GoogleCalendarIntegrationsService;
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
+    let loggerStub: sinon.SinonStubbedInstance<Logger>;
     let integrationUtilsServiceStub: sinon.SinonStubbedInstance<IntegrationUtilsService>;
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
     let integrationsRedisRepositoryStub: sinon.SinonStubbedInstance<IntegrationsRedisRepository>;
@@ -39,6 +43,7 @@ describe('GoogleCalendarIntegrationsService', () => {
 
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
+        loggerStub = sinon.createStubInstance(Logger);
         integrationUtilsServiceStub = sinon.createStubInstance(IntegrationUtilsService);
         googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
 
@@ -54,6 +59,10 @@ describe('GoogleCalendarIntegrationsService', () => {
                 {
                     provide: ConfigService,
                     useValue: configServiceStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: loggerStub
                 },
                 {
                     provide: IntegrationUtilsService,
@@ -118,52 +127,71 @@ describe('GoogleCalendarIntegrationsService', () => {
                 users: [userStub]
             });
 
-            const oldGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
-            const newGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
-            newGoogleIntegrationScheduleStubs[0] = oldGoogleIntegrationScheduleStubs[0];
-            newGoogleIntegrationScheduleStubs[1] = oldGoogleIntegrationScheduleStubs[1];
-            newGoogleIntegrationScheduleStubs[2] = oldGoogleIntegrationScheduleStubs[2];
-
             const googleCalendarIntegrationStub = stubOne(GoogleCalendarIntegration, {
                 googleIntegration: googleIntegrationStub
             });
             const googleOAuthClientStub = testMockUtil.getGoogleOAuthClientMock();
-            const googleScheduleMock = testMockUtil.getGoogleScheduleMock();
 
             const serviceFindOneStub = serviceSandbox.stub(service, 'findOne');
             serviceFindOneStub.returns(of(googleCalendarIntegrationStub));
 
             integrationUtilsServiceStub.getGoogleOAuthClient.returns(googleOAuthClientStub);
 
-            const googleCalendarEventListServiceSearchStub = serviceSandbox.stub(GoogleCalendarEventListService.prototype, 'search')
-                .resolves(googleScheduleMock);
-
-            googleIntegrationScheduleRepositoryStub.findBy.resolves(oldGoogleIntegrationScheduleStubs);
-
-            googleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(newGoogleIntegrationScheduleStubs);
+            const _synchronizeWithGoogleCalendarEventsStub = serviceSandbox.stub(service, '_synchronizeWithGoogleCalendarEvents');
 
             await service.synchronizeWithGoogleCalendarEvents(googleCalendarIntegrationStub.uuid);
 
             expect(serviceFindOneStub.called).true;
             expect(integrationUtilsServiceStub.getGoogleOAuthClient.called).true;
-            expect(googleCalendarEventListServiceSearchStub.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.findBy.called).true;
-            expect(googleConverterServiceStub.convertToGoogleIntegrationSchedules.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.save.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.delete.called).true;
+            expect(_synchronizeWithGoogleCalendarEventsStub.called).true;
         });
 
         it('should be not searched with no calendar items', async () => {
             const googleCalendarUUIDMock = stubOne(GoogleCalendarIntegration).uuid;
             const serviceFindOneStub = serviceSandbox.stub(service, 'findOne');
             serviceFindOneStub.returns(of(null));
-            const googleCalendarEventListServiceStub = serviceSandbox.stub(GoogleCalendarEventListService.prototype, 'search');
+
+            const _synchronizeWithGoogleCalendarEventsStub = serviceSandbox.stub(service, '_synchronizeWithGoogleCalendarEvents');
 
             await service.synchronizeWithGoogleCalendarEvents(googleCalendarUUIDMock);
 
             expect(serviceFindOneStub.called).true;
+            expect(_synchronizeWithGoogleCalendarEventsStub.called).false;
+        });
+
+        it('should be synchronized for calendar items searching', async () => {
+            const googleScheduleMock = testMockUtil.getGoogleScheduleMock();
+            const oldGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
+            const newGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
+            newGoogleIntegrationScheduleStubs[0] = oldGoogleIntegrationScheduleStubs[0];
+            newGoogleIntegrationScheduleStubs[1] = oldGoogleIntegrationScheduleStubs[1];
+            newGoogleIntegrationScheduleStubs[2] = oldGoogleIntegrationScheduleStubs[2];
+
+            const googleCalendarIntegrationMock = stubOne(GoogleCalendarIntegration);
+            const userSettingMock = stubOne(UserSetting);
+            const googleOAuthClientMock = {} as Auth.OAuth2Client;
+
+            const googleCalendarEventListServiceSearchStub = serviceSandbox.stub(GoogleCalendarEventListService.prototype, 'search')
+                .resolves(googleScheduleMock);
+
+            googleIntegrationScheduleRepositoryStub.findBy.resolves(oldGoogleIntegrationScheduleStubs);
+            googleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(newGoogleIntegrationScheduleStubs);
+
+            await service._synchronizeWithGoogleCalendarEvents(
+                datasourceMock as EntityManager,
+                googleCalendarIntegrationMock,
+                userSettingMock,
+                {
+                    googleOAuthClient: googleOAuthClientMock
+                }
+            );
+
             expect(integrationUtilsServiceStub.getGoogleOAuthClient.called).false;
-            expect(googleCalendarEventListServiceStub.called).false;
+            expect(googleCalendarEventListServiceSearchStub.called).true;
+            expect(googleConverterServiceStub.convertToGoogleIntegrationSchedules.called).true;
+            expect(googleIntegrationScheduleRepositoryStub.findBy.called).true;
+            expect(googleIntegrationScheduleRepositoryStub.save.called).true;
+            expect(googleIntegrationScheduleRepositoryStub.delete.called).true;
         });
 
         it('should be searched for calendar items', async () => {
@@ -184,13 +212,21 @@ describe('GoogleCalendarIntegrationsService', () => {
         });
 
         it('should be patched for calendar items', async () => {
-            const userStub = stubOne(User);
+            const userSettingStub = stubOne(UserSetting);
+            const userStub = stubOne(User, {
+                userSetting: userSettingStub
+            });
+            const googleIntegrationStub = stubOne(GoogleIntegration, {
+                users: [userStub]
+            });
+
             const calendarStubs = stub(GoogleCalendarIntegration, 5, {
                 setting: {
-                    conflictCheck: false,
+                    conflictCheck: true,
                     outboundWriteSync: true,
                     inboundDecliningSync: false
-                }
+                },
+                googleIntegration: googleIntegrationStub
             });
 
             const googleCalendarIntegrationsMock = calendarStubs[0];
@@ -201,21 +237,43 @@ describe('GoogleCalendarIntegrationsService', () => {
             const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
             googleCalendarIntegrationRepositoryStub.update.resolves(updateResultMock);
 
+            const deleteResultMock = TestMockUtil.getTypeormUpdateResultMock();
+            googleIntegrationScheduleRepositoryStub.delete.resolves(deleteResultMock);
+
+            const googleOAuthClientStub = testMockUtil.getGoogleOAuthClientMock();
+
+            integrationUtilsServiceStub.getGoogleOAuthClient.returns(googleOAuthClientStub);
+
+            const synchronizeWithGoogleCalendarEventsStub = serviceSandbox.stub(service, '_synchronizeWithGoogleCalendarEvents');
+            const resubscriptionCalendarStub = serviceSandbox.stub(service, 'resubscriptionCalendar');
+
             const patchSuccess = await service.patch(userStub.id, [googleCalendarIntegrationsMock]);
 
             expect(patchSuccess).true;
             expect(googleCalendarIntegrationRepositoryStub.find.called).true;
             expect(googleCalendarIntegrationRepositoryStub.save.called).true;
+            expect(googleIntegrationScheduleRepositoryStub.delete.called).true;
+            expect(integrationUtilsServiceStub.getGoogleOAuthClient.called).true;
+            expect(synchronizeWithGoogleCalendarEventsStub.called).true;
+            expect(resubscriptionCalendarStub.called).true;
         });
 
         it('should be threw error when there is calendar in request array that is not owned of user', async () => {
-            const userStub = stubOne(User);
+
+            const userSettingStub = stubOne(UserSetting);
+            const userStub = stubOne(User, {
+                userSetting: userSettingStub
+            });
+            const googleIntegrationStub = stubOne(GoogleIntegration, {
+                users: [userStub]
+            });
             const calendarStubs = stub(GoogleCalendarIntegration, 1, {
                 setting: {
                     conflictCheck: false,
                     outboundWriteSync: true,
                     inboundDecliningSync: false
-                }
+                },
+                googleIntegration: googleIntegrationStub
             });
 
             const googleCalendarIntegrationsMock = calendarStubs[0];

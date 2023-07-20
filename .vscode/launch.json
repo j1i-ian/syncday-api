@@ -13,7 +13,7 @@
                 "--watch"
             ],
             "env": {
-                "NODE_ENV": "test"
+                "ENV": "local_development"
             },
             "internalConsoleOptions": "neverOpen",
             "sourceMaps": true

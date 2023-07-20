@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, FindOptionsWhere, In, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, In, Not, Repository } from 'typeorm';
 import { Observable, firstValueFrom, from } from 'rxjs';
 import { Auth, calendar_v3 } from 'googleapis';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { AppConfigService } from '@config/app-config.service';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
@@ -17,6 +18,7 @@ import { GoogleCalendarIntegration } from '@entity/integrations/google/google-ca
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarIntegrationSearchOption } from '@app/interfaces/integrations/google/google-calendar-integration-search-option.interface';
 import { GoogleCalendarDetail } from '@app/interfaces/integrations/google/google-calendar-detail.interface';
@@ -28,6 +30,7 @@ export class GoogleCalendarIntegrationsService {
         private readonly integrationUtilService: IntegrationUtilsService,
         private readonly googleConverterService: GoogleConverterService,
         private readonly integrationsRedisRepository: IntegrationsRedisRepository,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @InjectDataSource() private readonly datasource: DataSource,
         @InjectRepository(GoogleIntegrationSchedule)
         private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
@@ -56,9 +59,36 @@ export class GoogleCalendarIntegrationsService {
 
         const googleOAuthClient = this.integrationUtilService.getGoogleOAuthClient(loadedGoogleIntegration.refreshToken);
 
+        await this.datasource.transaction(async (transactionManager) => await this._synchronizeWithGoogleCalendarEvents(
+            transactionManager,
+            loadedGoogleCalendarIntegration,
+            loadedUserSetting,
+            {
+                googleOAuthClient
+            }
+        ));
+    }
+
+    async _synchronizeWithGoogleCalendarEvents(
+        manager: EntityManager,
+        googleCalendarIntegration: GoogleCalendarIntegration,
+        userSetting: UserSetting,
+        {
+            userRefreshToken,
+            googleOAuthClient
+        }: {
+            userRefreshToken?: string;
+            googleOAuthClient?: Auth.OAuth2Client;
+        }
+    ): Promise<void> {
+
+        const ensuredOAuthClient = googleOAuthClient || this.integrationUtilService.getGoogleOAuthClient(
+            userRefreshToken as string
+        );
+
         const googleCalendarEventListService = new GoogleCalendarEventListService();
 
-        const loadedGoogleEventGroup = await googleCalendarEventListService.search(googleOAuthClient, loadedGoogleCalendarIntegration.name);
+        const loadedGoogleEventGroup = await googleCalendarEventListService.search(ensuredOAuthClient, googleCalendarIntegration.name);
         const latestGoogleEvents = (loadedGoogleEventGroup.items || []);
         const loadedGoogleEventICalUIDs = latestGoogleEvents.map((item) => item.iCalUID);
 
@@ -83,31 +113,28 @@ export class GoogleCalendarIntegrationsService {
         });
 
         const newSchedules = this.googleConverterService.convertToGoogleIntegrationSchedules({
-            [loadedGoogleCalendarIntegration.name]: newEvents
+            [googleCalendarIntegration.name]: newEvents
         }).map((_newSchedule) => {
-            _newSchedule.originatedCalendarId = loadedGoogleCalendarIntegration.name;
-            _newSchedule.googleCalendarIntegrationId = loadedGoogleCalendarIntegration.id;
+            _newSchedule.originatedCalendarId = googleCalendarIntegration.name;
+            _newSchedule.googleCalendarIntegrationId = googleCalendarIntegration.id;
             _newSchedule.host = {
-                timezone: loadedUserSetting.preferredTimezone,
-                workspace: loadedUserSetting.workspace
+                timezone: userSetting.preferredTimezone,
+                workspace: userSetting.workspace
             };
             return _newSchedule;
         });
 
-        await this.datasource.transaction(async (transactionManager) => {
+        const _googleIntegrationScheduleRepository = manager.getRepository(GoogleIntegrationSchedule);
 
-            const _googleIntegrationScheduleRepository = transactionManager.getRepository(GoogleIntegrationSchedule);
+        // create new schedules
+        if (newSchedules.length > 0) {
+            await _googleIntegrationScheduleRepository.save(newSchedules);
+        }
 
-            // create new schedules
-            if (newSchedules.length > 0) {
-                await _googleIntegrationScheduleRepository.save(newSchedules);
-            }
-
-            // delete old schedules
-            await _googleIntegrationScheduleRepository.delete({
-                iCalUID: Not(In(loadedGoogleEventICalUIDs)),
-                googleCalendarIntegrationId: loadedGoogleCalendarIntegration.id
-            });
+        // delete old schedules
+        await _googleIntegrationScheduleRepository.delete({
+            iCalUID: Not(In(loadedGoogleEventICalUIDs)),
+            googleCalendarIntegrationId: googleCalendarIntegration.id
         });
     }
 
@@ -169,7 +196,11 @@ export class GoogleCalendarIntegrationsService {
 
         // check owner permission
         const loadedCalendars = await this.googleCalendarIntegrationRepository.find({
-            relations: ['googleIntegration'],
+            relations: [
+                'googleIntegration',
+                'googleIntegration.users',
+                'googleIntegration.users.userSetting'
+            ],
             where: {
                 id: In(googleCalendarIntegrationIds),
                 users: {
@@ -179,48 +210,96 @@ export class GoogleCalendarIntegrationsService {
         });
         const loadedCalendarIds = loadedCalendars.map((_loadedCalendar) => _loadedCalendar.id);
 
+
         const noPermissionCalendar = googleCalendarIntegrationIds.find(
             (_calendarId) => loadedCalendarIds.includes(_calendarId) === false
         );
-        const isLengthStrange = loadedCalendars.length !== googleCalendarIntegrations.length;
 
-        if (noPermissionCalendar && isLengthStrange) {
+        if (noPermissionCalendar) {
             throw new NotAnOwnerException();
         }
 
+        const loadedUserSetting = loadedCalendars[0].googleIntegration.users[0].userSetting;
+
+        const calendarsToDeleteSchedules = googleCalendarIntegrations.filter((googleCalendarSettingStatus) =>
+            googleCalendarSettingStatus.setting.conflictCheck === false
+        );
+        const calendarIdsToDeleteSchedules = calendarsToDeleteSchedules.map((_calendarsToDeleteSchedule) => _calendarsToDeleteSchedule.id);
+
         await this.datasource.transaction(async (_transactionManager) => {
             const _googleCalendarIntegrationRepo = _transactionManager.getRepository(GoogleCalendarIntegration);
+            const _googleIntegrationScheduleRepo = _transactionManager.getRepository(GoogleIntegrationSchedule);
 
             const _resetUpdateResult = await _googleCalendarIntegrationRepo.update(googleCalendarIntegrationIds, {
                 setting: {
                     outboundWriteSync: false
                 }
             });
-            const _resetSuccess = _resetUpdateResult.affected && _resetUpdateResult.affected > 0;
 
-            const _googleCalendarIntegration = await _googleCalendarIntegrationRepo.save(
+            const _resultToDeleteSchedules = await _googleIntegrationScheduleRepo.delete({
+                googleCalendarIntegrationId: In(calendarIdsToDeleteSchedules)
+            });
+
+            const _resetSuccess = _resetUpdateResult.affected && _resetUpdateResult.affected > 0;
+            const _resultToDeleteSchedulesSuccess = _resultToDeleteSchedules.affected && _resultToDeleteSchedules.affected > 0;
+
+            const _googleCalendarIntegrations = await _googleCalendarIntegrationRepo.save(
                 googleCalendarIntegrations,
                 {
                     transaction: true
                 }
             );
 
-            return _resetSuccess && !!_googleCalendarIntegration;
-        });
+            // It is more cost-effective to update already loaded calendars than to execute an SQL query with relation join
+            const updatedCalendars = loadedCalendars.map((_loadedCalendar) => {
+                const _googleCalendarIntegration = _googleCalendarIntegrations.find((__googleCalendarIntegration) => __googleCalendarIntegration.id === _loadedCalendar.id);
 
-        // Resubscribe a google calendar for inbound
-        const inboundGoogleCalendarIntegrations = loadedCalendars.filter((googleCalendarSettingStatus) =>
-            googleCalendarSettingStatus.setting.conflictCheck === true
-        );
+                if (_googleCalendarIntegration) {
+                    _loadedCalendar.setting = _googleCalendarIntegration?.setting;
+                }
 
-        if (inboundGoogleCalendarIntegrations.length > 0) {
-            await Promise.all(
-                inboundGoogleCalendarIntegrations.map(
-                    async (_inboundGoogleCalendarIntegration) =>
-                        this.resubscriptionCalendar(_inboundGoogleCalendarIntegration)
-                )
+                return _loadedCalendar;
+            });
+
+            const _integrationGoogleOAuthClientMap = new Map<number, Auth.OAuth2Client>();
+            const _inboundGoogleCalendarIntegrations = updatedCalendars.filter((googleCalendarSettingStatus) =>
+                googleCalendarSettingStatus.setting.conflictCheck === true
             );
-        }
+
+            _inboundGoogleCalendarIntegrations
+                .map((_inboundGoogleCalendarIntegration) => _inboundGoogleCalendarIntegration.googleIntegration)
+                .forEach((_googleIntegration) => {
+                    const userRefreshToken = _googleIntegration.refreshToken;
+
+                    if (_integrationGoogleOAuthClientMap.has(_googleIntegration.id) === false) {
+                        const googleOAuthClient = this.integrationUtilService.getGoogleOAuthClient(userRefreshToken);
+                        _integrationGoogleOAuthClientMap.set(_googleIntegration.id, googleOAuthClient);
+                    }
+                });
+
+            if (_inboundGoogleCalendarIntegrations.length > 0) {
+                await Promise.all(
+                    _inboundGoogleCalendarIntegrations
+                        .map(async (__googleCalendarIntegration) => {
+
+                            const __googleOAuthClient = _integrationGoogleOAuthClientMap.get(__googleCalendarIntegration.googleIntegrationId);
+
+                            await this._synchronizeWithGoogleCalendarEvents(
+                                _transactionManager,
+                                __googleCalendarIntegration,
+                                loadedUserSetting,
+                                {
+                                    googleOAuthClient: __googleOAuthClient
+                                }
+                            );
+
+                            return await this.resubscriptionCalendar(__googleCalendarIntegration as GoogleCalendarIntegration);
+                        })
+                );
+            }
+
+            return _resetSuccess && _resultToDeleteSchedulesSuccess && _googleCalendarIntegrations.length > 0;
+        });
 
         return true;
     }
@@ -378,44 +457,52 @@ export class GoogleCalendarIntegrationsService {
         }
     ): Promise<boolean> {
 
-        if (!userRefreshToken && !OAuthClient) {
-            throw new InternalServerErrorException('Both user refresh token and OAuth client are null');
-        }
+        try {
 
-        const ensuredOAuthClient = OAuthClient || this.integrationUtilService.getGoogleOAuthClient(
-            userRefreshToken as string
-        );
-
-        // Subscribe new google calendar notification
-        const googleCalendarEventWatchService = new GoogleCalendarEventWatchService();
-        const callback = [
-            AppConfigService.getHost(),
-            'v1/integrations/calendars/notifications/google',
-            googleCalendarIntegration.uuid
-        ].join('/');
-
-        const watchResponse = await googleCalendarEventWatchService.watch(
-            ensuredOAuthClient,
-            googleCalendarIntegration.name,
-            googleCalendarIntegration.uuid,
-            callback
-        );
-
-        await this.integrationsRedisRepository.setGoogleCalendarDetail(
-            googleIntegration.uuid,
-            googleCalendarIntegration.uuid,
-            {
-                webhookNotification: {
-                    xGoogChannelId: googleCalendarIntegration.uuid,
-                    xGoogResourceId: watchResponse.resourceId as string,
-                    xGoogResourceUri: watchResponse.resourceUri as string,
-                    xGoogChannelExpiration: watchResponse.expiration as string,
-                    raw: watchResponse
-                }
+            if (!userRefreshToken && !OAuthClient) {
+                throw new InternalServerErrorException('Both user refresh token and OAuth client are null');
             }
-        );
 
-        await this.integrationsRedisRepository.setGoogleCalendarSubscriptionStatus(googleCalendarIntegration.uuid);
+            const ensuredOAuthClient = OAuthClient || this.integrationUtilService.getGoogleOAuthClient(
+                userRefreshToken as string
+            );
+
+            // Subscribe new google calendar notification
+            const googleCalendarEventWatchService = new GoogleCalendarEventWatchService();
+            const callback = [
+                AppConfigService.getHost(),
+                'v1/integrations/calendars/notifications/google',
+                googleCalendarIntegration.uuid
+            ].join('/');
+
+            const watchResponse = await googleCalendarEventWatchService.watch(
+                ensuredOAuthClient,
+                googleCalendarIntegration.name,
+                googleCalendarIntegration.uuid,
+                callback
+            );
+
+            await this.integrationsRedisRepository.setGoogleCalendarDetail(
+                googleIntegration.uuid,
+                googleCalendarIntegration.uuid,
+                {
+                    webhookNotification: {
+                        xGoogChannelId: googleCalendarIntegration.uuid,
+                        xGoogResourceId: watchResponse.resourceId as string,
+                        xGoogResourceUri: watchResponse.resourceUri as string,
+                        xGoogChannelExpiration: watchResponse.expiration as string,
+                        raw: watchResponse
+                    }
+                }
+            );
+
+            await this.integrationsRedisRepository.setGoogleCalendarSubscriptionStatus(googleCalendarIntegration.uuid);
+        } catch (error) {
+            this.logger.error({
+                message: 'Error while Google Calendar Integration Subscribing:',
+                error
+            });
+        }
 
         return true;
     }
