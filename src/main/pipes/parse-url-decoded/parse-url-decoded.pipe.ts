@@ -1,8 +1,8 @@
-import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { Injectable, PipeTransform } from '@nestjs/common';
 
 @Injectable()
 export class ParseUrlDecodedPipe implements PipeTransform {
-    transform(value?: undefined | null | string): string {
+    transform(value?: undefined | null | string): undefined | null | string {
 
         if (value) {
 
@@ -16,8 +16,6 @@ export class ParseUrlDecodedPipe implements PipeTransform {
             } while (finalDecoded !== value && count < limit);
 
             value = finalDecoded;
-        } else {
-            throw new BadRequestException('Invalid Query Param value');
         }
 
         return value;
