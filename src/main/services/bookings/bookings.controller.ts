@@ -24,7 +24,7 @@ export class BookingsController {
 
     @Get('host')
     fetchHost(
-        @Query('workspace', ValidateQueryParamPipe) userWorkspace: string
+        @Query('workspace', ValidateQueryParamPipe, ParseUrlDecodedPipe) userWorkspace: string
     ): Observable<FetchHostResponseDto> {
         return this.bookingsService.fetchHost(userWorkspace)
             .pipe(map((user) => plainToInstance(FetchHostResponseDto, user, {
@@ -34,7 +34,7 @@ export class BookingsController {
 
     @Get('events')
     fetchHostEvents(
-        @Query('workspace', ValidateQueryParamPipe) userWorkspace: string
+        @Query('workspace', ValidateQueryParamPipe, ParseUrlDecodedPipe) userWorkspace: string
     ): Observable<HostEventDto[]> {
         return this.bookingsService.searchHostEvents(userWorkspace)
             .pipe(
@@ -48,7 +48,7 @@ export class BookingsController {
 
     @Get('events/:eventLink')
     fetchHostEventDetail(
-        @Query('workspace', ValidateQueryParamPipe) userWorkspace: string,
+        @Query('workspace', ValidateQueryParamPipe, ParseUrlDecodedPipe) userWorkspace: string,
         @Param('eventLink') eventLink: string
     ): Observable<HostEventDto> {
         return this.bookingsService.fetchHostEventDetail(userWorkspace, eventLink)
@@ -61,7 +61,7 @@ export class BookingsController {
 
     @Get('availabilities')
     searchHostAvailabilities(
-        @Query('workspace', ValidateQueryParamPipe) userWorkspace: string,
+        @Query('workspace', ValidateQueryParamPipe, ParseUrlDecodedPipe) userWorkspace: string,
         @Query('eventLink', ParseUrlDecodedPipe) eventLink: string
     ): Observable<HostAvailabilityDto> {
         return this.bookingsService.fetchHostAvailabilityDetail(userWorkspace, eventLink)
@@ -74,7 +74,7 @@ export class BookingsController {
 
     @Get('scheduled-events')
     searchScheduledEvents(
-        @Query('workspace', ValidateQueryParamPipe) workspace: string,
+        @Query('workspace', ValidateQueryParamPipe, ParseUrlDecodedPipe) workspace: string,
         @Query('eventUUID') eventUUID: string
     ): Observable<ScheduledEventResponseDto[]> {
         return this.bookingsService.searchScheduledEvents(workspace, eventUUID)
