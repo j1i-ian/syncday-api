@@ -134,7 +134,7 @@ export class SchedulesService {
                         loadedGoogleCalendarIntegrationOrNull?.id
                     ).pipe(
                         mergeMap((patchedSchedule) =>
-                            loadedGoogleCalendarIntegrationOrNull ?
+                            loadedGoogleCalendarIntegrationOrNull && patchedSchedule.conferenceLinks ?
                                 from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
                                     (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
                                     (loadedGoogleCalendarIntegrationOrNull),

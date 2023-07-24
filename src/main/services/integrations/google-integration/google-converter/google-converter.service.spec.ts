@@ -4,6 +4,7 @@ import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { ContactType } from '@interfaces/events/contact-type.enum';
 import { UtilService } from '@services/util/util.service';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
@@ -191,6 +192,12 @@ describe('GoogleConverterService', () => {
                         }
                     ]
                 },
+                contacts: [
+                    {
+                        type: ContactType.GOOGLE_MEET,
+                        value: 'in company'
+                    }
+                ],
                 conferenceLinks: [{ type: IntegrationVendor.GOOGLE, link: 'https://video.sync.day', serviceName: 'Syncday Living Streaming Service' }]
             });
 
@@ -202,10 +209,12 @@ describe('GoogleConverterService', () => {
 
             const {
                 start: convertedStartDatetimeString,
-                end: convertedEndDatetimeString
+                end: convertedEndDatetimeString,
+                conferenceData
             } = convertedGoogleSchedule as {
                 start: calendar_v3.Schema$EventDateTime;
                 end: calendar_v3.Schema$EventDateTime;
+                conferenceData: calendar_v3.Schema$ConferenceData;
             };
             const convertedStartDatetime = new Date(convertedStartDatetimeString.dateTime as string);
             const convertedEndDatetime = new Date(convertedEndDatetimeString.dateTime as string);
@@ -214,8 +223,45 @@ describe('GoogleConverterService', () => {
             expect(convertedStartDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
             expect(convertedEndDatetime.getTime()).equals(scheduleMock.scheduledTime.endTimestamp.getTime());
             expect(convertedGoogleSchedule).ok;
+            expect(conferenceData).ok;
 
             expect(utilServiceStub.generateUUID.called).true;
+        });
+
+        it('should be converted to google calendar event from sync scheduled event without conference link when event contact is not link method', () => {
+            const hostTimezoneMock = stubOne(UserSetting).preferredTimezone;
+            const googleCalendarIntegrationEmailMock = stubOne(GoogleCalendarIntegration).name;
+            const scheduledTimeMock = stubOne(ScheduledTimeset);
+            const scheduleMock = stubOne(Schedule, {
+                scheduledTime: scheduledTimeMock,
+                scheduledNotificationInfo: {
+                    invitee: [
+                        {
+                            type: NotificationType.EMAIL,
+                            reminders: [ { typeValue: 'alan@sync.day' } ]
+                        }
+                    ]
+                },
+                contacts: [
+                    {
+                        type: ContactType.IN_PERSON,
+                        value: 'in company'
+                    }
+                ],
+                conferenceLinks: []
+            });
+
+            const convertedGoogleSchedule = service.convertScheduledEventToGoogleCalendarEvent(
+                hostTimezoneMock,
+                googleCalendarIntegrationEmailMock,
+                scheduleMock
+            );
+
+            const {
+                conferenceData
+            } = convertedGoogleSchedule;
+
+            expect(conferenceData).not.ok;
         });
 
         it('should be converted google integration schedules from google schedule although google schedule has no summary', () => {

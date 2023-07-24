@@ -6,6 +6,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Notification } from '@interfaces/notifications/notification';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
+import { ContactType } from '@interfaces/events/contact-type.enum';
 import { UtilService } from '@services/util/util.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
@@ -188,6 +189,7 @@ export class GoogleConverterService {
         const inviteeEmailAnswer = (schedule.scheduledNotificationInfo.invitee as Notification[]).find((_item) => _item.type === NotificationType.EMAIL) as Notification;
         const inviteeEmail = (inviteeEmailAnswer.reminders[0] as ScheduledReminder).typeValue;
 
+        const selectedContact = schedule.contacts[0];
         const generatedUUID = this.utilService.generateUUID();
         const eventRequestBody: calendar_v3.Schema$Event = {
             summary: schedule.name,
@@ -208,16 +210,24 @@ export class GoogleConverterService {
             end: {
                 dateTime: new Date(endTimestamp).toISOString(),
                 timeZone: hostTimezone
-            },
-            conferenceData: {
+            }
+        };
+
+        // when contact is no location, selectedContact can be undefined
+        if (
+            selectedContact &&
+            (selectedContact.type === ContactType.GOOGLE_MEET ||
+            selectedContact.type === ContactType.ZOOM)
+        ) {
+            eventRequestBody.conferenceData = {
                 createRequest: {
                     requestId: generatedUUID,
                     conferenceSolutionKey: {
                         type: 'hangoutsMeet'
                     }
                 }
-            }
-        };
+            };
+        }
 
         return eventRequestBody;
     }
