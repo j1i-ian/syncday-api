@@ -1,7 +1,7 @@
 import { Injectable, PipeTransform } from '@nestjs/common';
 
 @Injectable()
-export class ParseUrlDecodedPipe implements PipeTransform {
+export class ParseEncodedUrl implements PipeTransform {
     transform(value?: undefined | null | string): undefined | null | string {
 
         if (value) {
@@ -12,9 +12,16 @@ export class ParseUrlDecodedPipe implements PipeTransform {
 
             do {
                 finalDecoded = decodeURIComponent(value);
-                count++;
-            } while (finalDecoded !== value && count < limit);
 
+                if (finalDecoded === value || count > limit) {
+                    break;
+                } else {
+                    count++;
+
+                    value = finalDecoded;
+                }
+
+            } while (true);
             value = finalDecoded;
         }
 
