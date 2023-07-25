@@ -6,6 +6,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { calendar_v3 } from 'googleapis';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { ContactType } from '@interfaces/events/contact-type.enum';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { UtilService } from '@services/util/util.service';
@@ -134,7 +135,8 @@ export class SchedulesService {
                         loadedGoogleCalendarIntegrationOrNull?.id
                     ).pipe(
                         mergeMap((patchedSchedule) =>
-                            loadedGoogleCalendarIntegrationOrNull && patchedSchedule.conferenceLinks ?
+                            loadedGoogleCalendarIntegrationOrNull &&
+                            this.isOutboundSchedule(patchedSchedule) ?
                                 from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
                                     (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
                                     (loadedGoogleCalendarIntegrationOrNull),
@@ -188,6 +190,10 @@ export class SchedulesService {
             .pipe(
                 map((updateResult) => !!updateResult.affected && updateResult.affected > 0)
             );
+    }
+
+    isOutboundSchedule(schedule: Schedule): boolean {
+        return schedule.contacts[0].type === ContactType.GOOGLE_MEET;
     }
 
     validate(

@@ -179,6 +179,7 @@ describe('SchedulesService', () => {
             googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.resolves(googleScheduleMock);
 
             const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
+            const isOutboundScheduleStub = serviceSandbox.stub(service, 'isOutboundSchedule').returns(true);
 
             scheduleRepositoryStub.save.resolves(scheduleStub);
             schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
@@ -206,6 +207,7 @@ describe('SchedulesService', () => {
             expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).true;
             expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).true;
             expect(validateStub.called).true;
+            expect(isOutboundScheduleStub.called).true;
             expect(scheduleRepositoryStub.save.called).true;
             expect(schedulesRedisRepositoryStub.save.called).true;
         });
