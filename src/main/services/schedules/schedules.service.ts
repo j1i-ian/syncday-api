@@ -135,29 +135,34 @@ export class SchedulesService {
                         loadedGoogleCalendarIntegrationOrNull?.id
                     ).pipe(
                         mergeMap((patchedSchedule) =>
-                            loadedGoogleCalendarIntegrationOrNull &&
-                            this.isOutboundSchedule(patchedSchedule) ?
+                            loadedGoogleCalendarIntegrationOrNull ?
                                 from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
                                     (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
                                     (loadedGoogleCalendarIntegrationOrNull),
                                     availabilityTimezone,
                                     patchedSchedule
                                 )).pipe(mergeMap((createdGoogleCalendarEvent) => {
-                                    const googleMeetConferenceLink = createdGoogleCalendarEvent.conferenceData as calendar_v3.Schema$ConferenceData;
-                                    const generatedGoogleMeetLink = (googleMeetConferenceLink.entryPoints as calendar_v3.Schema$EntryPoint[])[0].uri;
-                                    const convertedConferenceLink: ConferenceLink = {
-                                        type: IntegrationVendor.GOOGLE,
-                                        serviceName: 'Google Meet',
-                                        link: generatedGoogleMeetLink
-                                    };
-                                    patchedSchedule.conferenceLinks = [ convertedConferenceLink ];
 
-                                    return this.googleCalendarIntegrationsService.patchGoogleCalendarEvent(
-                                        (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
-                                        (loadedGoogleCalendarIntegrationOrNull),
-                                        createdGoogleCalendarEvent.id as string,
-                                        patchedSchedule
-                                    );
+                                    if (this.hasScheduleLink(patchedSchedule)) {
+
+                                        const googleMeetConferenceLink = createdGoogleCalendarEvent.conferenceData as calendar_v3.Schema$ConferenceData;
+                                        const generatedGoogleMeetLink = (googleMeetConferenceLink.entryPoints as calendar_v3.Schema$EntryPoint[])[0].uri;
+                                        const convertedConferenceLink: ConferenceLink = {
+                                            type: IntegrationVendor.GOOGLE,
+                                            serviceName: 'Google Meet',
+                                            link: generatedGoogleMeetLink
+                                        };
+                                        patchedSchedule.conferenceLinks = [ convertedConferenceLink ];
+
+                                        return this.googleCalendarIntegrationsService.patchGoogleCalendarEvent(
+                                            (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
+                                            (loadedGoogleCalendarIntegrationOrNull),
+                                            createdGoogleCalendarEvent.id as string,
+                                            patchedSchedule
+                                        );
+                                    } else {
+                                        return of(patchedSchedule);
+                                    }
                                 }), map(() => patchedSchedule)) :
                                 of(patchedSchedule)
                         ),
@@ -192,7 +197,7 @@ export class SchedulesService {
             );
     }
 
-    isOutboundSchedule(schedule: Schedule): boolean {
+    hasScheduleLink(schedule: Schedule): boolean {
         return schedule.contacts[0].type === ContactType.GOOGLE_MEET;
     }
 

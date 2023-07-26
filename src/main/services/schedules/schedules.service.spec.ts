@@ -179,7 +179,7 @@ describe('SchedulesService', () => {
             googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.resolves(googleScheduleMock);
 
             const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
-            const isOutboundScheduleStub = serviceSandbox.stub(service, 'isOutboundSchedule').returns(true);
+            const isOutboundScheduleStub = serviceSandbox.stub(service, 'hasScheduleLink').returns(true);
 
             scheduleRepositoryStub.save.resolves(scheduleStub);
             schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
