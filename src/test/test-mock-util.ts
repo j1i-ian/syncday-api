@@ -31,6 +31,7 @@ import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface'
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
 import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
+import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
 import { Faker, faker } from '@faker-js/faker';
 import { DataSourceMock } from '@test/datasource-mock.interface';
 import { Language } from '../main/enums/language.enum';
@@ -239,6 +240,7 @@ export class TestMockUtil {
             nextSyncToken: faker.datatype.uuid(),
             items: [
                 {
+                    id: 'c_635f19c3e80fc57e57700c3f71b1a96f81ef0af3c5264e9a966fe1f5dc3874fa@group.calendar.google.com',
                     accessRole: GoogleCalendarAccessRole.OWNER,
                     primary: true,
                     description: 'testDescription'
@@ -269,7 +271,7 @@ export class TestMockUtil {
         };
     }
 
-    getRecurrenceGoogleScheduleMock(): calendar_v3.Schema$Event {
+    getRecurrenceGoogleScheduleMock(): GoogleCalendarEvent {
 
         const rrule = 'RRULE:FREQ=WEEKLY;WKST=SU;COUNT=5;BYDAY=TU';
 
@@ -277,18 +279,20 @@ export class TestMockUtil {
             recurrence: [rrule],
             id: '5vqgu90q66itlhsdiopn13ine6_20230717T013000Z',
             kind: 'calendar#event',
-            status: 'cancelled'
+            status: 'cancelled',
+            timezone: 'Asia/Seoul'
         };
     }
 
-    getCancelledGoogleScheduleMock(): calendar_v3.Schema$Event {
+    getCancelledGoogleScheduleMock(): GoogleCalendarEvent {
         return {
             etag: '"337672944432000"',
             id: '4vqgu90q66itlhsdiopn13ine6_20230717T013000Z',
             kind: 'calendar#event',
             originalStartTime: { dateTime: '2023-07-17T10:30:00+09:00' },
             recurringEventId: '4vqgu90q66itlhsdiopn13ine6_R20230501T0130',
-            status: 'cancelled'
+            status: 'cancelled',
+            timezone: 'Asia/Seoul'
         };
     }
 
