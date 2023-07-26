@@ -487,18 +487,18 @@ export class UtilService {
     getTimezoneOffset(timezone: string): TimezoneOffset {
 
         const formatter = Intl.DateTimeFormat([], {
-            timeZone: 'Asia/Seoul',
+            timeZone: timezone,
             timeZoneName: 'short'
         });
         const formattedDate = formatter.format(new Date());
 
         const matchedGMTStringGroup = formattedDate
-            .match(/.*(?<timezoneDiff>GMT[-+]\d\d:\d\d).*/)?.groups;
+            .match(/.*(?<timezoneDiff>GMT[-+]\d(:\d\d)?).*/)?.groups;
 
         let timezoneOffset: TimezoneOffset;
 
         const timezoneDiff = matchedGMTStringGroup && matchedGMTStringGroup.timezoneDiff;
-        const matchedTimezoneDiff = timezoneDiff?.match(/GMT(?<sign>[+-])(?<hourOffset>\d\d):(?<minuteOffset>\d\d)/);
+        const matchedTimezoneDiff = timezoneDiff?.match(/GMT(?<sign>[+-])(?<hourOffset>\d)(:(?<minuteOffset>\d\d))?/);
 
         if (matchedTimezoneDiff) {
             timezoneOffset = matchedTimezoneDiff.groups as unknown as TimezoneOffset;

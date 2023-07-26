@@ -106,7 +106,8 @@ export class GoogleConverterService {
     ): { startDatetime: Date; endDatetime: Date } {
 
         const _timezoneOffset = this.getTimezoneOffset(_googleScheduleEvent.timezone);
-        const gmtString = `GMT${ _timezoneOffset.sign ? '+' : '-' }${ _timezoneOffset.hourOffset }:${ _timezoneOffset.minuteOffset }`;
+        const minGMTString = _timezoneOffset.minuteOffset ? `:${ _timezoneOffset.minuteOffset }` : '';
+        const gmtString = `GMT${ _timezoneOffset.sign ? '+' : '-' }${ _timezoneOffset.hourOffset }${ minGMTString }`;
 
         const _googleScheduleStartDatetime = _googleScheduleEvent.start as calendar_v3.Schema$EventDateTime;
         const _googleScheduleEndDatetime = _googleScheduleEvent.end as calendar_v3.Schema$EventDateTime;
