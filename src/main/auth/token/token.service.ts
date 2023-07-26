@@ -59,10 +59,10 @@ export class TokenService {
         const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
         let isNewbie = loadedUserOrNull === null || loadedUserOrNull === undefined;
 
-        const primaryGoogleCalendar = calendars.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
-        const timezone = primaryGoogleCalendar.timeZone as string;
-
         if (isNewbie) {
+            const primaryGoogleCalendar = calendars.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
+            const timezone = primaryGoogleCalendar.timeZone as string;
+
             const createUserRequestDto: CreateUserRequestDto = {
                 email: googleUser.email,
                 name: googleUser.name,

@@ -53,10 +53,33 @@ describe('GoogleConverterService', () => {
         const googleCalendarListMock = testMockUtil.getGoogleCalendarMock();
 
         const googleCalendarList =
-            service.convertToGoogleCalendarIntegration(googleCalendarListMock);
+            service.convertToGoogleCalendarIntegration(googleCalendarListMock, {
+                filterGoogleGroupCalendars: false
+            });
 
         expect(googleCalendarList).ok;
         expect(googleCalendarList.length).greaterThan(0);
+
+        const [converted] = googleCalendarList;
+        expect(converted).ok;
+        expect(converted.primary).ok;
+    });
+
+    it('should be converted to GoogleCalendarIntegration from GoogleCalendar without google group calendar', () => {
+        const googleCalendarListMock = testMockUtil.getGoogleCalendarMock();
+
+        const calendarCount = googleCalendarListMock.items && googleCalendarListMock.items.length || 0;
+
+        // googleGroupCalendarMock
+        googleCalendarListMock.items?.push({
+            id: 'addressbook#contacts@group.v.calendar.google.com'
+        });
+
+        const googleCalendarList =
+            service.convertToGoogleCalendarIntegration(googleCalendarListMock);
+
+        expect(googleCalendarList).ok;
+        expect(googleCalendarList.length).equals(calendarCount);
 
         const [converted] = googleCalendarList;
         expect(converted).ok;

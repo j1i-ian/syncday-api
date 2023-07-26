@@ -25,22 +25,35 @@ export class GoogleConverterService {
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
 
     convertToGoogleCalendarIntegration(
-        googleCalendars: calendar_v3.Schema$CalendarList
+        googleCalendars: calendar_v3.Schema$CalendarList,
+        {
+            filterGoogleGroupCalendars
+        } = {
+            filterGoogleGroupCalendars: true
+        }
     ): GoogleCalendarIntegration[] {
         const { items } = googleCalendars;
 
-        return (items as calendar_v3.Schema$CalendarListEntry[]).map(
-            (item) =>
-                ({
-                    name: item.id,
-                    description: item.summary,
-                    googleCalendarAccessRole: item.accessRole,
-                    color: item.backgroundColor || '#2962ff',
-                    primary: item.primary || false,
-                    timezone: item.timeZone,
-                    raw: item
-                } as GoogleCalendarIntegration)
-        );
+        return (items as calendar_v3.Schema$CalendarListEntry[])
+            .filter((_calendar) =>
+                filterGoogleGroupCalendars === true ?
+                    _calendar &&
+                    _calendar.id &&
+                    _calendar.id.includes('group.v.calendar.google.com') === false :
+                    _calendar
+            )
+            .map(
+                (item) =>
+                    ({
+                        name: item.id,
+                        description: item.summary,
+                        googleCalendarAccessRole: item.accessRole,
+                        color: item.backgroundColor || '#2962ff',
+                        primary: item.primary || false,
+                        timezone: item.timeZone,
+                        raw: item
+                    } as GoogleCalendarIntegration)
+            );
     }
 
     convertToGoogleIntegrationSchedules(googleCalendarScheduleBody: GoogleCalendarScheduleBody): GoogleIntegrationSchedule[] {
