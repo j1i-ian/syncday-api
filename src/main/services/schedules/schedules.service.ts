@@ -198,7 +198,7 @@ export class SchedulesService {
     }
 
     hasScheduleLink(schedule: Schedule): boolean {
-        return schedule.contacts[0].type === ContactType.GOOGLE_MEET;
+        return schedule.contacts?.[0]?.type === ContactType.GOOGLE_MEET;
     }
 
     validate(

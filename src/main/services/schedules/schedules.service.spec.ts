@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { ContactType } from '@interfaces/events/contact-type.enum';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
@@ -234,6 +235,33 @@ describe('SchedulesService', () => {
             expect(scheduleRepositoryStub.update.called).true;
             expect(scheduleUpdateResult).true;
 
+        });
+
+        it('should be returned false for no location schedule', () => {
+
+            const noLocationScheduleStub = stubOne(Schedule);
+
+            delete (noLocationScheduleStub as any)['contacts'];
+
+            const result = service.hasScheduleLink(noLocationScheduleStub);
+
+            expect(result).false;
+        });
+
+        it('should be returned true for link type schedule', () => {
+
+            const noLocationScheduleStub = stubOne(Schedule, {
+                contacts: [
+                    {
+                        type: ContactType.GOOGLE_MEET,
+                        value: 'linklink'
+                    }
+                ]
+            });
+
+            const result = service.hasScheduleLink(noLocationScheduleStub);
+
+            expect(result).true;
         });
 
         it('should be passed when there is no conflicted schedule ', async () => {
