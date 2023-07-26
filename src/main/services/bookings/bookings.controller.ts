@@ -10,6 +10,7 @@ import { HostEventDto } from '@dto/bookings/host-event.dto';
 import { HostAvailabilityDto } from '@dto/bookings/host-availability.dto';
 import { CreateScheduledRequestDto } from '@dto/schedules/create-scheduled-request.dto';
 import { ScheduledEventResponseDto } from '@dto/schedules/scheduled-event-response.dto';
+import { SearchScheduledEventResponseDto } from '@dto/bookings/search-scheduled-event-response.dto';
 import { Public } from '@app/auth/strategy/jwt/public.decorator';
 import { ValidateQueryParamPipe } from '@app/pipes/validate-query-param/validate-query-param.pipe';
 import { ParseEncodedUrl } from '@app/pipes/parse-url-decoded/parse-encoded-url.pipe';
@@ -77,13 +78,13 @@ export class BookingsController {
     searchScheduledEvents(
         @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) workspace: string,
         @Query('eventUUID') eventUUID: string
-    ): Observable<ScheduledEventResponseDto[]> {
+    ): Observable<SearchScheduledEventResponseDto[]> {
         return this.bookingsService.searchScheduledEvents(workspace, eventUUID)
             .pipe(
                 map((searchedScheduledEvents) =>
                     searchedScheduledEvents.map((
                         _searchedScheduledEvent) =>
-                        plainToInstance(ScheduledEventResponseDto, _searchedScheduledEvent, {
+                        plainToInstance(SearchScheduledEventResponseDto, _searchedScheduledEvent, {
                             excludeExtraneousValues: true
                         })
                     ))
