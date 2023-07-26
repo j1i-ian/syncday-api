@@ -22,6 +22,7 @@ import { UserSetting } from '@entity/users/user-setting.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarIntegrationSearchOption } from '@app/interfaces/integrations/google/google-calendar-integration-search-option.interface';
 import { GoogleCalendarDetail } from '@app/interfaces/integrations/google/google-calendar-detail.interface';
+import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
 
 @Injectable()
@@ -89,7 +90,7 @@ export class GoogleCalendarIntegrationsService {
         const googleCalendarEventListService = new GoogleCalendarEventListService();
 
         const loadedGoogleEventGroup = await googleCalendarEventListService.search(ensuredOAuthClient, googleCalendarIntegration.name);
-        const latestGoogleEvents = (loadedGoogleEventGroup.items || []);
+        const latestGoogleEvents = (loadedGoogleEventGroup.items || []) as GoogleCalendarEvent[];
         const loadedGoogleEventICalUIDs = latestGoogleEvents.map((item) => item.iCalUID);
 
         const remainedGoogleIntegrationSchedules = await this.googleIntegrationScheduleRepository.findBy({
@@ -100,12 +101,14 @@ export class GoogleCalendarIntegrationsService {
             remainedGoogleIntegrationSchedules.map((_previousGoogleIntegrationSchedule) => [_previousGoogleIntegrationSchedule.iCalUID, _previousGoogleIntegrationSchedule] );
         const remainedGoogleIntegrationScheduleMap = new Map(remainedGoogleIntegrationScheduleEntries as Array<[string, GoogleIntegrationSchedule]>);
 
-        const newEvents: calendar_v3.Schema$Event[] = [];
+        const newEvents: GoogleCalendarEvent[] = [];
 
         // filter new events -> add
         latestGoogleEvents.forEach((_latestGoogleEvent) => {
             const isRemainedSchedule = remainedGoogleIntegrationScheduleMap.has(_latestGoogleEvent.iCalUID as string);
             const isNewOne = isRemainedSchedule === false;
+
+            _latestGoogleEvent.timezone = googleCalendarIntegration.timezone;
 
             if (isNewOne) {
                 newEvents.push(_latestGoogleEvent);

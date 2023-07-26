@@ -1,5 +1,5 @@
-import { calendar_v3 } from 'googleapis';
+import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
 
 export interface GoogleCalendarScheduleBody {
-    [calendarId: string]: calendar_v3.Schema$Event[];
+    [calendarId: string]: GoogleCalendarEvent[];
 }

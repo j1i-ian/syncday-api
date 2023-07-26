@@ -12,6 +12,8 @@ import { GoogleCalendarIntegration } from '@entity/integrations/google/google-ca
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
+import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
+import { TimezoneOffset } from '@app/interfaces/integrations/timezone-offset.interface';
 
 @Injectable()
 export class GoogleConverterService {
@@ -35,6 +37,7 @@ export class GoogleConverterService {
                     googleCalendarAccessRole: item.accessRole,
                     color: item.backgroundColor || '#2962ff',
                     primary: item.primary || false,
+                    timezone: item.timeZone,
                     raw: item
                 } as GoogleCalendarIntegration)
         );
@@ -86,8 +89,11 @@ export class GoogleConverterService {
     }
 
     convertGoogleScheduleToDateTimes(
-        _googleScheduleEvent: calendar_v3.Schema$Event
+        _googleScheduleEvent: GoogleCalendarEvent
     ): { startDatetime: Date; endDatetime: Date } {
+
+        const _timezoneOffset = this.getTimezoneOffset(_googleScheduleEvent.timezone);
+        const gmtString = `GMT${ _timezoneOffset.sign ? '+' : '-' }${ _timezoneOffset.hourOffset }:${ _timezoneOffset.minuteOffset }`;
 
         const _googleScheduleStartDatetime = _googleScheduleEvent.start as calendar_v3.Schema$EventDateTime;
         const _googleScheduleEndDatetime = _googleScheduleEvent.end as calendar_v3.Schema$EventDateTime;
@@ -97,7 +103,7 @@ export class GoogleConverterService {
         } = _googleScheduleStartDatetime;
         const ensuredRFC3339StartDateString =
             RFC3339StartDateHeadString ?
-                `${RFC3339StartDateHeadString }T00:00:00` :
+                `${RFC3339StartDateHeadString } 00:00:00 ${gmtString}` :
                 RFC3339StartDateTimeString;
         const startDatetime = new Date(ensuredRFC3339StartDateString as string);
 
@@ -106,7 +112,7 @@ export class GoogleConverterService {
             dateTime: RFC3339EndDateTimeString
         } = _googleScheduleEndDatetime;
         const ensuredRFC3339EndDateTimeString = RFC3339EndDateHeadString ?
-            `${RFC3339EndDateHeadString }T00:00:00` :
+            `${RFC3339EndDateHeadString } 00:00:00 ${gmtString}` :
             RFC3339EndDateTimeString;
         const endDatetime = new Date(ensuredRFC3339EndDateTimeString as string);
 
@@ -230,6 +236,10 @@ export class GoogleConverterService {
         }
 
         return eventRequestBody;
+    }
+
+    getTimezoneOffset(timezone: string): TimezoneOffset {
+        return this.utilService.getTimezoneOffset(timezone);
     }
 
     _convertGoogleScheduleToGoogleIntegrationSchedule(

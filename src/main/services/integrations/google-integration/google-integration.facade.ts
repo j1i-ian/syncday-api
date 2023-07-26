@@ -10,6 +10,7 @@ import { GoogleCalendarEventListService } from '@services/integrations/google-in
 import { GoogleOAuth2UserWithToken } from '@app/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
+import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
 
 @Injectable()
 export class GoogleIntegrationFacade {
@@ -68,8 +69,15 @@ export class GoogleIntegrationFacade {
                         _calendarId
                     );
 
+                    const ensuredRawSchedules = _loadedRawSchedules.items as GoogleCalendarEvent[] || [];
+                    const patchedRawSchedules = ensuredRawSchedules.map(
+                        (item: GoogleCalendarEvent) => {
+                            item.timezone = _calendar.timeZone as string;
+                            return item;
+                        });
+
                     return {
-                        [_calendarId]: _loadedRawSchedules.items
+                        [_calendarId]: patchedRawSchedules
                     } as GoogleCalendarScheduleBody;
                 })
         );

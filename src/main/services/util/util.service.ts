@@ -22,6 +22,7 @@ import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { Language } from '@app/enums/language.enum';
+import { TimezoneOffset } from '@app/interfaces/integrations/timezone-offset.interface';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { ZoomBasicAuth } from '../../interfaces/zoom-basic-auth.interface';
 
@@ -482,6 +483,67 @@ export class UtilService {
         return [store, ...value].join(':');
     }
 
+    // TODO: Should be written test
+    getTimezoneOffset(timezone: string): TimezoneOffset {
+
+        const formatter = Intl.DateTimeFormat([], {
+            timeZone: 'Asia/Seoul',
+            timeZoneName: 'short'
+        });
+        const formattedDate = formatter.format(new Date());
+
+        const matchedGMTStringGroup = formattedDate
+            .match(/.*(?<timezoneDiff>GMT[-+]\d\d:\d\d).*/)?.groups;
+
+        let timezoneOffset: TimezoneOffset;
+
+        const timezoneDiff = matchedGMTStringGroup && matchedGMTStringGroup.timezoneDiff;
+        const matchedTimezoneDiff = timezoneDiff?.match(/GMT(?<sign>[+-])(?<hourOffset>\d\d):(?<minuteOffset>\d\d)/);
+
+        if (matchedTimezoneDiff) {
+            timezoneOffset = matchedTimezoneDiff.groups as unknown as TimezoneOffset;
+
+            const _sign = (timezoneOffset.sign as unknown as string) === '+';
+            timezoneOffset.sign = _sign;
+        } else {
+
+            const localizedDate = this.localizeDate(new Date(), timezone);
+            const _today = new Date();
+            const utcYYYYMMDD = [ _today.getUTCFullYear(), _today.getUTCMonth().toString().padStart(2, '0'), _today.getUTCDate().toString().padStart(2, '0') ].join('');
+
+            const localizedDateYYYYMMDD = [localizedDate.year, localizedDate.month, localizedDate.day].join();
+            const _sign = +localizedDateYYYYMMDD > +utcYYYYMMDD;
+            const _hourOffset = Math.abs(+(localizedDate.hour as string) - new Date().getUTCHours());
+            const _minuteOffset = Math.abs(+(localizedDate.minute as string) - new Date().getUTCMinutes());
+
+            timezoneOffset = {
+                sign: _sign,
+                hourOffset: _hourOffset,
+                minuteOffset: _minuteOffset
+            };
+        }
+
+        return timezoneOffset;
+    }
+
+    // TODO: Should be written test
+    localizeDate(date: Date, timezone: string): LocalizedDate {
+
+        const defaultOptions = this.localizingDefaultOption;
+        defaultOptions.timeZone = timezone;
+
+        const formatter = new Intl.DateTimeFormat('en-GB', defaultOptions);
+
+        const parts = formatter.formatToParts(date);
+        const localizedDate: LocalizedDate =
+            Object.fromEntries(
+                parts.map((_p) => [_p.type, _p.value])
+            ) as unknown as LocalizedDate;
+        localizedDate.timeZoneName = timezone;
+
+        return localizedDate;
+    }
+
     generateFilePath(inputFilename: string, prefix = 'images'): string {
         const yyyymmdd = this.toYYYYMMDD(new Date(), '');
         const fileUuid = this.uuid(36, '-', '-');
@@ -509,5 +571,17 @@ export class UtilService {
             .split(splitter)
             .join(joiner);
         return randomUUID.toUpperCase().slice(0, length);
+    }
+
+    get localizingDefaultOption(): Intl.DateTimeFormatOptions {
+        return {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZoneName: 'short'
+        } as Intl.DateTimeFormatOptions;
     }
 }
