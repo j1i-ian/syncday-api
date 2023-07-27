@@ -509,13 +509,35 @@ export class UtilService {
 
             const localizedDate = this.localizeDate(new Date(), timezone);
             const _today = new Date();
-            const utcYYYYMMDD = [ _today.getUTCFullYear(), _today.getUTCMonth().toString().padStart(2, '0'), _today.getUTCDate().toString().padStart(2, '0') ].join('');
+            const utcYYYYMMDD = [ _today.getUTCFullYear(), (_today.getUTCMonth() + 1).toString().padStart(2, '0'), _today.getUTCDate().toString().padStart(2, '0') ].join('');
 
-            const localizedDateYYYYMMDD = [localizedDate.year, localizedDate.month, localizedDate.day].join();
-            const _sign = +localizedDateYYYYMMDD > +utcYYYYMMDD;
-            const _hourOffset = Math.abs(+(localizedDate.hour as string) - new Date().getUTCHours());
-            const _minuteOffset = Math.abs(+(localizedDate.minute as string) - new Date().getUTCMinutes());
+            const localizedDateYYYYMMDD = [localizedDate.year, localizedDate.month, localizedDate.day].join('');
 
+            let _sign;
+            if (+localizedDateYYYYMMDD > +utcYYYYMMDD) {
+                _sign = true;
+            } else if (+localizedDateYYYYMMDD === +utcYYYYMMDD) {
+                _sign = +(localizedDate.hour as string) > _today.getUTCHours();
+            } else {
+                _sign = false;
+            }
+
+            let _hourOffset;
+
+            const utcHour = new Date().getUTCHours();
+            if (+(localizedDate.hour as string) > utcHour) {
+                _hourOffset = Math.abs(new Date().getUTCHours() - +(localizedDate.hour as string));
+            } else {
+                _hourOffset = 24 - Math.abs(new Date().getUTCHours() - +(localizedDate.hour as string));
+            }
+
+            if (_sign === false) {
+                _hourOffset *= -1;
+            }
+
+            const _minuteOffset = (60 - (Math.abs(+(localizedDate.minute as string) - new Date().getUTCMinutes()))) % 60;
+
+            // eslint-disable-next-line prefer-const
             timezoneOffset = {
                 sign: _sign,
                 hourOffset: _hourOffset,
@@ -539,7 +561,7 @@ export class UtilService {
             Object.fromEntries(
                 parts.map((_p) => [_p.type, _p.value])
             ) as unknown as LocalizedDate;
-        localizedDate.timeZoneName = timezone;
+        localizedDate.timeZoneName = 'short';
 
         return localizedDate;
     }
