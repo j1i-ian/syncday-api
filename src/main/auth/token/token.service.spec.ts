@@ -80,8 +80,46 @@ describe('TokenService', () => {
 
         expect(signed).ok;
         expect(signed.accessToken).equal(fakeTokenStub);
+        expect(jwtServiceStub.sign.called).true;
+        expect(jwtServiceStub.sign.calledTwice).true;
         expect(service).ok;
+
+        jwtServiceStub.sign.reset();
     });
+
+    describe('Test issueTokenByRefreshToken', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        before(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        after(() => {
+            serviceSandbox.restore();
+        });
+
+        it('should be issued token by refresh token', () => {
+            const userStub = stubOne(User);
+            const fakeRefreshTokenMock = 'iamfakeRefreshToken';
+
+            const issuedTokenStub: CreateTokenResponseDto = {
+                accessToken: 'fakeJwtToken',
+                refreshToken: 'fakeRefreshToken'
+            };
+
+            jwtServiceStub.verify.returns(userStub);
+
+            const issueTokenStub = serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
+
+            const signed = service.issueTokenByRefreshToken(fakeRefreshTokenMock);
+
+            expect(issueTokenStub.called).true;
+            expect(signed).ok;
+            expect(signed.accessToken).equal(issuedTokenStub.accessToken);
+            expect(signed.refreshToken).equal(issuedTokenStub.refreshToken);
+        });
+    });
+
 
     describe('Test issueTokenByGoogleOAuth', () => {
         let serviceSandbox: sinon.SinonSandbox;

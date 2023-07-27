@@ -98,6 +98,18 @@ export class AppConfigService {
         };
     }
 
+    static getJwtRefreshOptions(configService: ConfigService): JwtModuleOptions {
+        const jwtSecret = configService.get<string>('JWT_REFRESH_SECRET');
+        const expiresIn = configService.get<string>('JWT_REFRESH_EXPIRED_IN');
+
+        return {
+            secret: jwtSecret,
+            signOptions: {
+                expiresIn
+            }
+        };
+    }
+
     static getDotenvConfigs(): string {
         const nodeEnv = process.env.ENV;
 

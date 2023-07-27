@@ -1,5 +1,5 @@
 import { URL } from 'url';
-import { Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AppConfigService } from '@config/app-config.service';
@@ -44,6 +44,12 @@ export class TokenController {
     @UseGuards(LocalAuthGuard)
     issueTokenByEmail(@AuthUser() user: User): CreateTokenResponseDto {
         return this.tokenService.issueToken(user);
+    }
+
+    @Put()
+    @Public()
+    issueTokenByRefreshToken(@Body('refreshToken') refreshToken: string): CreateTokenResponseDto {
+        return this.tokenService.issueTokenByRefreshToken(refreshToken);
     }
 
     /**

@@ -37,9 +37,11 @@ export class TokenService {
         private readonly googleConverterService: GoogleConverterService
     ) {
         this.jwtOption = AppConfigService.getJwtOptions(this.configService);
+        this.jwtRefreshTokenOption = AppConfigService.getJwtRefreshOptions(this.configService);
     }
 
     jwtOption: JwtModuleOptions;
+    jwtRefreshTokenOption: JwtModuleOptions;
 
     generateGoogleOAuthAuthoizationUrl(): string {
         return this.googleIntegrationFacade.generateGoogleOAuthAuthoizationUrl();
@@ -103,6 +105,15 @@ export class TokenService {
         return { issuedToken, isNewbie };
     }
 
+    issueTokenByRefreshToken(refreshToken: string): CreateTokenResponseDto {
+
+        const decoedUserByRefreshToken: User = this.jwtService.verify(refreshToken, {
+            secret: this.jwtRefreshTokenOption.secret
+        });
+
+        return this.issueToken(decoedUserByRefreshToken);
+    }
+
     issueToken(user: User): CreateTokenResponseDto {
         const signedAccessToken = this.jwtService.sign(
             {
@@ -119,7 +130,20 @@ export class TokenService {
             }
         );
 
-        const signedRefreshToken = '';
+        const signedRefreshToken =  this.jwtService.sign(
+            {
+                id: user.id,
+                uuid: user.uuid,
+                email: user.email,
+                profileImage: user.profileImage,
+                name: user.name,
+                userSettingId: user.userSettingId
+            } as Partial<User>,
+            {
+                secret: this.jwtRefreshTokenOption.secret,
+                expiresIn: this.jwtRefreshTokenOption.signOptions?.expiresIn
+            }
+        );
 
         return {
             accessToken: signedAccessToken,
