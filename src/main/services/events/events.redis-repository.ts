@@ -217,10 +217,19 @@ export class EventsRedisRepository {
                 return { inviteeQuestionKeys, notificationInfoKeys };
             }, { inviteeQuestionKeys: [] as RedisKey[], notificationInfoKeys:[] as RedisKey[] });
 
-        const deletedInviteeQuestionNode = await this.cluster.del(...inviteeQuestionKeys);
-        const deletedReminderNode = await this.cluster.del(...notificationInfoKeys);
+        const deletePipeline = this.cluster.pipeline();
 
-        const deleteSuccess = deletedInviteeQuestionNode >= 0 && deletedReminderNode >= 0;
+        inviteeQuestionKeys.forEach((inviteeQuestionKey) => deletePipeline.del(inviteeQuestionKey));
+        notificationInfoKeys.forEach((notificationInfoKey) => deletePipeline.del(notificationInfoKey));
+
+        const results = await deletePipeline.exec();
+
+        let deleteSuccess = false;
+
+        if (results) {
+            // Need to check result.
+            deleteSuccess = results.every(([, result]) => result === 1);
+        }
 
         return deleteSuccess;
     }
