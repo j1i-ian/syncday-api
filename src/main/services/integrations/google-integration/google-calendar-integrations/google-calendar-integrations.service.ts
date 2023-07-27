@@ -94,7 +94,8 @@ export class GoogleCalendarIntegrationsService {
         const loadedGoogleEventICalUIDs = latestGoogleEvents.map((item) => item.iCalUID);
 
         const remainedGoogleIntegrationSchedules = await this.googleIntegrationScheduleRepository.findBy({
-            iCalUID: In(loadedGoogleEventICalUIDs)
+            iCalUID: In(loadedGoogleEventICalUIDs),
+            googleCalendarIntegrationId: googleCalendarIntegration.id
         });
 
         const remainedGoogleIntegrationScheduleEntries =
