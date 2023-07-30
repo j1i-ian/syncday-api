@@ -195,13 +195,11 @@ export class EventsService {
 
         const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(userUUID, newEvent.name);
 
-        const eventNameWithHyphen = newEvent.name.replace(/\s/g, '-');
-
         if (isAlreadyUsedIn) {
             const generatedEventSuffix = this.utilService.generateUniqueNumber();
-            newEvent.link = `${eventNameWithHyphen}-${generatedEventSuffix}`;
+            newEvent.link = `${newEvent.name}-${generatedEventSuffix}`;
         } else {
-            newEvent.link = eventNameWithHyphen;
+            newEvent.link = newEvent.name;
         }
 
         const ensuredNewEvent = this.utilService.getDefaultEvent(newEvent);
