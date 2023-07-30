@@ -1,10 +1,11 @@
 import { URL } from 'url';
-import { Body, Controller, Get, Post, Put, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, ParseEnumPipe, Post, Put, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AppConfigService } from '@config/app-config.service';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
+import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { Language } from '@app/enums/language.enum';
@@ -32,8 +33,16 @@ export class TokenController {
      */
     @Get('google')
     @Public()
-    issueTokenWithGoogleOAuth2(@Res() response: Response): void {
-        const authorizationUrl = this.tokenService.generateGoogleOAuthAuthoizationUrl();
+    issueTokenWithGoogleOAuth2(
+        @Query('integrationContext', new ParseEnumPipe(IntegrationContext)) integrationContext: IntegrationContext,
+        @Query('Authorization') accessToken: string | null = null,
+        @Res() response: Response
+    ): void {
+
+        const authorizationUrl = this.tokenService.generateGoogleOAuthAuthoizationUrl(
+            integrationContext,
+            accessToken
+        );
 
         response.writeHead(301, { Location: authorizationUrl });
         response.end();
@@ -65,9 +74,16 @@ export class TokenController {
         const baseUrl = `${request.protocol}://${request.headers.host as string}`;
         const url = new URL(request.url, baseUrl);
         const authorizationCode = url.searchParams.get('code') as string;
+        const jsonStringifiedStateParams = url.searchParams.get('state') as string;
+        const stateParams = JSON.parse(jsonStringifiedStateParams) as {
+            requestUserEmail: string | null;
+            integrationContext: IntegrationContext;
+        };
 
         const { issuedToken, isNewbie } = await this.tokenService.issueTokenByGoogleOAuth(
             authorizationCode,
+            stateParams.integrationContext,
+            stateParams.requestUserEmail,
             language
         );
 

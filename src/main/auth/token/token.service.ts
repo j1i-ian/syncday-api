@@ -1,8 +1,9 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { compare } from 'bcrypt';
 import { calendar_v3, oauth2_v2 } from 'googleapis';
+import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -43,12 +44,25 @@ export class TokenService {
     jwtOption: JwtModuleOptions;
     jwtRefreshTokenOption: JwtModuleOptions;
 
-    generateGoogleOAuthAuthoizationUrl(): string {
-        return this.googleIntegrationFacade.generateGoogleOAuthAuthoizationUrl();
+    generateGoogleOAuthAuthoizationUrl(
+        integrationContext: IntegrationContext,
+        accessToken: string | null
+    ): string {
+
+        const decodedUserOrNull: User | null = accessToken
+            ? this.jwtService.decode(accessToken) as User
+            : null;
+
+        return this.googleIntegrationFacade.generateGoogleOAuthAuthoizationUrl(
+            integrationContext,
+            decodedUserOrNull
+        );
     }
 
     async issueTokenByGoogleOAuth(
         authorizationCode: string,
+        integrationContext: IntegrationContext,
+        requestUserEmail: string | null,
         language: Language
     ): Promise<{ issuedToken: CreateTokenResponseDto; isNewbie: boolean }> {
         const { googleUser, calendars, schedules, tokens } =
@@ -56,12 +70,14 @@ export class TokenService {
                 onlyPrimaryCalendarSchedule: true
             });
 
-        let loadedUserOrNull = await this.userService.findUserByEmail(googleUser.email);
+        let loadedUserOrNull = await this.userService.findUserByEmail(requestUserEmail || googleUser.email);
+        const canBeSignUpContext = integrationContext === IntegrationContext.SIGN_UP || integrationContext === IntegrationContext.SIGN_IN;
 
         const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
-        let isNewbie = loadedUserOrNull === null || loadedUserOrNull === undefined;
 
-        if (isNewbie) {
+        const isNewbie = canBeSignUpContext && loadedUserOrNull === null;
+
+        if (canBeSignUpContext && isNewbie) {
             const primaryGoogleCalendar = calendars.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
             const timezone = primaryGoogleCalendar.timeZone as string;
 
@@ -81,9 +97,7 @@ export class TokenService {
                 },
                 language
             );
-
-            isNewbie = true;
-        } else {
+        } else if (integrationContext === IntegrationContext.SIGN_IN) {
 
             const ensuredUser = loadedUserOrNull as User;
             const hasUserGoogleIntegration =
@@ -99,6 +113,26 @@ export class TokenService {
                     schedules
                 });
             }
+        } else if (integrationContext === IntegrationContext.INTEGRATE) {
+            // when integrationContext is integrationContext.Integrate
+            const ensuredUser = loadedUserOrNull as User;
+
+            const alreadyIntegrated = ensuredUser.googleIntergrations.find((_integration) => _integration.email === googleUser.email);
+
+            if (!alreadyIntegrated) {
+                await this.googleIntegrationService.create(
+                    ensuredUser,
+                    ensuredUser.userSetting,
+                    tokens,
+                    newGoogleCalendarIntegrations,
+                    {
+                        calendars,
+                        schedules
+                    }
+                );
+            }
+        } else {
+            throw new InternalServerErrorException('Unknown integration context');
         }
 
         const issuedToken = this.issueToken(loadedUserOrNull as User);

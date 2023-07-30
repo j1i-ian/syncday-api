@@ -2,15 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { calendar_v3 } from 'googleapis';
 import { AppConfigService } from '@config/app-config.service';
+import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
 import { GoogleOAuthTokenService } from '@services/integrations/google-integration/facades/google-oauth-token.service';
 import { GoogleOAuthUserService } from '@services/integrations/google-integration/facades/google-oauth-user.service';
 import { GoogleCalendarListService } from '@services/integrations/google-integration/facades/google-calendar-list.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
+import { User } from '@entity/users/user.entity';
 import { GoogleOAuth2UserWithToken } from '@app/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
 import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
+import { GoogleIntegrationState } from '@app/interfaces/integrations/google/google-integration-state.interface';
 
 @Injectable()
 export class GoogleIntegrationFacade {
@@ -95,7 +98,10 @@ export class GoogleIntegrationFacade {
         };
     }
 
-    generateGoogleOAuthAuthoizationUrl(): string {
+    generateGoogleOAuthAuthoizationUrl(
+        integrationContext: IntegrationContext,
+        decodedUserOrNull: User | null
+    ): string {
         const redirectURI = this.signInOrUpRedirectURI;
 
         const googleOAuthClientService = new GoogleOAuthClientService();
@@ -107,11 +113,23 @@ export class GoogleIntegrationFacade {
             redirectURI
         );
 
+        const stateParams = {
+            integrationContext,
+            requestUserEmail: decodedUserOrNull?.email
+        } as GoogleIntegrationState;
+
+        const jsonStringifiedStateParams = JSON.stringify(stateParams);
+
+        /**
+         * login_hint property is not passed on callback api.
+         * So data would serialized to state params.
+         */
         const authorizationUrl = oauthClient.generateAuthUrl({
             access_type: 'offline',
             prompt: 'select_account consent',
             scope: ['email', 'profile', 'https://www.googleapis.com/auth/calendar'],
-            include_granted_scopes: true
+            include_granted_scopes: true,
+            state: jsonStringifiedStateParams
         });
 
         return authorizationUrl;

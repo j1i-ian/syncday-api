@@ -4,6 +4,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from '@nestjs/common';
 import { Auth, calendar_v3 } from 'googleapis';
 import { AppConfigService } from '@config/app-config.service';
+import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
 import { GoogleOAuthTokenService } from '@services/integrations/google-integration/facades/google-oauth-token.service';
 import { GoogleOAuthUserService } from '@services/integrations/google-integration/facades/google-oauth-user.service';
@@ -139,12 +140,17 @@ describe('GoogleIntegrationFacade', () => {
     it('should be generated google oauth Authorization url', () => {
         const authorizationUrlStub = TestMockUtil.faker.internet.url();
 
+        const requestUserEmailMock = 'alan@sync.day';
+
         const oauth2ClientStub = serviceSandbox.createStubInstance(Auth.OAuth2Client);
         generateGoogleOAuthClientStub.returns(oauth2ClientStub);
 
         oauth2ClientStub.generateAuthUrl.returns(authorizationUrlStub);
 
-        const authorizationUrl = service.generateGoogleOAuthAuthoizationUrl();
+        const authorizationUrl = service.generateGoogleOAuthAuthoizationUrl(
+            IntegrationContext.SIGN_IN,
+            requestUserEmailMock
+        );
 
         expect(authorizationUrl).ok;
         expect(oauth2ClientStub.generateAuthUrl.called).true;
