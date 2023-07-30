@@ -14,8 +14,11 @@ export class GoogleCalendarEventListService {
         const { data: events } = await googleCalendar.events.list({
             calendarId,
             maxResults: 1000,
-            timeMin: new Date().toISOString()
+            timeMin: new Date().toISOString(),
+            showDeleted: false
         });
+
+        events.items = events.items?.filter((_item) => _item.status !== 'cancelled');
 
         return events;
     }
