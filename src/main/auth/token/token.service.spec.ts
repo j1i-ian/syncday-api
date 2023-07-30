@@ -3,6 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { calendar_v3 } from 'googleapis';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
+import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -176,6 +178,8 @@ describe('TokenService', () => {
 
             const { issuedToken } = await service.issueTokenByGoogleOAuth(
                 authorizationCodeMock,
+                IntegrationContext.SIGN_UP,
+                userStub.email,
                 languageMock
             );
 
