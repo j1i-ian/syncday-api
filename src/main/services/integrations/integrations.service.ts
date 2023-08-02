@@ -3,9 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
 import { SyncdayEmailAwsSnsRequest } from '@core/interfaces/integrations/syncday-email-aws-sns-request.interface';
-import { SyncdayTwilioSmsAwsSnsRequest } from '@core/interfaces/integrations/syncday-twilio-sms-aws-sns-request.interface';
-import { TwilioContentTemplate } from '@core/interfaces/integrations/twilio-content-template.enum';
 import { SyncdayAwsSdkSnsNotificationService } from '@core/interfaces/integrations/syncday-aws-sdk-sns-notification-service.enum';
+import { TextTemplate } from '@core/interfaces/integrations/text-template.enum';
+import { SyncdayTextAwsSnsRequest } from '@core/interfaces/integrations/syncday-text-aws-sns-request.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { Language } from '@app/enums/language.enum';
@@ -19,7 +19,7 @@ export class IntegrationsService {
 
     async sendMessage(
         syncdayAwsSdkSnsNotificationService: SyncdayAwsSdkSnsNotificationService,
-        templateType: EmailTemplate | TwilioContentTemplate,
+        templateType: EmailTemplate | TextTemplate,
         receiver: string,
         language: Language,
         data: string
@@ -29,7 +29,7 @@ export class IntegrationsService {
             StringValue: JSON.stringify([syncdayAwsSdkSnsNotificationService])
         };
 
-        let body: SyncdayEmailAwsSnsRequest | SyncdayTwilioSmsAwsSnsRequest;
+        let body: SyncdayEmailAwsSnsRequest | SyncdayTextAwsSnsRequest;
         if (syncdayAwsSdkSnsNotificationService === SyncdayAwsSdkSnsNotificationService.EMAIL) {
             body = {
                 recipient: receiver,
@@ -40,10 +40,10 @@ export class IntegrationsService {
         } else {
             body = {
                 phoneNumber: receiver,
-                templateName: templateType as TwilioContentTemplate,
+                templateName: templateType as TextTemplate,
                 language,
                 data
-            } as SyncdayTwilioSmsAwsSnsRequest;
+            } as SyncdayTextAwsSnsRequest;
         }
 
         const params: PublishCommandInput = {

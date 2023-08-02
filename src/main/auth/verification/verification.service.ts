@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster } from 'ioredis';
 import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
-import { TwilioContentTemplate } from '@core/interfaces/integrations/twilio-content-template.enum';
 import { SyncdayAwsSdkSnsNotificationService } from '@core/interfaces/integrations/syncday-aws-sdk-sns-notification-service.enum';
+import { TextTemplate } from '@core/interfaces/integrations/text-template.enum';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { UtilService } from '@services/util/util.service';
@@ -69,7 +69,7 @@ export class VerificationService {
 
         await this.integrationService.sendMessage(
             SyncdayAwsSdkSnsNotificationService.SMS_GLOBAL,
-            TwilioContentTemplate.VERIFICATION,
+            TextTemplate.VERIFICATION,
             phoneNumber,
             language,
             jsonStringNewVerification
