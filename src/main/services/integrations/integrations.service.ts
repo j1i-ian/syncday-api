@@ -20,7 +20,7 @@ export class IntegrationsService {
     async sendMessage(
         syncdayAwsSdkSnsNotificationService: SyncdayAwsSdkSnsNotificationService,
         templateType: EmailTemplate | TextTemplate,
-        receiver: string,
+        recipient: string,
         language: Language,
         data: string
     ): Promise<boolean> {
@@ -32,14 +32,14 @@ export class IntegrationsService {
         let body: SyncdayEmailAwsSnsRequest | SyncdayTextAwsSnsRequest;
         if (syncdayAwsSdkSnsNotificationService === SyncdayAwsSdkSnsNotificationService.EMAIL) {
             body = {
-                recipient: receiver,
+                recipient,
                 emailTemplate: templateType as EmailTemplate,
                 language,
                 data
             } as SyncdayEmailAwsSnsRequest;
         } else {
             body = {
-                phoneNumber: receiver,
+                recipient,
                 templateName: templateType as TextTemplate,
                 language,
                 data
