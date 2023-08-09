@@ -1,6 +1,6 @@
 {
   "name": "syncday-api",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "api for syncday",
   "author": "Alan",
   "private": true,
@@ -45,10 +45,12 @@
     "init": "npm install && git submodule update --init --remote",
     "typeorm": "typeorm-ts-node-commonjs",
     "premigration:local": "npm run build && npm run migration:clean",
+    "premigration:development": "npm run build && npm run migration:clean",
     "premigration:staging": "npm run build && npm run migration:clean",
     "premigration:production": "npm run build && npm run migration:clean",
     "migration:clean": "rm -rf migrations/*",
     "migration:local": "npm run typeorm -- migration:generate -d ./ormconfig.migration-local.ts ./migrations/local-update",
+    "migration:development": "npm run typeorm -- migration:generate -d ./ormconfig.migration-development.ts ./migrations/development-update",
     "migration:staging": "npm run typeorm -- migration:generate -d ./ormconfig.migration-staging.ts ./migrations/staging-update",
     "migration:production": "npm run typeorm -- migration:generate -d ./ormconfig.migration-production.ts ./migrations/production-update",
     "migration:production:run": "npm run typeorm -- migration:run -d ./ormconfig.migration-production.ts"
