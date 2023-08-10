@@ -63,6 +63,7 @@ export class GoogleCalendarIntegrationsService {
         await this.datasource.transaction(async (transactionManager) => await this._synchronizeWithGoogleCalendarEvents(
             transactionManager,
             loadedGoogleCalendarIntegration,
+            loadedUser.uuid,
             loadedUserSetting,
             {
                 googleOAuthClient
@@ -73,6 +74,7 @@ export class GoogleCalendarIntegrationsService {
     async _synchronizeWithGoogleCalendarEvents(
         manager: EntityManager,
         googleCalendarIntegration: GoogleCalendarIntegration,
+        userUUID: string,
         userSetting: UserSetting,
         {
             userRefreshToken,
@@ -123,6 +125,7 @@ export class GoogleCalendarIntegrationsService {
             _newSchedule.googleCalendarIntegrationId = googleCalendarIntegration.id;
             _newSchedule.host = {
                 timezone: userSetting.preferredTimezone,
+                uuid: userUUID,
                 workspace: userSetting.workspace
             };
             return _newSchedule;
@@ -222,7 +225,8 @@ export class GoogleCalendarIntegrationsService {
             throw new NotAnOwnerException();
         }
 
-        const loadedUserSetting = loadedCalendars[0].googleIntegration.users[0].userSetting;
+        const loadedUser = loadedCalendars[0].googleIntegration.users[0];
+        const loadedUserSetting = loadedUser.userSetting;
 
         const calendarsToDeleteSchedules = googleCalendarIntegrations.filter((googleCalendarSettingStatus) =>
             googleCalendarSettingStatus.setting.conflictCheck === false
@@ -290,6 +294,7 @@ export class GoogleCalendarIntegrationsService {
                             await this._synchronizeWithGoogleCalendarEvents(
                                 _transactionManager,
                                 __googleCalendarIntegration,
+                                loadedUser.uuid,
                                 loadedUserSetting,
                                 {
                                     googleOAuthClient: __googleOAuthClient

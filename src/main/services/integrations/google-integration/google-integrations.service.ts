@@ -120,6 +120,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
                 );
 
                 _googleIntegrationSchedule.host = {
+                    uuid: user.uuid,
                     workspace,
                     timezone
                 };
