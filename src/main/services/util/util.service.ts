@@ -244,6 +244,7 @@ export class UtilService {
 
         newSchedule.host = {
             workspace,
+            uuid: host.uuid,
             timezone
         };
 

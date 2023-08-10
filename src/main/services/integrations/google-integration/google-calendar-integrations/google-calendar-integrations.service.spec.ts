@@ -168,6 +168,7 @@ describe('GoogleCalendarIntegrationsService', () => {
             newGoogleIntegrationScheduleStubs[2] = oldGoogleIntegrationScheduleStubs[2];
 
             const googleCalendarIntegrationMock = stubOne(GoogleCalendarIntegration);
+            const userMock = stubOne(User);
             const userSettingMock = stubOne(UserSetting);
             const googleOAuthClientMock = {} as Auth.OAuth2Client;
 
@@ -180,6 +181,7 @@ describe('GoogleCalendarIntegrationsService', () => {
             await service._synchronizeWithGoogleCalendarEvents(
                 datasourceMock as EntityManager,
                 googleCalendarIntegrationMock,
+                userMock.uuid,
                 userSettingMock,
                 {
                     googleOAuthClient: googleOAuthClientMock

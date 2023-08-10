@@ -41,7 +41,7 @@ export class SchedulesService {
     search(scheduleSearchOption: Partial<ScheduleSearchOption>): Observable<InviteeSchedule[]> {
 
         const {
-            workspace: hostWorkspace,
+            userUUID,
             eventUUID
         } = scheduleSearchOption;
 
@@ -52,13 +52,13 @@ export class SchedulesService {
                 }
             },
             host: {
-                workspace: hostWorkspace
+                uuid: userUUID
             }
         })));
 
         const googleIntegrationSchedule$ = defer(() => from(this.googleIntegrationScheduleRepository.findBy({
             host: {
-                workspace: hostWorkspace
+                uuid: userUUID
             }
         })));
 

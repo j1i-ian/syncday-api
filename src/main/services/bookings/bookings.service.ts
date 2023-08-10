@@ -42,9 +42,9 @@ export class BookingsService {
         return this.availabilityService.fetchDetailByUserWorkspaceAndLink(userWorkspace, eventLink);
     }
 
-    searchScheduledEvents(workspace: string, eventUUID: string): Observable<ScheduledEventResponseDto[]> {
+    searchScheduledEvents(userUUID: string, eventUUID: string): Observable<ScheduledEventResponseDto[]> {
         return this.scheduleService.search({
-            workspace,
+            userUUID,
             eventUUID
         }).pipe(
             map((schedules) => schedules.map(
