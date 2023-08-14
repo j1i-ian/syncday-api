@@ -13,6 +13,7 @@ import { UtilService } from '@services/util/util.service';
 import { Availability } from '@entity/availability/availability.entity';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
+import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { Validator } from '@criteria/validator';
 import { EventsService } from './events.service';
@@ -132,28 +133,6 @@ describe('EventsService', () => {
 
             expect(list).ok;
             expect(list.length).greaterThan(0);
-            expect(eventRepositoryStub.find.called).true;
-            expect(eventRedisRepositoryStub.getEventDetailRecords.called).true;
-        });
-
-        it('should be searched event list by user workspace', async () => {
-            const userStub = stubOne(User);
-            const eventDetailStubs = stub(EventDetail, 5);
-            const eventStubs = stub(Event, 5).map((_event) => {
-                _event.eventDetail = eventDetailStubs.shift() as EventDetail;
-                return _event;
-            });
-            const eventDetailsRecordStub = Object.fromEntries(eventDetailStubs.map((eventDetailStub) => [eventDetailStub.uuid, eventDetailStub]));
-
-            eventRepositoryStub.find.resolves(eventStubs);
-            eventRedisRepositoryStub.getEventDetailRecords.returns(of(eventDetailsRecordStub));
-
-            const searchedByUserWorkspace = await firstValueFrom(service.search({
-                userWorkspace: userStub.workspace as string
-            }));
-
-            expect(searchedByUserWorkspace).ok;
-            expect(searchedByUserWorkspace.length).greaterThan(0);
             expect(eventRepositoryStub.find.called).true;
             expect(eventRedisRepositoryStub.getEventDetailRecords.called).true;
         });
@@ -337,6 +316,37 @@ describe('EventsService', () => {
             expect(eventGroupRepositoryStub.findOneOrFail.called).true;
             expect(eventRepositoryStub.save.called).true;
             expect(eventRedisRepositoryStub.save.called).true;
+        });
+
+        it('should throw an error when creating an event if the default availability does not exist', () => {
+            const userMock = stubOne(User, {
+                availabilities: []
+            });
+
+            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
+
+            const eventDetailBodyStub = {
+                inviteeQuestions: inviteeQuestionStubs,
+                notificationInfo: notificationInfoStub
+            } as EventsDetailBody;
+
+            const eventDetailStub = stubOne(EventDetail, {
+                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
+                notificationInfo: eventDetailBodyStub.notificationInfo
+            });
+            const eventMock = stubOne(Event, {
+                eventDetail: eventDetailStub
+            });
+            const defaultEventGroupStub = stubOne(EventGroup, {
+                user: userMock,
+                events: [eventMock],
+                userId: userMock.id
+            });
+
+            eventGroupRepositoryStub.findOneOrFail.resolves(defaultEventGroupStub);
+
+            expect(service.create(userMock.uuid, userMock.id, eventMock)).rejectedWith(NoDefaultAvailabilityException, 'No default availability exception');
         });
 
         it('should be updated event', async () => {

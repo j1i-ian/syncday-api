@@ -5,6 +5,8 @@ import { Repository } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { ContactType } from '@interfaces/events/contact-type.enum';
+import { Weekday } from '@interfaces/availability/weekday.enum';
+import { AvailableTime } from '@interfaces/availability/available-time';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
@@ -17,6 +19,10 @@ import { UserSetting } from '@entity/users/user-setting.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { Availability } from '@entity/availability/availability.entity';
+import { ScheduledBufferTime } from '@entity/schedules/scheduled-buffer-time.entity';
+import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
+import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
+import { TimeRange } from '@entity/events/time-range.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { SchedulesService } from './schedules.service';
@@ -35,6 +41,8 @@ describe('SchedulesService', () => {
     let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
     let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
     let loggerStub: sinon.SinonStubbedInstance<Logger>;
+
+    const _1Hour = 60 * 60 * 1000;
 
     before(async () => {
 
@@ -95,7 +103,7 @@ describe('SchedulesService', () => {
         expect(service).ok;
     });
 
-    describe('Test Scheduled event CRUD', () => {
+    describe('Test for Scheduled event CRUD', () => {
 
         let serviceSandbox: sinon.SinonSandbox;
 
@@ -109,6 +117,7 @@ describe('SchedulesService', () => {
             utilServiceStub.localizeDateTime.reset();
             googleCalendarIntegrationsServiceStub.findOne.reset();
             googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.reset();
+            googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.reset();
             schedulesRedisRepositoryStub.save.reset();
             scheduleRepositoryStub.save.reset();
             scheduleRepositoryStub.findBy.reset();
@@ -158,7 +167,7 @@ describe('SchedulesService', () => {
             expect(scheduleRepositoryStub.findOneByOrFail.called).true;
         });
 
-        it('should be created scheduled event', async () => {
+        it('should be created scheduled event if google calendar is integrated and google meet link exist', async () => {
 
             const userSettingStub = stubOne(UserSetting);
             const userMock = stubOne(User, {
@@ -213,6 +222,110 @@ describe('SchedulesService', () => {
             expect(schedulesRedisRepositoryStub.save.called).true;
         });
 
+        it('should be created scheduled event if google calendar is integrated and google meet link does not exist', async () => {
+
+            const userSettingStub = stubOne(UserSetting);
+            const userMock = stubOne(User, {
+                userSetting: userSettingStub
+            });
+            const availabilityMock = stubOne(Availability);
+            const eventStub = stubOne(Event, {
+                availability: availabilityMock
+            });
+            const scheduleStub = stubOne(Schedule);
+            const googleCalendarIntegrationStub = stubOne(GoogleCalendarIntegration);
+            const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
+            const googleScheduleMock = testMockUtil.getGoogleScheduleMock();
+
+            eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
+            utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+            googleCalendarIntegrationsServiceStub.findOne.returns(of(googleCalendarIntegrationStub));
+            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves(googleScheduleMock);
+
+            const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
+            const isOutboundScheduleStub = serviceSandbox.stub(service, 'hasScheduleLink').returns(false);
+
+            scheduleRepositoryStub.save.resolves(scheduleStub);
+            schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
+
+            availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyMock);
+            utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+
+            const createdSchedule = await firstValueFrom(
+                service._create(
+                    {
+                        getRepository: () => scheduleRepositoryStub
+                    } as unknown as any,
+                    userMock.workspace as string,
+                    eventStub.uuid,
+                    scheduleStub,
+                    userMock
+                )
+            );
+
+            expect(createdSchedule).ok;
+            expect(eventsServiceStub.findOneByUserWorkspaceAndUUID.called).true;
+            expect(availabilityRedisRepositoryStub.getAvailabilityBody.called).true;
+            expect(utilServiceStub.getPatchedScheduledEvent.called).true;
+            expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
+            expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).true;
+            expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).false;
+            expect(validateStub.called).true;
+            expect(isOutboundScheduleStub.called).true;
+            expect(scheduleRepositoryStub.save.called).true;
+            expect(schedulesRedisRepositoryStub.save.called).true;
+        });
+
+        it('should be created scheduled event even if google calendar is not integrated', async () => {
+
+            const userSettingStub = stubOne(UserSetting);
+            const userMock = stubOne(User, {
+                userSetting: userSettingStub
+            });
+            const availabilityMock = stubOne(Availability);
+            const eventStub = stubOne(Event, {
+                availability: availabilityMock
+            });
+            const scheduleStub = stubOne(Schedule);
+            const googleCalendarIntegrationStub = null;
+            const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
+
+            eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
+            utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+            googleCalendarIntegrationsServiceStub.findOne.returns(of(googleCalendarIntegrationStub));
+
+            const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
+
+            scheduleRepositoryStub.save.resolves(scheduleStub);
+            schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
+
+            availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyMock);
+            utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+
+            const createdSchedule = await firstValueFrom(
+                service._create(
+                    {
+                        getRepository: () => scheduleRepositoryStub
+                    } as unknown as any,
+                    userMock.workspace as string,
+                    eventStub.uuid,
+                    scheduleStub,
+                    userMock
+                )
+            );
+
+            expect(createdSchedule).ok;
+            expect(eventsServiceStub.findOneByUserWorkspaceAndUUID.called).true;
+            expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
+            expect(availabilityRedisRepositoryStub.getAvailabilityBody.called).true;
+            expect(utilServiceStub.getPatchedScheduledEvent.called).true;
+            expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).false;
+            expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).false;
+            expect(validateStub.called).true;
+            expect(scheduleRepositoryStub.save.called).true;
+            expect(schedulesRedisRepositoryStub.save.called).true;
+        });
+
         it('should be updated scheduled event', async () => {
 
             const scheduleStub = stubOne(Schedule);
@@ -263,236 +376,531 @@ describe('SchedulesService', () => {
 
             expect(result).true;
         });
+    });
 
-        it('should be passed when there is no conflicted schedule ', async () => {
+    describe('Test for Validation in Creating a Schedule', () => {
+        let serviceSandbox: sinon.SinonSandbox;
 
-            const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
-            const timezoneMock = stubOne(Availability).timezone;
-            const scheduleMock = stubOne(Schedule, scheduleTimeMock);
-            const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
-
-            const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(false);
-            const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(true);
-            const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(true);
-
-            scheduleRepositoryStub.findOneBy.resolves(null);
-            googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
-
-            const validatedSchedule = await firstValueFrom(
-                service.validate(
-                    scheduleMock,
-                    timezoneMock,
-                    availabilityBodyMock
-                )
-            );
-
-            expect(validatedSchedule).ok;
-            expect(scheduleRepositoryStub.findOneBy.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
-
-            expect(_isPastTimestampStub.called).true;
-            expect(_isTimeOverlappingWithOverridesStub.called).true;
-            expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
         });
 
-        it('should be not passed when requested schedule has old start/end datetime', () => {
+        afterEach(() => {
+            eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
+            utilServiceStub.getPatchedScheduledEvent.reset();
+            utilServiceStub.localizeDateTime.reset();
+            googleCalendarIntegrationsServiceStub.findOne.reset();
+            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.reset();
+            googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.reset();
+            schedulesRedisRepositoryStub.save.reset();
+            scheduleRepositoryStub.save.reset();
+            scheduleRepositoryStub.findBy.reset();
+            scheduleRepositoryStub.findOneBy.reset();
+            scheduleRepositoryStub.findOneByOrFail.reset();
+            scheduleRepositoryStub.update.reset();
+            googleIntegrationScheduleRepositoryStub.findOneBy.reset();
 
-            const timezoneMock = stubOne(Availability).timezone;
-            const _1minBefore = new Date();
-            _1minBefore.setMinutes(_1minBefore.getMinutes() - 5);
-
-            const invalidScheduleTimeMock = testMockUtil.getScheduleTimeMock(_1minBefore);
-            const scheduleMock = stubOne(Schedule, invalidScheduleTimeMock);
-            const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
-
-            const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(true);
-            const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(true);
-            const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(true);
-
-            expect(() => service.validate(scheduleMock, timezoneMock, availabilityBodyMock)).throws(CannotCreateByInvalidTimeRange);
-
-            expect(scheduleRepositoryStub.findOneBy.called).false;
-            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
-
-            expect(_isPastTimestampStub.called).true;
-            expect(_isTimeOverlappingWithOverridesStub.called).true;
-            expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
+            serviceSandbox.restore();
         });
 
-        it('should be not passed when there are conflicted schedules ', async () => {
+        describe('Test to validate a pass', () => {
+            [
+                {
+                    description: 'should be passed if the schedule has no conflicts for all conditions',
+                    timezoneMock: stubOne(Availability).timezone,
+                    scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
+                    availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
+                    _isPastTimestampStubValue: false,
+                    _isTimeOverlappingWithOverridesStubValue: true,
+                    _isTimeOverlappingWithAvailableTimesStubValue: true,
+                    conflictedScheduleStub: null,
+                    googleIntegrationScheduleStub: null
+                },
+                {
+                    description: 'should be passed if the schedule is not within the event availability but is within the override availability time',
+                    timezoneMock: stubOne(Availability).timezone,
+                    scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
+                    availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
+                    _isPastTimestampStubValue: false,
+                    _isTimeOverlappingWithOverridesStubValue: true,
+                    _isTimeOverlappingWithAvailableTimesStubValue: false,
+                    conflictedScheduleStub: null,
+                    googleIntegrationScheduleStub: null
+                },
+                {
+                    description: 'should be passed if the schedule is within the event availability but is not within the override availability time',
+                    timezoneMock: stubOne(Availability).timezone,
+                    scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
+                    availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
+                    _isPastTimestampStubValue: false,
+                    _isTimeOverlappingWithOverridesStubValue: false,
+                    _isTimeOverlappingWithAvailableTimesStubValue: true,
+                    conflictedScheduleStub: null,
+                    googleIntegrationScheduleStub: null
+                }
+            ].forEach(function ({
+                description,
+                timezoneMock,
+                scheduleMock,
+                availabilityBodyMock,
+                _isPastTimestampStubValue,
+                _isTimeOverlappingWithOverridesStubValue,
+                _isTimeOverlappingWithAvailableTimesStubValue,
+                conflictedScheduleStub,
+                googleIntegrationScheduleStub
+            }) {
+                it(description, async () => {
+                    const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(_isPastTimestampStubValue);
+                    const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(_isTimeOverlappingWithOverridesStubValue);
+                    const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(_isTimeOverlappingWithAvailableTimesStubValue);
 
-            const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
-            const scheduleMock = stubOne(Schedule, scheduleTimeMock);
-            const conflictedScheduleStub = stubOne(Schedule);
-            const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
-            const timezoneMock = stubOne(Availability).timezone;
+                    scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
+                    googleIntegrationScheduleRepositoryStub.findOneBy.resolves(googleIntegrationScheduleStub);
 
-            scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
-            googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
+                    const validatedSchedule = await firstValueFrom(
+                        service.validate(
+                            scheduleMock,
+                            timezoneMock,
+                            availabilityBodyMock
+                        )
+                    );
 
-            const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(false);
-            const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(true);
-            const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(true);
+                    expect(validatedSchedule).ok;
+                    expect(scheduleRepositoryStub.findOneBy.called).true;
+                    expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
 
-            await expect(
-                firstValueFrom(
-                    service.validate(
-                        scheduleMock,
-                        timezoneMock,
-                        availabilityBodyMock
-                    )
-                )
-            ).rejectedWith(CannotCreateByInvalidTimeRange);
-
-            expect(scheduleRepositoryStub.findOneBy.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
-
-            expect(_isPastTimestampStub.called).true;
-            expect(_isTimeOverlappingWithOverridesStub.called).true;
-            expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
-        });
-
-        it('should be not passed when there are conflicted schedules ', async () => {
-
-            const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
-            const scheduleMock = stubOne(Schedule, scheduleTimeMock);
-            const googleCalendarIntegrationMock = stubOne(GoogleCalendarIntegration);
-            const conflictedGoogleIntegrationScheduleStub = stubOne(GoogleIntegrationSchedule, {
-                googleCalendarIntegration: googleCalendarIntegrationMock,
-                googleCalendarIntegrationId: googleCalendarIntegrationMock.id
+                    expect(_isPastTimestampStub.called).true;
+                    expect(_isTimeOverlappingWithOverridesStub.called).true;
+                    expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
+                });
             });
-            const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
-            const timezoneMock = stubOne(Availability).timezone;
+        });
 
-            scheduleRepositoryStub.findOneBy.resolves(null);
-            googleIntegrationScheduleRepositoryStub.findOneBy.resolves(conflictedGoogleIntegrationScheduleStub);
+        describe('Test to Validation Does Not Pass With Conflict', () => {
+            [
+                {
+                    description: 'should not be passed if the ensured schedule start time or ensured end time is earlier than now',
+                    timezoneMock: stubOne(Availability).timezone,
+                    scheduleTimeMock: testMockUtil.getScheduleTimeMock(new Date(Date.now() - _1Hour)),
+                    availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
+                    _isPastTimestampStubValue: true,
+                    _isTimeOverlappingWithOverridesStubValue: true,
+                    _isTimeOverlappingWithAvailableTimesStubValue: true,
+                    conflictedScheduleStub: null,
+                    googleIntegrationScheduleStub: null
+                },
+                {
+                    description: 'should not be passed if the ensured schedule start time is earlier than the ensured end time: scheduledTime',
+                    timezoneMock: stubOne(Availability).timezone,
+                    scheduleTimeMock: {
+                        scheduledBufferTime : {
+                            startBufferTimestamp: null,
+                            endBufferTimestamp: null
+                        } as ScheduledBufferTime,
+                        scheduledTime: {
+                            startTimestamp: new Date(),
+                            endTimestamp: new Date(Date.now() - _1Hour)
+                        } as ScheduledTimeset
+                    },
+                    availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
+                    _isPastTimestampStubValue: false,
+                    _isTimeOverlappingWithOverridesStubValue: true,
+                    _isTimeOverlappingWithAvailableTimesStubValue: true,
+                    conflictedScheduleStub: null,
+                    googleIntegrationScheduleStub: null
+                },
+                {
+                    description: 'should not be passed if the ensured schedule start time is earlier than the ensured end time: scheduledBufferTime',
+                    timezoneMock: stubOne(Availability).timezone,
+                    scheduleTimeMock: {
+                        scheduledBufferTime : {
+                            startBufferTimestamp: null,
+                            endBufferTimestamp: new Date(Date.now() - _1Hour)
+                        } as ScheduledBufferTime,
+                        scheduledTime: {
+                            startTimestamp: new Date(Date.now() + _1Hour),
+                            endTimestamp: new Date(Date.now() + 2 * _1Hour)
+                        } as ScheduledTimeset
+                    },
+                    availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
+                    _isPastTimestampStubValue: false,
+                    _isTimeOverlappingWithOverridesStubValue: true,
+                    _isTimeOverlappingWithAvailableTimesStubValue: true,
+                    conflictedScheduleStub: null,
+                    googleIntegrationScheduleStub: null
+                },
+                {
+                    description: 'should not be passed if the schedule is not within the availability of the event to be scheduled and is also not within the override availability time',
+                    timezoneMock: stubOne(Availability).timezone,
+                    scheduleTimeMock: testMockUtil.getScheduleTimeMock(),
+                    availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
+                    _isPastTimestampStubValue: false,
+                    _isTimeOverlappingWithOverridesStubValue: false,
+                    _isTimeOverlappingWithAvailableTimesStubValue: false,
+                    conflictedScheduleStub: null,
+                    googleIntegrationScheduleStub: null
+                }
+            ].forEach(function ({
+                description,
+                timezoneMock,
+                scheduleTimeMock,
+                availabilityBodyMock,
+                _isPastTimestampStubValue,
+                _isTimeOverlappingWithOverridesStubValue,
+                _isTimeOverlappingWithAvailableTimesStubValue,
+                conflictedScheduleStub,
+                googleIntegrationScheduleStub
+            }) {
+                it(description, () => {
+                    const scheduleMock = stubOne(Schedule, scheduleTimeMock);
 
-            const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(false);
-            const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(true);
-            const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(true);
+                    const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(_isPastTimestampStubValue);
+                    const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(_isTimeOverlappingWithOverridesStubValue);
+                    const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(_isTimeOverlappingWithAvailableTimesStubValue);
 
-            await expect(
-                firstValueFrom(
-                    service.validate(
-                        scheduleMock,
-                        timezoneMock,
-                        availabilityBodyMock,
-                        googleCalendarIntegrationMock.id
+                    scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
+                    googleIntegrationScheduleRepositoryStub.findOneBy.resolves(googleIntegrationScheduleStub);
+
+                    expect(() => service.validate(scheduleMock, timezoneMock, availabilityBodyMock)).throws(CannotCreateByInvalidTimeRange);
+
+                    expect(scheduleRepositoryStub.findOneBy.called).false;
+                    expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
+
+                    expect(_isPastTimestampStub.called).true;
+                    expect(_isTimeOverlappingWithOverridesStub.called).true;
+                    expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
+                });
+            });
+        });
+
+        describe('Test to Validation Does Not Pass if a Schedule Already Exists or if a Schedule Exists Google Integration', () => {
+            [
+                {
+                    description: 'should not be passed if the schedule overlaps with an existing schedule',
+                    timezoneMock: stubOne(Availability).timezone,
+                    scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
+                    availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
+                    _isPastTimestampStubValue: false,
+                    _isTimeOverlappingWithOverridesStubValue: true,
+                    _isTimeOverlappingWithAvailableTimesStubValue: true,
+                    conflictedScheduleStub: stubOne(Schedule),
+                    googleCalendarIntegrationMock: null
+                },
+                {
+                    description: 'should not be passed if the schedule overlaps with a Google-integrated schedule',
+                    timezoneMock: stubOne(Availability).timezone,
+                    scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
+                    availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
+                    _isPastTimestampStubValue: false,
+                    _isTimeOverlappingWithOverridesStubValue: true,
+                    _isTimeOverlappingWithAvailableTimesStubValue: true,
+                    conflictedScheduleStub: null,
+                    googleCalendarIntegrationMock: stubOne(GoogleCalendarIntegration)
+                }
+            ].forEach(function ({
+                description,
+                timezoneMock,
+                scheduleMock,
+                availabilityBodyMock,
+                _isPastTimestampStubValue,
+                _isTimeOverlappingWithOverridesStubValue,
+                _isTimeOverlappingWithAvailableTimesStubValue,
+                conflictedScheduleStub,
+                googleCalendarIntegrationMock
+            }) {
+                it(description, async () => {
+                    const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(_isPastTimestampStubValue);
+                    const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(_isTimeOverlappingWithOverridesStubValue);
+                    const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(_isTimeOverlappingWithAvailableTimesStubValue);
+
+                    const googleIntegrationScheduleStub = stubOne(GoogleIntegrationSchedule, {
+                        googleCalendarIntegration: googleCalendarIntegrationMock ?? undefined,
+                        googleCalendarIntegrationId: googleCalendarIntegrationMock?.id
+                    });
+
+                    scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
+                    googleIntegrationScheduleRepositoryStub.findOneBy.resolves(googleIntegrationScheduleStub);
+
+                    await expect(firstValueFrom(
+                        service.validate(
+                            scheduleMock,
+                            timezoneMock,
+                            availabilityBodyMock,
+                            googleCalendarIntegrationMock?.id
+                        )
                     )
-                )
-            ).rejectedWith(CannotCreateByInvalidTimeRange);
+                    ).rejectedWith(CannotCreateByInvalidTimeRange);
 
-            expect(scheduleRepositoryStub.findOneBy.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).true;
+                    expect(scheduleRepositoryStub.findOneBy.called).true;
 
-            expect(_isPastTimestampStub.called).true;
-            expect(_isTimeOverlappingWithOverridesStub.called).true;
-            expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
+                    if (conflictedScheduleStub){
+                        expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
+                    } else {
+                        expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).true;
+                    }
+
+                    expect(_isPastTimestampStub.called).true;
+                    expect(_isTimeOverlappingWithOverridesStub.called).true;
+                    expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
+                });
+            });
+        });
+    });
+
+    describe('Test for ensured schedule start time and end time compare with now test', () => {
+        [
+            {
+                description: 'should be returned true if the ensured schedule start time is earlier than now',
+                startDateTimestampMock: Date.now() - _1Hour,
+                ensuredEndDateTimestampMock: Date.now() + _1Hour,
+                expectedResult: true
+            },
+            {
+                description: 'should be returned true if the ensured schedule end time is earlier than now',
+                startDateTimestampMock: Date.now() + _1Hour,
+                ensuredEndDateTimestampMock: Date.now() - _1Hour,
+                expectedResult: true
+            },
+            {
+                description: 'should be returned false if both the ensured schedule start time and end time are later than now',
+                startDateTimestampMock: Date.now() + _1Hour,
+                ensuredEndDateTimestampMock: Date.now() + 2 * _1Hour,
+                expectedResult: false
+            }
+        ].forEach(function ({
+            description,
+            startDateTimestampMock,
+            ensuredEndDateTimestampMock,
+            expectedResult
+        }) {
+            it(description, () => {
+                const result = service._isPastTimestamp(startDateTimestampMock, ensuredEndDateTimestampMock);
+
+                expect(result).equal(expectedResult);
+
+            });
+        });
+    });
+
+    describe('Test for verifying the overlap between ensured start and end date timestamp and overrided availability time test', () => {
+
+        afterEach(() => {
+            utilServiceStub.localizeDateTime.reset();
         });
 
-        it('should be passed when new schedule is not overlapping with host override date but overlapping with available times and no conflicted schedules', async () => {
+        [
+            {
+                description: 'should be returned true if there is no overrided availability time',
+                timezoneMock: stubOne(Availability).timezone,
+                overridesMock: [],
+                startDateTimestampMock: Date.now(),
+                endDateTimestampMock: Date.now(),
+                expectedResult: true
+            },
+            {
+                description: 'should be returned true if there are overrided availability time, and at least one of the ensured start time and end time is included in the overrided availability time',
+                timezoneMock: stubOne(Availability).timezone,
+                overridesMock: [
+                    {
+                        targetDate: new Date(),
+                        timeRanges: [
+                            {
+                                startTime: Date.now() - 2 * _1Hour,
+                                endTime: Date.now() + 2 * _1Hour
+                            } as TimeRange
+                        ]
+                    } as OverridedAvailabilityTime
+                ],
+                startDateTimestampMock: new Date(Date.now() - _1Hour).getTime(),
+                endDateTimestampMock: new Date(Date.now() + _1Hour).getTime(),
+                expectedResult: true
+            },
+            {
+                description: 'should be returned false if there are overrided availability time, and the ensured start time and end time are not included in any overrided availability time',
+                timezoneMock: stubOne(Availability).timezone,
+                overridesMock: [testMockUtil.getOverridedAvailabilityTimeMock()],
+                startDateTimestampMock: new Date(Date.now() - _1Hour).getTime(),
+                endDateTimestampMock: new Date(Date.now() + _1Hour).getTime(),
+                expectedResult: false
+            }
+        ].forEach(function ({
+            description,
+            timezoneMock,
+            overridesMock,
+            startDateTimestampMock,
+            endDateTimestampMock,
+            expectedResult
+        }) {
+            it(description, () => {
 
-            const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
-            const scheduleMock = stubOne(Schedule, scheduleTimeMock);
-            const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
-            const timezoneMock = stubOne(Availability).timezone;
+                overridesMock.forEach((overridedAvailabilityTimeMock) => {
+                    overridedAvailabilityTimeMock.timeRanges.forEach((timeRangeMock) => {
+                        const startDateTimeStub = new Date(timeRangeMock.startTime);
+                        const endDateTimeStub = new Date(timeRangeMock.endTime);
 
-            scheduleRepositoryStub.findOneBy.resolves(null);
-            googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
+                        utilServiceStub.localizeDateTime.onFirstCall().returns(startDateTimeStub);
+                        utilServiceStub.localizeDateTime.onSecondCall().returns(endDateTimeStub);
+                    });
+                });
 
-            const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(false);
-            const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(false);
-            const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(true);
-
-            const validatedSchedule = await firstValueFrom(
-                service.validate(
-                    scheduleMock,
+                const isTimeOverlappedWithOverrides = service._isTimeOverlappingWithOverrides(
                     timezoneMock,
-                    availabilityBodyMock
-                )
-            );
+                    overridesMock,
+                    startDateTimestampMock,
+                    endDateTimestampMock
+                );
 
-            expect(validatedSchedule).ok;
-            expect(scheduleRepositoryStub.findOneBy.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
+                if (overridesMock.length > 0) {
+                    expect(utilServiceStub.localizeDateTime.callCount).to.be.at.least(2);
+                } else {
+                    expect(utilServiceStub.localizeDateTime.called).false;
+                }
+                expect(isTimeOverlappedWithOverrides).equal(expectedResult);
+            });
+        });
+    });
 
-            expect(_isPastTimestampStub.called).true;
-            expect(_isTimeOverlappingWithOverridesStub.called).true;
-            expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
+    describe('Test for verifying the overlap between ensured start and end date timestamp and available times', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
         });
 
-        it('should be passed when new schedule is overlapping with host override date and no conflicted schedules', async () => {
-
-            const scheduleTimeMock = testMockUtil.getScheduleTimeMock();
-            const scheduleMock = stubOne(Schedule, scheduleTimeMock);
-            const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
-            const timezoneMock = stubOne(Availability).timezone;
-
-            scheduleRepositoryStub.findOneBy.resolves(null);
-            googleIntegrationScheduleRepositoryStub.findOneBy.resolves(null);
-
-            const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(false);
-            const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithOverrides').returns(true);
-            const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(false);
-
-            const validatedSchedule = await firstValueFrom(
-                service.validate(
-                    scheduleMock,
-                    timezoneMock,
-                    availabilityBodyMock
-                )
-            );
-
-            expect(validatedSchedule).ok;
-            expect(scheduleRepositoryStub.findOneBy.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
-
-            expect(_isPastTimestampStub.called).true;
-            expect(_isTimeOverlappingWithOverridesStub.called).true;
-            expect(_isTimeOverlappingWithAvailableTimesStub.called).true;
+        afterEach(() => {
+            utilServiceStub.dateToTimeString.reset();
+            utilServiceStub.localizeDateTime.reset();
+            serviceSandbox.restore();
         });
 
-        it('should be returned true for no overlapping with overrides', () => {
+        [
+            {
+                description: 'should be returned false if there is no availability time',
+                availableTimesMock: [],
+                availabilityTimezoneDummy: stubOne(Availability).timezone,
+                startDateTimeMock: new Date(Date.now() - _1Hour),
+                endDateTimeMock: new Date(Date.now() + _1Hour),
+                isTimeOverlappingWithStartDateTimeStub: true,
+                isTimeOverlappingWithEndDateTimeStub: true,
+                expectedResult: false
+            },
+            {
+                description: 'should be returned false if there are availability times, and both the ensured start time and end time are not included in any availability time',
+                availableTimesMock: [
+                    {
+                        day: new Date().getDay() as Weekday,
+                        timeRanges: [
+                            {
+                                startTime: Date.now() - 3 * _1Hour,
+                                endTime: Date.now() - 2 * _1Hour
+                            } as TimeRange
+                        ]
+                    } as AvailableTime
+                ],
+                availabilityTimezoneDummy: stubOne(Availability).timezone,
+                startDateTimeMock: new Date(Date.now() - _1Hour),
+                endDateTimeMock: new Date(Date.now() + _1Hour),
+                isTimeOverlappingWithStartDateTimeStub: false,
+                isTimeOverlappingWithEndDateTimeStub: false,
+                expectedResult: false
+            },
+            {
+                description: 'should be returned false if there are availability times, and the ensured start time is included in any availability time, but end time is not',
+                availableTimesMock: [
+                    {
+                        day: new Date().getDay() as Weekday,
+                        timeRanges: [
+                            {
+                                startTime: Date.now() - 3 * _1Hour,
+                                endTime: Date.now() + 2 * _1Hour
+                            } as TimeRange
+                        ]
+                    } as AvailableTime
+                ],
+                availabilityTimezoneDummy: stubOne(Availability).timezone,
+                startDateTimeMock: new Date(Date.now() - _1Hour),
+                endDateTimeMock: new Date(Date.now() + 3 * _1Hour),
+                isTimeOverlappingWithStartDateTimeStub: true,
+                isTimeOverlappingWithEndDateTimeStub: false,
+                expectedResult: false
+            },
+            {
+                description: 'should be returned false if there are availability times, and the ensured end time is included in any availability time, but start time is not',
+                availableTimesMock: [
+                    {
+                        day: new Date().getDay() as Weekday,
+                        timeRanges: [
+                            {
+                                startTime: Date.now() - 3 * _1Hour,
+                                endTime: Date.now() + 2 * _1Hour
+                            } as TimeRange
+                        ]
+                    } as AvailableTime
+                ],
+                availabilityTimezoneDummy: stubOne(Availability).timezone,
+                startDateTimeMock: new Date(Date.now() - 4 * _1Hour),
+                endDateTimeMock: new Date(Date.now() + _1Hour),
+                isTimeOverlappingWithStartDateTimeStub: false,
+                isTimeOverlappingWithEndDateTimeStub: true,
+                expectedResult: false
+            },
+            {
+                description: 'should be returned true if there are availability times, and at least one of the ensured start time and end time is included in the availability time',
+                availableTimesMock: [
+                    {
+                        day: new Date().getDay() as Weekday,
+                        timeRanges: [
+                            {
+                                startTime: Date.now() - _1Hour,
+                                endTime: Date.now() + 2 * _1Hour
+                            } as TimeRange
+                        ]
+                    } as AvailableTime
+                ],
+                availabilityTimezoneDummy: stubOne(Availability).timezone,
+                startDateTimeMock: new Date(Date.now() - _1Hour),
+                endDateTimeMock: new Date(Date.now() + _1Hour),
+                isTimeOverlappingWithStartDateTimeStub: true,
+                isTimeOverlappingWithEndDateTimeStub: true,
+                expectedResult: true
+            }
 
-            const timezoneMock = stubOne(Availability).timezone;
-            const overridedAvailabilityTimeMock = testMockUtil.getOverridedAvailabilityTimeMock();
-            const timeRangeMock = overridedAvailabilityTimeMock.timeRanges[0];
+        ].forEach(function ({
+            description,
+            availableTimesMock,
+            availabilityTimezoneDummy,
+            startDateTimeMock,
+            endDateTimeMock,
+            isTimeOverlappingWithStartDateTimeStub,
+            isTimeOverlappingWithEndDateTimeStub,
+            expectedResult
+        }) {
+            it(description, () => {
+                utilServiceStub.dateToTimeString.onFirstCall().returns('startTimeStringStub');
+                utilServiceStub.dateToTimeString.onSecondCall().returns('endTimeStringStub');
 
-            const startDateTimeStub = new Date(timeRangeMock.startTime);
-            startDateTimeStub.setHours(startDateTimeStub.getHours() + 1);
-            const endDateTimeStub = new Date(timeRangeMock.endTime);
-            endDateTimeStub.setHours(endDateTimeStub.getHours() - 1);
-            const startDateTimestampMock = startDateTimeStub.getTime();
-            const endDateTimestampMock = endDateTimeStub.getTime();
+                utilServiceStub.localizeDateTime.onFirstCall().returns(startDateTimeMock);
+                utilServiceStub.localizeDateTime.onSecondCall().returns(endDateTimeMock);
 
-            utilServiceStub.localizeDateTime.onFirstCall().returns(startDateTimeStub);
-            utilServiceStub.localizeDateTime.onSecondCall().returns(endDateTimeStub);
+                const startWeekdayAvailableTimeStub = availableTimesMock.find((_availableTimeMock) => _availableTimeMock.day === startDateTimeMock.getDay());
+                const endWeekdayAvailableTimeStub = availableTimesMock.find((_availableTimeMock) => _availableTimeMock.day === endDateTimeMock.getDay());
 
-            const isTimeOverlappedWithOverrides = service._isTimeOverlappingWithOverrides(
-                timezoneMock,
-                [overridedAvailabilityTimeMock],
-                startDateTimestampMock,
-                endDateTimestampMock
-            );
+                const _isTimeOverlappingWithAvailableTimeRangeStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimeRange')
+                    .onFirstCall().returns(isTimeOverlappingWithStartDateTimeStub)
+                    .onSecondCall().returns(isTimeOverlappingWithEndDateTimeStub);
 
-            expect(isTimeOverlappedWithOverrides).true;
-            expect(utilServiceStub.localizeDateTime.calledTwice).true;
-        });
+                const isTimeOverlapping = service._isTimeOverlappingWithAvailableTimes(availableTimesMock, availabilityTimezoneDummy, startDateTimeMock, endDateTimeMock);
 
-        it('should be returned true with empty overrides', () => {
+                if (startWeekdayAvailableTimeStub && endWeekdayAvailableTimeStub) {
+                    expect(_isTimeOverlappingWithAvailableTimeRangeStub.calledTwice).true;
+                } else {
+                    expect(_isTimeOverlappingWithAvailableTimeRangeStub.called).false;
+                }
 
-            const timezoneMock = stubOne(Availability).timezone;
-            const timestampDummy = Date.now();
-
-            const isTimeOverlappedWithOverrides = service._isTimeOverlappingWithOverrides(
-                timezoneMock,
-                [],
-                timestampDummy,
-                timestampDummy
-            );
-
-            expect(isTimeOverlappedWithOverrides).true;
-            expect(utilServiceStub.localizeDateTime.called).false;
+                expect(utilServiceStub.dateToTimeString.calledTwice).true;
+                expect(utilServiceStub.localizeDateTime.calledTwice).true;
+                expect(isTimeOverlapping).equal(expectedResult);
+            });
         });
     });
 
