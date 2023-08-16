@@ -226,7 +226,7 @@ export class UserService {
         const initialEventGroup = new EventGroup();
         const initialEvent = this.utilService.getDefaultEvent({
             name: '30 Minute Meeting',
-            link: '30 Minute Meeting'
+            link: '30-minute-meeting'
         });
 
         const availableTimes: AvailableTime[] = [];
