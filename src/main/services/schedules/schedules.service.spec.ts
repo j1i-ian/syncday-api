@@ -763,6 +763,9 @@ describe('SchedulesService', () => {
     describe('Test for verifying the overlap between ensured start and end date timestamp and available times', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
+        const testUTCDate = new Date('2023-08-16T08:00:00.000Z');
+        const testDateTimestamp = testUTCDate.getTime();
+
         beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
         });
@@ -778,8 +781,8 @@ describe('SchedulesService', () => {
                 description: 'should be returned false if there is no availability time',
                 availableTimesMock: [],
                 availabilityTimezoneDummy: stubOne(Availability).timezone,
-                startDateTimeMock: new Date(Date.now() - _1Hour),
-                endDateTimeMock: new Date(Date.now() + _1Hour),
+                startDateTimeMock: new Date(testDateTimestamp - _1Hour),
+                endDateTimeMock: new Date(testDateTimestamp + _1Hour),
                 isTimeOverlappingWithStartDateTimeStub: true,
                 isTimeOverlappingWithEndDateTimeStub: true,
                 expectedResult: false
@@ -788,18 +791,18 @@ describe('SchedulesService', () => {
                 description: 'should be returned false if there are availability times, and both the ensured start time and end time are not included in any availability time',
                 availableTimesMock: [
                     {
-                        day: new Date().getDay() as Weekday,
+                        day: testUTCDate.getUTCDay() as Weekday,
                         timeRanges: [
                             {
-                                startTime: Date.now() - 3 * _1Hour,
-                                endTime: Date.now() - 2 * _1Hour
+                                startTime: testDateTimestamp - 3 * _1Hour,
+                                endTime: testDateTimestamp - 2 * _1Hour
                             } as TimeRange
                         ]
                     } as AvailableTime
                 ],
                 availabilityTimezoneDummy: stubOne(Availability).timezone,
-                startDateTimeMock: new Date(Date.now() - _1Hour),
-                endDateTimeMock: new Date(Date.now() + _1Hour),
+                startDateTimeMock: new Date(testDateTimestamp - _1Hour),
+                endDateTimeMock: new Date(testDateTimestamp + _1Hour),
                 isTimeOverlappingWithStartDateTimeStub: false,
                 isTimeOverlappingWithEndDateTimeStub: false,
                 expectedResult: false
@@ -808,18 +811,18 @@ describe('SchedulesService', () => {
                 description: 'should be returned false if there are availability times, and the ensured start time is included in any availability time, but end time is not',
                 availableTimesMock: [
                     {
-                        day: new Date().getDay() as Weekday,
+                        day: testUTCDate.getUTCDay() as Weekday,
                         timeRanges: [
                             {
-                                startTime: Date.now() - 3 * _1Hour,
-                                endTime: Date.now() + 2 * _1Hour
+                                startTime: testDateTimestamp - 3 * _1Hour,
+                                endTime: testDateTimestamp + 2 * _1Hour
                             } as TimeRange
                         ]
                     } as AvailableTime
                 ],
                 availabilityTimezoneDummy: stubOne(Availability).timezone,
-                startDateTimeMock: new Date(Date.now() - _1Hour),
-                endDateTimeMock: new Date(Date.now() + 3 * _1Hour),
+                startDateTimeMock: new Date(testDateTimestamp - _1Hour),
+                endDateTimeMock: new Date(testDateTimestamp + 3 * _1Hour),
                 isTimeOverlappingWithStartDateTimeStub: true,
                 isTimeOverlappingWithEndDateTimeStub: false,
                 expectedResult: false
@@ -828,18 +831,18 @@ describe('SchedulesService', () => {
                 description: 'should be returned false if there are availability times, and the ensured end time is included in any availability time, but start time is not',
                 availableTimesMock: [
                     {
-                        day: new Date().getDay() as Weekday,
+                        day: testUTCDate.getUTCDay() as Weekday,
                         timeRanges: [
                             {
-                                startTime: Date.now() - 3 * _1Hour,
-                                endTime: Date.now() + 2 * _1Hour
+                                startTime: testDateTimestamp - 3 * _1Hour,
+                                endTime: testDateTimestamp + 2 * _1Hour
                             } as TimeRange
                         ]
                     } as AvailableTime
                 ],
                 availabilityTimezoneDummy: stubOne(Availability).timezone,
-                startDateTimeMock: new Date(Date.now() - 4 * _1Hour),
-                endDateTimeMock: new Date(Date.now() + _1Hour),
+                startDateTimeMock: new Date(testDateTimestamp - 4 * _1Hour),
+                endDateTimeMock: new Date(testDateTimestamp + _1Hour),
                 isTimeOverlappingWithStartDateTimeStub: false,
                 isTimeOverlappingWithEndDateTimeStub: true,
                 expectedResult: false
@@ -848,18 +851,18 @@ describe('SchedulesService', () => {
                 description: 'should be returned true if there are availability times, and at least one of the ensured start time and end time is included in the availability time',
                 availableTimesMock: [
                     {
-                        day: new Date().getDay() as Weekday,
+                        day: testUTCDate.getUTCDay() as Weekday,
                         timeRanges: [
                             {
-                                startTime: Date.now() - _1Hour,
-                                endTime: Date.now() + 2 * _1Hour
+                                startTime: testDateTimestamp - 2 * _1Hour,
+                                endTime: testDateTimestamp + 2 * _1Hour
                             } as TimeRange
                         ]
                     } as AvailableTime
                 ],
                 availabilityTimezoneDummy: stubOne(Availability).timezone,
-                startDateTimeMock: new Date(Date.now() - _1Hour),
-                endDateTimeMock: new Date(Date.now() + _1Hour),
+                startDateTimeMock: new Date(testDateTimestamp - _1Hour),
+                endDateTimeMock: new Date(testDateTimestamp + _1Hour),
                 isTimeOverlappingWithStartDateTimeStub: true,
                 isTimeOverlappingWithEndDateTimeStub: true,
                 expectedResult: true
