@@ -207,7 +207,8 @@ export class AvailabilityService {
             name,
             timezone,
             availableTimes,
-            overrides
+            overrides,
+            priority
         } = patchAvailabilityDto;
 
         const availability = await this.availabilityRepository.findOneByOrFail({
@@ -216,7 +217,7 @@ export class AvailabilityService {
 
         const isNoDefaultAvailabilityRequest =
             availability.default === true && patchAvailabilityDto.default === false;
-        const shouldRDBUpdate = isDefault !== undefined || name || timezone;
+        const shouldRDBUpdate = isDefault !== undefined || name || timezone || priority;
 
         // validation
         if (isNoDefaultAvailabilityRequest) {
@@ -245,7 +246,8 @@ export class AvailabilityService {
                 await _availabilityRepository.update(availabilityId, {
                     default: patchedAvailability.default,
                     name: patchedAvailability.name,
-                    timezone: patchedAvailability.timezone
+                    timezone: patchedAvailability.timezone,
+                    priority: patchedAvailability.priority
                 });
             });
         }
