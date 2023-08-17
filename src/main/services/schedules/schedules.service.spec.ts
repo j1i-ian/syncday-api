@@ -1,12 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { Weekday } from '@interfaces/availability/weekday.enum';
 import { AvailableTime } from '@interfaces/availability/available-time';
+import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
@@ -129,27 +130,104 @@ describe('SchedulesService', () => {
             serviceSandbox.restore();
         });
 
-        it('should be searched scheduled events', async () => {
+        describe('Test scheduled events', () => {
 
-            const workspaceMock = stubOne(UserSetting).workspace;
+            const hostUUIDMock = stubOne(User).uuid;
             const eventUUIDMock = stubOne(Event).uuid;
             const scheduleStubs = stub(Schedule);
-            const googleIntegartionScheduleStubs = stub(GoogleIntegrationSchedule);
 
-            scheduleRepositoryStub.findBy.resolves(scheduleStubs);
-            googleIntegrationScheduleRepositoryStub.findBy.resolves(googleIntegartionScheduleStubs);
+            afterEach(() => {
+                scheduleRepositoryStub.findBy.reset();
+                googleIntegrationScheduleRepositoryStub.findBy.reset();
+            });
 
-            const searchedSchedules = await firstValueFrom(
-                service.search({
-                    workspace: workspaceMock,
-                    eventUUID: eventUUIDMock
-                })
-            );
+            [
+                {
+                    description: 'should be searched scheduled events by search option (hostUUID)',
+                    searchOption: {
+                        hostUUID: hostUUIDMock
+                    } as ScheduledEventSearchOption,
+                    expectedStartBufferTimestampSetting: false,
+                    expectedEndBufferTimestampSetting: false
+                },
+                {
+                    description: 'should be searched scheduled events by search option (hostUUID, eventUUID)',
+                    searchOption: {
+                        hostUUID: hostUUIDMock,
+                        eventUUID: eventUUIDMock
+                    } as ScheduledEventSearchOption,
+                    expectedStartBufferTimestampSetting: false,
+                    expectedEndBufferTimestampSetting: false
+                },
+                {
+                    description: 'should be searched scheduled events by search option (hostUUID, eventUUID, since)',
+                    searchOption: {
+                        hostUUID: hostUUIDMock,
+                        eventUUID: eventUUIDMock,
+                        since: Date.now()
+                    } as ScheduledEventSearchOption,
+                    expectedStartBufferTimestampSetting: true,
+                    expectedEndBufferTimestampSetting: false
+                },
+                {
+                    description: 'should be searched scheduled events by search option (hostUUID, eventUUID, since, until)',
+                    searchOption: {
+                        hostUUID: hostUUIDMock,
+                        eventUUID: eventUUIDMock,
+                        since: Date.now(),
+                        until: Date.now() + 1000000
+                    } as ScheduledEventSearchOption,
+                    expectedStartBufferTimestampSetting: true,
+                    expectedEndBufferTimestampSetting: true
+                }
+            ].forEach(function({
+                description,
+                searchOption,
+                expectedStartBufferTimestampSetting,
+                expectedEndBufferTimestampSetting
+            }) {
 
-            expect(searchedSchedules).ok;
-            expect(searchedSchedules.length).greaterThan(0);
-            expect(scheduleRepositoryStub.findBy.called).true;
+                it(description, async () => {
+
+                    const googleIntegartionScheduleStubs = stub(GoogleIntegrationSchedule);
+
+                    scheduleRepositoryStub.findBy.resolves(scheduleStubs);
+                    googleIntegrationScheduleRepositoryStub.findBy.resolves(googleIntegartionScheduleStubs);
+
+                    const searchedSchedules = await firstValueFrom(
+                        service.search(searchOption)
+                    );
+
+                    expect(searchedSchedules).ok;
+                    expect(searchedSchedules.length).greaterThan(0);
+                    expect(scheduleRepositoryStub.findBy.called).true;
+
+                    const actualComposedScheduledEventSearchOption = scheduleRepositoryStub.findBy.getCall(0).args[0] as FindOptionsWhere<Schedule>;
+                    const actualComposedGoogleScheduledEventSearchOption = googleIntegrationScheduleRepositoryStub.findBy.getCall(0).args[0] as FindOptionsWhere<Schedule>;
+
+                    actualComposedScheduledEventSearchOption.scheduledBufferTime = actualComposedScheduledEventSearchOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>;
+                    actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime = actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>;
+
+                    if (expectedStartBufferTimestampSetting) {
+                        expect(actualComposedScheduledEventSearchOption.scheduledBufferTime.startBufferTimestamp).ok;
+                        expect(actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime.startBufferTimestamp).ok;
+                    } else {
+                        expect(actualComposedScheduledEventSearchOption.scheduledBufferTime.startBufferTimestamp).is.not.exist;
+                        expect(actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime.startBufferTimestamp).is.not.exist;
+                    }
+
+                    if (expectedEndBufferTimestampSetting) {
+                        expect(actualComposedScheduledEventSearchOption.scheduledBufferTime.endBufferTimestamp).ok;
+                        expect(actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime.endBufferTimestamp).ok;
+                    } else {
+                        expect(actualComposedScheduledEventSearchOption.scheduledBufferTime.endBufferTimestamp).is.not.exist;
+                        expect(actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime.endBufferTimestamp).is.not.exist;
+                    }
+                });
+            });
+
         });
+
 
         it('should be fetched scheduled event one', async () => {
 

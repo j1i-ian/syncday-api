@@ -77,9 +77,16 @@ export class BookingsController {
     @Get('scheduled-events')
     searchScheduledEvents(
         @Query('hostUUID', ValidateQueryParamPipe, ParseEncodedUrl) hostUUID: string,
-        @Query('eventUUID') eventUUID: string
+        @Query('eventUUID') eventUUID: string,
+        @Query('since') since = Date.now(),
+        @Query('until') until?: number | undefined
     ): Observable<SearchScheduledEventResponseDto[]> {
-        return this.bookingsService.searchScheduledEvents(hostUUID, eventUUID)
+        return this.bookingsService.searchScheduledEvents({
+            hostUUID,
+            eventUUID,
+            since: +since,
+            until: until ? +until : undefined
+        })
             .pipe(
                 map((searchedScheduledEvents) =>
                     searchedScheduledEvents.map((
