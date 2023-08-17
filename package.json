@@ -33,7 +33,7 @@
     "start:docker:redis": "docker compose up redis",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "mocha $npm_package_options_mocha 'src/**/*{.test,.spec}.ts'",
+    "test": "mocha 'src/**/*{.test,.spec}.ts' --reporter mocha-simple-html-reporter --reporter-options output=report.html",
     "test:coverage": "nyc npm run test",
     "test:ci": "MOCHA_FILE=./coverage/junit-report.xml mocha $npm_package_options_mocha -R mocha-junit-reporter 'src/**/*{.test,.spec}.ts'",
     "test:failonly": "mocha $npm_package_options_mocha 'src/**/*{.test,.spec}.ts' | grep -B 3 -A 3 -E '\\d)'",
