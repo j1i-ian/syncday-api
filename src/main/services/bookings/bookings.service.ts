@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Observable, from, map, mergeMap } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
+import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
 import { UserService } from '@services/users/user.service';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
@@ -42,11 +43,8 @@ export class BookingsService {
         return this.availabilityService.fetchDetailByUserWorkspaceAndLink(userWorkspace, eventLink);
     }
 
-    searchScheduledEvents(userUUID: string, eventUUID: string): Observable<ScheduledEventResponseDto[]> {
-        return this.scheduleService.search({
-            userUUID,
-            eventUUID
-        }).pipe(
+    searchScheduledEvents(searchOption: ScheduledEventSearchOption): Observable<ScheduledEventResponseDto[]> {
+        return this.scheduleService.search(searchOption).pipe(
             map((schedules) => schedules.map(
                 (_schedule) => plainToInstance(ScheduledEventResponseDto, _schedule))
             )

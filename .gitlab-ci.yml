@@ -84,10 +84,16 @@ test:
   needs:
     - build
   script: |
-    npm run test
+    npm run test:ci
   only:
     - main
     - develop
+  artifacts:
+    when: always
+    paths:
+      - coverage/junit-report.xml
+    reports:
+      junit: coverage/junit-report.xml
 
 build-docs-with-coverage:
   <<: *resolve-submodule
@@ -98,8 +104,8 @@ build-docs-with-coverage:
   script: |
     npm i -D @compodoc/compodoc
     npm i -D nyc
-    yarn run test:coverage
-    yarn run build:docs
+    npm run test:coverage
+    npm run build:docs
   only:
     - main
     - develop

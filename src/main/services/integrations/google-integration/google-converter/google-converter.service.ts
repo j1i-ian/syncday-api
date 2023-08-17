@@ -117,7 +117,7 @@ export class GoogleConverterService {
         } = _googleScheduleStartDatetime;
         const ensuredRFC3339StartDateString =
             RFC3339StartDateHeadString ?
-                `${RFC3339StartDateHeadString } 00:00:00 ${gmtString}` :
+                `${ RFC3339StartDateHeadString } 00:00:00 ${gmtString}` :
                 RFC3339StartDateTimeString;
         const startDatetime = new Date(ensuredRFC3339StartDateString as string);
 
@@ -126,7 +126,7 @@ export class GoogleConverterService {
             dateTime: RFC3339EndDateTimeString
         } = _googleScheduleEndDatetime;
         const ensuredRFC3339EndDateTimeString = RFC3339EndDateHeadString ?
-            `${RFC3339EndDateHeadString } 00:00:00 ${gmtString}` :
+            `${ RFC3339EndDateHeadString } 00:00:00 ${gmtString}` :
             RFC3339EndDateTimeString;
         const endDatetime = new Date(ensuredRFC3339EndDateTimeString as string);
 

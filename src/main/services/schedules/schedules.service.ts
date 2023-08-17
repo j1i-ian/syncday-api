@@ -1,12 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Observable, defer, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
-import { Between, EntityManager, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { calendar_v3 } from 'googleapis';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
+import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { UtilService } from '@services/util/util.service';
@@ -20,7 +21,7 @@ import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
 import { InviteeAnswer } from '@entity/schedules/invitee-answer.entity';
 import { ConferenceLink } from '@entity/schedules/conference-link.entity';
-import { ScheduleSearchOption } from '@app/interfaces/schedules/schedule-search-option.interface';
+import { ScheduledBufferTime } from '@entity/schedules/scheduled-buffer-time.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
@@ -38,29 +39,47 @@ export class SchedulesService {
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
-    search(scheduleSearchOption: Partial<ScheduleSearchOption>): Observable<InviteeSchedule[]> {
+    search(scheduleSearchOption: Partial<ScheduledEventSearchOption>): Observable<InviteeSchedule[]> {
 
         const {
-            userUUID,
-            eventUUID
+            hostUUID,
+            eventUUID,
+            since,
+            until
         } = scheduleSearchOption;
 
-        const inviteeSchedule$ = defer(() => from(this.scheduleRepository.findBy({
+        const scheduledEventFindOption: FindOptionsWhere<Schedule> = {
             eventDetail: {
                 event: {
                     uuid: eventUUID
                 }
             },
             host: {
-                uuid: userUUID
-            }
-        })));
+                uuid: hostUUID
+            },
+            scheduledBufferTime: {}
+        };
 
-        const googleIntegrationSchedule$ = defer(() => from(this.googleIntegrationScheduleRepository.findBy({
+        const googleScheduledEventFindOption: FindOptionsWhere<GoogleIntegrationSchedule> = {
             host: {
-                uuid: userUUID
-            }
-        })));
+                uuid: hostUUID
+            },
+            scheduledBufferTime: {}
+        };
+
+        if (since) {
+            (scheduledEventFindOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>).startBufferTimestamp = MoreThanOrEqual(new Date(since));
+            (googleScheduledEventFindOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>).startBufferTimestamp = MoreThanOrEqual(new Date(since));
+        }
+
+        if (until) {
+            (scheduledEventFindOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>).endBufferTimestamp = LessThanOrEqual(new Date(until));
+            (googleScheduledEventFindOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>).endBufferTimestamp = LessThanOrEqual(new Date(until));
+        }
+
+        const inviteeSchedule$ = defer(() => from(this.scheduleRepository.findBy(scheduledEventFindOption)));
+
+        const googleIntegrationSchedule$ = defer(() => from(this.googleIntegrationScheduleRepository.findBy(googleScheduledEventFindOption)));
 
         return forkJoin([inviteeSchedule$, googleIntegrationSchedule$]).pipe(
             map(([inviteeSchedules, googleCalendarSchedules]) => [...inviteeSchedules, ...googleCalendarSchedules])
