@@ -104,8 +104,8 @@ build-docs-with-coverage:
   script: |
     npm i -D @compodoc/compodoc
     npm i -D nyc
-    yarn run test:coverage
-    yarn run build:docs
+    npm run test:coverage
+    npm run build:docs
   only:
     - main
     - develop
