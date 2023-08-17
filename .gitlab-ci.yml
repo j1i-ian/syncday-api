@@ -84,10 +84,16 @@ test:
   needs:
     - build
   script: |
-    npm run test
+    npm run test:ci
   only:
     - main
     - develop
+  artifacts:
+    when: always
+    paths:
+      - coverage/junit-report.xml
+    reports:
+      junit: coverage/junit-report.xml
 
 build-docs-with-coverage:
   <<: *resolve-submodule
