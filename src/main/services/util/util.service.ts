@@ -206,15 +206,18 @@ export class UtilService {
             }
         } as EventDetailInit);
 
+        const defaultLink = '30-minute-meeting';
+        const lowercasedLinkWithDashes = patchBody?.link?.toLowerCase().replaceAll(' ', '-') || defaultLink;
+
         const initialEvent = new Event({
             type: EventType.ONE_ON_ONE,
-            link: '30-minute-meeting',
             name: '30 Minute Meeting',
             bufferTime: initialBufferTime,
             dateRange: initialDateRange,
             contacts: [],
             eventDetail: initialEventDetail,
-            ...patchBody
+            ...patchBody,
+            link: lowercasedLinkWithDashes
         });
         initialEvent.eventDetail = initialEventDetail;
 
