@@ -7,6 +7,6 @@ scp -o StrictHostKeyChecking=no -i $PEM_PATH package.json package-lock.json .env
 scp -o StrictHostKeyChecking=no -ri $PEM_PATH $(pwd)/dist ubuntu@$1:/home/ubuntu/dev-syncday/dist
 
 # Fixing for bcrypt error
-ssh -o StrictHostKeyChecking=no -i $PEM_PATH ubuntu@$1 "rm -rf /home/ubuntu/dev-syncday/node_modules/bcrypt && npm install bcrypt @nestjs/cli"
+ssh -o StrictHostKeyChecking=no -i $PEM_PATH ubuntu@$1 "cd dev-syncday && rm -rf node_modules/bcrypt && npm install bcrypt @nestjs/cli"
 
 ssh -o StrictHostKeyChecking=no -i $PEM_PATH ubuntu@$1 "cd dev-syncday && npm install --ignore-scripts && pm2 restart ecosystem.dev.json --env dev"
