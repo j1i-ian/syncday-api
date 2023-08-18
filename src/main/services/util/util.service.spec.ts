@@ -201,7 +201,6 @@ describe('UtilService', () => {
         });
     });
 
-
     describe('Test Getting default user setting', () => {
         it('should be got default user setting which has email as workspace when there is user email', () => {
             const emailPrefix = 'foobar';
@@ -302,6 +301,16 @@ describe('UtilService', () => {
             const actual = service.toYYYYMMDD(sample);
 
             expect(actual).equal(expected);
+        });
+    });
+
+    describe('Test getDefaultAvailabilityName', () => {
+        Object.values(Language).forEach(function(language: Language) {
+            it(`should be retrieved a default availability name for ${language}`, () => {
+                const defaultName = service.getDefaultAvailabilityName(language);
+
+                expect(defaultName).ok;
+            });
         });
     });
 });

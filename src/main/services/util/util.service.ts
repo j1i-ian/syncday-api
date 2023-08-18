@@ -448,7 +448,7 @@ export class UtilService {
     }
 
     getDefaultAvailabilityName(language: Language): string {
-        let defaultWorkingHoursText = 'Work hours';
+        let defaultWorkingHoursText = 'Working hours';
 
         switch (language) {
             case Language.KOREAN:
@@ -456,7 +456,7 @@ export class UtilService {
                 break;
             case Language.ENGLISH:
             default:
-                defaultWorkingHoursText = 'Work hours';
+                defaultWorkingHoursText = 'Working hours';
         }
 
         return defaultWorkingHoursText;
