@@ -73,7 +73,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         const newGoogleIngration: GoogleIntegration = {
             accessToken: googleAuthToken.accessToken,
             refreshToken: googleAuthToken.refreshToken,
-            email: user.email,
+            email: googleIntegrationBody.googleUserEmail,
             users: [user],
             googleCalendarIntegrations: googleCalendarIntegrations.map((calendar) => {
 

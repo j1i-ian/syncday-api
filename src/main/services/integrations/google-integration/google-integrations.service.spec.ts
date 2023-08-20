@@ -81,7 +81,7 @@ describe('GoogleIntegrationsService', () => {
         expect(service).ok;
     });
 
-    describe('Test Creating Google Calendar Schedule', () => {
+    describe('Test Creating Google Calendar', () => {
 
         afterEach(() => {
             integrationsRedisRepositoryStub.setGoogleCalendarSubscriptionStatus.reset();
@@ -91,9 +91,11 @@ describe('GoogleIntegrationsService', () => {
             googleCalendarIntegrationsServiceStub.subscribeCalendar.reset();
         });
 
-        it('should be created google integration schedule', async () => {
+        it('should be created google integration where email is patched from google user', async () => {
 
-            const userMock = stubOne(User);
+            const userMock = stubOne(User, {
+                email: 'alan@sync.day'
+            });
             const userSettingMock = stubOne(UserSetting);
             const googleCalendarIntegrationsMock = stub(GoogleCalendarIntegration);
             googleCalendarIntegrationsMock[0].primary = true;
@@ -102,6 +104,7 @@ describe('GoogleIntegrationsService', () => {
             const googleOAuthTokenMock = testMockUtil.getGoogleOAuthTokenMock();
 
             const googleIntegrationStub = stubOne(GoogleIntegration, {
+                email: googleIntegrationBodyMock.googleUserEmail,
                 googleCalendarIntegrations: googleCalendarIntegrationsMock
             });
 
@@ -110,7 +113,7 @@ describe('GoogleIntegrationsService', () => {
             gogoleIntegrationRepositoryStub.save.resolves(googleIntegrationStub);
             googleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(googleSchedules);
 
-            const createdGoogleIntegrationSchedule = await service._create(
+            const createdGoogleIntegration = await service._create(
                 datasourceMock as EntityManager,
                 userMock,
                 userSettingMock,
@@ -119,7 +122,9 @@ describe('GoogleIntegrationsService', () => {
                 googleIntegrationBodyMock
             );
 
-            expect(createdGoogleIntegrationSchedule).ok;
+            expect(createdGoogleIntegration).ok;
+            expect(createdGoogleIntegration.email).not.equals(userMock.email);
+            expect(createdGoogleIntegration.email).equals(googleIntegrationBodyMock.googleUserEmail);
 
             expect(gogoleIntegrationRepositoryStub.save.called).true;
             expect(integrationsRedisRepositoryStub.setGoogleCalendarSubscriptionStatus.called).true;

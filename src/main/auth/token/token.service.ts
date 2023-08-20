@@ -69,6 +69,7 @@ export class TokenService {
             await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode, {
                 onlyPrimaryCalendarSchedule: true
             });
+        const googleUserEmail = googleUser.email;
 
         let loadedUserOrNull = await this.userService.findUserByEmail(requestUserEmail || googleUser.email);
         const canBeSignUpContext = integrationContext === IntegrationContext.SIGN_UP || integrationContext === IntegrationContext.SIGN_IN;
@@ -92,6 +93,7 @@ export class TokenService {
                 tokens,
                 newGoogleCalendarIntegrations,
                 {
+                    googleUserEmail,
                     calendars,
                     schedules
                 },
@@ -109,6 +111,7 @@ export class TokenService {
             if (hasUserGoogleIntegration === false) {
 
                 await this.googleIntegrationService.create(ensuredUser, ensuredUser.userSetting, tokens, newGoogleCalendarIntegrations, {
+                    googleUserEmail,
                     calendars,
                     schedules
                 });
@@ -126,6 +129,7 @@ export class TokenService {
                     tokens,
                     newGoogleCalendarIntegrations,
                     {
+                        googleUserEmail,
                         calendars,
                         schedules
                     }

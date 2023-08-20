@@ -251,10 +251,12 @@ export class TestMockUtil {
 
     getGoogleIntegrationBodyMock(): GoogleIntegrationBody {
 
+        const email = 'private_google_email@sync.day';
         const calendarsMock = this.getGoogleCalendarMock();
         const googleCalendarScheduleBody = this.getGoogleCalendarScheduleBodyMock();
 
         return {
+            googleUserEmail: email,
             calendars: calendarsMock,
             schedules: googleCalendarScheduleBody
         };
