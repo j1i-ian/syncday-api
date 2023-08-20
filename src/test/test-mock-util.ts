@@ -5,7 +5,6 @@ import 'reflect-metadata';
 import { SinonSandbox } from 'sinon';
 
 import { ArgumentsHost } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 import { UpdateResult } from 'typeorm';
 import { TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -21,11 +20,11 @@ import { Notification } from '@interfaces/notifications/notification';
 import { Reminder } from '@interfaces/reminders/reminder';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { EventSetting } from '@interfaces/events/event-setting';
-import { Verification } from '@entity/verifications/verification.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
+import { Verification } from '@entity/verifications/verification.interface';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
@@ -74,10 +73,10 @@ export class TestMockUtil {
     getVerificationMock(): Verification {
         const emailMock = faker.internet.email('foo', 'bar');
 
-        return plainToInstance(Verification, {
+        return {
             email: emailMock,
             verificationCode: '1423'
-        });
+        } as Verification;
     }
 
     getGoogleScheduleMock(recurrenceRulesString = 'RRULE:FREQ=YEARLY'): GoogleCalendarEvent {

@@ -3,11 +3,12 @@ import { Cluster } from 'ioredis';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { UtilService } from '@services/util/util.service';
 import { IntegrationsService } from '@services/integrations/integrations.service';
-import { Verification } from '@entity/verifications/verification.entity';
 import { Language } from '@app/enums/language.enum';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { TestMockUtil } from '@test/test-mock-util';
 import { VerificationService } from './verification.service';
+
+const testMockUtil = new TestMockUtil();
 
 describe('VerificationService', () => {
     let service: VerificationService;
@@ -111,7 +112,7 @@ describe('VerificationService', () => {
             it('should be got true when user verification status is true', async () => {
                 const emailMock = TestMockUtil.faker.internet.email();
 
-                const verificationStub = stubOne(Verification);
+                const verificationStub = testMockUtil.getVerificationMock();
 
                 syncdayRedisServiceStub.getEmailVerification.resolves(verificationStub);
                 syncdayRedisServiceStub.getEmailVerificationStatus.resolves(true);
@@ -127,7 +128,7 @@ describe('VerificationService', () => {
             it('should be got false when user verification status is false', async () => {
                 const emailMock = TestMockUtil.faker.internet.email();
 
-                const verificationStub = stubOne(Verification);
+                const verificationStub = testMockUtil.getVerificationMock();
 
                 syncdayRedisServiceStub.getEmailVerification.resolves(verificationStub);
                 syncdayRedisServiceStub.getEmailVerificationStatus.resolves(false);
@@ -202,7 +203,7 @@ describe('VerificationService', () => {
             it('should be got true when phone verification status is true', async () => {
                 const phoneMock = TestMockUtil.faker.phone.number();
 
-                const verificationStub = stubOne(Verification);
+                const verificationStub = testMockUtil.getVerificationMock();
 
                 syncdayRedisServiceStub.getPhoneVerification.resolves(verificationStub);
                 syncdayRedisServiceStub.getPhoneVerificationStatus.resolves(true);
@@ -218,7 +219,7 @@ describe('VerificationService', () => {
             it('should be got false when phone verification status is false', async () => {
                 const phoneMock = TestMockUtil.faker.phone.number();
 
-                const verificationStub = stubOne(Verification);
+                const verificationStub = testMockUtil.getVerificationMock();
 
                 syncdayRedisServiceStub.getPhoneVerification.resolves(verificationStub);
                 syncdayRedisServiceStub.getPhoneVerificationStatus.resolves(false);
