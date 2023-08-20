@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster } from 'ioredis';
 import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
-import { SyncdayAwsSdkSnsNotificationService } from '@core/interfaces/integrations/syncday-aws-sdk-sns-notification-service.enum';
 import { TextTemplate } from '@core/interfaces/integrations/text-template.enum';
+import { SyncdayNotificationPublishKey } from '@core/interfaces/integrations/syncday-notification-publish-key.enum';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { UtilService } from '@services/util/util.service';
 import { IntegrationsService } from '@services/integrations/integrations.service';
-import { Verification } from '@entity/verifications/verification.entity';
-import { VerificationPhone } from '@entity/verifications/verification-phone.entity';
+import { Verification } from '@entity/verifications/verification.interface';
 import { Language } from '@app/enums/language.enum';
 
 @Injectable()
@@ -35,7 +34,7 @@ export class VerificationService {
         const jsonStringNewVerification = JSON.stringify(newVerification);
 
         await this.integrationService.sendMessage(
-            SyncdayAwsSdkSnsNotificationService.EMAIL,
+            SyncdayNotificationPublishKey.EMAIL,
             EmailTemplate.VERIFICATION,
             email,
             language,
@@ -60,7 +59,7 @@ export class VerificationService {
         const generatedVerificationCode = this.utilService.generateRandomNumberString(digit);
 
         const generatedUUID = this.utilService.generateUUID();
-        const newVerification: VerificationPhone = {
+        const newVerification: Verification = {
             uuid: generatedUUID,
             phoneNumber,
             verificationCode: generatedVerificationCode
@@ -68,7 +67,7 @@ export class VerificationService {
         const jsonStringNewVerification = JSON.stringify(newVerification);
 
         await this.integrationService.sendMessage(
-            SyncdayAwsSdkSnsNotificationService.SMS_GLOBAL,
+            SyncdayNotificationPublishKey.SMS_GLOBAL,
             TextTemplate.VERIFICATION,
             phoneNumber,
             language,

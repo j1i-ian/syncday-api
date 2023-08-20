@@ -3,9 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
 import { SyncdayEmailAwsSnsRequest } from '@core/interfaces/integrations/syncday-email-aws-sns-request.interface';
-import { SyncdayAwsSdkSnsNotificationService } from '@core/interfaces/integrations/syncday-aws-sdk-sns-notification-service.enum';
 import { TextTemplate } from '@core/interfaces/integrations/text-template.enum';
 import { SyncdayTextAwsSnsRequest } from '@core/interfaces/integrations/syncday-text-aws-sns-request.interface';
+import { SyncdayNotificationPublishKey } from '@core/interfaces/integrations/syncday-notification-publish-key.enum';
 import { AppConfigService } from '@config/app-config.service';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { Language } from '@app/enums/language.enum';
@@ -18,7 +18,7 @@ export class IntegrationsService {
     ) {}
 
     async sendMessage(
-        syncdayAwsSdkSnsNotificationService: SyncdayAwsSdkSnsNotificationService,
+        syncdayNotificationPublishKey: SyncdayNotificationPublishKey,
         templateType: EmailTemplate | TextTemplate,
         recipient: string,
         language: Language,
@@ -26,11 +26,11 @@ export class IntegrationsService {
     ): Promise<boolean> {
         const notificationService: MessageAttributeValue = {
             DataType: 'String.Array',
-            StringValue: JSON.stringify([syncdayAwsSdkSnsNotificationService])
+            StringValue: JSON.stringify([syncdayNotificationPublishKey])
         };
 
         let body: SyncdayEmailAwsSnsRequest | SyncdayTextAwsSnsRequest;
-        if (syncdayAwsSdkSnsNotificationService === SyncdayAwsSdkSnsNotificationService.EMAIL) {
+        if (syncdayNotificationPublishKey === SyncdayNotificationPublishKey.EMAIL) {
             body = {
                 recipient,
                 emailTemplate: templateType as EmailTemplate,

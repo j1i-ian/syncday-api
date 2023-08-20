@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
 import { TemporaryUser } from '@entity/users/temporary-user.entity';
-import { Verification } from '@entity/verifications/verification.entity';
+import { Verification } from '@entity/verifications/verification.interface';
 import { AppInjectCluster } from './app-inject-cluster.decorator';
 import { RedisStores } from './redis-stores.enum';
 
