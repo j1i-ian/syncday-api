@@ -3,6 +3,7 @@ import { Cluster } from 'ioredis';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { UtilService } from '@services/util/util.service';
 import { IntegrationsService } from '@services/integrations/integrations.service';
+import { UserService } from '@services/users/user.service';
 import { Verification } from '@entity/verifications/verification.interface';
 import { CreateVerificationDto } from '@dto/verifications/create-verification.dto';
 import { Language } from '@app/enums/language.enum';
@@ -17,12 +18,14 @@ describe('VerificationService', () => {
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
     let integrationsServiceStub: sinon.SinonStubbedInstance<IntegrationsService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
+    let userServiceStub: sinon.SinonStubbedInstance<UserService>;
 
     beforeEach(async () => {
         clusterStub = sinon.createStubInstance(Cluster);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
         integrationsServiceStub = sinon.createStubInstance(IntegrationsService);
         utilServiceStub = sinon.createStubInstance(UtilService);
+        userServiceStub = sinon.createStubInstance(UserService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -42,6 +45,10 @@ describe('VerificationService', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
+                },
+                {
+                    provide: UserService,
+                    useValue: userServiceStub
                 }
             ]
         }).compile();
@@ -64,73 +71,78 @@ describe('VerificationService', () => {
         });
 
         describe('Test create verification test', () => {
+            let serviceSandbox: sinon.SinonSandbox;
+
+            beforeEach(() => {
+                serviceSandbox = sinon.createSandbox();
+            });
+
+            afterEach(() => {
+                serviceSandbox.restore();
+            });
+
             [
                 {
                     description: 'should be created email verification when cluster saving is success',
-                    languageMock: Language.ENGLISH,
+                    languageDummy: Language.ENGLISH,
                     createVerificationDtoMock: {
                         email: TestMockUtil.faker.internet.email()
                     } as CreateVerificationDto,
                     fakeKeyStubValue: 'local:verifications:email:alan@sync.day',
-                    generateRandomNumberStringStubVslue: '0123',
+                    generateRandomNumberStringStubValue: '0123',
                     uuidStubValue: TestMockUtil.faker.datatype.uuid(),
                     setexStubValue: 'OK' as const,
-                    sendMessageStubValue: true,
                     expectedResult: true
                 },
                 {
                     description: 'should be not created email verification when cluster saving is failed',
-                    languageMock: Language.ENGLISH,
+                    languageDummy: Language.ENGLISH,
                     createVerificationDtoMock: {
                         email: TestMockUtil.faker.internet.email()
                     } as CreateVerificationDto,
                     fakeKeyStubValue: 'local:verifications:email:alan@sync.day',
-                    generateRandomNumberStringStubVslue: '0123',
+                    generateRandomNumberStringStubValue: '0123',
                     uuidStubValue: TestMockUtil.faker.datatype.uuid(),
                     setexStubValue: undefined,
-                    sendMessageStubValue: true,
                     expectedResult: false
                 },
                 {
                     description: 'should be created phoneNumber verification when cluster saving is success',
-                    languageMock: Language.ENGLISH,
+                    languageDummy: Language.ENGLISH,
                     createVerificationDtoMock: {
                         phoneNumber: TestMockUtil.faker.phone.number()
                     } as CreateVerificationDto,
                     fakeKeyStubValue: 'local:verifications:phone:+821012345678',
-                    generateRandomNumberStringStubVslue: '0123',
+                    generateRandomNumberStringStubValue: '0123',
                     uuidStubValue: TestMockUtil.faker.datatype.uuid(),
                     setexStubValue: 'OK' as const,
-                    sendMessageStubValue: true,
                     expectedResult: true
                 },
                 {
                     description: 'should be not created phoneNumber verification when cluster saving is failed',
-                    languageMock: Language.ENGLISH,
+                    languageDummy: Language.ENGLISH,
                     createVerificationDtoMock: {
                         phoneNumber: TestMockUtil.faker.phone.number()
                     } as CreateVerificationDto,
                     fakeKeyStubValue: 'local:verifications:phone:+821012345678',
-                    generateRandomNumberStringStubVslue: '0123',
+                    generateRandomNumberStringStubValue: '0123',
                     uuidStubValue: TestMockUtil.faker.datatype.uuid(),
                     setexStubValue: undefined,
-                    sendMessageStubValue: true,
                     expectedResult: false
                 }
             ].forEach( function ({
                 description,
-                languageMock,
+                languageDummy,
                 createVerificationDtoMock,
                 fakeKeyStubValue,
-                generateRandomNumberStringStubVslue,
+                generateRandomNumberStringStubValue,
                 uuidStubValue,
                 setexStubValue,
-                sendMessageStubValue,
                 expectedResult
             }) {
                 it(description, async () => {
 
-                    utilServiceStub.generateRandomNumberString.returns(generateRandomNumberStringStubVslue);
+                    utilServiceStub.generateRandomNumberString.returns(generateRandomNumberStringStubValue);
                     utilServiceStub.generateUUID.returns(uuidStubValue);
 
                     if (createVerificationDtoMock.email) {
@@ -139,11 +151,11 @@ describe('VerificationService', () => {
                         syncdayRedisServiceStub.getPhoneVerificationKey.returns(fakeKeyStubValue);
                     }
 
-                    integrationsServiceStub.sendMessage.resolves(sendMessageStubValue);
+                    serviceSandbox.stub(service, 'publishSyncdayNotification').resolves(true);
 
                     clusterStub.setex.resolves(setexStubValue);
 
-                    const result = await service.createVerification(createVerificationDtoMock, languageMock);
+                    const result = await service.createVerification(createVerificationDtoMock, languageDummy);
 
                     expect(utilServiceStub.generateRandomNumberString.called).true;
                     if (createVerificationDtoMock.email) {
@@ -151,10 +163,90 @@ describe('VerificationService', () => {
                     } else {
                         expect(syncdayRedisServiceStub.getPhoneVerificationKey.called).true;
                     }
-                    expect(integrationsServiceStub.sendMessage.called).true;
+
                     expect(clusterStub.setex.called).true;
 
                     expect(result).equal(expectedResult);
+                });
+            });
+        });
+
+        describe('Test publishSyncdayNotification', () => {
+            [
+                {
+                    description: 'should be published email verification',
+                    languageMock: Language.ENGLISH,
+                    createVerificationDtoMock: {
+                        email: TestMockUtil.faker.internet.email()
+                    } as Verification,
+                    expectedResult: true
+                },
+                {
+                    description: 'should be published notification ',
+                    languageMock: Language.ENGLISH,
+                    createVerificationDtoMock: {
+                        phoneNumber: TestMockUtil.faker.phone.number()
+                    } as Verification,
+                    expectedResult: true
+                }
+            ].forEach(function ({
+                description,
+                languageMock,
+                createVerificationDtoMock,
+                expectedResult
+            }) {
+                it(description, async () => {
+
+                    const isAlreadySignedUpUserOnEmailVerificationMock = true;
+
+                    integrationsServiceStub.sendMessage.resolves(true);
+
+                    const result = await service.publishSyncdayNotification(
+                        languageMock,
+                        createVerificationDtoMock,
+                        isAlreadySignedUpUserOnEmailVerificationMock
+                    );
+
+                    expect(integrationsServiceStub.sendMessage.called).true;
+                    expect(result).equal(expectedResult);
+                });
+
+            });
+        });
+
+        describe('Test validateCreateVerificationDto', () => {
+
+            [
+                {
+                    description:'should be passed validation of createVerificationDto',
+                    createVerificationDtoMock: {
+                        email: TestMockUtil.faker.internet.email()
+                    } as CreateVerificationDto,
+                    expectedResult: true
+                },
+                {
+                    description:'should be passed validation of createVerificationDto',
+                    createVerificationDtoMock: {
+                        phoneNumber: TestMockUtil.faker.phone.number()
+                    } as CreateVerificationDto,
+                    expectedResult: true
+                },
+                {
+                    description:'should be not passed validation of createVerificationDto',
+                    createVerificationDtoMock: {} as CreateVerificationDto,
+                    expectedResult: false
+                }
+            ].forEach(({
+                description,
+                createVerificationDtoMock,
+                expectedResult
+            }) => {
+
+                it(description, () => {
+
+                    const result = service.validateCreateVerificationDto(createVerificationDtoMock);
+
+                    expect(result).to.be.equals(expectedResult);
                 });
             });
         });
