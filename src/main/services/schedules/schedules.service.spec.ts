@@ -146,18 +146,14 @@ describe('SchedulesService', () => {
                     description: 'should be searched scheduled events by search option (hostUUID)',
                     searchOption: {
                         hostUUID: hostUUIDMock
-                    } as ScheduledEventSearchOption,
-                    expectedStartBufferTimestampSetting: false,
-                    expectedEndBufferTimestampSetting: false
+                    } as ScheduledEventSearchOption
                 },
                 {
                     description: 'should be searched scheduled events by search option (hostUUID, eventUUID)',
                     searchOption: {
                         hostUUID: hostUUIDMock,
                         eventUUID: eventUUIDMock
-                    } as ScheduledEventSearchOption,
-                    expectedStartBufferTimestampSetting: false,
-                    expectedEndBufferTimestampSetting: false
+                    } as ScheduledEventSearchOption
                 },
                 {
                     description: 'should be searched scheduled events by search option (hostUUID, eventUUID, since)',
@@ -165,9 +161,7 @@ describe('SchedulesService', () => {
                         hostUUID: hostUUIDMock,
                         eventUUID: eventUUIDMock,
                         since: Date.now()
-                    } as ScheduledEventSearchOption,
-                    expectedStartBufferTimestampSetting: true,
-                    expectedEndBufferTimestampSetting: false
+                    } as ScheduledEventSearchOption
                 },
                 {
                     description: 'should be searched scheduled events by search option (hostUUID, eventUUID, since, until)',
@@ -182,9 +176,7 @@ describe('SchedulesService', () => {
                 }
             ].forEach(function({
                 description,
-                searchOption,
-                expectedStartBufferTimestampSetting,
-                expectedEndBufferTimestampSetting
+                searchOption
             }) {
 
                 it(description, async () => {
@@ -202,27 +194,18 @@ describe('SchedulesService', () => {
                     expect(searchedSchedules.length).greaterThan(0);
                     expect(scheduleRepositoryStub.findBy.called).true;
 
-                    const actualComposedScheduledEventSearchOption = scheduleRepositoryStub.findBy.getCall(0).args[0] as FindOptionsWhere<Schedule>;
-                    const actualComposedGoogleScheduledEventSearchOption = googleIntegrationScheduleRepositoryStub.findBy.getCall(0).args[0] as FindOptionsWhere<Schedule>;
+                    const actualComposedScheduledEventSearchOptions = scheduleRepositoryStub.findBy.getCall(0).args[0] as Array<FindOptionsWhere<Schedule>>;
+                    const actualComposedGoogleScheduledEventSearchOptions = googleIntegrationScheduleRepositoryStub.findBy.getCall(0).args[0] as Array<FindOptionsWhere<Schedule>>;
 
-                    actualComposedScheduledEventSearchOption.scheduledBufferTime = actualComposedScheduledEventSearchOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>;
-                    actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime = actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>;
+                    expect((actualComposedScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).startTimestamp).ok;
+                    expect((actualComposedScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).endTimestamp).ok;
+                    expect((actualComposedScheduledEventSearchOptions[1].scheduledBufferTime as ScheduledBufferTime).startBufferTimestamp).ok;
+                    expect((actualComposedScheduledEventSearchOptions[1].scheduledBufferTime as ScheduledBufferTime).endBufferTimestamp).ok;
 
-                    if (expectedStartBufferTimestampSetting) {
-                        expect(actualComposedScheduledEventSearchOption.scheduledBufferTime.startBufferTimestamp).ok;
-                        expect(actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime.startBufferTimestamp).ok;
-                    } else {
-                        expect(actualComposedScheduledEventSearchOption.scheduledBufferTime.startBufferTimestamp).is.not.exist;
-                        expect(actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime.startBufferTimestamp).is.not.exist;
-                    }
-
-                    if (expectedEndBufferTimestampSetting) {
-                        expect(actualComposedScheduledEventSearchOption.scheduledBufferTime.endBufferTimestamp).ok;
-                        expect(actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime.endBufferTimestamp).ok;
-                    } else {
-                        expect(actualComposedScheduledEventSearchOption.scheduledBufferTime.endBufferTimestamp).is.not.exist;
-                        expect(actualComposedGoogleScheduledEventSearchOption.scheduledBufferTime.endBufferTimestamp).is.not.exist;
-                    }
+                    expect((actualComposedGoogleScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).startTimestamp).ok;
+                    expect((actualComposedGoogleScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).endTimestamp).ok;
+                    expect((actualComposedGoogleScheduledEventSearchOptions[1].scheduledBufferTime as ScheduledBufferTime).startBufferTimestamp).ok;
+                    expect((actualComposedGoogleScheduledEventSearchOptions[1].scheduledBufferTime as ScheduledBufferTime).endBufferTimestamp).ok;
                 });
             });
 
@@ -723,6 +706,26 @@ describe('SchedulesService', () => {
                 });
             });
         });
+    });
+
+    it('should be fetched TypeORM Condition options for google calendar integraion', () => {
+
+        const testDateTimestamp = new Date('2023-08-16T08:00:00.000Z');
+
+        const googleCalendarIntegrationId = 1;
+
+        const startDateTimeMock = new Date(testDateTimestamp);
+        const endDateTimeMock = new Date(testDateTimestamp);
+
+        const typeormConditionOptions = service._getScheduleConflictCheckOptions(
+            startDateTimeMock,
+            endDateTimeMock,
+            { googleCalendarIntegrationId }
+        );
+
+        expect(typeormConditionOptions).ok;
+        expect(typeormConditionOptions.length).greaterThan(0);
+        expect(typeormConditionOptions[0]).ok;
     });
 
     describe('Test for ensured schedule start time and end time compare with now test', () => {

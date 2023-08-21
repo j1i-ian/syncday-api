@@ -21,7 +21,6 @@ import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
 import { InviteeAnswer } from '@entity/schedules/invitee-answer.entity';
 import { ConferenceLink } from '@entity/schedules/conference-link.entity';
-import { ScheduledBufferTime } from '@entity/schedules/scheduled-buffer-time.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
@@ -48,7 +47,11 @@ export class SchedulesService {
             until
         } = scheduleSearchOption;
 
-        const scheduledEventFindOption: FindOptionsWhere<Schedule> = {
+        const defaultUntilDateTime = new Date(new Date().getDate() + 90);
+        const ensuredSinceDateTime = since ? new Date(since) : new Date();
+        const ensuredUntilDateTime = until ? new Date(until) : defaultUntilDateTime;
+
+        const scheduledEventDefaultOption: FindOptionsWhere<Schedule> = {
             eventDetail: {
                 event: {
                     uuid: eventUUID
@@ -56,30 +59,51 @@ export class SchedulesService {
             },
             host: {
                 uuid: hostUUID
-            },
-            scheduledBufferTime: {}
+            }
         };
+        const scheduleConditionOptions: Array<FindOptionsWhere<Schedule>> = [
+            {
+                scheduledTime: {
+                    startTimestamp: MoreThanOrEqual(ensuredSinceDateTime),
+                    endTimestamp: LessThanOrEqual(ensuredUntilDateTime)
+                },
+                ...scheduledEventDefaultOption
+            },
+            {
+                scheduledBufferTime: {
+                    startBufferTimestamp: MoreThanOrEqual(ensuredSinceDateTime),
+                    endBufferTimestamp: LessThanOrEqual(ensuredUntilDateTime)
+                },
+                ...scheduledEventDefaultOption
+            }
+        ];
 
         const googleScheduledEventFindOption: FindOptionsWhere<GoogleIntegrationSchedule> = {
             host: {
                 uuid: hostUUID
-            },
-            scheduledBufferTime: {}
+            }
         };
 
-        if (since) {
-            (scheduledEventFindOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>).startBufferTimestamp = MoreThanOrEqual(new Date(since));
-            (googleScheduledEventFindOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>).startBufferTimestamp = MoreThanOrEqual(new Date(since));
-        }
+        const googleScheduleConditionOptions: Array<FindOptionsWhere<Schedule>> = [
+            {
+                scheduledTime: {
+                    startTimestamp: MoreThanOrEqual(ensuredSinceDateTime),
+                    endTimestamp: LessThanOrEqual(ensuredUntilDateTime)
+                },
+                ...googleScheduledEventFindOption
+            },
+            {
+                scheduledBufferTime: {
+                    startBufferTimestamp: MoreThanOrEqual(ensuredSinceDateTime),
+                    endBufferTimestamp: LessThanOrEqual(ensuredUntilDateTime)
+                },
+                ...googleScheduledEventFindOption
+            }
+        ];
 
-        if (until) {
-            (scheduledEventFindOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>).endBufferTimestamp = LessThanOrEqual(new Date(until));
-            (googleScheduledEventFindOption.scheduledBufferTime as FindOptionsWhere<ScheduledBufferTime>).endBufferTimestamp = LessThanOrEqual(new Date(until));
-        }
+        const inviteeSchedule$ = defer(() => from(this.scheduleRepository.findBy(scheduleConditionOptions)));
 
-        const inviteeSchedule$ = defer(() => from(this.scheduleRepository.findBy(scheduledEventFindOption)));
-
-        const googleIntegrationSchedule$ = defer(() => from(this.googleIntegrationScheduleRepository.findBy(googleScheduledEventFindOption)));
+        const googleIntegrationSchedule$ = defer(() => from(this.googleIntegrationScheduleRepository.findBy(googleScheduleConditionOptions)));
 
         return forkJoin([inviteeSchedule$, googleIntegrationSchedule$]).pipe(
             map(([inviteeSchedules, googleCalendarSchedules]) => [...inviteeSchedules, ...googleCalendarSchedules])
@@ -279,48 +303,18 @@ export class SchedulesService {
             throw new CannotCreateByInvalidTimeRange();
         }
 
-        const loadedGoogleIntegrationSchedules$ = defer(() => from(this.googleIntegrationScheduleRepository.findOneBy(
-            [
-                {
-                    scheduledTime: {
-                        startTimestamp: MoreThanOrEqual(ensuredStartDateTime),
-                        endTimestamp: LessThanOrEqual(ensuredEndDateTime)
-                    },
-                    googleCalendarIntegrationId
-                },
-                {
-                    scheduledTime: {
-                        startTimestamp: LessThanOrEqual(ensuredStartDateTime),
-                        endTimestamp: MoreThanOrEqual(ensuredEndDateTime)
-                    },
-                    googleCalendarIntegrationId
-                },
-                {
-                    scheduledBufferTime: {
-                        startBufferTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
-                    },
-                    googleCalendarIntegrationId
-                },
-                {
-                    scheduledBufferTime: {
-                        endBufferTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
-                    },
-                    googleCalendarIntegrationId
-                },
-                {
-                    scheduledTime: {
-                        startTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
-                    },
-                    googleCalendarIntegrationId
-                },
-                {
-                    scheduledTime: {
-                        endTimestamp: Between(ensuredStartDateTime, ensuredEndDateTime)
-                    },
-                    googleCalendarIntegrationId
-                }
-            ]
-        )));
+        const googleIntegrationScheduleConditionOptions = this._getScheduleConflictCheckOptions(
+            ensuredStartDateTime,
+            ensuredEndDateTime,
+            {
+                googleCalendarIntegrationId
+            }
+        );
+        const loadedGoogleIntegrationSchedules$ = defer(() => from(
+            this.googleIntegrationScheduleRepository.findOneBy(
+                googleIntegrationScheduleConditionOptions
+            ))
+        );
 
         const loadedSchedules$ = defer(() => from(this.scheduleRepository.findOneBy(
             [
@@ -385,6 +379,53 @@ export class SchedulesService {
                 )
             )
         );
+    }
+
+    _getScheduleConflictCheckOptions(
+        startDateTime: Date,
+        endDateTime: Date,
+        additionalOption?: FindOptionsWhere<GoogleIntegrationSchedule> | undefined
+    ): Array<FindOptionsWhere<InviteeSchedule>> {
+        return [
+            {
+                scheduledTime: {
+                    startTimestamp: MoreThanOrEqual(startDateTime),
+                    endTimestamp: LessThanOrEqual(endDateTime)
+                },
+                ...additionalOption
+            },
+            {
+                scheduledTime: {
+                    startTimestamp: LessThanOrEqual(startDateTime),
+                    endTimestamp: MoreThanOrEqual(endDateTime)
+                },
+                ...additionalOption
+            },
+            {
+                scheduledBufferTime: {
+                    startBufferTimestamp: Between(startDateTime, endDateTime)
+                },
+                ...additionalOption
+            },
+            {
+                scheduledBufferTime: {
+                    endBufferTimestamp: Between(startDateTime, endDateTime)
+                },
+                ...additionalOption
+            },
+            {
+                scheduledTime: {
+                    startTimestamp: Between(startDateTime, endDateTime)
+                },
+                ...additionalOption
+            },
+            {
+                scheduledTime: {
+                    endTimestamp: Between(startDateTime, endDateTime)
+                },
+                ...additionalOption
+            }
+        ];
     }
 
     _isPastTimestamp(startDateTimestamp: number, ensuredEndDateTimestamp: number): boolean {
