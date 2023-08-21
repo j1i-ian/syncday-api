@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Cluster } from 'ioredis';
+import { Cluster, RedisKey } from 'ioredis';
 import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
 import { TextTemplate } from '@core/interfaces/integrations/text-template.enum';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/integrations/syncday-notification-publish-key.enum';
@@ -8,6 +8,7 @@ import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.servi
 import { UtilService } from '@services/util/util.service';
 import { IntegrationsService } from '@services/integrations/integrations.service';
 import { Verification } from '@entity/verifications/verification.interface';
+import { CreateVerificationDto } from '@dto/verifications/create-verification.dto';
 import { Language } from '@app/enums/language.enum';
 
 @Injectable()
@@ -19,70 +20,86 @@ export class VerificationService {
         @AppInjectCluster() private readonly cluster: Cluster
     ) {}
 
-    async createVerification(email: string, language: Language): Promise<boolean> {
-        const emailKey = this.syncdayRedisService.getEmailVerificationKey(email);
+    async createVerification(
+        createVerificationDto: CreateVerificationDto,
+        language: Language
+    ): Promise<boolean> {
+        const { email, phoneNumber } = createVerificationDto;
+
+        let notificationPublishParam: {
+            verificationRedisKey: RedisKey;
+            notificationPublishKey: SyncdayNotificationPublishKey;
+            templateType: EmailTemplate | TextTemplate;
+            newVerification: Verification;
+            verificationValue: string;
+        } = {} as {
+            verificationRedisKey: RedisKey;
+            notificationPublishKey: SyncdayNotificationPublishKey;
+            templateType: EmailTemplate | TextTemplate;
+            newVerification: Verification;
+            verificationValue: string;
+        };
 
         const digit = 4;
         const generatedVerificationCode = this.utilService.generateRandomNumberString(digit);
-
         const generatedUUID = this.utilService.generateUUID();
-        const newVerification: Verification = {
+
+        const newVerificationParam: Verification = {
             uuid: generatedUUID,
-            email,
             verificationCode: generatedVerificationCode
         };
-        const jsonStringNewVerification = JSON.stringify(newVerification);
 
-        await this.integrationService.sendMessage(
-            SyncdayNotificationPublishKey.EMAIL,
-            EmailTemplate.VERIFICATION,
-            email,
+        if (email) {
+            newVerificationParam.email = email;
+            notificationPublishParam = {
+                verificationRedisKey: this.syncdayRedisService.getEmailVerificationKey(email),
+                notificationPublishKey: SyncdayNotificationPublishKey.EMAIL,
+                templateType: EmailTemplate.VERIFICATION,
+                newVerification: newVerificationParam,
+                verificationValue: email
+            };
+
+        } else {
+            newVerificationParam.phoneNumber = phoneNumber;
+            notificationPublishParam = {
+                verificationRedisKey: this.syncdayRedisService.getPhoneVerificationKey(phoneNumber as string),
+                notificationPublishKey: SyncdayNotificationPublishKey.SMS_GLOBAL,
+                templateType: TextTemplate.VERIFICATION,
+                newVerification: newVerificationParam,
+                verificationValue: phoneNumber as string
+            };
+        }
+
+        const jsonStringNewVerification = JSON.stringify(newVerificationParam);
+
+        const publishResult = await this.integrationService.sendMessage(
+            notificationPublishParam.notificationPublishKey,
+            notificationPublishParam.templateType,
+            notificationPublishParam.verificationValue,
             language,
             jsonStringNewVerification
         );
 
         // verification code is valid while 10 minutes
         const expire = 10 * 60;
-        const result = await this.cluster.setex(
-            emailKey,
+        const _result = await this.cluster.setex(
+            notificationPublishParam.verificationRedisKey,
             expire,
-            JSON.stringify(newVerification)
+            jsonStringNewVerification
         );
 
-        return result === 'OK';
+        const redisSetResult = _result === 'OK';
+
+        return publishResult && redisSetResult;
     }
 
-    async createVerificationWithPhoneNumber(phoneNumber: string, language: Language): Promise<boolean>{
-        const phoneKey = this.syncdayRedisService.getPhoneVerificationKey(phoneNumber);
+    validateCreateVerificationDto(createVerificationDto: CreateVerificationDto): boolean {
 
-        const digit = 4;
-        const generatedVerificationCode = this.utilService.generateRandomNumberString(digit);
+        const { email, phoneNumber } = createVerificationDto;
 
-        const generatedUUID = this.utilService.generateUUID();
-        const newVerification: Verification = {
-            uuid: generatedUUID,
-            phoneNumber,
-            verificationCode: generatedVerificationCode
-        };
-        const jsonStringNewVerification = JSON.stringify(newVerification);
+        const isValid = !email && !phoneNumber;
 
-        await this.integrationService.sendMessage(
-            SyncdayNotificationPublishKey.SMS_GLOBAL,
-            TextTemplate.VERIFICATION,
-            phoneNumber,
-            language,
-            jsonStringNewVerification
-        );
-
-        // verification code is valid while 10 minutes
-        const expire = 10 * 60;
-        const result = await this.cluster.setex(
-            phoneKey,
-            expire,
-            JSON.stringify(newVerification)
-        );
-
-        return result === 'OK';
+        return isValid;
     }
 
     async isVerifiedPhone(phone: string): Promise<boolean> {
