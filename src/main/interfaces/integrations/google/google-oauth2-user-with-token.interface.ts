@@ -14,4 +14,6 @@ export interface GoogleOAuth2UserWithToken {
     schedules: GoogleCalendarScheduleBody;
 
     tokens: OAuthToken;
+
+    insufficientPermission: boolean;
 }

@@ -46,6 +46,7 @@ export class TokenService {
 
     generateGoogleOAuthAuthoizationUrl(
         integrationContext: IntegrationContext,
+        timezone: string | null,
         accessToken: string | null
     ): string {
 
@@ -55,37 +56,40 @@ export class TokenService {
 
         return this.googleIntegrationFacade.generateGoogleOAuthAuthoizationUrl(
             integrationContext,
-            decodedUserOrNull
+            decodedUserOrNull,
+            timezone
         );
     }
 
     async issueTokenByGoogleOAuth(
         authorizationCode: string,
+        timezone: string,
         integrationContext: IntegrationContext,
         requestUserEmail: string | null,
         language: Language
-    ): Promise<{ issuedToken: CreateTokenResponseDto; isNewbie: boolean }> {
-        const { googleUser, calendars, schedules, tokens } =
+    ): Promise<{ issuedToken: CreateTokenResponseDto; isNewbie: boolean; insufficientPermission: boolean }> {
+        const { googleUser, calendars, schedules, tokens, insufficientPermission } =
             await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode, {
                 onlyPrimaryCalendarSchedule: true
             });
         const googleUserEmail = googleUser.email;
 
         let loadedUserOrNull = await this.userService.findUserByEmail(requestUserEmail || googleUser.email);
-        const canBeSignUpContext = integrationContext === IntegrationContext.SIGN_UP || integrationContext === IntegrationContext.SIGN_IN;
 
         const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
 
+        const canBeSignUpContext = integrationContext === IntegrationContext.SIGN_UP || integrationContext === IntegrationContext.SIGN_IN;
         const isNewbie = canBeSignUpContext && loadedUserOrNull === null;
+        const isSignUp = canBeSignUpContext && isNewbie;
 
-        if (canBeSignUpContext && isNewbie) {
-            const primaryGoogleCalendar = calendars.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
-            const timezone = primaryGoogleCalendar.timeZone as string;
+        if (isSignUp) {
+            const primaryGoogleCalendar = calendars?.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
+            const ensuredTimezone = timezone || primaryGoogleCalendar?.timeZone as string;
 
             const createUserRequestDto: CreateUserRequestDto = {
                 email: googleUser.email,
                 name: googleUser.name,
-                timezone
+                timezone: ensuredTimezone
             };
 
             loadedUserOrNull = await this.userService.createUserByGoogleOAuth2(
@@ -140,7 +144,7 @@ export class TokenService {
         }
 
         const issuedToken = this.issueToken(loadedUserOrNull as User);
-        return { issuedToken, isNewbie };
+        return { issuedToken, isNewbie, insufficientPermission };
     }
 
     issueTokenByRefreshToken(refreshToken: string): CreateTokenResponseDto {

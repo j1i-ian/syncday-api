@@ -5,4 +5,6 @@ export interface GoogleIntegrationState {
 
     // sync user's email
     requestUserEmail?: string | undefined;
+
+    timezone: string;
 }

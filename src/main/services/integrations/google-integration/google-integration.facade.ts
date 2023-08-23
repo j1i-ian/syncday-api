@@ -14,6 +14,8 @@ import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/
 import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
 import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleIntegrationState } from '@app/interfaces/integrations/google/google-integration-state.interface';
+import { GoogleAxiosErrorReasons } from '@app/interfaces/integrations/google/google-axios-error-reasons.enum';
+import { GoogleAxiosErrorResponse } from '@app/interfaces/integrations/google/google-axios-error-response.interface';
 
 @Injectable()
 export class GoogleIntegrationFacade {
@@ -56,7 +58,20 @@ export class GoogleIntegrationFacade {
         });
         const googleUserInfo = await googleOAuthUserService.getGoogleUserInfo(oauthClient);
 
-        const calendars = await googleCalendarListService.search(oauthClient);
+        let insufficientPermission = false;
+        let calendars: calendar_v3.Schema$CalendarList = { items: [] };
+
+        try {
+            calendars = await googleCalendarListService.search(oauthClient);
+        } catch (error) {
+
+            const insufficientPermissionError = (error as GoogleAxiosErrorResponse).errors.find((error) => error.reason === GoogleAxiosErrorReasons.INSUFFICIENT_PERMISSIONS);
+            if (insufficientPermissionError) {
+                insufficientPermission = true;
+            } else {
+                throw error;
+            }
+        }
 
         const googleScheduleRecordArray = await Promise.all(
             (calendars.items as calendar_v3.Schema$CalendarListEntry[])
@@ -94,13 +109,15 @@ export class GoogleIntegrationFacade {
             googleUser: googleUserInfo as GoogleOAuth2UserWithToken['googleUser'],
             tokens,
             calendars: calendars as GoogleOAuth2UserWithToken['calendars'],
-            schedules
+            schedules,
+            insufficientPermission
         };
     }
 
     generateGoogleOAuthAuthoizationUrl(
         integrationContext: IntegrationContext,
-        decodedUserOrNull: User | null
+        decodedUserOrNull: User | null,
+        timezone: string | null
     ): string {
         const redirectURI = this.signInOrUpRedirectURI;
 
@@ -115,7 +132,8 @@ export class GoogleIntegrationFacade {
 
         const stateParams = {
             integrationContext,
-            requestUserEmail: decodedUserOrNull?.email
+            requestUserEmail: decodedUserOrNull?.email,
+            timezone
         } as GoogleIntegrationState;
 
         const jsonStringifiedStateParams = JSON.stringify(stateParams);
