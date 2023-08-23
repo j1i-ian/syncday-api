@@ -172,32 +172,43 @@ describe('VerificationService', () => {
         });
 
         describe('Test publishSyncdayNotification', () => {
+
             [
                 {
-                    description: 'should be published email verification',
+                    description: 'should be published user verification email',
                     languageMock: Language.ENGLISH,
                     createVerificationDtoMock: {
                         email: TestMockUtil.faker.internet.email()
                     } as Verification,
+                    isAlreadySignedUpUserOnEmailVerificationMock: false,
                     expectedResult: true
                 },
                 {
-                    description: 'should be published notification ',
+                    description: 'should be published user alreday-sign-up email',
+                    languageMock: Language.ENGLISH,
+                    createVerificationDtoMock: {
+                        email: TestMockUtil.faker.internet.email()
+                    } as Verification,
+                    isAlreadySignedUpUserOnEmailVerificationMock: true,
+                    expectedResult: true
+                },
+                {
+                    description: 'should be published phoneNumber verification message',
                     languageMock: Language.ENGLISH,
                     createVerificationDtoMock: {
                         phoneNumber: TestMockUtil.faker.phone.number()
                     } as Verification,
+                    isAlreadySignedUpUserOnEmailVerificationMock: false,
                     expectedResult: true
                 }
             ].forEach(function ({
                 description,
                 languageMock,
                 createVerificationDtoMock,
+                isAlreadySignedUpUserOnEmailVerificationMock,
                 expectedResult
             }) {
                 it(description, async () => {
-
-                    const isAlreadySignedUpUserOnEmailVerificationMock = true;
 
                     integrationsServiceStub.sendMessage.resolves(true);
 
