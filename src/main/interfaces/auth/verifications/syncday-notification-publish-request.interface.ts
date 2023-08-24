@@ -1,6 +1,6 @@
-import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
-import { SyncdayNotificationPublishKey } from '@core/interfaces/integrations/syncday-notification-publish-key.enum';
-import { TextTemplate } from '@core/interfaces/integrations/text-template.enum';
+import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
+import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
+import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
 import { Verification } from '@entity/verifications/verification.interface';
 
 export interface SyncdayNotificationPublishRequest {

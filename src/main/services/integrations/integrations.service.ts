@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
-import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
-import { SyncdayEmailAwsSnsRequest } from '@core/interfaces/integrations/syncday-email-aws-sns-request.interface';
-import { TextTemplate } from '@core/interfaces/integrations/text-template.enum';
-import { SyncdayTextAwsSnsRequest } from '@core/interfaces/integrations/syncday-text-aws-sns-request.interface';
-import { SyncdayNotificationPublishKey } from '@core/interfaces/integrations/syncday-notification-publish-key.enum';
+import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
+import { SyncdayEmailAwsSnsRequest } from '@core/interfaces/notifications/syncday-email-aws-sns-request.interface';
+import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
+import { SyncdayTextAwsSnsRequest } from '@core/interfaces/notifications/syncday-text-aws-sns-request.interface';
+import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { AppConfigService } from '@config/app-config.service';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { Language } from '@app/enums/language.enum';

@@ -1,8 +1,8 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
-import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
-import { TextTemplate } from '@core/interfaces/integrations/text-template.enum';
-import { SyncdayNotificationPublishKey } from '@core/interfaces/integrations/syncday-notification-publish-key.enum';
+import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
+import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
+import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { UtilService } from '@services/util/util.service';
