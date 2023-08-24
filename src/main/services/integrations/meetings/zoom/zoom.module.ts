@@ -2,7 +2,7 @@ import { HttpModule } from '@nestjs/axios';
 import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ZoomMeeting } from '@entity/integrations/zoom/zoom-meeting.entity';
+import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { UserModule } from '@app/services/users/user.module';
 import { UtilModule } from '@app/services/util/util.module';
 import { ZoomMeetingController } from './zoom-meeting.controller';
@@ -14,7 +14,7 @@ import { ZoomMeetingIntegrationService } from './zoom-meeting-integration.servic
         UtilModule,
         ConfigModule,
         HttpModule,
-        TypeOrmModule.forFeature([ZoomMeeting])
+        TypeOrmModule.forFeature([ZoomIntegration])
     ],
     providers: [ZoomMeetingIntegrationService],
     exports: [ZoomMeetingIntegrationService],

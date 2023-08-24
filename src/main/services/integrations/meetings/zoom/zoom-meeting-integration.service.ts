@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { RawAxiosRequestHeaders } from 'axios';
 import { Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { ZoomMeeting } from '@entity/integrations/zoom/zoom-meeting.entity';
+import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { ZoomTokenResponseDTO } from '@app/interfaces/integrations/zoom/zoom-token-response.interface';
 import { ZoomTokenRequestDTO } from '@app/interfaces/integrations/zoom/zoom-token-request.interface';
 import { UserService } from '@app/services/users/user.service';
@@ -22,12 +22,12 @@ export class ZoomMeetingIntegrationService {
         private readonly httpService: HttpService,
         private readonly userService: UserService,
         private readonly utilService: UtilService,
-        @InjectRepository(ZoomMeeting)
-        private readonly zoomMeetingRepository: Repository<ZoomMeeting>,
+        @InjectRepository(ZoomIntegration)
+        private readonly zoomMeetingRepository: Repository<ZoomIntegration>,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
-    async createIntegration(userId: number, authCode: string): Promise<ZoomMeeting> {
+    async createIntegration(userId: number, authCode: string): Promise<ZoomIntegration> {
         const alreadyExistZoomIntegarion = await this.zoomMeetingRepository.findOne({
             where: {
                 users: {
@@ -50,7 +50,7 @@ export class ZoomMeetingIntegrationService {
 
         const user = await this.userService.findUserById(userId);
 
-        const newZoomMeeting = new ZoomMeeting();
+        const newZoomMeeting = new ZoomIntegration();
         newZoomMeeting.email = email;
         newZoomMeeting.accessToken = access_token;
         newZoomMeeting.refreshToken = refresh_token;
@@ -72,7 +72,7 @@ export class ZoomMeetingIntegrationService {
         await this.zoomMeetingRepository.remove(zoomIntegration);
     }
 
-    async fetchZoomMeeting(userId: number): Promise<ZoomMeeting> {
+    async fetchZoomMeeting(userId: number): Promise<ZoomIntegration> {
         const zoomIntegration = await this.zoomMeetingRepository.findOneOrFail({
             where: {
                 users: {
@@ -161,9 +161,9 @@ export class ZoomMeetingIntegrationService {
                     headers
                 })
             );
-            const zoomUerInfo: ZoomUserResponseDTO = zoomUserInfoResponse.data;
+            const zoomUserInfo: ZoomUserResponseDTO = zoomUserInfoResponse.data;
 
-            return zoomUerInfo;
+            return zoomUserInfo;
         } catch (error) {
             this.logger.error(error);
             throw new ZoomIntegrationFailException('Failed to retry to link with Zoom');
