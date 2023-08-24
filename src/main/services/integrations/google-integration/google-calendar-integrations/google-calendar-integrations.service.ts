@@ -19,6 +19,7 @@ import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarIntegrationSearchOption } from '@app/interfaces/integrations/google/google-calendar-integration-search-option.interface';
 import { GoogleCalendarDetail } from '@app/interfaces/integrations/google/google-calendar-detail.interface';
@@ -131,6 +132,8 @@ export class GoogleCalendarIntegrationsService {
             return _newSchedule;
         });
 
+        const _scheduleRepository = manager.getRepository(Schedule);
+        const _scheduledEventNotificationRepository = manager.getRepository(ScheduledEventNotification);
         const _googleIntegrationScheduleRepository = manager.getRepository(GoogleIntegrationSchedule);
 
         // create new schedules
@@ -139,10 +142,43 @@ export class GoogleCalendarIntegrationsService {
         }
 
         // delete old schedules
-        await _googleIntegrationScheduleRepository.delete({
+        const loadedGoogleIntegrationSchedules = await _googleIntegrationScheduleRepository.findBy({
             iCalUID: Not(In(loadedGoogleEventICalUIDs)),
             googleCalendarIntegrationId: googleCalendarIntegration.id
         });
+
+        const deleteICalUIDs = loadedGoogleIntegrationSchedules.map(
+            (_googleIntegrationSchedule) => _googleIntegrationSchedule.iCalUID
+        );
+
+        await _googleIntegrationScheduleRepository.delete({
+            iCalUID: In(deleteICalUIDs),
+            googleCalendarIntegrationId: googleCalendarIntegration.id
+        });
+
+        /**
+         * TODO: We should find a way to improve soft delete for schedules with removing notifications
+         */
+        const schedules = await _scheduleRepository.find({
+            relations: ['scheduledEventNotifications'],
+            where: {
+                iCalUID: In(deleteICalUIDs)
+            }
+        });
+        const allNotificationIds = schedules
+            .flatMap((_schedule) => _schedule.scheduledEventNotifications)
+            .map((_scheduleNotification) => _scheduleNotification.id);
+
+        await _scheduleRepository.softDelete({
+            id: In(schedules.map((_schedule) => _schedule.id))
+        });
+
+        if (allNotificationIds.length > 0) {
+            await _scheduledEventNotificationRepository.delete({
+                id: In(allNotificationIds)
+            });
+        }
+
     }
 
     search({

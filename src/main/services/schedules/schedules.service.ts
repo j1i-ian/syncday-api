@@ -186,6 +186,8 @@ export class SchedulesService {
                                     patchedSchedule
                                 )).pipe(mergeMap((createdGoogleCalendarEvent) => {
 
+                                    patchedSchedule.iCalUID = createdGoogleCalendarEvent.iCalUID as string;
+
                                     if (this.hasScheduleLink(patchedSchedule)) {
 
                                         const googleMeetConferenceLink = createdGoogleCalendarEvent.conferenceData as calendar_v3.Schema$ConferenceData;
