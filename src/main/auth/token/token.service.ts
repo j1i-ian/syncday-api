@@ -81,6 +81,7 @@ export class TokenService {
         const canBeSignUpContext = integrationContext === IntegrationContext.SIGN_UP || integrationContext === IntegrationContext.SIGN_IN;
         const isNewbie = canBeSignUpContext && loadedUserOrNull === null;
         const isSignUp = canBeSignUpContext && isNewbie;
+        const isSignIn = canBeSignUpContext && !isNewbie;
 
         if (isSignUp) {
             const primaryGoogleCalendar = calendars?.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
@@ -103,7 +104,7 @@ export class TokenService {
                 },
                 language
             );
-        } else if (integrationContext === IntegrationContext.SIGN_IN) {
+        } else if (isSignIn) {
 
             const ensuredUser = loadedUserOrNull as User;
             const hasUserGoogleIntegration =
