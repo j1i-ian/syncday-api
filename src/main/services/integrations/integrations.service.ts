@@ -2,10 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
-import { SyncdayEmailAwsSnsRequest } from '@core/interfaces/notifications/syncday-email-aws-sns-request.interface';
 import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
-import { SyncdayTextAwsSnsRequest } from '@core/interfaces/notifications/syncday-text-aws-sns-request.interface';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
+import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { Language } from '@app/enums/language.enum';
@@ -29,22 +28,12 @@ export class IntegrationsService {
             StringValue: JSON.stringify([syncdayNotificationPublishKey])
         };
 
-        let body: SyncdayEmailAwsSnsRequest | SyncdayTextAwsSnsRequest;
-        if (syncdayNotificationPublishKey === SyncdayNotificationPublishKey.EMAIL) {
-            body = {
-                recipient,
-                emailTemplate: templateType as EmailTemplate,
-                language,
-                data
-            } as SyncdayEmailAwsSnsRequest;
-        } else {
-            body = {
-                recipient,
-                templateName: templateType as TextTemplate,
-                language,
-                data
-            } as SyncdayTextAwsSnsRequest;
-        }
+        const body = {
+            recipient,
+            template: templateType,
+            language,
+            data
+        } as SyncdayAwsSnsRequest;
 
         const params: PublishCommandInput = {
             Message: JSON.stringify(body),
