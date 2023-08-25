@@ -5,6 +5,8 @@ import { plainToInstance } from 'class-transformer';
 import { Observable, from } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -19,9 +21,7 @@ import { GoogleIntegration } from '@entity/integrations/google/google-integratio
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
-import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
-import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
 import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';

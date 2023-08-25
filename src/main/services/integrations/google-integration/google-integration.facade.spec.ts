@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from '@nestjs/common';
 import { Auth, calendar_v3 } from 'googleapis';
+import { GoogleOAuth2Setting } from '@core/interfaces/auth/google-oauth2-setting.interface';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
@@ -10,8 +12,7 @@ import { GoogleOAuthTokenService } from '@services/integrations/google-integrati
 import { GoogleOAuthUserService } from '@services/integrations/google-integration/facades/google-oauth-user.service';
 import { GoogleCalendarListService } from '@services/integrations/google-integration/facades/google-calendar-list.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
-import { GoogleOAuth2Setting } from '@app/interfaces/auth/google-oauth2-setting.interface';
-import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
+import { User } from '@entity/users/user.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleIntegrationFacade } from './google-integration.facade';
 
@@ -139,8 +140,8 @@ describe('GoogleIntegrationFacade', () => {
 
     it('should be generated google oauth Authorization url', () => {
         const authorizationUrlStub = TestMockUtil.faker.internet.url();
-
-        const requestUserEmailMock = 'alan@sync.day';
+        const requestUserMock = stubOne(User);
+        const timezoneDummy = 'fakeTimezone';
 
         const oauth2ClientStub = serviceSandbox.createStubInstance(Auth.OAuth2Client);
         generateGoogleOAuthClientStub.returns(oauth2ClientStub);
@@ -149,7 +150,8 @@ describe('GoogleIntegrationFacade', () => {
 
         const authorizationUrl = service.generateGoogleOAuthAuthoizationUrl(
             IntegrationContext.SIGN_IN,
-            requestUserEmailMock
+            requestUserMock,
+            timezoneDummy
         );
 
         expect(authorizationUrl).ok;

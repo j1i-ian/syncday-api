@@ -3,16 +3,16 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { calendar_v3 } from 'googleapis';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
-import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
+import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { User } from '@entity/users/user.entity';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
-import { GoogleOAuth2UserWithToken } from '@app/interfaces/integrations/google/google-oauth2-user-with-token.interface';
-import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
-import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { UserService } from '../../services/users/user.service';
 import { faker } from '@faker-js/faker';
 import { TokenService } from './token.service';
@@ -126,12 +126,8 @@ describe('TokenService', () => {
     describe('Test issueTokenByGoogleOAuth', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
-        before(() => {
+        beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
-        });
-
-        after(() => {
-            serviceSandbox.restore();
         });
 
         afterEach(() => {
@@ -139,56 +135,194 @@ describe('TokenService', () => {
             userServiceStub.findUserByEmail.reset();
             userServiceStub.createUserByGoogleOAuth2.reset();
 
+            googleIntegrationsServiceStub.create.reset();
             googleConverterServiceStub.convertToGoogleCalendarIntegration.reset();
+
+            serviceSandbox.restore();
         });
 
-        it('should be issued token for google oauth which newbie is true', async () => {
-            const userStub = stubOne(User);
-            const userSettingMock = stubOne(UserSetting);
-            const languageMock = userSettingMock.preferredLanguage;
-            const authorizationCodeMock = faker.datatype.uuid();
+        [
+            {
+                description: 'should be issued token for google oauth sign up user',
+                integratinoContext: IntegrationContext.SIGN_UP,
+                googleOAuth2UserWithToken: {
+                    googleUser: {
+                        email: 'fakeEmail',
+                        name: 'fakeName'
+                    },
+                    calendars: {
+                        items: [
+                            { primary: true, timeZone: 'Asia/Seoul' }
+                        ]
+                    } as calendar_v3.Schema$CalendarList,
+                    schedules: {
+                        'primary': []
+                    } as GoogleCalendarScheduleBody,
+                    tokens: {} as OAuthToken,
+                    insufficientPermission: false
+                } as GoogleOAuth2UserWithToken,
+                getFindUserStub: () => null,
+                isExpectedNewbie: true,
+                createUserByGoogleOAuth2Call: true,
+                googleIntegrationServiceCreateCall: false
+            },
+            {
+                description: 'should be issued token for google oauth sign in user',
+                integratinoContext: IntegrationContext.SIGN_IN,
+                googleOAuth2UserWithToken: {
+                    googleUser: {
+                        email: 'fakeEmail',
+                        name: 'fakeName'
+                    },
+                    calendars: {
+                        items: [
+                            { primary: true, timeZone: 'Asia/Seoul' }
+                        ]
+                    } as calendar_v3.Schema$CalendarList,
+                    schedules: {
+                        'primary': []
+                    } as GoogleCalendarScheduleBody,
+                    tokens: {} as OAuthToken,
+                    insufficientPermission: false
+                } as GoogleOAuth2UserWithToken,
+                getFindUserStub: () => stubOne(User, {
+                    googleIntergrations: []
+                }),
+                isExpectedNewbie: false,
+                createUserByGoogleOAuth2Call: false,
+                googleIntegrationServiceCreateCall: true
+            },
+            {
+                description: 'should be issued token for google oauth sign in user with google integration creating',
+                integratinoContext: IntegrationContext.SIGN_IN,
+                googleOAuth2UserWithToken: {
+                    googleUser: {
+                        email: 'fakeEmail',
+                        name: 'fakeName'
+                    },
+                    calendars: {
+                        items: [
+                            { primary: true, timeZone: 'Asia/Seoul' }
+                        ]
+                    } as calendar_v3.Schema$CalendarList,
+                    schedules: {
+                        'primary': []
+                    } as GoogleCalendarScheduleBody,
+                    tokens: {} as OAuthToken,
+                    insufficientPermission: false
+                } as GoogleOAuth2UserWithToken,
+                getFindUserStub: () => stubOne(User, {
+                    googleIntergrations: stub(GoogleIntegration)
+                }),
+                isExpectedNewbie: false,
+                createUserByGoogleOAuth2Call: false,
+                googleIntegrationServiceCreateCall: false
+            },
+            {
+                description: 'should be issued token with google integration for already signed up user',
+                integratinoContext: IntegrationContext.INTEGRATE,
+                googleOAuth2UserWithToken: {
+                    googleUser: {
+                        email: 'fakeEmail',
+                        name: 'fakeName'
+                    },
+                    calendars: {
+                        items: [
+                            { primary: true, timeZone: 'Asia/Seoul' }
+                        ]
+                    } as calendar_v3.Schema$CalendarList,
+                    schedules: {
+                        'primary': []
+                    } as GoogleCalendarScheduleBody,
+                    tokens: {} as OAuthToken,
+                    insufficientPermission: false
+                } as GoogleOAuth2UserWithToken,
+                getFindUserStub: () => stubOne(User, {
+                    googleIntergrations: []
+                }),
+                isExpectedNewbie: false,
+                createUserByGoogleOAuth2Call: false,
+                googleIntegrationServiceCreateCall: true
+            },
+            {
+                description: 'should be issued token if the user already has Google integration associated with the same email, a new integration should not be created.',
+                integratinoContext: IntegrationContext.INTEGRATE,
+                googleOAuth2UserWithToken: {
+                    googleUser: {
+                        email: 'fakeEmail',
+                        name: 'fakeName'
+                    },
+                    calendars: {
+                        items: [
+                            { primary: true, timeZone: 'Asia/Seoul' }
+                        ]
+                    } as calendar_v3.Schema$CalendarList,
+                    schedules: {
+                        'primary': []
+                    } as GoogleCalendarScheduleBody,
+                    tokens: {} as OAuthToken,
+                    insufficientPermission: false
+                } as GoogleOAuth2UserWithToken,
+                getFindUserStub: () => stubOne(User, {
+                    email: 'fakeEmail',
+                    googleIntergrations: [stubOne(GoogleIntegration, {
+                        email: 'fakeEmail'
+                    })]
+                }),
+                isExpectedNewbie: false,
+                createUserByGoogleOAuth2Call: false,
+                googleIntegrationServiceCreateCall: false
+            }
+        ].forEach(function({
+            description,
+            integratinoContext,
+            googleOAuth2UserWithToken,
+            getFindUserStub,
+            isExpectedNewbie,
+            createUserByGoogleOAuth2Call,
+            googleIntegrationServiceCreateCall
+        }) {
 
-            const googleUserStub = {
-                email: 'fakeEmail',
-                name: 'fakeName'
-            };
+            it(description, async () => {
+                const createUserStub = stubOne(User);
+                const userSettingMock = stubOne(UserSetting);
+                const languageDummy = userSettingMock.preferredLanguage;
+                const authorizationCodeMock = faker.datatype.uuid();
+                const findUserStub = getFindUserStub();
 
-            googleIntegrationFacadeStub.fetchGoogleUsersWithToken.resolves({
-                googleUser: googleUserStub,
-                calendars: {
-                    items: [
-                        { primary: true, timeZone: 'Asia/Seoul' }
-                    ]
-                } as calendar_v3.Schema$CalendarList,
-                schedules: {
-                    'primary': []
-                } as GoogleCalendarScheduleBody,
-                tokens: {} as OAuthToken
-            } as GoogleOAuth2UserWithToken);
+                const timezoneDummy = 'faketimezone';
 
-            userServiceStub.findUserByEmail.resolves(null);
-            userServiceStub.createUserByGoogleOAuth2.resolves(userStub);
+                googleIntegrationFacadeStub.fetchGoogleUsersWithToken.resolves(googleOAuth2UserWithToken);
 
-            const issuedTokenStub: CreateTokenResponseDto = {
-                accessToken: 'fakeJwtToken',
-                refreshToken: 'fakeRefreshToken'
-            };
+                userServiceStub.findUserByEmail.resolves(findUserStub);
+                userServiceStub.createUserByGoogleOAuth2.resolves(createUserStub);
 
-            serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
+                const issuedTokenStub: CreateTokenResponseDto = {
+                    accessToken: 'fakeJwtToken',
+                    refreshToken: 'fakeRefreshToken'
+                };
 
-            const { issuedToken } = await service.issueTokenByGoogleOAuth(
-                authorizationCodeMock,
-                IntegrationContext.SIGN_UP,
-                userStub.email,
-                languageMock
-            );
+                serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
 
-            expect(issuedToken).ok;
+                const { issuedToken, isNewbie, insufficientPermission } = await service.issueTokenByGoogleOAuth(
+                    authorizationCodeMock,
+                    timezoneDummy,
+                    integratinoContext,
+                    createUserStub.email,
+                    languageDummy
+                );
 
-            expect(googleIntegrationFacadeStub.fetchGoogleUsersWithToken.called).true;
-            expect(userServiceStub.findUserByEmail.called).true;
-            expect(userServiceStub.createUserByGoogleOAuth2.called).true;
-            expect(googleConverterServiceStub.convertToGoogleCalendarIntegration.called).true;
+                expect(issuedToken).ok;
+                expect(isNewbie).equals(isExpectedNewbie);
+                expect(insufficientPermission).equals(googleOAuth2UserWithToken.insufficientPermission);
+
+                expect(googleIntegrationFacadeStub.fetchGoogleUsersWithToken.called).true;
+                expect(userServiceStub.findUserByEmail.called).true;
+                expect(userServiceStub.createUserByGoogleOAuth2.called).equals(createUserByGoogleOAuth2Call);
+                expect(googleIntegrationsServiceStub.create.called).equals(googleIntegrationServiceCreateCall);
+                expect(googleConverterServiceStub.convertToGoogleCalendarIntegration.called).true;
+            });
         });
+
     });
 });

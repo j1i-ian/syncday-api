@@ -3,6 +3,9 @@ import { RRule } from 'rrule';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { calendar_v3 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { TimezoneOffset } from '@core/interfaces/integrations/timezone-offset.interface';
+import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
+import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
 import { Notification } from '@interfaces/notifications/notification';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
@@ -11,9 +14,6 @@ import { UtilService } from '@services/util/util.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
-import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
-import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
-import { TimezoneOffset } from '@app/interfaces/integrations/timezone-offset.interface';
 
 @Injectable()
 export class GoogleConverterService {

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
@@ -11,8 +13,6 @@ import { GoogleCalendarIntegration } from '@entity/integrations/google/google-ca
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
-import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
-import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
 
 @Injectable()
 export class GoogleIntegrationsService implements IntegrationsServiceInterface {
@@ -73,7 +73,7 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         const newGoogleIngration: GoogleIntegration = {
             accessToken: googleAuthToken.accessToken,
             refreshToken: googleAuthToken.refreshToken,
-            email: user.email,
+            email: googleIntegrationBody.googleUserEmail,
             users: [user],
             googleCalendarIntegrations: googleCalendarIntegrations.map((calendar) => {
 

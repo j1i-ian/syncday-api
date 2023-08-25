@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { SNSClient } from '@aws-sdk/client-sns';
-import { EmailTemplate } from '@core/interfaces/integrations/email-template.enum';
-import { SyncdayAwsSdkSnsNotificationService } from '@core/interfaces/integrations/syncday-aws-sdk-sns-notification-service.enum';
+import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
+import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { AppConfigService } from '@config/app-config.service';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { FileUtilsService } from '@services/util/file-utils/file-utils.service';
@@ -82,7 +82,7 @@ describe('IntegrationsService', () => {
             awsSnsClientStub.send.resolves(publishCommandOutputStub);
 
             const result = await service.sendMessage(
-                SyncdayAwsSdkSnsNotificationService.EMAIL,
+                SyncdayNotificationPublishKey.EMAIL,
                 emailTemplateMock,
                 recipientMock,
                 languageMock,

@@ -111,12 +111,52 @@ describe('UtilService', () => {
             });
     });
 
-    it('should be generated default event', () => {
-        const defaultEvent = service.getDefaultEvent();
+    describe('Test getDefaultEvent', () => {
 
-        expect(defaultEvent).ok;
-        expect(defaultEvent.bufferTime).ok;
+        it('should be generated a default event', () => {
+            const defaultEvent = service.getDefaultEvent();
+
+            expect(defaultEvent).ok;
+            expect(defaultEvent.bufferTime).ok;
+        });
+
+        it('should be generated a default event with a default link', () => {
+            const defaultEvent = service.getDefaultEvent();
+            const expectedDefaultEventLink = '30-minute-meeting';
+
+            expect(defaultEvent).ok;
+            expect(defaultEvent.bufferTime).ok;
+            expect(defaultEvent.link).ok;
+            expect(defaultEvent.link).equals(expectedDefaultEventLink);
+        });
+
+        it('should be generated a default event with a link where changed lowercase from uppercased link', () => {
+
+            const uppercaseEventLink = '30-Minute-Meeting';
+            const expectedEventLink = '30-minute-meeting';
+
+            const defaultEvent = service.getDefaultEvent({
+                link: uppercaseEventLink
+            });
+
+            expect(defaultEvent).ok;
+            expect(defaultEvent.link).equals(expectedEventLink);
+        });
+
+        it('should be generated a default event with a link where spaces are replaced with dashes', () => {
+
+            const eventLinkWithSpacings = '30 minute meeting';
+            const expectedEventLink = '30-minute-meeting';
+
+            const defaultEvent = service.getDefaultEvent({
+                link: eventLinkWithSpacings
+            });
+
+            expect(defaultEvent).ok;
+            expect(defaultEvent.link).equals(expectedEventLink);
+        });
     });
+
 
     describe('Test convert', () => {
         let serviceSandbox: sinon.SinonSandbox;
@@ -160,7 +200,6 @@ describe('UtilService', () => {
             expect(patchedSchedule.color).equals(eventMock.color);
         });
     });
-
 
     describe('Test Getting default user setting', () => {
         it('should be got default user setting which has email as workspace when there is user email', () => {
@@ -262,6 +301,16 @@ describe('UtilService', () => {
             const actual = service.toYYYYMMDD(sample);
 
             expect(actual).equal(expected);
+        });
+    });
+
+    describe('Test getDefaultAvailabilityName', () => {
+        Object.values(Language).forEach(function(language: Language) {
+            it(`should be retrieved a default availability name for ${language}`, () => {
+                const defaultName = service.getDefaultAvailabilityName(language);
+
+                expect(defaultName).ok;
+            });
         });
     });
 });

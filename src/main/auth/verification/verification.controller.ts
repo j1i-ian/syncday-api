@@ -12,24 +12,17 @@ export class VerificationController {
     @Post()
     @Header('Content-type', 'application/json')
     @Public()
-    create(
+    async create(
         @Body() createVerificationDto: CreateVerificationDto,
         @BCP47AcceptLanguage() language: Language
     ): Promise<boolean> {
-        const { email, phoneNumber } = createVerificationDto;
 
-        const isEmail = !!email && !phoneNumber;
-        const isPhone = !email && !!phoneNumber;
+        let isValid = this.verificationService.validateCreateVerificationDto(createVerificationDto);
 
-        let result;
-        if (isEmail) {
-            result = this.verificationService.createVerification(email, language);
-        } else if (isPhone) {
-            result = this.verificationService.createVerificationWithPhoneNumber(phoneNumber, language);
-        } else {
-            result = Promise.resolve(false);
+        if (isValid) {
+            isValid = await this.verificationService.createVerification(createVerificationDto, language);
         }
 
-        return result;
+        return isValid;
     }
 }

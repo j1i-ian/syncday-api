@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { calendar_v3 } from 'googleapis';
+import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
+import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
+import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
+import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
+import { GoogleIntegrationState } from '@core/interfaces/integrations/google/google-integration-state.interface';
+import { GoogleAxiosErrorResponse } from '@core/interfaces/integrations/google/google-axios-error-response.interface';
+import { GoogleAxiosErrorReasons } from '@core/interfaces/integrations/google/google-axios-error-reasons.enum';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
@@ -9,11 +16,6 @@ import { GoogleOAuthUserService } from '@services/integrations/google-integratio
 import { GoogleCalendarListService } from '@services/integrations/google-integration/facades/google-calendar-list.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
 import { User } from '@entity/users/user.entity';
-import { GoogleOAuth2UserWithToken } from '@app/interfaces/integrations/google/google-oauth2-user-with-token.interface';
-import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
-import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
-import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
-import { GoogleIntegrationState } from '@app/interfaces/integrations/google/google-integration-state.interface';
 
 @Injectable()
 export class GoogleIntegrationFacade {
@@ -56,7 +58,20 @@ export class GoogleIntegrationFacade {
         });
         const googleUserInfo = await googleOAuthUserService.getGoogleUserInfo(oauthClient);
 
-        const calendars = await googleCalendarListService.search(oauthClient);
+        let insufficientPermission = false;
+        let calendars: calendar_v3.Schema$CalendarList = { items: [] };
+
+        try {
+            calendars = await googleCalendarListService.search(oauthClient);
+        } catch (error) {
+
+            const insufficientPermissionError = (error as GoogleAxiosErrorResponse).errors.find((error) => error.reason === GoogleAxiosErrorReasons.INSUFFICIENT_PERMISSIONS);
+            if (insufficientPermissionError) {
+                insufficientPermission = true;
+            } else {
+                throw error;
+            }
+        }
 
         const googleScheduleRecordArray = await Promise.all(
             (calendars.items as calendar_v3.Schema$CalendarListEntry[])
@@ -94,13 +109,15 @@ export class GoogleIntegrationFacade {
             googleUser: googleUserInfo as GoogleOAuth2UserWithToken['googleUser'],
             tokens,
             calendars: calendars as GoogleOAuth2UserWithToken['calendars'],
-            schedules
+            schedules,
+            insufficientPermission
         };
     }
 
     generateGoogleOAuthAuthoizationUrl(
         integrationContext: IntegrationContext,
-        decodedUserOrNull: User | null
+        decodedUserOrNull: User | null,
+        timezone: string | null
     ): string {
         const redirectURI = this.signInOrUpRedirectURI;
 
@@ -115,7 +132,8 @@ export class GoogleIntegrationFacade {
 
         const stateParams = {
             integrationContext,
-            requestUserEmail: decodedUserOrNull?.email
+            requestUserEmail: decodedUserOrNull?.email,
+            timezone
         } as GoogleIntegrationState;
 
         const jsonStringifiedStateParams = JSON.stringify(stateParams);

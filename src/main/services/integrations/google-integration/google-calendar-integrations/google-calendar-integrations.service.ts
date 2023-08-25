@@ -5,6 +5,9 @@ import { DataSource, EntityManager, FindOptionsWhere, In, Not, Repository } from
 import { Observable, firstValueFrom, from } from 'rxjs';
 import { Auth, calendar_v3 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
+import { GoogleCalendarIntegrationSearchOption } from '@core/interfaces/integrations/google/google-calendar-integration-search-option.interface';
+import { GoogleCalendarDetail } from '@core/interfaces/integrations/google/google-calendar-detail.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
@@ -19,10 +22,8 @@ import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
-import { GoogleCalendarIntegrationSearchOption } from '@app/interfaces/integrations/google/google-calendar-integration-search-option.interface';
-import { GoogleCalendarDetail } from '@app/interfaces/integrations/google/google-calendar-detail.interface';
-import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
 
 @Injectable()
@@ -131,6 +132,8 @@ export class GoogleCalendarIntegrationsService {
             return _newSchedule;
         });
 
+        const _scheduleRepository = manager.getRepository(Schedule);
+        const _scheduledEventNotificationRepository = manager.getRepository(ScheduledEventNotification);
         const _googleIntegrationScheduleRepository = manager.getRepository(GoogleIntegrationSchedule);
 
         // create new schedules
@@ -139,10 +142,43 @@ export class GoogleCalendarIntegrationsService {
         }
 
         // delete old schedules
-        await _googleIntegrationScheduleRepository.delete({
+        const loadedGoogleIntegrationSchedules = await _googleIntegrationScheduleRepository.findBy({
             iCalUID: Not(In(loadedGoogleEventICalUIDs)),
             googleCalendarIntegrationId: googleCalendarIntegration.id
         });
+
+        const deleteICalUIDs = loadedGoogleIntegrationSchedules.map(
+            (_googleIntegrationSchedule) => _googleIntegrationSchedule.iCalUID
+        );
+
+        await _googleIntegrationScheduleRepository.delete({
+            iCalUID: In(deleteICalUIDs),
+            googleCalendarIntegrationId: googleCalendarIntegration.id
+        });
+
+        /**
+         * TODO: We should find a way to improve soft delete for schedules with removing notifications
+         */
+        const schedules = await _scheduleRepository.find({
+            relations: ['scheduledEventNotifications'],
+            where: {
+                iCalUID: In(deleteICalUIDs)
+            }
+        });
+        const allNotificationIds = schedules
+            .flatMap((_schedule) => _schedule.scheduledEventNotifications)
+            .map((_scheduleNotification) => _scheduleNotification.id);
+
+        await _scheduleRepository.softDelete({
+            id: In(schedules.map((_schedule) => _schedule.id))
+        });
+
+        if (allNotificationIds.length > 0) {
+            await _scheduledEventNotificationRepository.delete({
+                id: In(allNotificationIds)
+            });
+        }
+
     }
 
     search({

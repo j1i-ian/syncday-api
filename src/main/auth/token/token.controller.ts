@@ -35,12 +35,14 @@ export class TokenController {
     @Public()
     issueTokenWithGoogleOAuth2(
         @Query('integrationContext', new ParseEnumPipe(IntegrationContext)) integrationContext: IntegrationContext,
+        @Query('timezone') timezone: string | null = null,
         @Query('Authorization') accessToken: string | null = null,
         @Res() response: Response
     ): void {
 
         const authorizationUrl = this.tokenService.generateGoogleOAuthAuthoizationUrl(
             integrationContext,
+            timezone,
             accessToken
         );
 
@@ -76,12 +78,14 @@ export class TokenController {
         const authorizationCode = url.searchParams.get('code') as string;
         const jsonStringifiedStateParams = url.searchParams.get('state') as string;
         const stateParams = JSON.parse(jsonStringifiedStateParams) as {
+            timezone: string;
             requestUserEmail: string | null;
             integrationContext: IntegrationContext;
         };
 
-        const { issuedToken, isNewbie } = await this.tokenService.issueTokenByGoogleOAuth(
+        const { issuedToken, isNewbie, insufficientPermission } = await this.tokenService.issueTokenByGoogleOAuth(
             authorizationCode,
+            stateParams.timezone,
             stateParams.integrationContext,
             stateParams.requestUserEmail,
             language
@@ -95,6 +99,7 @@ export class TokenController {
         redirectURL.searchParams.append('accessToken', issuedToken.accessToken);
         redirectURL.searchParams.append('refreshToken', issuedToken.refreshToken);
         redirectURL.searchParams.append('newbie', String(isNewbie));
+        redirectURL.searchParams.append('insufficientPermission', String(insufficientPermission));
 
         /**
          * TODO: url search param 대신 header 에 넣어서 전달하는 방법이 있는지 찾아봐야한다.

@@ -5,7 +5,6 @@ import 'reflect-metadata';
 import { SinonSandbox } from 'sinon';
 
 import { ArgumentsHost } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 import { UpdateResult } from 'typeorm';
 import { TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -14,6 +13,10 @@ import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
 import { QuestionInputType } from '@core/entities/invitee-questions/question-input-type.enum';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
+import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
+import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
@@ -21,17 +24,13 @@ import { Notification } from '@interfaces/notifications/notification';
 import { Reminder } from '@interfaces/reminders/reminder';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { EventSetting } from '@interfaces/events/event-setting';
-import { Verification } from '@entity/verifications/verification.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
+import { Verification } from '@entity/verifications/verification.interface';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
-import { GoogleIntegrationBody } from '@app/interfaces/integrations/google/google-integration-body.interface';
-import { GoogleCalendarScheduleBody } from '@app/interfaces/integrations/google/google-calendar-schedule-body.interface';
-import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
-import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
 import { Faker, faker } from '@faker-js/faker';
 import { DataSourceMock } from '@test/datasource-mock.interface';
 import { Language } from '../main/enums/language.enum';
@@ -74,10 +73,10 @@ export class TestMockUtil {
     getVerificationMock(): Verification {
         const emailMock = faker.internet.email('foo', 'bar');
 
-        return plainToInstance(Verification, {
+        return {
             email: emailMock,
             verificationCode: '1423'
-        });
+        } as Verification;
     }
 
     getGoogleScheduleMock(recurrenceRulesString = 'RRULE:FREQ=YEARLY'): GoogleCalendarEvent {
@@ -252,10 +251,12 @@ export class TestMockUtil {
 
     getGoogleIntegrationBodyMock(): GoogleIntegrationBody {
 
+        const email = 'private_google_email@sync.day';
         const calendarsMock = this.getGoogleCalendarMock();
         const googleCalendarScheduleBody = this.getGoogleCalendarScheduleBodyMock();
 
         return {
+            googleUserEmail: email,
             calendars: calendarsMock,
             schedules: googleCalendarScheduleBody
         };
