@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from '@nestjs/common';
 import { Auth, calendar_v3 } from 'googleapis';
+import { GoogleOAuth2Setting } from '@core/interfaces/auth/google-oauth2-setting.interface';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
@@ -11,8 +13,6 @@ import { GoogleOAuthUserService } from '@services/integrations/google-integratio
 import { GoogleCalendarListService } from '@services/integrations/google-integration/facades/google-calendar-list.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
 import { User } from '@entity/users/user.entity';
-import { GoogleOAuth2Setting } from '@app/interfaces/auth/google-oauth2-setting.interface';
-import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleIntegrationFacade } from './google-integration.facade';
 

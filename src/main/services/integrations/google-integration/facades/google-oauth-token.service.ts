@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Scope } from '@nestjs/common';
 import { Auth } from 'googleapis';
-import { OAuthToken } from '@app/interfaces/auth/oauth-token.interface';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 
 @Injectable({
     scope: Scope.REQUEST

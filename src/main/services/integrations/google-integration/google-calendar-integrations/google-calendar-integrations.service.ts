@@ -5,6 +5,9 @@ import { DataSource, EntityManager, FindOptionsWhere, In, Not, Repository } from
 import { Observable, firstValueFrom, from } from 'rxjs';
 import { Auth, calendar_v3 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
+import { GoogleCalendarIntegrationSearchOption } from '@core/interfaces/integrations/google/google-calendar-integration-search-option.interface';
+import { GoogleCalendarDetail } from '@core/interfaces/integrations/google/google-calendar-detail.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
@@ -21,9 +24,6 @@ import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
-import { GoogleCalendarIntegrationSearchOption } from '@app/interfaces/integrations/google/google-calendar-integration-search-option.interface';
-import { GoogleCalendarDetail } from '@app/interfaces/integrations/google/google-calendar-detail.interface';
-import { GoogleCalendarEvent } from '@app/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
 
 @Injectable()

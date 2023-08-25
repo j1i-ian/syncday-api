@@ -11,14 +11,14 @@ import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { CloudWatchLogs, CloudWatchLogsClientConfig } from '@aws-sdk/client-cloudwatch-logs';
 import { S3ClientConfig } from '@aws-sdk/client-s3';
 import { SNSClientConfig } from '@aws-sdk/client-sns';
+import { GoogleOAuth2Setting } from '@core/interfaces/auth/google-oauth2-setting.interface';
+import { GoogleCredentials } from '@core/interfaces/integrations/google/google-credential.interface';
 import * as ormConfig from '@config/ormconfig.json';
-import { GoogleCredentials } from '@app/interfaces/integrations/google/google-credential.interface';
 import { ClusterModuleAsyncOptions } from '@liaoliaots/nestjs-redis';
 
 // eslint-disable-next-line import/no-internal-modules
 import { NodeEnv } from './node-env.enum';
 import { ZoomBasicAuth } from '../main/interfaces/zoom-basic-auth.interface';
-import { GoogleOAuth2Setting } from '../main/interfaces/auth/google-oauth2-setting.interface';
 
 export class AppConfigService {
     static getGoogleOAuth2Setting(configService: ConfigService): GoogleOAuth2Setting {

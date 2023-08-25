@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
+import { TimezoneOffset } from '@core/interfaces/integrations/timezone-offset.interface';
 import { EventType } from '@interfaces/events/event-type.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
@@ -22,7 +23,6 @@ import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { Language } from '@app/enums/language.enum';
-import { TimezoneOffset } from '@app/interfaces/integrations/timezone-offset.interface';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { ZoomBasicAuth } from '../../interfaces/zoom-basic-auth.interface';
 

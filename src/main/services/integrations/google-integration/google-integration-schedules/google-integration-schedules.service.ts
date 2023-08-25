@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
+import { IntegrationSchedulesService } from '@core/interfaces/integration-schedules.service.interface';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
-import { IntegrationSchedulesService } from '@app/interfaces/integrations/integration-schedules.service.interface';
 
 @Injectable()
 export class GoogleIntegrationSchedulesService implements IntegrationSchedulesService {
