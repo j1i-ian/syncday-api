@@ -287,7 +287,6 @@ export class SchedulesService {
             ensuredStartDateTime,
             ensuredEndDateTime
         );
-        console.log('isTimeOverlappingWithAvailableTimes:', isTimeOverlappingWithAvailableTimes);
         const isNotTimeOverlappingWithAvailableTimes = !isTimeOverlappingWithAvailableTimes;
 
         const isInvalid = isPast || isNotConcatenatedTimes || isInvalidTimeOverlappingWithOverrides || isNotTimeOverlappingWithAvailableTimes;
