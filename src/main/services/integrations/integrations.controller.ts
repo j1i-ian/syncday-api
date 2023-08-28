@@ -1,6 +1,7 @@
 import { BadRequestException, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe } from '@nestjs/common';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { IntegrationsServiceInterface } from '@services/integrations/integrations.service.interface';
 import { Integration } from '@entity/integrations/integration.entity';
 /**
  * Sign up with Google API is located on token controller.
@@ -32,7 +33,7 @@ export class IntegrationsController {
         await integrationService.remove(vendorIntegrationId, userId);
     }
 
-    getService(vendor: string): GoogleIntegrationsService {
+    getService(vendor: string): IntegrationsServiceInterface {
 
         let myService;
         switch (vendor) {

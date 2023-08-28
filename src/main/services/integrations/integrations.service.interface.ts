@@ -26,4 +26,6 @@ export interface IntegrationsServiceInterface {
         calendarIntegrations: GoogleCalendarIntegration[],
         integrationBody: GoogleIntegrationBody
     ): Promise<Integration>;
+
+    remove(vendorIntegrationId: number, userId: number): Promise<boolean>;
 }
