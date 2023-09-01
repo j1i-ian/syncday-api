@@ -265,28 +265,32 @@ export class AppConfigService {
         };
     }
 
-    static getZoomBasicAuthValue(configService: ConfigService): ZoomBasicAuth {
-        const zoomBasicAuth: ZoomBasicAuth = {
+    static getBase64Encoded(id: string, password: string): string {
+
+        const basicAuthIdPassword = `${id}:${password}`;
+        const base64encoded = Buffer.from(basicAuthIdPassword).toString('base64');
+
+        return base64encoded;
+    }
+
+    static getZoomCredentials(configService: ConfigService): ZoomBasicAuth {
+        const zoomCredential: ZoomBasicAuth = {
             clientId: configService.get<string>('ZOOM_CLIENT_ID') as string,
             clientSecret: configService.get<string>('ZOOM_CLIENT_SECRET') as string
         };
-        return zoomBasicAuth;
+        return zoomCredential;
     }
 
-    static getZoomTokenUrl(configSerivce: ConfigService): string {
-        const zoomTokenUrl = configSerivce.get<string>('ZOOM_GET_TOKEN_URL') as string;
-        return zoomTokenUrl;
+    static getZoomRedirectUri(configSerivce: ConfigService): string {
+        const zoomRedirectURI = configSerivce.get<string>('ZOOM_REDIRECT_URI') as string;
+        return zoomRedirectURI;
     }
 
-    static getZoomUserInfoUrl(configSerivce: ConfigService): string {
-        const zoomTokenUrl = configSerivce.get<string>('ZOOM_USER_INFO_URL') as string;
-        return zoomTokenUrl;
+    static getZoomOAuth2SuccessRedirectURI(configSerivce: ConfigService): string {
+        const zoomOAuth2SuccessRedirectURI = configSerivce.get<string>('ZOOM_OAUTH2_SUCCESS_REDIRECT_URI') as string;
+        return zoomOAuth2SuccessRedirectURI;
     }
 
-    static getZoomIntegrationRedirectUrl(configSerivce: ConfigService): string {
-        const zoomTokenUrl = configSerivce.get<string>('ZOOM_INTEGRATION_REDIRECT_URL') as string;
-        return zoomTokenUrl;
-    }
     private static _getWinstonModuleProductionTransports(
         configService: ConfigService
     ): winston.transport {

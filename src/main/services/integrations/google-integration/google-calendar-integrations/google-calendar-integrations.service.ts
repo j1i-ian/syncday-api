@@ -558,6 +558,8 @@ export class GoogleCalendarIntegrationsService {
     }
 
     __patchSearchOption({
+        userId,
+        userUUID,
         userWorkspace,
         googleCalendarIntegrationUUID,
         conflictCheck,
@@ -575,7 +577,9 @@ export class GoogleCalendarIntegrationsService {
             users: {
                 userSetting: {
                     workspace: userWorkspace
-                }
+                },
+                id: userId,
+                uuid: userUUID
             }
         };
 

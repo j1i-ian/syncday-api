@@ -31,6 +31,7 @@ import { OverridedAvailabilityTime } from '@entity/availability/overrided-availa
 import { Verification } from '@entity/verifications/verification.interface';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
+import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
 import { Faker, faker } from '@faker-js/faker';
 import { DataSourceMock } from '@test/datasource-mock.interface';
 import { Language } from '../main/enums/language.enum';
@@ -69,6 +70,24 @@ export class TestMockUtil {
     }
 
     sandbox: SinonSandbox;
+
+    getOAuthTokenMock(): OAuthToken {
+        return {
+            accessToken: 'access-token-mock',
+            refreshToken: 'refresh-token-mock'
+        };
+    }
+
+    getSyncdayGoogleOAuthTokenResponseMock(): SyncdayGoogleOAuthTokenResponse {
+        return {
+            issuedToken: {
+                accessToken: 'access-token-mock',
+                refreshToken: 'refresh-token-mock'
+            },
+            isNewbie: true,
+            insufficientPermission: true
+        };
+    }
 
     getVerificationMock(): Verification {
         const emailMock = faker.internet.email('foo', 'bar');

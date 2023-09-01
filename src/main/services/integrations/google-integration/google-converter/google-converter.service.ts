@@ -236,8 +236,7 @@ export class GoogleConverterService {
         // when contact is no location, selectedContact can be undefined
         if (
             selectedContact &&
-            (selectedContact.type === ContactType.GOOGLE_MEET ||
-            selectedContact.type === ContactType.ZOOM)
+            (selectedContact.type === ContactType.GOOGLE_MEET)
         ) {
             eventRequestBody.conferenceData = {
                 createRequest: {

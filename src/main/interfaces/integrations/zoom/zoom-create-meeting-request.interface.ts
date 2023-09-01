@@ -9,29 +9,13 @@ import { TrackingField } from './interface/tracking-field.interface';
 export interface ZoomCreateMeetingRequestDTO {
     agenda: string;
     default_password: boolean;
-    duration: '2';
-    /**
-     * a password can only have a maximum length of 10 characters and
-     * only contain alphanumeric characters and the @, -, _, and * characters.
-     */
+    duration: number | '2';
     password: string;
-    /**
-     * @author Collin
-     * When making an actual API request, the request is sent except for the property.
-     * not working
-     */
     pre_schedule: boolean;
     recurrence: Recurrence;
-    /**
-     * @author Collin
-     * When making an actual API request, the request is sent except for the property.
-     * not working
-     */
     schedule_for: string;
     settings: RequestSetting;
-    /**
-     * dateTime UTC/GMT
-     */
+
     start_time: Date;
     template_id: string;
     timezone: string;

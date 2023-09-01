@@ -1,8 +1,12 @@
+import { URL } from 'url';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
+import { Request, Response } from 'express';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
+import { AppConfigService } from '@config/app-config.service';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
@@ -12,11 +16,14 @@ import { GoogleIntegration } from '@entity/integrations/google/google-integratio
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { Integration } from '@entity/integrations/integration.entity';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
+import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
 
 @Injectable()
 export class GoogleIntegrationsService implements IntegrationsServiceInterface {
     constructor(
+        private readonly configService: ConfigService,
         private readonly googleConverterService: GoogleConverterService,
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
         private readonly googleIntegrationSchedulesService: GoogleIntegrationSchedulesService,
@@ -24,6 +31,39 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         @InjectRepository(GoogleIntegration)
         private readonly googleIntegrationRepository: Repository<GoogleIntegration>
     ) {}
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    callback(_request: Request, _response: Response): void {
+        throw new Error('Method not implemented.');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    findOne(userSearchOption: SearchByUserOption): Promise<Integration | null> {
+        throw new Error('Method not implemented.');
+    }
+
+    generateOAuth2RedirectURI(
+        syncdayGoogleOAuthTokenResponse: SyncdayGoogleOAuthTokenResponse
+    ): string {
+
+        const {
+            issuedToken,
+            isNewbie,
+            insufficientPermission
+        } = syncdayGoogleOAuthTokenResponse;
+
+        const { googleOAuth2SuccessRedirectURI } = AppConfigService.getGoogleOAuth2Setting(
+            this.configService
+        );
+
+        const redirectURL = new URL(googleOAuth2SuccessRedirectURI);
+        redirectURL.searchParams.append('accessToken', issuedToken.accessToken);
+        redirectURL.searchParams.append('refreshToken', issuedToken.refreshToken);
+        redirectURL.searchParams.append('newbie', String(isNewbie));
+        redirectURL.searchParams.append('insufficientPermission', String(insufficientPermission));
+
+        return redirectURL.toString();
+    }
 
     async search({ userId }: SearchByUserOption): Promise<GoogleIntegration[]> {
         return await this.googleIntegrationRepository.findBy({

@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-shadow
 export enum MeetingType {
     Instant = 1,
     Scheduled = 2,

@@ -13,6 +13,8 @@ import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-re
 import { UtilService } from '@services/util/util.service';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
+import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
+import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { User } from '@entity/users/user.entity';
@@ -21,8 +23,11 @@ import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
 import { InviteeAnswer } from '@entity/schedules/invitee-answer.entity';
 import { ConferenceLink } from '@entity/schedules/conference-link.entity';
+import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
+import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
+import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
 
 @Injectable()
 export class SchedulesService {
@@ -32,6 +37,7 @@ export class SchedulesService {
         private readonly eventsService: EventsService,
         private readonly scheduleRedisRepository: SchedulesRedisRepository,
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
+        private readonly integrationsServiceLocator: IntegrationsServiceLocator,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>,
         @InjectRepository(GoogleIntegrationSchedule) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
@@ -151,7 +157,14 @@ export class SchedulesService {
 
         const loadedGoogleCalendarIntegration$ = from(this.googleCalendarIntegrationsService.findOne({
             outboundWriteSync: true,
-            userWorkspace
+            userId: host.id
+        }));
+
+        const zoomIntegrationService = this.integrationsServiceLocator.getService(IntegrationVendor.ZOOM);
+        const zoomIntegrationFacade: ZoomIntegrationFacade = this.integrationsServiceLocator.getFacade(IntegrationVendor.ZOOM) as ZoomIntegrationFacade;
+
+        const loadedZoomIntegration$ = from(zoomIntegrationService.findOne({
+            userId: host.id
         }));
 
         return loadedEventByUserWorkspace$.pipe(
@@ -166,17 +179,51 @@ export class SchedulesService {
                         event.availability.timezone
                     )),
                     loadedGoogleCalendarIntegration$,
-                    of(event.availability.timezone)
+                    loadedZoomIntegration$,
+                    of(event.availability.timezone),
+                    of(event.contacts)
                 ])
             ),
             mergeMap(
-                ([availabilityBody, patchedSchedule, loadedGoogleCalendarIntegrationOrNull, availabilityTimezone]) =>
+                ([
+                    availabilityBody,
+                    patchedSchedule,
+                    loadedGoogleCalendarIntegrationOrNull,
+                    loadedZoomIntegrationOrNull,
+                    availabilityTimezone,
+                    contacts
+                ]) =>
                     this.validate(
                         patchedSchedule,
                         availabilityTimezone,
                         availabilityBody,
                         loadedGoogleCalendarIntegrationOrNull?.id
                     ).pipe(
+                        mergeMap((patchedSchedule) =>
+                            loadedZoomIntegrationOrNull && contacts.find((_contact) => _contact.type === ContactType.ZOOM) ?
+                                from(
+                                    zoomIntegrationFacade.issueTokenByRefreshToken((loadedZoomIntegrationOrNull as ZoomIntegration).refreshToken)
+                                ).pipe(
+                                    mergeMap((oauth2UserToken) => zoomIntegrationFacade.createMeeting(oauth2UserToken.accessToken, {
+                                        agenda: patchedSchedule.name,
+                                        default_password: false,
+                                        duration: '2',
+                                        timezone: availabilityTimezone,
+                                        type: MeetingType.Scheduled,
+                                        topic: patchedSchedule.name,
+                                        start_time: patchedSchedule.scheduledTime.startTimestamp
+                                    })),
+                                    mergeMap((createdZoomMeeting) => {
+
+                                        const conferenceLink = this.getZoomMeetLink(createdZoomMeeting);
+
+                                        patchedSchedule.conferenceLinks = [ conferenceLink ];
+
+                                        return of(patchedSchedule);
+                                    })
+                                ) :
+                                of(patchedSchedule)
+                        ),
                         mergeMap((patchedSchedule) =>
                             loadedGoogleCalendarIntegrationOrNull ?
                                 from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
@@ -188,23 +235,24 @@ export class SchedulesService {
 
                                     patchedSchedule.iCalUID = createdGoogleCalendarEvent.iCalUID as string;
 
-                                    if (this.hasScheduleLink(patchedSchedule)) {
+                                    const hasGoogleMeetLink = patchedSchedule.contacts.find((_contact) => _contact.type === ContactType.GOOGLE_MEET);
 
-                                        const googleMeetConferenceLink = createdGoogleCalendarEvent.conferenceData as calendar_v3.Schema$ConferenceData;
-                                        const generatedGoogleMeetLink = (googleMeetConferenceLink.entryPoints as calendar_v3.Schema$EntryPoint[])[0].uri;
-                                        const convertedConferenceLink: ConferenceLink = {
-                                            type: IntegrationVendor.GOOGLE,
-                                            serviceName: 'Google Meet',
-                                            link: generatedGoogleMeetLink
-                                        };
-                                        patchedSchedule.conferenceLinks = [ convertedConferenceLink ];
+                                    if (hasGoogleMeetLink) {
 
-                                        return this.googleCalendarIntegrationsService.patchGoogleCalendarEvent(
+                                        const googleConferenceLink = this.getGoogleMeetLink(createdGoogleCalendarEvent);
+
+                                        if (patchedSchedule.conferenceLinks) {
+                                            patchedSchedule.conferenceLinks.push(googleConferenceLink);
+                                        } else {
+                                            patchedSchedule.conferenceLinks = [ googleConferenceLink ];
+                                        }
+
+                                        return from(this.googleCalendarIntegrationsService.patchGoogleCalendarEvent(
                                             (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
                                             (loadedGoogleCalendarIntegrationOrNull),
                                             createdGoogleCalendarEvent.id as string,
                                             patchedSchedule
-                                        );
+                                        ));
                                     } else {
                                         return of(patchedSchedule);
                                     }
@@ -242,8 +290,28 @@ export class SchedulesService {
             );
     }
 
-    hasScheduleLink(schedule: Schedule): boolean {
-        return schedule.contacts?.[0]?.type === ContactType.GOOGLE_MEET;
+    getGoogleMeetLink(createdGoogleCalendarEvent: calendar_v3.Schema$Event): ConferenceLink {
+
+        const googleMeetConferenceLink = createdGoogleCalendarEvent.conferenceData as calendar_v3.Schema$ConferenceData;
+        const generatedGoogleMeetLink = (googleMeetConferenceLink.entryPoints as calendar_v3.Schema$EntryPoint[])[0].uri;
+        const convertedConferenceLink: ConferenceLink = {
+            type: IntegrationVendor.GOOGLE,
+            serviceName: 'Google Meet',
+            link: generatedGoogleMeetLink
+        };
+
+        return convertedConferenceLink;
+    }
+
+    getZoomMeetLink(createdZoomMeeting: ZoomCreateMeetingResponseDTO): ConferenceLink {
+
+        const convertedConferenceLink: ConferenceLink = {
+            type: IntegrationVendor.ZOOM,
+            serviceName: 'Zoom',
+            link: createdZoomMeeting.join_url
+        };
+
+        return convertedConferenceLink;
     }
 
     validate(

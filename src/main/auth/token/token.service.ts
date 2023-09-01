@@ -11,6 +11,7 @@ import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
+import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
 import { AppConfigService } from '../../../configs/app-config.service';
 import { UserService } from '../../services/users/user.service';
 
@@ -61,13 +62,19 @@ export class TokenService {
         );
     }
 
+    generateOAuth2RedirectURI(
+        syncdayGoogleOAuthTokenResponse: SyncdayGoogleOAuthTokenResponse
+    ): string {
+        return this.googleIntegrationService.generateOAuth2RedirectURI(syncdayGoogleOAuthTokenResponse);
+    }
+
     async issueTokenByGoogleOAuth(
         authorizationCode: string,
         timezone: string,
         integrationContext: IntegrationContext,
         requestUserEmail: string | null,
         language: Language
-    ): Promise<{ issuedToken: CreateTokenResponseDto; isNewbie: boolean; insufficientPermission: boolean }> {
+    ): Promise<SyncdayGoogleOAuthTokenResponse> {
         const { googleUser, calendars, schedules, tokens, insufficientPermission } =
             await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode, {
                 onlyPrimaryCalendarSchedule: true

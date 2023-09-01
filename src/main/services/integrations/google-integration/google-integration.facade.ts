@@ -8,6 +8,7 @@ import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/goog
 import { GoogleIntegrationState } from '@core/interfaces/integrations/google/google-integration-state.interface';
 import { GoogleAxiosErrorResponse } from '@core/interfaces/integrations/google/google-axios-error-response.interface';
 import { GoogleAxiosErrorReasons } from '@core/interfaces/integrations/google/google-axios-error-reasons.enum';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
@@ -15,10 +16,12 @@ import { GoogleOAuthTokenService } from '@services/integrations/google-integrati
 import { GoogleOAuthUserService } from '@services/integrations/google-integration/facades/google-oauth-user.service';
 import { GoogleCalendarListService } from '@services/integrations/google-integration/facades/google-calendar-list.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
+import { IntegrationsFacade } from '@services/integrations/integrations.facade.interface';
 import { User } from '@entity/users/user.entity';
+import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
 
 @Injectable()
-export class GoogleIntegrationFacade {
+export class GoogleIntegrationFacade implements IntegrationsFacade {
     constructor(private readonly configService: ConfigService) {
         const { redirectURI: signInOrUpRedirectURI } = AppConfigService.getGoogleOAuth2Setting(
             this.configService
@@ -27,6 +30,25 @@ export class GoogleIntegrationFacade {
     }
 
     signInOrUpRedirectURI: string;
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    issueToken(authorizationCode: string): Promise<OAuthToken> {
+        throw new Error('Method not implemented.');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    issueTokenByRefreshToken(refreshToken: string): Promise<OAuthToken> {
+        throw new Error('Method not implemented.');
+    }
+
+    getOAuth2SuccessRedirectURI(): string {
+        throw new Error('Method not implemented.');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    fetchOAuth2User(oauth2Token: OAuthToken): Promise<ZoomUserResponseDTO> {
+        throw new Error('Method not implemented.');
+    }
 
     async fetchGoogleUsersWithToken(authorizationCode: string, {
         onlyPrimaryCalendarSchedule

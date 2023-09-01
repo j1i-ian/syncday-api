@@ -8,13 +8,12 @@ import { EventDetailsModule } from '@services/events/event-details/event-details
 import { BookingsModule } from '@services/bookings/bookings.module';
 import { GoogleCalendarIntegrationsModule } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.module';
 import { UtilModule } from '@services/util/util.module';
+import { ZoomIntegrationsModule } from '@services/integrations/zoom-integrations/zoom-integrations.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
 import { TemporaryUsersModule } from '../main/services/users/temporary-users/temporary-users.module';
 import { WorkspacesModule } from '../main/services/workspaces/workspaces.module';
-import { MeetingModule } from '../main/services/integrations/meetings/meetings.module';
-import { ZoomModule } from '../main/services/integrations/meetings/zoom/zoom.module';
 
 export const routes: Routes = [
     {
@@ -74,14 +73,8 @@ export const routes: Routes = [
                 ]
             },
             {
-                path: 'meetings',
-                module: MeetingModule,
-                children: [
-                    {
-                        path: 'zoom',
-                        module: ZoomModule
-                    }
-                ]
+                path: 'zoom',
+                module: ZoomIntegrationsModule
             }
         ]
     },

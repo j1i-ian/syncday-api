@@ -1,4 +1,6 @@
-export interface ZoomUserResponseDTO {
+import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
+
+export interface ZoomUserResponseDTO extends OAuth2UserProfile {
     id: string;
     first_name: string;
     last_name: string;

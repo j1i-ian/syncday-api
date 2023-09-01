@@ -24,7 +24,6 @@ import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-no
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
-import { ZoomBasicAuth } from '../../interfaces/zoom-basic-auth.interface';
 
 type LocalizedDate = {
     [key in keyof Intl.DateTimeFormatOptions]: string;
@@ -222,12 +221,6 @@ export class UtilService {
         initialEvent.eventDetail = initialEventDetail;
 
         return initialEvent;
-    }
-
-    getZoomBasicAuth(zoomBasicAuth: ZoomBasicAuth): string {
-        const { clientId, clientSecret } = zoomBasicAuth;
-        const basicAuthValue = clientId + ':' + clientSecret;
-        return Buffer.from(basicAuthValue).toString('base64');
     }
 
     getPatchedScheduledEvent(

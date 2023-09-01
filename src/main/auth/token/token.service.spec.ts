@@ -15,7 +15,10 @@ import { GoogleIntegration } from '@entity/integrations/google/google-integratio
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { UserService } from '../../services/users/user.service';
 import { faker } from '@faker-js/faker';
+import { TestMockUtil } from '@test/test-mock-util';
 import { TokenService } from './token.service';
+
+const testMockUtil = new TestMockUtil();
 
 describe('TokenService', () => {
     let service: TokenService;
@@ -70,6 +73,20 @@ describe('TokenService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    it('coverage fill: getSyncdayGoogleOAuthTokenResponseMock', () => {
+
+        const OAuth2TokenResponseStub = testMockUtil.getSyncdayGoogleOAuthTokenResponseMock();
+
+        googleIntegrationsServiceStub.generateOAuth2RedirectURI.returns({
+            OAuth2TokenResponseStub
+        } as any);
+
+        const generatedURI = service.generateOAuth2RedirectURI(OAuth2TokenResponseStub);
+
+        expect(generatedURI).ok;
+        expect(googleIntegrationsServiceStub.generateOAuth2RedirectURI.called).true;
     });
 
     it('should be issued token', () => {

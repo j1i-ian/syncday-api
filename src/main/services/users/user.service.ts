@@ -44,6 +44,7 @@ export class UserService {
         @InjectDataSource() private datasource: DataSource,
         @Inject(forwardRef(() => TokenService))
         private readonly tokenService: TokenService,
+        @Inject(forwardRef(() => VerificationService))
         private readonly verificationService: VerificationService,
         private readonly userSettingService: UserSettingService,
         private readonly syncdayRedisService: SyncdayRedisService,
@@ -84,7 +85,8 @@ export class UserService {
         const loadedUser = await this.userRepository.findOne({
             relations: {
                 userSetting: true,
-                googleIntergrations: true
+                googleIntergrations: true,
+                zoomIntegrations: true
             },
             select: {
                 id: true,

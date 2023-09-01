@@ -23,14 +23,15 @@ import { SyncdayRedisModule } from '../syncday-redis/syncday-redis.module';
 @Module({
     imports: [
         TypeOrmModule.forFeature([User,EventGroup, Event, EventDetail]),
-        VerificationModule,
+        forwardRef(() => VerificationModule),
         forwardRef(() => TokenModule),
+        // FIXME: remove this coupling after splitting sendMessage from integration module
+        forwardRef(() => IntegrationsModule),
         UserSettingModule,
         SyncdayRedisModule,
         TemporaryUsersModule,
         AvailabilityModule,
         EventsModule,
-        IntegrationsModule,
         GoogleIntegrationModule
     ],
     controllers: [UserController],

@@ -102,7 +102,7 @@ export class TokenController {
         redirectURL.searchParams.append('insufficientPermission', String(insufficientPermission));
 
         /**
-         * TODO: url search param 대신 header 에 넣어서 전달하는 방법이 있는지 찾아봐야한다.
+         * TODO: url search param 대신 header 에 넣어서 전달하도록 구현해야한다.
          */
         response.setHeader('X-Access-Token', issuedToken.accessToken);
         response.setHeader('X-Refresh-Token', issuedToken.refreshToken);

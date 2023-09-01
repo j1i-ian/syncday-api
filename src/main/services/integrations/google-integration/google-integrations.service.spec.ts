@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EntityManager, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
+import { GoogleOAuth2Setting } from '@core/interfaces/auth/google-oauth2-setting.interface';
+import { AppConfigService } from '@config/app-config.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
@@ -18,6 +21,7 @@ const testMockUtil = new TestMockUtil();
 describe('GoogleIntegrationsService', () => {
     let module: TestingModule;
     let service: GoogleIntegrationsService;
+    let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
 
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
     let googleCalendarIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleCalendarIntegrationsService>;
@@ -35,6 +39,7 @@ describe('GoogleIntegrationsService', () => {
     };
 
     before(async () => {
+        configServiceStub = sinon.createStubInstance(ConfigService);
         googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
         googleCalendarIntegrationsServiceStub = sinon.createStubInstance(GoogleCalendarIntegrationsService);
         googleIntegrationSchedulesServiceStub = sinon.createStubInstance(GoogleIntegrationSchedulesService);
@@ -47,6 +52,10 @@ describe('GoogleIntegrationsService', () => {
         module = await Test.createTestingModule({
             providers: [
                 GoogleIntegrationsService,
+                {
+                    provide: ConfigService,
+                    useValue: configServiceStub
+                },
                 {
                     provide: IntegrationsRedisRepository,
                     useValue: integrationsRedisRepositoryStub
@@ -79,6 +88,25 @@ describe('GoogleIntegrationsService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    it('should be got redirect URI for oauth 2', () => {
+        const OAuth2TokenResponseMock = testMockUtil.getSyncdayGoogleOAuthTokenResponseMock();
+
+        const serviceSandbox = sinon.createSandbox();
+
+        const getGoogleOAuth2SettingStub = serviceSandbox.stub(AppConfigService, 'getGoogleOAuth2Setting').returns({
+            googleOAuth2SuccessRedirectURI: 'https://fakeSignInOrUpRedirectURI.com'
+        } as GoogleOAuth2Setting);
+
+        const generatedURI = service.generateOAuth2RedirectURI(
+            OAuth2TokenResponseMock
+        );
+
+        expect(generatedURI).ok;
+        expect(getGoogleOAuth2SettingStub.called).true;
+
+        serviceSandbox.restore();
     });
 
     describe('Test Creating Google Calendar', () => {

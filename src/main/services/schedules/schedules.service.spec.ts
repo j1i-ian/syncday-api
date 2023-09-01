@@ -417,7 +417,7 @@ describe.skip('SchedulesService', () => {
 
             delete (noLocationScheduleStub as any)['contacts'];
 
-            const result = service.hasScheduleLink(noLocationScheduleStub);
+            const result = service.getGoogleMeetLink(noLocationScheduleStub);
 
             expect(result).false;
         });
@@ -433,7 +433,7 @@ describe.skip('SchedulesService', () => {
                 ]
             });
 
-            const result = service.hasScheduleLink(noLocationScheduleStub);
+            const result = service.getGoogleMeetLink(noLocationScheduleStub);
 
             expect(result).true;
         });

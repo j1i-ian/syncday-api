@@ -5,6 +5,7 @@ import { SyncdayRedisModule } from '@services/syncday-redis/syncday-redis.module
 import { EventsModule } from '@services/events/events.module';
 import { GoogleCalendarIntegrationsModule } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.module';
 import { AvailabilityModule } from '@services/availability/availability.module';
+import { IntegrationsModule } from '@services/integrations/integrations.module';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { SchedulesService } from './schedules.service';
@@ -15,7 +16,8 @@ import { SchedulesService } from './schedules.service';
         SyncdayRedisModule,
         GoogleCalendarIntegrationsModule,
         EventsModule,
-        AvailabilityModule
+        AvailabilityModule,
+        IntegrationsModule
     ],
     providers: [SchedulesService, SchedulesRedisRepository],
     exports: [SchedulesService, SchedulesRedisRepository]
