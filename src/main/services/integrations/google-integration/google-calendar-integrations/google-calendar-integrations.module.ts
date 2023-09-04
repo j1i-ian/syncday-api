@@ -7,11 +7,16 @@ import { IntegrationsRedisRepository } from '@services/integrations/integrations
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegrationsController } from './google-calendar-integrations.controller';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([ GoogleIntegrationSchedule, GoogleCalendarIntegration ]),
+        TypeOrmModule.forFeature([
+            GoogleIntegration,
+            GoogleIntegrationSchedule,
+            GoogleCalendarIntegration
+        ]),
         ConfigModule
     ],
     providers: [

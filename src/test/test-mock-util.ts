@@ -5,7 +5,7 @@ import 'reflect-metadata';
 import { SinonSandbox } from 'sinon';
 
 import { ArgumentsHost } from '@nestjs/common';
-import { UpdateResult } from 'typeorm';
+import { DeleteResult, UpdateResult } from 'typeorm';
 import { TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Auth, calendar_v3 } from 'googleapis';
@@ -41,6 +41,10 @@ export class TestMockUtil {
 
     static getTypeormUpdateResultMock(affectedNumber = 1): UpdateResult {
         return { affected: affectedNumber } as UpdateResult;
+    }
+
+    static getTypeormDeleteResultMock(affectedNumber = 1): DeleteResult {
+        return { affected: affectedNumber } as DeleteResult;
     }
 
     static getDataSourceMock(getNestTestingModuleCallback: () => TestingModule): DataSourceMock {

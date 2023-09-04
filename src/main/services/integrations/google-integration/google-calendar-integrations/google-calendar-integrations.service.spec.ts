@@ -32,8 +32,10 @@ describe('GoogleCalendarIntegrationsService', () => {
     let integrationUtilsServiceStub: sinon.SinonStubbedInstance<IntegrationUtilsService>;
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
     let integrationsRedisRepositoryStub: sinon.SinonStubbedInstance<IntegrationsRedisRepository>;
+
     let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
     let scheduledEventNotificationStub: sinon.SinonStubbedInstance<Repository<ScheduledEventNotification>>;
+    let googleIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegration>>;
     let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
     let googleCalendarIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleCalendarIntegration>>;
 
@@ -55,6 +57,7 @@ describe('GoogleCalendarIntegrationsService', () => {
 
         scheduleRepositoryStub = sinon.createStubInstance<Repository<Schedule>>(Repository);
         scheduledEventNotificationStub = sinon.createStubInstance<Repository<ScheduledEventNotification>>(Repository);
+        googleIntegrationRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegration>>(Repository);
         googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationSchedule>>(Repository);
         googleCalendarIntegrationRepositoryStub =
             sinon.createStubInstance<Repository<GoogleCalendarIntegration>>(Repository);
@@ -95,6 +98,10 @@ describe('GoogleCalendarIntegrationsService', () => {
                     useValue: scheduledEventNotificationStub
                 },
                 {
+                    provide: getRepositoryToken(GoogleIntegration),
+                    useValue: googleIntegrationRepositoryStub
+                },
+                {
                     provide: getRepositoryToken(GoogleIntegrationSchedule),
                     useValue: googleIntegrationScheduleRepositoryStub
                 },
@@ -125,9 +132,13 @@ describe('GoogleCalendarIntegrationsService', () => {
 
             integrationUtilsServiceStub.getGoogleOAuthClient.reset();
             googleConverterServiceStub.convertToGoogleIntegrationSchedules.reset();
+
+            googleIntegrationRepositoryStub.findOneOrFail.reset();
+            googleCalendarIntegrationRepositoryStub.delete.reset();
             googleIntegrationScheduleRepositoryStub.findBy.reset();
             googleIntegrationScheduleRepositoryStub.save.reset();
             googleIntegrationScheduleRepositoryStub.delete.reset();
+
 
             scheduleRepositoryStub.find.reset();
             scheduleRepositoryStub.softDelete.reset();
@@ -320,6 +331,55 @@ describe('GoogleCalendarIntegrationsService', () => {
 
             expect(googleCalendarIntegrationRepositoryStub.find.called).true;
             expect(googleCalendarIntegrationRepositoryStub.save.called).false;
+        });
+
+        it('should be removed a google calendar integration by google integration id', async () => {
+
+            const googleIntegrationStub = stubOne(GoogleIntegration);
+            const googleIntegrationIdMock = googleIntegrationStub.id;
+            const userStub = stubOne(User);
+            const userIdMock = userStub.id;
+
+            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            googleIntegrationStub.users = [userStub];
+
+            googleIntegrationRepositoryStub.findOneOrFail.resolves(googleIntegrationStub);
+            googleCalendarIntegrationRepositoryStub.delete.resolves(deleteResultStub);
+
+            const deleteResult = await service.removeByIntegrationId(
+                userIdMock,
+                googleIntegrationIdMock
+            );
+
+            expect(deleteResult).true;
+            expect(googleIntegrationRepositoryStub.findOneOrFail.called).true;
+            expect(googleCalendarIntegrationRepositoryStub.delete.called).true;
+        });
+
+        it('should not allow the removal of a Google Calendar integration when a user who doesn\'t own the calendar requests deletion', async () => {
+
+            const googleIntegrationStub = stubOne(GoogleIntegration);
+            const googleIntegrationIdMock = googleIntegrationStub.id;
+            const userStub = stubOne(User);
+            const otherUserIdMock = userStub.id + 1;
+
+            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            googleIntegrationStub.users = [userStub];
+
+            googleIntegrationRepositoryStub.findOneOrFail.resolves(googleIntegrationStub);
+            googleCalendarIntegrationRepositoryStub.delete.resolves(deleteResultStub);
+
+            await expect(
+                service.removeByIntegrationId(
+                    otherUserIdMock,
+                    googleIntegrationIdMock
+                )
+            ).rejectedWith(NotAnOwnerException);
+
+            expect(googleIntegrationRepositoryStub.findOneOrFail.called).true;
+            expect(googleCalendarIntegrationRepositoryStub.delete.called).false;
         });
     });
 });

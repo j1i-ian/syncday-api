@@ -1,8 +1,9 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, Patch, Get } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Param, Patch, Get, Delete } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { DeleteGoogleCalendarIntegrationsRequest } from '@dto/integrations/google/delete-google-calendar-integrations.dto';
 
 @Controller(':vendor')
 export class CalendarIntegrationsController {
@@ -27,5 +28,17 @@ export class CalendarIntegrationsController {
         @Body() googleCalendarIntegrations: GoogleCalendarIntegration[]
     ): Promise<boolean> {
         return this.googleCalendarIntegrationsService.patch(userId, googleCalendarIntegrations);
+    }
+
+    @Delete()
+    @HttpCode(HttpStatus.NO_CONTENT)
+    deleteGoogleCalendarIntegrations(
+        @AuthUser('id') userId: number,
+        @Body() deleteGoogleCalendarIntegrationsRequest: DeleteGoogleCalendarIntegrationsRequest
+    ): Promise<boolean> {
+        return this.googleCalendarIntegrationsService.removeByIntegrationId(
+            userId,
+            deleteGoogleCalendarIntegrationsRequest.googleIntegrationId
+        );
     }
 }

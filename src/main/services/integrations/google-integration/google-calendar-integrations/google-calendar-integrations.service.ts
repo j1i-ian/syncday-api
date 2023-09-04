@@ -34,6 +34,8 @@ export class GoogleCalendarIntegrationsService {
         private readonly integrationsRedisRepository: IntegrationsRedisRepository,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @InjectDataSource() private readonly datasource: DataSource,
+        @InjectRepository(GoogleIntegration)
+        private readonly googleIntegrationRepository: Repository<GoogleIntegration>,
         @InjectRepository(GoogleIntegrationSchedule)
         private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
         @InjectRepository(GoogleCalendarIntegration)
@@ -346,6 +348,44 @@ export class GoogleCalendarIntegrationsService {
         });
 
         return true;
+    }
+
+    /**
+     *
+     * The requested resource is the calendar. Even though we are using Google integration,
+     * this code is situated within the Google calendar integrations service.
+     *
+     * The Calendar Integration always has a dependency on the main integration. Hence, it appears
+     * to access the integration repository layer directly as if they are in the same domain.
+     *
+     * @param userId
+     * @param googleIntegrationId
+     * @returns
+     */
+    async removeByIntegrationId(userId: number, googleIntegrationId: number): Promise<boolean> {
+
+        const loadedGoogleIntegration = await this.googleIntegrationRepository.findOneOrFail({
+            relations: {
+                users: true
+            },
+            where: {
+                id: googleIntegrationId
+            }
+        });
+
+        if (
+            !loadedGoogleIntegration.users[0] ||
+            loadedGoogleIntegration.users[0].id !== userId
+        ) {
+            throw new NotAnOwnerException();
+        }
+
+        const deleteResult = await this.googleCalendarIntegrationRepository.delete({
+            googleIntegrationId
+        });
+
+        return !!deleteResult.affected &&
+            deleteResult.affected > 0;
     }
 
     async createGoogleCalendarEvent(
