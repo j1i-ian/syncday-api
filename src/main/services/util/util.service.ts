@@ -64,28 +64,24 @@ export class UtilService {
         loadedOAuth2AccountOrNull: OAuth2Account | null
     ): IntegrationContext {
 
-        const isSignUpOrSignInContext = integrationContext === IntegrationContext.SIGN_UP || integrationContext === IntegrationContext.SIGN_IN;
+        const isNewbie = loadedUserOrNull === null;
+        const isMultipleSocialSignIn = loadedUserOrNull !== null &&
+            loadedOAuth2AccountOrNull === null &&
+            integrationContext !== IntegrationContext.INTEGRATE;
+        const isSignIn = loadedUserOrNull &&
+            loadedOAuth2AccountOrNull &&
+            integrationContext !== IntegrationContext.INTEGRATE;
+
         let ensureIntegrationContext = IntegrationContext.SIGN_IN;
 
-        if (isSignUpOrSignInContext) {
-            const isNewbie = loadedUserOrNull === null && loadedOAuth2AccountOrNull === null;
-
-            if (isNewbie) {
-                ensureIntegrationContext = IntegrationContext.SIGN_UP;
-            } else if (loadedUserOrNull && loadedOAuth2AccountOrNull === null) {
-                ensureIntegrationContext = IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN;
-            } else {
-                ensureIntegrationContext = IntegrationContext.SIGN_IN;
-            }
+        if (isNewbie) {
+            ensureIntegrationContext = IntegrationContext.SIGN_UP;
+        } else if (isMultipleSocialSignIn) {
+            ensureIntegrationContext = IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN;
+        } else if (isSignIn) {
+            ensureIntegrationContext = IntegrationContext.SIGN_IN;
         } else {
-            // integration requset
-            if (loadedUserOrNull && loadedOAuth2AccountOrNull) {
-                ensureIntegrationContext = IntegrationContext.SIGN_IN;
-            } else if (loadedUserOrNull === null) {
-                throw new BadRequestException('Invalid Integration request');
-            } else {
-                ensureIntegrationContext = integrationContext;
-            }
+            ensureIntegrationContext = integrationContext;
         }
 
         return ensureIntegrationContext;

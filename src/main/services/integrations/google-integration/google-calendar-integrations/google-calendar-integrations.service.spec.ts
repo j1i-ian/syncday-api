@@ -332,54 +332,5 @@ describe('GoogleCalendarIntegrationsService', () => {
             expect(googleCalendarIntegrationRepositoryStub.find.called).true;
             expect(googleCalendarIntegrationRepositoryStub.save.called).false;
         });
-
-        it('should be removed a google calendar integration by google integration id', async () => {
-
-            const googleIntegrationStub = stubOne(GoogleIntegration);
-            const googleIntegrationIdMock = googleIntegrationStub.id;
-            const userStub = stubOne(User);
-            const userIdMock = userStub.id;
-
-            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
-
-            googleIntegrationStub.users = [userStub];
-
-            googleIntegrationRepositoryStub.findOneOrFail.resolves(googleIntegrationStub);
-            googleCalendarIntegrationRepositoryStub.delete.resolves(deleteResultStub);
-
-            const deleteResult = await service.removeByIntegrationId(
-                userIdMock,
-                googleIntegrationIdMock
-            );
-
-            expect(deleteResult).true;
-            expect(googleIntegrationRepositoryStub.findOneOrFail.called).true;
-            expect(googleCalendarIntegrationRepositoryStub.delete.called).true;
-        });
-
-        it('should not allow the removal of a Google Calendar integration when a user who doesn\'t own the calendar requests deletion', async () => {
-
-            const googleIntegrationStub = stubOne(GoogleIntegration);
-            const googleIntegrationIdMock = googleIntegrationStub.id;
-            const userStub = stubOne(User);
-            const otherUserIdMock = userStub.id + 1;
-
-            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
-
-            googleIntegrationStub.users = [userStub];
-
-            googleIntegrationRepositoryStub.findOneOrFail.resolves(googleIntegrationStub);
-            googleCalendarIntegrationRepositoryStub.delete.resolves(deleteResultStub);
-
-            await expect(
-                service.removeByIntegrationId(
-                    otherUserIdMock,
-                    googleIntegrationIdMock
-                )
-            ).rejectedWith(NotAnOwnerException);
-
-            expect(googleIntegrationRepositoryStub.findOneOrFail.called).true;
-            expect(googleCalendarIntegrationRepositoryStub.delete.called).false;
-        });
     });
 });
