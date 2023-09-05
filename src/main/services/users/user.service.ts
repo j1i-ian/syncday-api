@@ -89,7 +89,9 @@ export class UserService {
         const loadedUser = await this.userRepository.findOne({
             relations: {
                 userSetting: true,
-                oauth2Accounts: true
+                oauth2Accounts: true,
+                googleIntergrations: true,
+                zoomIntegrations: true
             },
             select: {
                 id: true,

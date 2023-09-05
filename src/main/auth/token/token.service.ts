@@ -12,6 +12,7 @@ import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-ac
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { OAuth2Type } from '@entity/users/oauth2-type.enum';
+import { Integration } from '@entity/integrations/integration.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
@@ -91,13 +92,17 @@ export class TokenService {
 
         let loadedUserOrNull = await this.userService.findUserByEmail(ensuredRequesterEmail);
         const loadedOAuth2AccountOrNull = loadedUserOrNull?.oauth2Accounts.find(
-            (_oauthAccount) => _oauthAccount.email === ensuredRequesterEmail
+            (_oauthAccount) => _oauthAccount.email === googleUser.email
         ) ?? null;
+        const loadedIntegrationOrNull = loadedUserOrNull?.googleIntergrations.find(
+            (_googleIntegration) => _googleIntegration.email === googleUser.email
+        );
 
         const ensuredIntegrationContext = this.utilService.ensureIntegrationContext(
             integrationContext,
             loadedUserOrNull,
-            loadedOAuth2AccountOrNull
+            loadedOAuth2AccountOrNull,
+            loadedIntegrationOrNull as Integration | null
         );
 
         const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);

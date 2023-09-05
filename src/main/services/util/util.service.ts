@@ -24,6 +24,7 @@ import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
+import { Integration } from '@entity/integrations/integration.entity';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 
@@ -61,7 +62,8 @@ export class UtilService {
     ensureIntegrationContext(
         integrationContext: IntegrationContext,
         loadedUserOrNull: User | null,
-        loadedOAuth2AccountOrNull: OAuth2Account | null
+        loadedOAuth2AccountOrNull: OAuth2Account | null,
+        integrationOrNull: Integration | null
     ): IntegrationContext {
 
         const isNewbie = loadedUserOrNull === null;
@@ -70,7 +72,7 @@ export class UtilService {
             integrationContext !== IntegrationContext.INTEGRATE;
         const isSignIn = loadedUserOrNull &&
             loadedOAuth2AccountOrNull &&
-            integrationContext !== IntegrationContext.INTEGRATE;
+            integrationOrNull !== null;
 
         let ensureIntegrationContext = IntegrationContext.SIGN_IN;
 
