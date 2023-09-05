@@ -114,11 +114,27 @@ describe('UtilService', () => {
                 expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines sign in with multiple social sign in requests when a user is signed up and has OAuth integrated',
+                description: 'should be ensured that the integration context combines multiple social sign with multiple social sign in requests when a user is signed up and has no OAuth integrated but has a google integration',
+                integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                integrationStub: new GoogleIntegration(),
+                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
+            },
+            {
+                description: 'should be ensured that the integration context combines multiple social sign with multiple social sign in requests when a user is signed up and has no OAuth integrated, no google integration',
                 integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
-                integrationStub: new OAuth2Account(),
+                integrationStub: null,
+                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
+            },
+            {
+                description: 'should be ensured that the integration context combines sign in with multiple social sign in requests when a user is signed up and has OAuth integrated and google integration',
+                integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                integrationStub: new GoogleIntegration(),
                 expectedIntegrationContext: IntegrationContext.SIGN_IN
             },
             {

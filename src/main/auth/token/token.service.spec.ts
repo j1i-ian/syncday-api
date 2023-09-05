@@ -15,6 +15,7 @@ import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-ac
 import { User } from '@entity/users/user.entity';
 import { OAuth2Type } from '@entity/users/oauth2-type.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { UserService } from '../../services/users/user.service';
 import { faker } from '@faker-js/faker';
@@ -221,7 +222,8 @@ describe('TokenService', () => {
                     insufficientPermission: false
                 } as GoogleOAuth2UserWithToken,
                 getFindUserStub: () => stubOne(User, {
-                    oauth2Accounts: []
+                    oauth2Accounts: [],
+                    googleIntergrations: []
                 }),
                 isExpectedNewbie: false,
                 createUserByGoogleOAuth2Call: false,
@@ -248,7 +250,8 @@ describe('TokenService', () => {
                     insufficientPermission: false
                 } as GoogleOAuth2UserWithToken,
                 getFindUserStub: () => stubOne(User, {
-                    oauth2Accounts: []
+                    oauth2Accounts: [],
+                    googleIntergrations: []
                 }),
                 isExpectedNewbie: false,
                 createUserByGoogleOAuth2Call: false,
@@ -275,7 +278,8 @@ describe('TokenService', () => {
                     insufficientPermission: false
                 } as GoogleOAuth2UserWithToken,
                 getFindUserStub: () => stubOne(User, {
-                    oauth2Accounts: []
+                    oauth2Accounts: [],
+                    googleIntergrations: []
                 }),
                 isExpectedNewbie: false,
                 createUserByGoogleOAuth2Call: false,
@@ -309,7 +313,13 @@ describe('TokenService', () => {
                             email: 'fakeEmail',
                             oauth2Type: OAuth2Type.GOOGLE
                         }
-                    ] as OAuth2Account[]
+                    ] as OAuth2Account[],
+                    googleIntergrations: [
+                        {
+                            id: 1,
+                            email: 'fakeEmail'
+                        }
+                    ] as GoogleIntegration[]
                 }),
                 isExpectedNewbie: false,
                 createUserByGoogleOAuth2Call: false,
