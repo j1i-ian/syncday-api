@@ -9,6 +9,7 @@ import { NotificationType } from '@interfaces/notifications/notification-type.en
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 import { Notification } from '@interfaces/notifications/notification';
 import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
+import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -22,6 +23,7 @@ import { Schedule } from '@entity/schedules/schedule.entity';
 import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
+import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 
@@ -55,6 +57,39 @@ type EventDetailInit = Omit<EventDetail,
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
+
+    ensureIntegrationContext(
+        integrationContext: IntegrationContext,
+        loadedUserOrNull: User | null,
+        loadedOAuth2AccountOrNull: OAuth2Account | null
+    ): IntegrationContext {
+
+        const isSignUpOrSignInContext = integrationContext === IntegrationContext.SIGN_UP || integrationContext === IntegrationContext.SIGN_IN;
+        let ensureIntegrationContext = IntegrationContext.SIGN_IN;
+
+        if (isSignUpOrSignInContext) {
+            const isNewbie = loadedUserOrNull === null && loadedOAuth2AccountOrNull === null;
+
+            if (isNewbie) {
+                ensureIntegrationContext = IntegrationContext.SIGN_UP;
+            } else if (loadedUserOrNull && loadedOAuth2AccountOrNull === null) {
+                ensureIntegrationContext = IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN;
+            } else {
+                ensureIntegrationContext = IntegrationContext.SIGN_IN;
+            }
+        } else {
+            // integration requset
+            if (loadedUserOrNull && loadedOAuth2AccountOrNull) {
+                ensureIntegrationContext = IntegrationContext.SIGN_IN;
+            } else if (loadedUserOrNull === null) {
+                throw new BadRequestException('Invalid Integration request');
+            } else {
+                ensureIntegrationContext = integrationContext;
+            }
+        }
+
+        return ensureIntegrationContext;
+    }
 
     dateToTimeString(
         date: Date,

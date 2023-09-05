@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { BadRequestException } from '@nestjs/common';
+import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
@@ -7,6 +9,7 @@ import { EventDetail } from '@entity/events/event-detail.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
+import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { UtilService } from './util.service';
@@ -35,6 +38,102 @@ describe('UtilService', () => {
     it('should be defined', () => {
         expect(service).ok;
     });
+
+    describe('Test ensure integration context', () => {
+        [
+            {
+                description: 'should be ensured that the integration context combines sign-in with sign-in requests when a user is already signed up and has OAuth integrated',
+                integrationContext: IntegrationContext.SIGN_IN,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                expectedIntegrationContext: IntegrationContext.SIGN_IN,
+                isError: false
+            },
+            {
+                description: 'should be ensured that the integration context combines sign-in with sign-up requests when a user is already signed up and has OAuth integrated',
+                integrationContext: IntegrationContext.SIGN_UP,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                expectedIntegrationContext: IntegrationContext.SIGN_IN,
+                isError: false
+            },
+            {
+                description: 'should be ensured that the integration context combines multiple social sign in with sign-up requests when a user is already signed up and has no OAuth integrated: Multi channel login',
+                integrationContext: IntegrationContext.SIGN_UP,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
+                isError: false
+            },
+            {
+                description: 'should be ensured that the integration context combines sign-in with integrate requests when a user is already signed up and has OAuth integrated',
+                integrationContext: IntegrationContext.INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                expectedIntegrationContext: IntegrationContext.SIGN_IN,
+                isError: false
+            },
+            {
+                description: 'should be ensured that the integration context combines sign-up with sign-up requests when a user is not signed up and has no OAuth integrated',
+                integrationContext: IntegrationContext.SIGN_UP,
+                userStub: null,
+                oauth2AccountStub: null,
+                expectedIntegrationContext: IntegrationContext.SIGN_UP,
+                isError: false
+            },
+            {
+                description: 'should be ensured that the integration context combines sign-up with sign-in requests when a user is not signed up and has no OAuth integrated',
+                integrationContext: IntegrationContext.SIGN_IN,
+                userStub: null,
+                oauth2AccountStub: null,
+                expectedIntegrationContext: IntegrationContext.SIGN_UP,
+                isError: false
+            },
+            {
+                description: 'should be ensured that the integration context combines multiple social sign in when a user is signed up and has no OAuth integrated',
+                integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
+                isError: false
+            },
+            {
+                description: 'should be ensured that the integration context combines multiple social sign in with sign-in requests when a user is already signed up and has no OAuth integrated',
+                integrationContext: IntegrationContext.SIGN_IN,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
+                isError: false
+            },
+            {
+                description: 'should be threw a error with integrate requests when a user is not found',
+                integrationContext: IntegrationContext.INTEGRATE,
+                userStub: null,
+                oauth2AccountStub: null,
+                expectedIntegrationContext: null,
+                isError: true
+            }
+        ].forEach(function({
+            description,
+            integrationContext,
+            userStub,
+            oauth2AccountStub,
+            expectedIntegrationContext,
+            isError
+        }) {
+            it(description, () => {
+
+                if (isError) {
+                    expect(() => service.ensureIntegrationContext(integrationContext, userStub, oauth2AccountStub)).throw(BadRequestException);
+
+                } else {
+                    const actualIntegrationContext = service.ensureIntegrationContext(integrationContext, userStub, oauth2AccountStub);
+                    expect(actualIntegrationContext).equals(expectedIntegrationContext);
+                }
+            });
+        });
+    });
+
 
     it('should be converted date that is applied timezone', () => {
 

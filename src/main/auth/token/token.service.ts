@@ -7,7 +7,11 @@ import { IntegrationContext } from '@interfaces/integrations/integration-context
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { UtilService } from '@services/util/util.service';
+import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { User } from '@entity/users/user.entity';
+import { OAuth2Account } from '@entity/users/oauth2-account.entity';
+import { OAuth2Type } from '@entity/users/oauth2-type.enum';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
@@ -32,8 +36,10 @@ export class TokenService {
     constructor(
         private readonly configService: ConfigService,
         private readonly jwtService: JwtService,
+        private readonly utilService: UtilService,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
+        private readonly oauth2AccountsService: OAuth2AccountsService,
         private readonly googleIntegrationFacade: GoogleIntegrationFacade,
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly googleConverterService: GoogleConverterService
@@ -81,16 +87,24 @@ export class TokenService {
             });
         const googleUserEmail = googleUser.email;
 
-        let loadedUserOrNull = await this.userService.findUserByEmail(requestUserEmail || googleUser.email);
+        const ensuredRequesterEmail = requestUserEmail || googleUser.email;
+
+        let loadedUserOrNull = await this.userService.findUserByEmail(ensuredRequesterEmail);
+        const loadedOAuth2AccountOrNull = loadedUserOrNull?.oauth2Accounts.find(
+            (_oauthAccount) => _oauthAccount.email === ensuredRequesterEmail
+        ) ?? null;
+
+        const ensuredIntegrationContext = this.utilService.ensureIntegrationContext(
+            integrationContext,
+            loadedUserOrNull,
+            loadedOAuth2AccountOrNull
+        );
 
         const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
 
-        const canBeSignUpContext = integrationContext === IntegrationContext.SIGN_UP || integrationContext === IntegrationContext.SIGN_IN;
-        const isNewbie = canBeSignUpContext && loadedUserOrNull === null;
-        const isSignUp = canBeSignUpContext && isNewbie;
-        const isSignIn = canBeSignUpContext && !isNewbie;
+        let isNewbie = false;
 
-        if (isSignUp) {
+        if (ensuredIntegrationContext === IntegrationContext.SIGN_UP) {
             const primaryGoogleCalendar = calendars?.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
             const ensuredTimezone = timezone || primaryGoogleCalendar?.timeZone as string;
 
@@ -111,42 +125,38 @@ export class TokenService {
                 },
                 language
             );
-        } else if (isSignIn) {
+
+            isNewbie = true;
+        } else if (ensuredIntegrationContext === IntegrationContext.SIGN_IN) {
+            isNewbie = false;
+        } else if (ensuredIntegrationContext === IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN) {
+            isNewbie = false;
 
             const ensuredUser = loadedUserOrNull as User;
-            const hasUserGoogleIntegration =
-            ensuredUser.googleIntergrations &&
-            ensuredUser.googleIntergrations.length > 0;
 
-            // TODO: This logic cannot support multiple google integrations. After collecting google integration, we should update this block.
-            // old user but has no google integration
-            if (hasUserGoogleIntegration === false) {
+            const newOAuth2Account = {
+                email: ensuredRequesterEmail,
+                oauth2Type: OAuth2Type.GOOGLE
+            } as OAuth2Account;
 
-                await this.googleIntegrationService.create(ensuredUser, ensuredUser.userSetting, tokens, newGoogleCalendarIntegrations, {
-                    googleUserEmail,
-                    calendars,
-                    schedules
-                });
-            }
-        } else if (integrationContext === IntegrationContext.INTEGRATE) {
+            await this.oauth2AccountsService.create(ensuredUser, newOAuth2Account);
+        } else if (ensuredIntegrationContext === IntegrationContext.INTEGRATE) {
             // when integrationContext is integrationContext.Integrate
             const ensuredUser = loadedUserOrNull as User;
 
-            const alreadyIntegrated = ensuredUser.googleIntergrations.find((_integration) => _integration.email === googleUser.email);
+            await this.googleIntegrationService.create(
+                ensuredUser,
+                ensuredUser.userSetting,
+                tokens,
+                newGoogleCalendarIntegrations,
+                {
+                    googleUserEmail,
+                    calendars,
+                    schedules
+                }
+            );
 
-            if (!alreadyIntegrated) {
-                await this.googleIntegrationService.create(
-                    ensuredUser,
-                    ensuredUser.userSetting,
-                    tokens,
-                    newGoogleCalendarIntegrations,
-                    {
-                        googleUserEmail,
-                        calendars,
-                        schedules
-                    }
-                );
-            }
+            isNewbie = false;
         } else {
             throw new InternalServerErrorException('Unknown integration context');
         }

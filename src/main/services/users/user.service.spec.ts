@@ -7,6 +7,7 @@ import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
@@ -37,7 +38,8 @@ describe('Test User Service', () => {
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let eventsRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
-    let googleIntegrationsService: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
+    let googleIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
+    let oauth2AccountsServiceStub: sinon.SinonStubbedInstance<OAuth2AccountsService>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
 
@@ -61,7 +63,8 @@ describe('Test User Service', () => {
         userSettingServiceStub = sinon.createStubInstance(UserSettingService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
         availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
-        googleIntegrationsService = sinon.createStubInstance(GoogleIntegrationsService);
+        googleIntegrationsServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
+        oauth2AccountsServiceStub = sinon.createStubInstance(OAuth2AccountsService);
         eventsRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
@@ -93,7 +96,11 @@ describe('Test User Service', () => {
                 },
                 {
                     provide: GoogleIntegrationsService,
-                    useValue: googleIntegrationsService
+                    useValue: googleIntegrationsServiceStub
+                },
+                {
+                    provide: OAuth2AccountsService,
+                    useValue: oauth2AccountsServiceStub
                 },
                 {
                     provide: EventsRedisRepository,

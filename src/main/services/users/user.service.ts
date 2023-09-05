@@ -10,6 +10,7 @@ import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/goog
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
@@ -18,6 +19,8 @@ import { Weekday } from '@entity/availability/weekday.enum';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { OAuth2Type } from '@entity/users/oauth2-type.enum';
+import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
@@ -51,6 +54,7 @@ export class UserService {
         private readonly utilService: UtilService,
         private readonly eventRedisRepository: EventsRedisRepository,
         private readonly googleIntegrationService: GoogleIntegrationsService,
+        private readonly oauth2AccountService: OAuth2AccountsService,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
@@ -85,8 +89,7 @@ export class UserService {
         const loadedUser = await this.userRepository.findOne({
             relations: {
                 userSetting: true,
-                googleIntergrations: true,
-                zoomIntegrations: true
+                oauth2Accounts: true
             },
             select: {
                 id: true,
@@ -315,6 +318,19 @@ export class UserService {
                 googleIntegrationBody
             );
 
+            const _newOAuth2Account: OAuth2Account = {
+                email: googleIntegrationBody.googleUserEmail,
+                oauth2Type: OAuth2Type.GOOGLE,
+                user: _createdUser
+            } as OAuth2Account;
+
+            const _createdOAuth2Account = await this.oauth2AccountService._create(
+                manager,
+                _createdUser,
+                _newOAuth2Account
+            );
+
+            _createdUser.oauth2Accounts = [_createdOAuth2Account];
             _createdUser.googleIntergrations = [_createdGoogleIntegration];
 
             await this.userSettingService.createUserWorkspaceStatus(
