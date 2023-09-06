@@ -351,7 +351,8 @@
         {
             "files": [
                 "src/test/*.ts",
-                "src/**/*.spec.ts"
+                "src/**/*.spec.ts",
+                "test/**/*.ts"
             ],
             "rules": {
                 "no-unused-expressions": "off",
