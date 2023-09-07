@@ -24,7 +24,12 @@ export class UserSettingService {
 
     async fetchUserSettingByUserId(userId: number): Promise<UserSetting> {
         const loadedUserSetting = await this.userSettingRepository.findOneOrFail({
-            relations: ['user.googleIntergrations'],
+            relations: [
+                'user',
+                'user.oauth2Accounts',
+                'user.googleIntergrations',
+                'user.zoomIntegrations'
+            ],
             where: {
                 userId
             }
