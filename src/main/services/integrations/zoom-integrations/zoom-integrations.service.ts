@@ -3,7 +3,6 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationsServiceInterface } from '@services/integrations/integrations.service.interface';
@@ -17,7 +16,6 @@ import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interf
 export class ZoomIntegrationsService implements IntegrationsServiceInterface {
     constructor(
         private readonly configService: ConfigService,
-        private readonly jwtService: JwtService,
         @InjectRepository(ZoomIntegration)
         private readonly zoomIntegrationRepository: Repository<ZoomIntegration>
     ) {
