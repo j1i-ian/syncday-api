@@ -1,15 +1,18 @@
 import { URL } from 'url';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { AppConfigService } from '@config/app-config.service';
+import { ContactType } from '@interfaces/events/contact-type.enum';
 import { IntegrationsServiceInterface } from '@services/integrations/integrations.service.interface';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
+import { Event } from '@entity/events/event.entity';
+import { EventStatus } from '@entity/events/event-status.enum';
 import { FetchZoomMeetingIntegrationResponse } from '@dto/integrations/zoom/fetch-zoom-meeting-integration-response.dto';
 import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
@@ -18,6 +21,7 @@ import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interf
 export class ZoomIntegrationsService implements IntegrationsServiceInterface {
     constructor(
         private readonly configService: ConfigService,
+        @InjectDataSource() private readonly datasource: DataSource,
         @InjectRepository(ZoomIntegration)
         private readonly zoomIntegrationRepository: Repository<ZoomIntegration>
     ) {
@@ -118,13 +122,58 @@ export class ZoomIntegrationsService implements IntegrationsServiceInterface {
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async remove(zoomIntegrationId: number, userId: number): Promise<boolean> {
-        const zoomIntegration = await this.zoomIntegrationRepository.findOneOrFail({
-            where: {
-                id: zoomIntegrationId
-            }
+
+        // load events that linked with zoom integration
+        // then update events to off
+        await this.datasource.transaction(async (transactionManager) => {
+
+            const eventRepository = transactionManager.getRepository(Event);
+            const zoomIntegrationRepository = transactionManager.getRepository(ZoomIntegration);
+
+            const zoomIntegration = await zoomIntegrationRepository.findOneOrFail({
+                where: {
+                    id: zoomIntegrationId,
+                    users: {
+                        id: userId
+                    }
+                }
+            });
+
+            const disableEventTargets = await eventRepository.find({
+                where: {
+                    eventGroup: {
+                        user: {
+                            id: userId,
+                            zoomIntegrations: {
+                                id: zoomIntegrationId
+                            }
+                        }
+                    },
+                    contacts: {
+                        type: ContactType.ZOOM
+                    }
+                }
+            });
+
+            const disableEventTargetIds = disableEventTargets.map((_event) => _event.id);
+
+            const eventUpdateResult = await eventRepository.update(disableEventTargetIds, {
+                status: EventStatus.CLOSED
+            });
+
+            const isEventsUpdateSuccess = eventUpdateResult &&
+            eventUpdateResult.affected &&
+            eventUpdateResult.affected > 0;
+
+            const zoomDeleteResult = await zoomIntegrationRepository.delete(zoomIntegration.id);
+
+            const isZoomDeleteSuccess = zoomDeleteResult &&
+                zoomDeleteResult.affected &&
+                zoomDeleteResult.affected > 0;
+
+            return isEventsUpdateSuccess && isZoomDeleteSuccess;
         });
 
-        await this.zoomIntegrationRepository.remove(zoomIntegration);
 
         return true;
     }

@@ -2,26 +2,33 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ZoomIntegrationsService } from '@services/integrations/zoom-integrations/zoom-integrations.service';
 import { User } from '@entity/users/user.entity';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
+import { Event } from '@entity/events/event.entity';
+import { TestMockUtil } from '@test/test-mock-util';
 
 describe('ZoomIntegrationsService', () => {
     let service: ZoomIntegrationsService;
 
+    let module: TestingModule;
+    const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
+
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let jwtServiceStub: sinon.SinonStubbedInstance<JwtService>;
 
+    let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
     let zoomIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<ZoomIntegration>>;
 
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         jwtServiceStub = sinon.createStubInstance(JwtService);
 
+        eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
         zoomIntegrationRepositoryStub = sinon.createStubInstance<Repository<ZoomIntegration>>(Repository);
 
-        const module: TestingModule = await Test.createTestingModule({
+        module = await Test.createTestingModule({
             providers: [
                 ZoomIntegrationsService,
                 {
@@ -33,8 +40,16 @@ describe('ZoomIntegrationsService', () => {
                     useValue: jwtServiceStub
                 },
                 {
+                    provide: getRepositoryToken(Event),
+                    useValue: eventRepositoryStub
+                },
+                {
                     provide: getRepositoryToken(ZoomIntegration),
                     useValue: zoomIntegrationRepositoryStub
+                },
+                {
+                    provide: getDataSourceToken(),
+                    useValue: datasourceMock
                 }
             ]
         }).compile();
@@ -43,8 +58,13 @@ describe('ZoomIntegrationsService', () => {
     });
 
     afterEach(() => {
+        eventRepositoryStub.find.reset();
+        eventRepositoryStub.update.reset();
+
         zoomIntegrationRepositoryStub.find.reset();
         zoomIntegrationRepositoryStub.findOne.reset();
+        zoomIntegrationRepositoryStub.findOneOrFail.reset();
+        zoomIntegrationRepositoryStub.delete.reset();
     });
 
     it('should be defined', () => {
@@ -87,5 +107,31 @@ describe('ZoomIntegrationsService', () => {
         expect(loadedZoomIntegration).ok;
         expect(loadedZoomIntegration.id).equals(zoomIntegrationStub.id);
         expect(zoomIntegrationRepositoryStub.findOne.called).true;
+    });
+
+    it('should be removed zoom integration with disabling related events', async () => {
+
+        const userMock = stubOne(User);
+        const zoomIntegrationStub = stubOne(ZoomIntegration);
+        const zoomIntegrationDeleteResultStub = TestMockUtil.getTypeormDeleteResultMock();
+        const eventUpdateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+        zoomIntegrationRepositoryStub.findOneOrFail.resolves(zoomIntegrationStub);
+        eventRepositoryStub.find.resolves([]);
+
+        zoomIntegrationRepositoryStub.delete.resolves(zoomIntegrationDeleteResultStub);
+        eventRepositoryStub.update.resolves(eventUpdateResultStub);
+
+        const deleteSuccess: boolean = await service.remove(
+            zoomIntegrationStub.id,
+            userMock.id
+        );
+
+        expect(zoomIntegrationRepositoryStub.findOneOrFail.called).true;
+        expect(zoomIntegrationRepositoryStub.delete.called).true;
+        expect(eventRepositoryStub.find.called).true;
+        expect(eventRepositoryStub.update.called).true;
+
+        expect(deleteSuccess).true;
     });
 });
