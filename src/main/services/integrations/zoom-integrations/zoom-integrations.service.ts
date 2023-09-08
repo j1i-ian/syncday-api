@@ -3,12 +3,14 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { plainToInstance } from 'class-transformer';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationsServiceInterface } from '@services/integrations/integrations.service.interface';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
+import { FetchZoomMeetingIntegrationResponse } from '@dto/integrations/zoom/fetch-zoom-meeting-integration-response.dto';
 import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
 
@@ -28,8 +30,27 @@ export class ZoomIntegrationsService implements IntegrationsServiceInterface {
     redirectURI: string;
     zoomOAuth2SuccessRedirectURI: string;
 
-    search(): Promise<Integration[]> {
-        throw new Error('Method not implemented.');
+    async search(userSearchOption: SearchByUserOption): Promise<FetchZoomMeetingIntegrationResponse[]> {
+
+        const { userId } = userSearchOption;
+
+        const loadedZoomInterations = await this.zoomIntegrationRepository.find({
+            where: {
+                users: {
+                    id: userId
+                }
+            }
+        });
+
+        return loadedZoomInterations.map(
+            (_integration) => plainToInstance(
+                FetchZoomMeetingIntegrationResponse,
+                _integration,
+                {
+                    strategy: 'excludeAll'
+                }
+            )
+        );
     }
 
     findOne(userSearchOption: SearchByUserOption): Promise<ZoomIntegration | null> {

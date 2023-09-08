@@ -43,11 +43,34 @@ describe('ZoomIntegrationsService', () => {
     });
 
     afterEach(() => {
+        zoomIntegrationRepositoryStub.find.reset();
         zoomIntegrationRepositoryStub.findOne.reset();
     });
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    it('should be searched for zoom integrations', async () => {
+
+        const userIdMock = stubOne(User).id;
+        const zoomIntegrations = stub(ZoomIntegration);
+
+        zoomIntegrationRepositoryStub.find.resolves(zoomIntegrations);
+
+        const searchedZoomIntegrations = await service.search({
+            userId: userIdMock
+        });
+
+        expect(searchedZoomIntegrations).ok;
+        expect(searchedZoomIntegrations.length).greaterThan(0);
+
+        const parsedZoomIntegration = searchedZoomIntegrations[0];
+        expect(parsedZoomIntegration).ok;
+        expect(parsedZoomIntegration.email).ok;
+        expect((parsedZoomIntegration as ZoomIntegration).accessToken).not.ok;
+
+        expect(zoomIntegrationRepositoryStub.find.called).true;
     });
 
     it('should be got zoom integration with findOne', async () => {

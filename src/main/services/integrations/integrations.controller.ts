@@ -8,6 +8,7 @@ import { IntegrationsServiceLocator } from '@services/integrations/integrations.
 import { UserService } from '@services/users/user.service';
 import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
+import { FetchZoomMeetingIntegrationResponse } from '@dto/integrations/zoom/fetch-zoom-meeting-integration-response.dto';
 import { Public } from '@app/auth/strategy/jwt/public.decorator';
 import { ValidateQueryParamPipe } from '@app/pipes/validate-query-param/validate-query-param.pipe';
 /**
@@ -91,9 +92,10 @@ export class IntegrationsController {
     searchIntegrations(
         @AuthUser('id') userId: number,
         @Param('vendor') vendor: 'google' | 'zoom'
-    ): Promise<Integration[]> {
+    ): Promise<Array<Integration | FetchZoomMeetingIntegrationResponse>> {
 
         const integrationService = this.integrationsServiceLocator.getService(vendor);
+
         return integrationService.search({ userId });
     }
 

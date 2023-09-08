@@ -5,6 +5,7 @@ import { Integration } from '@entity/integrations/integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { FetchZoomMeetingIntegrationResponse } from '@dto/integrations/zoom/fetch-zoom-meeting-integration-response.dto';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
 
@@ -17,9 +18,9 @@ export interface IntegrationsServiceInterface {
         syncdayGoogleOAuthTokenResponseOrSyncdayAccessToken?: string | SyncdayGoogleOAuthTokenResponse
     ): string;
 
-    search(userSearchOption: SearchByUserOption): Promise<Integration[]>;
+    search(userSearchOption: SearchByUserOption): Promise<Array<Integration | FetchZoomMeetingIntegrationResponse>>;
 
-    findOne(userSearchOption: SearchByUserOption): Promise<Integration | null>;
+    findOne(userSearchOption: SearchByUserOption): Promise<(Integration | FetchZoomMeetingIntegrationResponse) | null>;
 
     create(...argument: (ZoomIntegrationRequest | GoogleIntegrationRequest)): Promise<Integration>;
 
