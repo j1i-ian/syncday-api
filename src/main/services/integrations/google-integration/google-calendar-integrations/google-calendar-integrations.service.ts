@@ -8,8 +8,14 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleCalendarIntegrationSearchOption } from '@core/interfaces/integrations/google/google-calendar-integration-search-option.interface';
 import { GoogleCalendarDetail } from '@core/interfaces/integrations/google/google-calendar-detail.interface';
+import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
+import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
+import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
+import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
+import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleCalendarEventWatchService } from '@services/integrations/google-integration/facades/google-calendar-event-watch.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
@@ -17,12 +23,15 @@ import { GoogleConverterService } from '@services/integrations/google-integratio
 import { IntegrationUtilsService } from '@services/util/integration-utils/integration-utils.service';
 import { GoogleCalendarEventCreateService } from '@services/integrations/google-integration/facades/google-calendar-event-create.service';
 import { GoogleCalendarEventPatchService } from '@services/integrations/google-integration/facades/google-calendar-event-patch.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
+import { NotificationTarget } from '@entity/schedules/notification-target.enum';
+import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
 
@@ -31,6 +40,7 @@ export class GoogleCalendarIntegrationsService {
     constructor(
         private readonly integrationUtilService: IntegrationUtilsService,
         private readonly googleConverterService: GoogleConverterService,
+        private readonly notificationsService: NotificationsService,
         private readonly integrationsRedisRepository: IntegrationsRedisRepository,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @InjectDataSource() private readonly datasource: DataSource,
@@ -167,20 +177,74 @@ export class GoogleCalendarIntegrationsService {
                 iCalUID: In(deleteICalUIDs)
             }
         });
-        const allNotificationIds = schedules
-            .flatMap((_schedule) => _schedule.scheduledEventNotifications)
-            .map((_scheduleNotification) => _scheduleNotification.id);
 
-        await _scheduleRepository.softDelete({
-            id: In(schedules.map((_schedule) => _schedule.id))
+        schedules.map(async (_schedule) => {
+            const notificationDataAndPublishKeyArray = _schedule.scheduledEventNotifications
+                .map((_scheduleNotification) => {
+                    const notificationOrReminderType = _scheduleNotification.notificationType === NotificationType.EMAIL ?
+                        _scheduleNotification.notificationType : _scheduleNotification.reminderType;
+
+                    const isNotificationTargetHost = _scheduleNotification.notificationTarget === NotificationTarget.HOST;
+
+                    let template: EmailTemplate | TextTemplate = isNotificationTargetHost ?
+                        TextTemplate.EVENT_CANCELLED_HOST : TextTemplate.EVENT_CANCELLED_INVITEE;
+
+                    let syncdayNotificationPublishKey: SyncdayNotificationPublishKey;
+                    if (notificationOrReminderType === ReminderType.SMS) {
+                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.SMS_GLOBAL;
+                    } else if (notificationOrReminderType === ReminderType.WAHTSAPP) {
+                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.WHATSAPP;
+                    } else if (notificationOrReminderType === ReminderType.KAKAOTALK) {
+                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.KAKAOTALK;
+                    } else {
+                        template = EmailTemplate.CANCELLED;
+                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
+                    }
+                    const notificationData = {
+                        template,
+                        scheduleId: _scheduleNotification.scheduleId
+                    } as SyncdayAwsSnsRequest;
+
+                    const notificationDataAndPublishKeyArray = { notificationData, syncdayNotificationPublishKey };
+
+                    return notificationDataAndPublishKeyArray;
+                }).reduce((
+                    _notificationDataAndPublishKeyArray: Array<{ notificationData: SyncdayAwsSnsRequest; syncdayNotificationPublishKey: SyncdayNotificationPublishKey }>,
+                    _notificationDataAndPublishKey: { notificationData: SyncdayAwsSnsRequest; syncdayNotificationPublishKey: SyncdayNotificationPublishKey }
+                ) => {
+                    const isDuplicated = _notificationDataAndPublishKeyArray.find((__notificationDataAndPublishKey) =>
+                        _notificationDataAndPublishKey.notificationData.template === __notificationDataAndPublishKey.notificationData.template
+                    );
+
+                    if (!isDuplicated) {
+                        _notificationDataAndPublishKeyArray.push(_notificationDataAndPublishKey);
+                    }
+
+                    return _notificationDataAndPublishKeyArray;
+                }, []);
+
+            for (const notificationDataAndPublishKey of notificationDataAndPublishKeyArray) {
+                const notificationData = notificationDataAndPublishKey.notificationData;
+                const syncdayNotificationPublishKey = notificationDataAndPublishKey.syncdayNotificationPublishKey;
+
+                await this.notificationsService.sendMessage(syncdayNotificationPublishKey, notificationData);
+            }
         });
 
-        if (allNotificationIds.length > 0) {
-            await _scheduledEventNotificationRepository.delete({
-                id: In(allNotificationIds)
-            });
-        }
+        const canceledScheduleId = schedules.map((_schedule) => _schedule.id);
 
+        await _scheduleRepository.update(
+            {
+                id: In(canceledScheduleId)
+            },
+            {
+                status: ScheduledStatus.CANCELED
+            }
+        );
+
+        await _scheduleRepository.softDelete({
+            id: In(canceledScheduleId)
+        });
     }
 
     search({

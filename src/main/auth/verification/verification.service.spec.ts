@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Cluster } from 'ioredis';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { UtilService } from '@services/util/util.service';
-import { IntegrationsService } from '@services/integrations/integrations.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { UserService } from '@services/users/user.service';
 import { Verification } from '@entity/verifications/verification.interface';
 import { CreateVerificationDto } from '@dto/verifications/create-verification.dto';
@@ -16,14 +16,14 @@ describe('VerificationService', () => {
 
     let clusterStub: sinon.SinonStubbedInstance<Cluster>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
-    let integrationsServiceStub: sinon.SinonStubbedInstance<IntegrationsService>;
+    let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
 
     beforeEach(async () => {
         clusterStub = sinon.createStubInstance(Cluster);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
-        integrationsServiceStub = sinon.createStubInstance(IntegrationsService);
+        notificationsServiceStub = sinon.createStubInstance(NotificationsService);
         utilServiceStub = sinon.createStubInstance(UtilService);
         userServiceStub = sinon.createStubInstance(UserService);
 
@@ -39,8 +39,8 @@ describe('VerificationService', () => {
                     useValue: syncdayRedisServiceStub
                 },
                 {
-                    provide: IntegrationsService,
-                    useValue: integrationsServiceStub
+                    provide: NotificationsService,
+                    useValue: notificationsServiceStub
                 },
                 {
                     provide: UtilService,
@@ -65,7 +65,7 @@ describe('VerificationService', () => {
             clusterStub.setex.reset();
             clusterStub.get.reset();
             utilServiceStub.generateRandomNumberString.reset();
-            integrationsServiceStub.sendMessage.reset();
+            notificationsServiceStub.sendMessage.reset();
             syncdayRedisServiceStub.getEmailVerificationKey.reset();
             syncdayRedisServiceStub.getPhoneVerificationKey.reset();
         });
@@ -210,7 +210,7 @@ describe('VerificationService', () => {
             }) {
                 it(description, async () => {
 
-                    integrationsServiceStub.sendMessage.resolves(true);
+                    notificationsServiceStub.sendMessage.resolves(true);
 
                     const result = await service.publishSyncdayNotification(
                         languageMock,
@@ -218,7 +218,7 @@ describe('VerificationService', () => {
                         isAlreadySignedUpUserOnEmailVerificationMock
                     );
 
-                    expect(integrationsServiceStub.sendMessage.called).true;
+                    expect(notificationsServiceStub.sendMessage.called).true;
                     expect(result).equal(expectedResult);
                 });
 

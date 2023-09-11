@@ -10,6 +10,7 @@ import { IntegrationsRedisRepository } from '@services/integrations/integrations
 import { IntegrationUtilsService } from '@services/util/integration-utils/integration-utils.service';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
 import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
@@ -31,6 +32,7 @@ describe('GoogleCalendarIntegrationsService', () => {
     let loggerStub: sinon.SinonStubbedInstance<Logger>;
     let integrationUtilsServiceStub: sinon.SinonStubbedInstance<IntegrationUtilsService>;
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
+    let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
     let integrationsRedisRepositoryStub: sinon.SinonStubbedInstance<IntegrationsRedisRepository>;
 
     let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
@@ -52,6 +54,7 @@ describe('GoogleCalendarIntegrationsService', () => {
         loggerStub = sinon.createStubInstance(Logger);
         integrationUtilsServiceStub = sinon.createStubInstance(IntegrationUtilsService);
         googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
+        notificationsServiceStub = sinon.createStubInstance(NotificationsService);
 
         integrationsRedisRepositoryStub = sinon.createStubInstance<IntegrationsRedisRepository>(IntegrationsRedisRepository);
 
@@ -80,6 +83,10 @@ describe('GoogleCalendarIntegrationsService', () => {
                 {
                     provide: GoogleConverterService,
                     useValue: googleConverterServiceStub
+                },
+                {
+                    provide: NotificationsService,
+                    useValue: notificationsServiceStub
                 },
                 {
                     provide: IntegrationsRedisRepository,
@@ -133,16 +140,16 @@ describe('GoogleCalendarIntegrationsService', () => {
             integrationUtilsServiceStub.getGoogleOAuthClient.reset();
             googleConverterServiceStub.convertToGoogleIntegrationSchedules.reset();
 
+            notificationsServiceStub.sendMessage.reset();
+
             googleIntegrationRepositoryStub.findOneOrFail.reset();
             googleCalendarIntegrationRepositoryStub.delete.reset();
             googleIntegrationScheduleRepositoryStub.findBy.reset();
             googleIntegrationScheduleRepositoryStub.save.reset();
             googleIntegrationScheduleRepositoryStub.delete.reset();
 
-
             scheduleRepositoryStub.find.reset();
             scheduleRepositoryStub.softDelete.reset();
-            scheduledEventNotificationStub.delete.reset();
 
             serviceSandbox.restore();
         });
@@ -188,52 +195,86 @@ describe('GoogleCalendarIntegrationsService', () => {
             expect(_synchronizeWithGoogleCalendarEventsStub.called).false;
         });
 
-        it('should be synchronized for calendar items searching', async () => {
-            const googleScheduleMock = testMockUtil.getGoogleScheduleMock();
-            const oldGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
-            const newGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
-            newGoogleIntegrationScheduleStubs[0] = oldGoogleIntegrationScheduleStubs[0];
-            newGoogleIntegrationScheduleStubs[1] = oldGoogleIntegrationScheduleStubs[1];
-            newGoogleIntegrationScheduleStubs[2] = oldGoogleIntegrationScheduleStubs[2];
+        [
+            {
+                description: 'should be synchronized for calendar items searching',
+                managerDummy: datasourceMock as EntityManager,
+                googleCalendarIntegrationDummy: stubOne(GoogleCalendarIntegration),
+                userUUIDDummy: stubOne(User).uuid,
+                userSettingDummy: stubOne(UserSetting),
+                refrashTokenAndGoogleOAuthClientDummy: {
+                    userRefreshToken: 'dummyToken',
+                    googleOAuthClient: {} as Auth.OAuth2Client
+                },
+                googleScheduleStubValue: testMockUtil.getGoogleScheduleMock(),
+                deleteTargetScheduleStubsValue: stub(Schedule, 10, {
+                    scheduledEventNotifications: stub(ScheduledEventNotification)
+                }),
+                sendMessageStubValue: true
+            },
+            {
+                description: 'synchronization should occur for searching calendar items, but scheduled event notifications should not be deleted and cancel messages sent when there is no target schedule to delete',
+                managerDummy: datasourceMock as EntityManager,
+                googleCalendarIntegrationDummy: stubOne(GoogleCalendarIntegration),
+                userUUIDDummy: stubOne(User).uuid,
+                userSettingDummy: stubOne(UserSetting),
+                refrashTokenAndGoogleOAuthClientDummy: {
+                    userRefreshToken: 'dummyToken',
+                    googleOAuthClient: {} as Auth.OAuth2Client
+                },
+                googleScheduleStubValue: testMockUtil.getGoogleScheduleMock(),
+                deleteTargetScheduleStubsValue: [],
+                sendMessageStubValue: false
+            }
+        ].forEach(function ({
+            description,
+            managerDummy,
+            googleCalendarIntegrationDummy,
+            userUUIDDummy,
+            userSettingDummy,
+            refrashTokenAndGoogleOAuthClientDummy,
+            googleScheduleStubValue,
+            deleteTargetScheduleStubsValue,
+            sendMessageStubValue
+        }) {
+            it(description, async () => {
+                const googleCalendarEventListServiceSearchStub = serviceSandbox.stub(GoogleCalendarEventListService.prototype, 'search').resolves(googleScheduleStubValue);
 
-            const googleCalendarIntegrationMock = stubOne(GoogleCalendarIntegration);
-            const userMock = stubOne(User);
-            const userSettingMock = stubOne(UserSetting);
-            const googleOAuthClientMock = {} as Auth.OAuth2Client;
+                const oldGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
+                const newGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
+                newGoogleIntegrationScheduleStubs[0] = oldGoogleIntegrationScheduleStubs[0];
+                newGoogleIntegrationScheduleStubs[1] = oldGoogleIntegrationScheduleStubs[1];
+                newGoogleIntegrationScheduleStubs[2] = oldGoogleIntegrationScheduleStubs[2];
 
-            const googleCalendarEventListServiceSearchStub = serviceSandbox.stub(GoogleCalendarEventListService.prototype, 'search')
-                .resolves(googleScheduleMock);
+                googleIntegrationScheduleRepositoryStub.findBy.resolves(oldGoogleIntegrationScheduleStubs);
+                googleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(newGoogleIntegrationScheduleStubs);
 
-            const deleteTargetScheduleNotificationStubs = stub(ScheduledEventNotification);
-            const deleteTargetScheduleStubs = stub(Schedule, 10, {
-                scheduledEventNotifications: deleteTargetScheduleNotificationStubs
+                scheduleRepositoryStub.find.resolves(deleteTargetScheduleStubsValue);
+
+                notificationsServiceStub.sendMessage.resolves(sendMessageStubValue);
+
+                await service._synchronizeWithGoogleCalendarEvents(
+                    managerDummy,
+                    googleCalendarIntegrationDummy,
+                    userUUIDDummy,
+                    userSettingDummy,
+                    refrashTokenAndGoogleOAuthClientDummy
+                );
+
+                expect(integrationUtilsServiceStub.getGoogleOAuthClient.called).false;
+                expect(googleCalendarEventListServiceSearchStub.called).true;
+                expect(googleConverterServiceStub.convertToGoogleIntegrationSchedules.called).true;
+                expect(googleIntegrationScheduleRepositoryStub.findBy.called).true;
+                expect(googleIntegrationScheduleRepositoryStub.save.called).true;
+                expect(googleIntegrationScheduleRepositoryStub.delete.called).true;
+
+                expect(scheduleRepositoryStub.find.called).true;
+
+                expect(notificationsServiceStub.sendMessage.called).equals(sendMessageStubValue);
+
+                expect(scheduleRepositoryStub.update.called).true;
+                expect(scheduleRepositoryStub.softDelete.called).true;
             });
-
-            googleIntegrationScheduleRepositoryStub.findBy.resolves(oldGoogleIntegrationScheduleStubs);
-            googleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(newGoogleIntegrationScheduleStubs);
-
-            scheduleRepositoryStub.find.resolves(deleteTargetScheduleStubs);
-
-            await service._synchronizeWithGoogleCalendarEvents(
-                datasourceMock as EntityManager,
-                googleCalendarIntegrationMock,
-                userMock.uuid,
-                userSettingMock,
-                {
-                    googleOAuthClient: googleOAuthClientMock
-                }
-            );
-
-            expect(integrationUtilsServiceStub.getGoogleOAuthClient.called).false;
-            expect(googleCalendarEventListServiceSearchStub.called).true;
-            expect(googleConverterServiceStub.convertToGoogleIntegrationSchedules.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.findBy.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.save.called).true;
-            expect(googleIntegrationScheduleRepositoryStub.delete.called).true;
-
-            expect(scheduleRepositoryStub.find.called).true;
-            expect(scheduleRepositoryStub.softDelete.called).true;
-            expect(scheduledEventNotificationStub.delete.called).true;
         });
 
         it('should be searched for calendar items', async () => {

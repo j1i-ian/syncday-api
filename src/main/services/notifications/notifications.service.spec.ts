@@ -3,18 +3,19 @@ import { ConfigService } from '@nestjs/config';
 import { SNSClient } from '@aws-sdk/client-sns';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
+import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { FileUtilsService } from '@services/util/file-utils/file-utils.service';
 import { Language } from '@app/enums/language.enum';
 import { TestMockUtil } from '@test/test-mock-util';
 import { faker } from '@faker-js/faker';
-import { IntegrationsService } from './integrations.service';
+import { NotificationsService } from './notifications.service';
 
 const testMockUtil = new TestMockUtil();
 
 describe('IntegrationsService', () => {
-    let service: IntegrationsService;
+    let service: NotificationsService;
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let awsSnsClientStub: sinon.SinonStubbedInstance<SNSClient>;
@@ -33,7 +34,7 @@ describe('IntegrationsService', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                IntegrationsService,
+                NotificationsService,
                 {
                     provide: ConfigService,
                     useValue: configServiceStub
@@ -53,7 +54,7 @@ describe('IntegrationsService', () => {
             ]
         }).compile();
 
-        service = module.get<IntegrationsService>(IntegrationsService);
+        service = module.get<NotificationsService>(NotificationsService);
     });
 
     after(() => {
@@ -81,12 +82,16 @@ describe('IntegrationsService', () => {
             syncdayAwsSdkClientServiceStub.getSNSClient.returns(awsSnsClientStub);
             awsSnsClientStub.send.resolves(publishCommandOutputStub);
 
+            const notificationData = {
+                recipient: recipientMock,
+                template: emailTemplateMock,
+                language: languageMock,
+                data: JSON.stringify(verificationMock)
+            } as SyncdayAwsSnsRequest;
+
             const result = await service.sendMessage(
                 SyncdayNotificationPublishKey.EMAIL,
-                emailTemplateMock,
-                recipientMock,
-                languageMock,
-                JSON.stringify(verificationMock)
+                notificationData
             );
 
             expect(awsSnsClientStub.send.called).ok;

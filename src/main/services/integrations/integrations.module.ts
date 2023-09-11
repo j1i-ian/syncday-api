@@ -10,7 +10,6 @@ import { IntegrationsServiceLocator } from '@services/integrations/integrations.
 import { UserModule } from '@services/users/user.module';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { IntegrationsService } from './integrations.service';
 import { IntegrationsController } from './integrations.controller';
 
 @Module({
@@ -26,9 +25,8 @@ import { IntegrationsController } from './integrations.controller';
     providers: [
         JwtService,
         IntegrationsServiceLocator,
-        IntegrationsService,
         IntegrationsRedisRepository
     ],
-    exports: [IntegrationsServiceLocator, IntegrationsService, IntegrationsRedisRepository]
+    exports: [IntegrationsServiceLocator, IntegrationsRedisRepository]
 })
 export class IntegrationsModule {}

@@ -3,10 +3,11 @@ import { Cluster, RedisKey } from 'ioredis';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
 import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
+import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { UtilService } from '@services/util/util.service';
-import { IntegrationsService } from '@services/integrations/integrations.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { UserService } from '@services/users/user.service';
 import { Verification } from '@entity/verifications/verification.interface';
 import { CreateVerificationDto } from '@dto/verifications/create-verification.dto';
@@ -18,7 +19,7 @@ export class VerificationService {
     constructor(
         private readonly syncdayRedisService: SyncdayRedisService,
         private readonly utilService: UtilService,
-        private readonly integrationService: IntegrationsService,
+        private readonly notificationsService: NotificationsService,
 
         // FIXME: we should implement a way for verification of user status with Redis
         @Inject(forwardRef(() => UserService))
@@ -103,7 +104,6 @@ export class VerificationService {
             }
 
         } else {
-
             notificationPublishParam = {
                 notificationPublishKey: SyncdayNotificationPublishKey.SMS_GLOBAL,
                 templateType: TextTemplate.VERIFICATION,
@@ -114,12 +114,16 @@ export class VerificationService {
 
         const jsonStringNewVerification = JSON.stringify(newVerificationParam);
 
-        const publishResult = await this.integrationService.sendMessage(
-            notificationPublishParam.notificationPublishKey,
-            notificationPublishParam.templateType,
-            notificationPublishParam.verificationValue,
+        const notificationData = {
+            template: notificationPublishParam.templateType,
+            recipient: notificationPublishParam.verificationValue,
             language,
-            jsonStringNewVerification
+            data: jsonStringNewVerification
+        } as SyncdayAwsSnsRequest;
+
+        const publishResult = await this.notificationsService.sendMessage(
+            notificationPublishParam.notificationPublishKey,
+            notificationData
         );
 
         return publishResult;
