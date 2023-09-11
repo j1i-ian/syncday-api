@@ -24,14 +24,19 @@ import { Notification } from '@interfaces/notifications/notification';
 import { Reminder } from '@interfaces/reminders/reminder';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { EventSetting } from '@interfaces/events/event-setting';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { Verification } from '@entity/verifications/verification.interface';
+import { ConferenceLink } from '@entity/schedules/conference-link.entity';
+import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
+import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
+import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
 import { Faker, faker } from '@faker-js/faker';
 import { DataSourceMock } from '@test/datasource-mock.interface';
 import { Language } from '../main/enums/language.enum';
@@ -383,7 +388,7 @@ export class TestMockUtil {
         };
     }
 
-    getOverridedAvailabilityTimeMock(): OverridedAvailabilityTime {
+    getOverridedAvailabilityTimeMock(partialOverridedAvailabilityTime?: OverridedAvailabilityTime): OverridedAvailabilityTime {
         return {
             targetDate: new Date('2023-07-17 00:00:00'),
             timeRanges: [
@@ -391,7 +396,40 @@ export class TestMockUtil {
                     startTime: '2023-07-17 09:00:00',
                     endTime: '2023-07-17 17:00:00'
                 }
-            ]
+            ],
+            ...partialOverridedAvailabilityTime
         };
+    }
+
+    getZoomCreateMeetingResponseDTOMock(
+        partialZoomCreateMeetingResponseDTO?: Partial<ZoomCreateMeetingResponseDTO>
+    ): ZoomCreateMeetingResponseDTO {
+        return {
+            agenda: 'fake schedule name',
+            default_password: false,
+            duration: '2',
+            timezone: 'Asia/Seoul',
+            type: MeetingType.Scheduled,
+            topic: 'fake schedule name',
+            start_time: '2023-07-27 07:30:00',
+            ...partialZoomCreateMeetingResponseDTO
+        } as ZoomCreateMeetingResponseDTO;
+    }
+
+    getConferenceLinkMock(partialConferenceLink?: Partial<ConferenceLink>): ConferenceLink {
+        return {
+            id: 'fake_conference_link_id',
+            name: 'fake_conference_link_name',
+            url: 'fake_conference_link_url',
+            type: IntegrationVendor.ZOOM,
+            ...partialConferenceLink
+        } as ConferenceLink;
+    }
+
+    getScheduledTimesetMock(): ScheduledTimeset {
+        return {
+            startTimestamp: new Date('2023-07-27 07:30:00'),
+            endTimestamp: new Date('2023-07-27 07:30:00')
+        } as ScheduledTimeset;
     }
 }

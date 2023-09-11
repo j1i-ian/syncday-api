@@ -4,15 +4,20 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { calendar_v3 } from 'googleapis';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { Weekday } from '@interfaces/availability/weekday.enum';
 import { AvailableTime } from '@interfaces/availability/available-time';
 import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
+import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
+import { ZoomIntegrationsService } from '@services/integrations/zoom-integrations/zoom-integrations.service';
+import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
@@ -24,6 +29,7 @@ import { ScheduledBufferTime } from '@entity/schedules/scheduled-buffer-time.ent
 import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
+import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { SchedulesService } from './schedules.service';
@@ -33,6 +39,7 @@ const testMockUtil = new TestMockUtil();
 describe.skip('SchedulesService', () => {
     let service: SchedulesService;
 
+    let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
 
@@ -47,6 +54,7 @@ describe.skip('SchedulesService', () => {
 
     before(async () => {
 
+        integrationsServiceLocatorStub = sinon.createStubInstance(IntegrationsServiceLocator);
         utilServiceStub = sinon.createStubInstance(UtilService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
 
@@ -73,6 +81,10 @@ describe.skip('SchedulesService', () => {
                 {
                     provide: GoogleCalendarIntegrationsService,
                     useValue: googleCalendarIntegrationsServiceStub
+                },
+                {
+                    provide: IntegrationsServiceLocator,
+                    useValue: integrationsServiceLocatorStub
                 },
                 {
                     provide: SchedulesRedisRepository,
@@ -116,6 +128,9 @@ describe.skip('SchedulesService', () => {
             eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
             utilServiceStub.localizeDateTime.reset();
+            integrationsServiceLocatorStub.getService.reset();
+            integrationsServiceLocatorStub.getFacade.reset();
+
             googleCalendarIntegrationsServiceStub.findOne.reset();
             googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.reset();
             googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.reset();
@@ -126,6 +141,8 @@ describe.skip('SchedulesService', () => {
             scheduleRepositoryStub.findOneByOrFail.reset();
             scheduleRepositoryStub.update.reset();
             googleIntegrationScheduleRepositoryStub.findOneBy.reset();
+
+            availabilityRedisRepositoryStub.getAvailabilityBody.reset();
 
             serviceSandbox.restore();
         });
@@ -228,7 +245,10 @@ describe.skip('SchedulesService', () => {
             expect(scheduleRepositoryStub.findOneByOrFail.called).true;
         });
 
-        it('should be created scheduled event if google calendar is integrated and google meet link exist', async () => {
+        it('should be ensured that a scheduled event is created when both Google Calendar and Zoom are integrated, and a Google Meet link associated with Zoom exists', async () => {
+
+            const zoomIntegrationServiceStub = serviceSandbox.createStubInstance(ZoomIntegrationsService);
+            const zoomIntegrationFacadeStub = serviceSandbox.createStubInstance(ZoomIntegrationFacade);
 
             const userSettingStub = stubOne(UserSetting);
             const userMock = stubOne(User, {
@@ -236,27 +256,57 @@ describe.skip('SchedulesService', () => {
             });
             const availabilityMock = stubOne(Availability);
             const eventStub = stubOne(Event, {
-                availability: availabilityMock
+                availability: availabilityMock,
+                contacts: [
+                    { type: ContactType.ZOOM, value: 'https://zoomFakeLink' },
+                    { type: ContactType.GOOGLE_MEET, value: 'https://googleMeetFakeLink' }
+                ]
             });
-            const scheduleStub = stubOne(Schedule);
+            const scheduledTimesetStub = testMockUtil.getScheduledTimesetMock();
+            const scheduleStub = stubOne(Schedule, {
+                scheduledTime: scheduledTimesetStub,
+                contacts: [
+                    { type: ContactType.ZOOM, value: 'https://zoomFakeLink' },
+                    { type: ContactType.GOOGLE_MEET, value: 'https://googleMeetFakeLink' }
+                ]
+            });
             const googleCalendarIntegrationStub = stubOne(GoogleCalendarIntegration);
+            const zoomIntegrationStub = stubOne(ZoomIntegration);
+            const oauthTokenStub = testMockUtil.getOAuthTokenMock();
+            const zoomCreateMeetingResponseDTOStub = testMockUtil.getZoomCreateMeetingResponseDTOMock();
             const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
             const googleScheduleMock = testMockUtil.getGoogleScheduleMock();
+            const zoomConferenceLinkStub = testMockUtil.getConferenceLinkMock();
+            const googleConferenceLinkStub = testMockUtil.getConferenceLinkMock({
+                type: IntegrationVendor.GOOGLE
+            });
 
             eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
-            utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
             googleCalendarIntegrationsServiceStub.findOne.returns(of(googleCalendarIntegrationStub));
-            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves(googleScheduleMock);
-            googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.resolves(googleScheduleMock);
 
-            const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
-            const isOutboundScheduleStub = serviceSandbox.stub(service, 'hasScheduleLink').returns(true);
+            integrationsServiceLocatorStub.getService.returns(zoomIntegrationServiceStub);
+            integrationsServiceLocatorStub.getFacade.returns(zoomIntegrationFacadeStub);
 
-            scheduleRepositoryStub.save.resolves(scheduleStub);
-            schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
+            zoomIntegrationServiceStub.findOne.resolves(zoomIntegrationStub);
 
             availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyMock);
             utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+
+            const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
+
+            zoomIntegrationFacadeStub.issueTokenByRefreshToken.resolves(oauthTokenStub);
+            zoomIntegrationFacadeStub.createMeeting.resolves(zoomCreateMeetingResponseDTOStub);
+
+            const getZoomMeetLinkStub = serviceSandbox.stub(service, 'getZoomMeetLink').returns(zoomConferenceLinkStub);
+
+            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves(googleScheduleMock);
+
+            const getGoogleMeetLinkStub = serviceSandbox.stub(service, 'getGoogleMeetLink').returns(googleConferenceLinkStub);
+
+            googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.resolves(googleScheduleMock);
+
+            scheduleRepositoryStub.save.resolves(scheduleStub);
+            schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
 
             const createdSchedule = await firstValueFrom(
                 service._create(
@@ -272,18 +322,27 @@ describe.skip('SchedulesService', () => {
 
             expect(createdSchedule).ok;
             expect(eventsServiceStub.findOneByUserWorkspaceAndUUID.called).true;
+            expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
+            expect(integrationsServiceLocatorStub.getService.called).true;
+            expect(integrationsServiceLocatorStub.getFacade.called).true;
+            expect(zoomIntegrationServiceStub.findOne.called).true;
             expect(availabilityRedisRepositoryStub.getAvailabilityBody.called).true;
             expect(utilServiceStub.getPatchedScheduledEvent.called).true;
-            expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
-            expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).true;
-            expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).true;
             expect(validateStub.called).true;
-            expect(isOutboundScheduleStub.called).true;
+            expect(zoomIntegrationFacadeStub.issueTokenByRefreshToken.called).true;
+            expect(zoomIntegrationFacadeStub.createMeeting.called).true;
+            expect(getZoomMeetLinkStub.called).true;
+            expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).true;
+            expect(getGoogleMeetLinkStub.called).true;
+            expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).true;
             expect(scheduleRepositoryStub.save.called).true;
             expect(schedulesRedisRepositoryStub.save.called).true;
         });
 
-        it('should be created scheduled event if google calendar is integrated and google meet link does not exist', async () => {
+        it('should be ensured that a scheduled event is created if Google Calendar is integrated and a Google Meet link is not set up on contacts', async () => {
+
+            const zoomIntegrationServiceStub = serviceSandbox.createStubInstance(ZoomIntegrationsService);
+            const zoomIntegrationFacadeStub = serviceSandbox.createStubInstance(ZoomIntegrationFacade);
 
             const userSettingStub = stubOne(UserSetting);
             const userMock = stubOne(User, {
@@ -291,26 +350,51 @@ describe.skip('SchedulesService', () => {
             });
             const availabilityMock = stubOne(Availability);
             const eventStub = stubOne(Event, {
-                availability: availabilityMock
+                availability: availabilityMock,
+                contacts: []
             });
-            const scheduleStub = stubOne(Schedule);
-            const googleCalendarIntegrationStub = stubOne(GoogleCalendarIntegration);
+            const scheduledTimesetStub = testMockUtil.getScheduledTimesetMock();
+            const scheduleStub = stubOne(Schedule, {
+                scheduledTime: scheduledTimesetStub,
+                contacts: []
+            });
+            const nullOutboundGoogleCalendarIntegrationStub = null;
+            const nullZoomIntegrationStub = null;
+            const oauthTokenStub = testMockUtil.getOAuthTokenMock();
+            const zoomCreateMeetingResponseDTOStub = testMockUtil.getZoomCreateMeetingResponseDTOMock();
             const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
             const googleScheduleMock = testMockUtil.getGoogleScheduleMock();
+            const zoomConferenceLinkStub = testMockUtil.getConferenceLinkMock();
+            const googleConferenceLinkStub = testMockUtil.getConferenceLinkMock({
+                type: IntegrationVendor.GOOGLE
+            });
 
             eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
-            utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
-            googleCalendarIntegrationsServiceStub.findOne.returns(of(googleCalendarIntegrationStub));
-            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves(googleScheduleMock);
+            googleCalendarIntegrationsServiceStub.findOne.returns(of(nullOutboundGoogleCalendarIntegrationStub));
 
-            const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
-            const isOutboundScheduleStub = serviceSandbox.stub(service, 'hasScheduleLink').returns(false);
+            integrationsServiceLocatorStub.getService.returns(zoomIntegrationServiceStub);
+            integrationsServiceLocatorStub.getFacade.returns(zoomIntegrationFacadeStub);
 
-            scheduleRepositoryStub.save.resolves(scheduleStub);
-            schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
+            zoomIntegrationServiceStub.findOne.resolves(nullZoomIntegrationStub);
 
             availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyMock);
             utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+
+            const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
+
+            zoomIntegrationFacadeStub.issueTokenByRefreshToken.resolves(oauthTokenStub);
+            zoomIntegrationFacadeStub.createMeeting.resolves(zoomCreateMeetingResponseDTOStub);
+
+            const getZoomMeetLinkStub = serviceSandbox.stub(service, 'getZoomMeetLink').returns(zoomConferenceLinkStub);
+
+            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves(googleScheduleMock);
+
+            const getGoogleMeetLinkStub = serviceSandbox.stub(service, 'getGoogleMeetLink').returns(googleConferenceLinkStub);
+
+            googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.resolves(googleScheduleMock);
+
+            scheduleRepositoryStub.save.resolves(scheduleStub);
+            schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
 
             const createdSchedule = await firstValueFrom(
                 service._create(
@@ -326,42 +410,79 @@ describe.skip('SchedulesService', () => {
 
             expect(createdSchedule).ok;
             expect(eventsServiceStub.findOneByUserWorkspaceAndUUID.called).true;
+            expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
+            expect(integrationsServiceLocatorStub.getService.called).true;
+            expect(integrationsServiceLocatorStub.getFacade.called).true;
+            expect(zoomIntegrationServiceStub.findOne.called).true;
             expect(availabilityRedisRepositoryStub.getAvailabilityBody.called).true;
             expect(utilServiceStub.getPatchedScheduledEvent.called).true;
-            expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
-            expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).true;
-            expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).false;
             expect(validateStub.called).true;
-            expect(isOutboundScheduleStub.called).true;
+            expect(zoomIntegrationFacadeStub.issueTokenByRefreshToken.called).false;
+            expect(zoomIntegrationFacadeStub.createMeeting.called).false;
+            expect(getZoomMeetLinkStub.called).false;
+            expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).false;
+            expect(getGoogleMeetLinkStub.called).false;
+            expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).false;
             expect(scheduleRepositoryStub.save.called).true;
             expect(schedulesRedisRepositoryStub.save.called).true;
         });
 
         it('should be created scheduled event even if google calendar is not integrated', async () => {
 
+            const zoomIntegrationServiceStub = serviceSandbox.createStubInstance(ZoomIntegrationsService);
+            const zoomIntegrationFacadeStub = serviceSandbox.createStubInstance(ZoomIntegrationFacade);
+
             const userSettingStub = stubOne(UserSetting);
             const userMock = stubOne(User, {
                 userSetting: userSettingStub
             });
             const availabilityMock = stubOne(Availability);
             const eventStub = stubOne(Event, {
-                availability: availabilityMock
+                availability: availabilityMock,
+                contacts: []
             });
-            const scheduleStub = stubOne(Schedule);
-            const googleCalendarIntegrationStub = null;
+            const scheduledTimesetStub = testMockUtil.getScheduledTimesetMock();
+            const scheduleStub = stubOne(Schedule, {
+                scheduledTime: scheduledTimesetStub,
+                contacts: []
+            });
+            const nullOutboundGoogleCalendarIntegrationStub = null;
+            const nullZoomIntegrationStub = null;
+            const oauthTokenStub = testMockUtil.getOAuthTokenMock();
+            const zoomCreateMeetingResponseDTOStub = testMockUtil.getZoomCreateMeetingResponseDTOMock();
             const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
+            const googleScheduleMock = testMockUtil.getGoogleScheduleMock();
+            const zoomConferenceLinkStub = testMockUtil.getConferenceLinkMock();
+            const googleConferenceLinkStub = testMockUtil.getConferenceLinkMock({
+                type: IntegrationVendor.GOOGLE
+            });
 
             eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
-            utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
-            googleCalendarIntegrationsServiceStub.findOne.returns(of(googleCalendarIntegrationStub));
+            googleCalendarIntegrationsServiceStub.findOne.returns(of(nullOutboundGoogleCalendarIntegrationStub));
 
-            const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
+            integrationsServiceLocatorStub.getService.returns(zoomIntegrationServiceStub);
+            integrationsServiceLocatorStub.getFacade.returns(zoomIntegrationFacadeStub);
 
-            scheduleRepositoryStub.save.resolves(scheduleStub);
-            schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
+            zoomIntegrationServiceStub.findOne.resolves(nullZoomIntegrationStub);
 
             availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyMock);
             utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+
+            const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
+
+            zoomIntegrationFacadeStub.issueTokenByRefreshToken.resolves(oauthTokenStub);
+            zoomIntegrationFacadeStub.createMeeting.resolves(zoomCreateMeetingResponseDTOStub);
+
+            const getZoomMeetLinkStub = serviceSandbox.stub(service, 'getZoomMeetLink').returns(zoomConferenceLinkStub);
+
+            googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.resolves(googleScheduleMock);
+
+            const getGoogleMeetLinkStub = serviceSandbox.stub(service, 'getGoogleMeetLink').returns(googleConferenceLinkStub);
+
+            googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.resolves(googleScheduleMock);
+
+            scheduleRepositoryStub.save.resolves(scheduleStub);
+            schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
 
             const createdSchedule = await firstValueFrom(
                 service._create(
@@ -378,11 +499,18 @@ describe.skip('SchedulesService', () => {
             expect(createdSchedule).ok;
             expect(eventsServiceStub.findOneByUserWorkspaceAndUUID.called).true;
             expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
+            expect(integrationsServiceLocatorStub.getService.called).true;
+            expect(integrationsServiceLocatorStub.getFacade.called).true;
+            expect(zoomIntegrationServiceStub.findOne.called).true;
             expect(availabilityRedisRepositoryStub.getAvailabilityBody.called).true;
             expect(utilServiceStub.getPatchedScheduledEvent.called).true;
-            expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).false;
-            expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).false;
             expect(validateStub.called).true;
+            expect(zoomIntegrationFacadeStub.issueTokenByRefreshToken.called).false;
+            expect(zoomIntegrationFacadeStub.createMeeting.called).false;
+            expect(getZoomMeetLinkStub.called).false;
+            expect(googleCalendarIntegrationsServiceStub.createGoogleCalendarEvent.called).false;
+            expect(getGoogleMeetLinkStub.called).false;
+            expect(googleCalendarIntegrationsServiceStub.patchGoogleCalendarEvent.called).false;
             expect(scheduleRepositoryStub.save.called).true;
             expect(schedulesRedisRepositoryStub.save.called).true;
         });
@@ -411,31 +539,23 @@ describe.skip('SchedulesService', () => {
 
         });
 
-        it('should be returned false for no location schedule', () => {
+        it('should be returned google meet link', () => {
 
-            const noLocationScheduleStub = stubOne(Schedule);
-
-            delete (noLocationScheduleStub as any)['contacts'];
-
-            const result = service.getGoogleMeetLink(noLocationScheduleStub);
-
-            expect(result).false;
-        });
-
-        it('should be returned true for link type schedule', () => {
-
-            const noLocationScheduleStub = stubOne(Schedule, {
-                contacts: [
-                    {
-                        type: ContactType.GOOGLE_MEET,
-                        value: 'linklink'
-                    }
+            const googleMeetConferenceLinkStub = {
+                entryPoints: [
+                    { uri: 'fake google meet link uri' }
                 ]
-            });
+            } as calendar_v3.Schema$ConferenceData;
 
-            const result = service.getGoogleMeetLink(noLocationScheduleStub);
+            const googleCalendarEventMock = {
+                conferenceData: googleMeetConferenceLinkStub
+            } as calendar_v3.Schema$Event;
 
-            expect(result).true;
+            const actualGeneratedGoogleMeetLink = service.getGoogleMeetLink(googleCalendarEventMock);
+
+            expect(actualGeneratedGoogleMeetLink).ok;
+            expect(actualGeneratedGoogleMeetLink.type).equals(IntegrationVendor.GOOGLE);
+            expect(actualGeneratedGoogleMeetLink.link).equals('fake google meet link uri');
         });
     });
 
@@ -472,29 +592,35 @@ describe.skip('SchedulesService', () => {
                     scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
                     availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
                     _isPastTimestampStubValue: false,
-                    _isTimeOverlappingWithOverridesStubValue: true,
+                    _findOverlappingDateOverrideStubValue: undefined,
+                    _isTimeOverlappingWithAvailableTimeOverridesCall: false,
+                    _isTimeOverlappingWithAvailableTimeOverridesStubValue: false,
                     _isTimeOverlappingWithAvailableTimesStubValue: true,
                     conflictedScheduleStub: null,
                     googleIntegrationScheduleStub: null
                 },
                 {
-                    description: 'should be passed if the schedule is not within the event availability but is within the override availability time',
+                    description: 'should be passed if the schedule is not within available time but is within the available override time',
                     timezoneMock: stubOne(Availability).timezone,
                     scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
                     availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
                     _isPastTimestampStubValue: false,
-                    _isTimeOverlappingWithOverridesStubValue: true,
+                    _findOverlappingDateOverrideStubValue: testMockUtil.getOverridedAvailabilityTimeMock(),
+                    _isTimeOverlappingWithAvailableTimeOverridesCall: true,
+                    _isTimeOverlappingWithAvailableTimeOverridesStubValue: true,
                     _isTimeOverlappingWithAvailableTimesStubValue: false,
                     conflictedScheduleStub: null,
                     googleIntegrationScheduleStub: null
                 },
                 {
-                    description: 'should be passed if the schedule is within the event availability but is not within the override availability time',
+                    description: 'should be passed if the schedule is within available time but is not within the unavailable override availability time',
                     timezoneMock: stubOne(Availability).timezone,
                     scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
                     availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
                     _isPastTimestampStubValue: false,
-                    _isTimeOverlappingWithOverridesStubValue: false,
+                    _findOverlappingDateOverrideStubValue: undefined,
+                    _isTimeOverlappingWithAvailableTimeOverridesCall: false,
+                    _isTimeOverlappingWithAvailableTimeOverridesStubValue: false,
                     _isTimeOverlappingWithAvailableTimesStubValue: true,
                     conflictedScheduleStub: null,
                     googleIntegrationScheduleStub: null
@@ -504,15 +630,19 @@ describe.skip('SchedulesService', () => {
                 timezoneMock,
                 scheduleMock,
                 availabilityBodyMock,
+                _findOverlappingDateOverrideStubValue,
                 _isPastTimestampStubValue,
-                _isTimeOverlappingWithOverridesStubValue,
+                _isTimeOverlappingWithAvailableTimeOverridesStubValue,
                 _isTimeOverlappingWithAvailableTimesStubValue,
                 conflictedScheduleStub,
                 googleIntegrationScheduleStub
             }) {
                 it(description, async () => {
                     const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(_isPastTimestampStubValue);
-                    const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isInvalidTimeOverlappingWithOverrides').returns(_isTimeOverlappingWithOverridesStubValue);
+
+                    serviceSandbox.stub(service, '_findOverlappingDateOverride').returns(_findOverlappingDateOverrideStubValue);
+
+                    const _isTimeOverlappingWithOverridesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimeOverrides').returns(_isTimeOverlappingWithAvailableTimeOverridesStubValue);
                     const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(_isTimeOverlappingWithAvailableTimesStubValue);
 
                     scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
@@ -863,7 +993,7 @@ describe.skip('SchedulesService', () => {
                     });
                 });
 
-                const isTimeOverlappedWithOverrides = service._isInvalidTimeOverlappingWithOverrides(
+                const isTimeOverlappedWithOverrides = service._isTimeOverlappingWithAvailableTimeOverrides(
                     timezoneMock,
                     overridesMock,
                     startDateTimestampMock,

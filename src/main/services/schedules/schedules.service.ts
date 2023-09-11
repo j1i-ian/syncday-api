@@ -33,11 +33,11 @@ import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/
 export class SchedulesService {
 
     constructor(
+        private readonly integrationsServiceLocator: IntegrationsServiceLocator,
         private readonly utilService: UtilService,
         private readonly eventsService: EventsService,
-        private readonly scheduleRedisRepository: SchedulesRedisRepository,
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
-        private readonly integrationsServiceLocator: IntegrationsServiceLocator,
+        private readonly scheduleRedisRepository: SchedulesRedisRepository,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>,
         @InjectRepository(GoogleIntegrationSchedule) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
@@ -155,7 +155,7 @@ export class SchedulesService {
             this.eventsService.findOneByUserWorkspaceAndUUID(userWorkspace, eventUUID)
         );
 
-        const loadedGoogleCalendarIntegration$ = from(this.googleCalendarIntegrationsService.findOne({
+        const loadedOutboundGoogleCalendarIntegration$ = from(this.googleCalendarIntegrationsService.findOne({
             outboundWriteSync: true,
             userId: host.id
         }));
@@ -178,7 +178,7 @@ export class SchedulesService {
                         userWorkspace,
                         event.availability.timezone
                     )),
-                    loadedGoogleCalendarIntegration$,
+                    loadedOutboundGoogleCalendarIntegration$,
                     loadedZoomIntegration$,
                     of(event.availability.timezone),
                     of(event.contacts)
@@ -188,7 +188,7 @@ export class SchedulesService {
                 ([
                     availabilityBody,
                     patchedSchedule,
-                    loadedGoogleCalendarIntegrationOrNull,
+                    loadedOutboundGoogleCalendarIntegrationOrNull,
                     loadedZoomIntegrationOrNull,
                     availabilityTimezone,
                     contacts
@@ -197,7 +197,7 @@ export class SchedulesService {
                         patchedSchedule,
                         availabilityTimezone,
                         availabilityBody,
-                        loadedGoogleCalendarIntegrationOrNull?.id
+                        loadedOutboundGoogleCalendarIntegrationOrNull?.id
                     ).pipe(
                         mergeMap((patchedSchedule) =>
                             loadedZoomIntegrationOrNull && contacts.find((_contact) => _contact.type === ContactType.ZOOM) ?
@@ -225,10 +225,10 @@ export class SchedulesService {
                                 of(patchedSchedule)
                         ),
                         mergeMap((patchedSchedule) =>
-                            loadedGoogleCalendarIntegrationOrNull ?
+                            loadedOutboundGoogleCalendarIntegrationOrNull ?
                                 from(this.googleCalendarIntegrationsService.createGoogleCalendarEvent(
-                                    (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
-                                    (loadedGoogleCalendarIntegrationOrNull),
+                                    (loadedOutboundGoogleCalendarIntegrationOrNull).googleIntegration,
+                                    (loadedOutboundGoogleCalendarIntegrationOrNull),
                                     availabilityTimezone,
                                     patchedSchedule
                                 )).pipe(mergeMap((createdGoogleCalendarEvent) => {
@@ -248,8 +248,8 @@ export class SchedulesService {
                                         }
 
                                         return from(this.googleCalendarIntegrationsService.patchGoogleCalendarEvent(
-                                            (loadedGoogleCalendarIntegrationOrNull).googleIntegration,
-                                            (loadedGoogleCalendarIntegrationOrNull),
+                                            (loadedOutboundGoogleCalendarIntegrationOrNull).googleIntegration,
+                                            (loadedOutboundGoogleCalendarIntegrationOrNull),
                                             createdGoogleCalendarEvent.id as string,
                                             patchedSchedule
                                         ));
@@ -342,30 +342,57 @@ export class SchedulesService {
 
         const { availableTimes, overrides } = availabilityBody;
 
-        const isInvalidTimeOverlappingWithOverrides = this._isInvalidTimeOverlappingWithOverrides(
+        const overlappingDateOverride = this._findOverlappingDateOverride(
             availabilityTimezone,
             overrides,
             ensuredStartDateTimestamp,
             ensuredEndDateTimestamp
         );
 
-        const isTimeOverlappingWithAvailableTimes = this._isTimeOverlappingWithAvailableTimes(
-            availableTimes,
-            availabilityTimezone,
-            ensuredStartDateTime,
-            ensuredEndDateTime
-        );
+        let isInvalidTimeOverlappingWithOverrides = true;
+        let _isUnavailableDateOverride;
+        let _isTimeOverlappingWithAvailableTimeOverrides;
+        let _isTimeOverlappingWithAvailableTimes;
 
-        const isNotTimeOverlappingWithAvailableTimes = isInvalidTimeOverlappingWithOverrides && !isTimeOverlappingWithAvailableTimes;
+        if (overlappingDateOverride) {
+            // checking unavailable override
+            _isUnavailableDateOverride = overlappingDateOverride.timeRanges.length === 0;
 
-        const isInvalid = isPast || isNotConcatenatedTimes || isInvalidTimeOverlappingWithOverrides || isNotTimeOverlappingWithAvailableTimes;
+            if (_isUnavailableDateOverride) {
+                isInvalidTimeOverlappingWithOverrides = true;
+            } else {
+                // or checking available override time match
+                _isTimeOverlappingWithAvailableTimeOverrides = this._isTimeOverlappingWithAvailableTimeOverrides(
+                    availabilityTimezone,
+                    overlappingDateOverride,
+                    ensuredStartDateTimestamp,
+                    ensuredEndDateTimestamp
+                );
+
+                isInvalidTimeOverlappingWithOverrides = !_isTimeOverlappingWithAvailableTimeOverrides;
+            }
+
+        } else {
+            // checking available time
+            _isTimeOverlappingWithAvailableTimes = this._isTimeOverlappingWithAvailableTimes(
+                availableTimes,
+                availabilityTimezone,
+                ensuredStartDateTime,
+                ensuredEndDateTime
+            );
+            isInvalidTimeOverlappingWithOverrides = !_isTimeOverlappingWithAvailableTimes;
+        }
+
+        const isInvalid = isPast || isNotConcatenatedTimes || isInvalidTimeOverlappingWithOverrides;
 
         if (isInvalid) {
 
             const results = `isPast: ${String(isPast)},
             isNotConcatenatedTimes: ${String(isNotConcatenatedTimes)},
-            (isInvalidTimeOverlappingWithOverrides && isNotTimeOverlappingWithAvailableTimes: ${String(isInvalidTimeOverlappingWithOverrides)}
-                && ${String(isNotTimeOverlappingWithAvailableTimes)})`;
+            (isInvalidTimeOverlappingWithOverrides: ${String(isInvalidTimeOverlappingWithOverrides)}
+                && _isUnavailableDateOverride: ${String(_isUnavailableDateOverride)},
+                && _isTimeOverlappingWithAvailableTimeOverrides: ${String(_isTimeOverlappingWithAvailableTimeOverrides)},
+                && _isTimeOverlappingWithAvailableTimes: ${String(_isTimeOverlappingWithAvailableTimes)})`;
 
             this.logger.debug(
                 `invalid reason: ${results}`
@@ -503,6 +530,40 @@ export class SchedulesService {
             ensuredEndDateTimestamp < Date.now();
     }
 
+    _findOverlappingDateOverride(
+        timezone: string,
+        overrides: OverridedAvailabilityTime[],
+        requestedStartDateTimestamp: number,
+        requestedEndDateTimestamp: number
+    ): OverridedAvailabilityTime | undefined {
+
+        const overlappingDateOverride = overrides.find((_override) => {
+
+            const { targetDate: _targetDate } = _override;
+            // check request time is in date override range
+            const _dateStartTime = '00:00';
+            const _dateEndTime = '23:59';
+
+            const _localizedDateStartTime = this.utilService.localizeDateTime(
+                new Date(_targetDate),
+                timezone,
+                _dateStartTime
+            );
+            const _localizedDateEndTime = this.utilService.localizeDateTime(
+                new Date(_targetDate),
+                timezone,
+                _dateEndTime
+            );
+
+            const isOverlapping = (_localizedDateStartTime.getTime() < requestedStartDateTimestamp && requestedStartDateTimestamp < _localizedDateEndTime.getTime()) ||
+                (_localizedDateStartTime.getTime() < requestedEndDateTimestamp && requestedEndDateTimestamp < _localizedDateEndTime.getTime());
+
+            return isOverlapping;
+        });
+
+        return overlappingDateOverride;
+    }
+
     /**
      * This method returns true if given params are valid
      * nor returns false for invalid
@@ -513,79 +574,38 @@ export class SchedulesService {
      * @param requestedEndDateTimestamp The schedule end time requested by the invitee
      * @returns true: invalid / false: valid
      */
-    _isInvalidTimeOverlappingWithOverrides(
+    _isTimeOverlappingWithAvailableTimeOverrides(
         timezone: string,
-        overrides: OverridedAvailabilityTime[],
+        overlappingOverride: OverridedAvailabilityTime,
         requestedStartDateTimestamp: number,
         requestedEndDateTimestamp: number
     ): boolean {
 
-        let isInvalidOverlappingWithOverrides: boolean;
+        const { targetDate: _targetDate } = overlappingOverride;
 
-        if (overrides.length > 0) {
-            isInvalidOverlappingWithOverrides = false;
+        const matchedTimeRnage = overlappingOverride.timeRanges.find((__timeRange) => {
+            const {
+                startTime,
+                endTime
+            } = __timeRange as {
+                startTime: string;
+                endTime: string;
+            };
+            const _startDateTime = this.utilService.localizeDateTime(
+                new Date(_targetDate),
+                timezone,
+                startTime
+            );
+            const _endDateTime = this.utilService.localizeDateTime(
+                new Date(_targetDate),
+                timezone,
+                endTime
+            );
+            return _startDateTime.getTime() <= requestedStartDateTimestamp &&
+                requestedEndDateTimestamp <= _endDateTime.getTime();
+        });
 
-            for (const override of overrides) {
-                // check available time
-                const { targetDate: _targetDate } = override;
-                // check unavailable time
-                const _dateStartTime = '00:00';
-                const _dateEndTime = '23:59';
-
-                const _localizedDateStartTime = this.utilService.localizeDateTime(
-                    new Date(_targetDate),
-                    timezone,
-                    _dateStartTime
-                );
-                const _localizedDateEndTime = this.utilService.localizeDateTime(
-                    new Date(_targetDate),
-                    timezone,
-                    _dateEndTime
-                );
-                const isOverlapping = (_localizedDateStartTime.getTime() < requestedStartDateTimestamp && requestedStartDateTimestamp < _localizedDateEndTime.getTime()) ||
-                (_localizedDateStartTime.getTime() < requestedEndDateTimestamp && requestedEndDateTimestamp < _localizedDateEndTime.getTime());
-
-                if (isOverlapping) {
-                    isInvalidOverlappingWithOverrides = true;
-
-                    const canBeScheduled = override.timeRanges.some((__timeRange) => {
-                        const {
-                            startTime,
-                            endTime
-                        } = __timeRange as {
-                            startTime: string;
-                            endTime: string;
-                        };
-                        const _startDateTime = this.utilService.localizeDateTime(
-                            new Date(_targetDate),
-                            timezone,
-                            startTime
-                        );
-                        const _endDateTime = this.utilService.localizeDateTime(
-                            new Date(_targetDate),
-                            timezone,
-                            endTime
-                        );
-                        return _startDateTime.getTime() <= requestedStartDateTimestamp &&
-                            requestedEndDateTimestamp <= _endDateTime.getTime();
-                    });
-
-                    if (canBeScheduled) {
-                        isInvalidOverlappingWithOverrides = false;
-                        break;
-                    } else {
-                        continue;
-                    }
-
-                } else {
-                    isInvalidOverlappingWithOverrides = false;
-                }
-            }
-        } else {
-            isInvalidOverlappingWithOverrides = false;
-        }
-
-        return isInvalidOverlappingWithOverrides;
+        return !!matchedTimeRnage;
     }
 
     _isTimeOverlappingWithAvailableTimes(
