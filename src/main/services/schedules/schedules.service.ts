@@ -355,8 +355,8 @@ export class SchedulesService {
             ensuredStartDateTime,
             ensuredEndDateTime
         );
-        console.log('isTimeOverlappingWithAvailableTimes:', isTimeOverlappingWithAvailableTimes);
-        const isNotTimeOverlappingWithAvailableTimes = !isTimeOverlappingWithAvailableTimes;
+
+        const isNotTimeOverlappingWithAvailableTimes = isInvalidTimeOverlappingWithOverrides && !isTimeOverlappingWithAvailableTimes;
 
         const isInvalid = isPast || isNotConcatenatedTimes || isInvalidTimeOverlappingWithOverrides || isNotTimeOverlappingWithAvailableTimes;
 
@@ -365,7 +365,7 @@ export class SchedulesService {
             const results = `isPast: ${String(isPast)},
             isNotConcatenatedTimes: ${String(isNotConcatenatedTimes)},
             (isInvalidTimeOverlappingWithOverrides && isNotTimeOverlappingWithAvailableTimes: ${String(isInvalidTimeOverlappingWithOverrides)}
-                && ${String(isNotTimeOverlappingWithAvailableTimes)}`;
+                && ${String(isNotTimeOverlappingWithAvailableTimes)})`;
 
             this.logger.debug(
                 `invalid reason: ${results}`
@@ -509,15 +509,15 @@ export class SchedulesService {
      *
      * @param timezone
      * @param overrides
-     * @param startDateTimestamp
-     * @param endDateTimestamp
+     * @param requestedStartDateTimestamp The schedule start time requested by the invitee
+     * @param requestedEndDateTimestamp The schedule end time requested by the invitee
      * @returns true: invalid / false: valid
      */
     _isInvalidTimeOverlappingWithOverrides(
         timezone: string,
         overrides: OverridedAvailabilityTime[],
-        startDateTimestamp: number,
-        endDateTimestamp: number
+        requestedStartDateTimestamp: number,
+        requestedEndDateTimestamp: number
     ): boolean {
 
         let isInvalidOverlappingWithOverrides: boolean;
@@ -542,8 +542,8 @@ export class SchedulesService {
                     timezone,
                     _dateEndTime
                 );
-                const isOverlapping = (_localizedDateStartTime.getTime() < startDateTimestamp && startDateTimestamp < _localizedDateEndTime.getTime()) ||
-                (_localizedDateStartTime.getTime() < endDateTimestamp && endDateTimestamp < _localizedDateEndTime.getTime());
+                const isOverlapping = (_localizedDateStartTime.getTime() < requestedStartDateTimestamp && requestedStartDateTimestamp < _localizedDateEndTime.getTime()) ||
+                (_localizedDateStartTime.getTime() < requestedEndDateTimestamp && requestedEndDateTimestamp < _localizedDateEndTime.getTime());
 
                 if (isOverlapping) {
                     isInvalidOverlappingWithOverrides = true;
@@ -566,8 +566,8 @@ export class SchedulesService {
                             timezone,
                             endTime
                         );
-                        return _startDateTime.getTime() <= startDateTimestamp &&
-                            endDateTimestamp <= _endDateTime.getTime();
+                        return _startDateTime.getTime() <= requestedStartDateTimestamp &&
+                            requestedEndDateTimestamp <= _endDateTime.getTime();
                     });
 
                     if (canBeScheduled) {
