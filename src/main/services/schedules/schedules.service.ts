@@ -572,7 +572,7 @@ export class SchedulesService {
      * @param overrides
      * @param requestedStartDateTimestamp The schedule start time requested by the invitee
      * @param requestedEndDateTimestamp The schedule end time requested by the invitee
-     * @returns true: invalid / false: valid
+     * @returns true: valid / false: invalid
      */
     _isTimeOverlappingWithAvailableTimeOverrides(
         timezone: string,
@@ -583,29 +583,43 @@ export class SchedulesService {
 
         const { targetDate: _targetDate } = overlappingOverride;
 
-        const matchedTimeRnage = overlappingOverride.timeRanges.find((__timeRange) => {
-            const {
-                startTime,
-                endTime
-            } = __timeRange as {
-                startTime: string;
-                endTime: string;
-            };
-            const _startDateTime = this.utilService.localizeDateTime(
-                new Date(_targetDate),
-                timezone,
-                startTime
-            );
-            const _endDateTime = this.utilService.localizeDateTime(
-                new Date(_targetDate),
-                timezone,
-                endTime
-            );
-            return _startDateTime.getTime() <= requestedStartDateTimestamp &&
-                requestedEndDateTimestamp <= _endDateTime.getTime();
-        });
+        let matchedTimeRange = false;
 
-        return !!matchedTimeRnage;
+        if (overlappingOverride.timeRanges.length > 0) {
+
+            const _foundOverlappingTimeRange = overlappingOverride.timeRanges.find((__timeRange) => {
+                const {
+                    startTime,
+                    endTime
+                } = __timeRange as {
+                    startTime: string;
+                    endTime: string;
+                };
+                const _startDateTime = this.utilService.localizeDateTime(
+                    new Date(_targetDate),
+                    timezone,
+                    startTime
+                );
+                const _endDateTime = this.utilService.localizeDateTime(
+                    new Date(_targetDate),
+                    timezone,
+                    endTime
+                );
+                return _startDateTime.getTime() < requestedStartDateTimestamp &&
+                    requestedEndDateTimestamp < _endDateTime.getTime();
+            });
+
+            matchedTimeRange = !!_foundOverlappingTimeRange;
+        } else {
+            const targetNextDateTimestamp = new Date().setDate(new Date(_targetDate).getDate() + 1);
+            const targetDateTimestamp = _targetDate.getTime();
+
+            matchedTimeRange =
+            (targetDateTimestamp < requestedStartDateTimestamp && requestedStartDateTimestamp < targetNextDateTimestamp)
+            || (targetDateTimestamp < requestedEndDateTimestamp && requestedEndDateTimestamp < targetNextDateTimestamp);
+        }
+
+        return matchedTimeRange;
     }
 
     _isTimeOverlappingWithAvailableTimes(
