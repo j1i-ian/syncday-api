@@ -14,6 +14,8 @@ export class ZoomOauthUserService {
 
         const zoomUser: ZoomUserResponseDTO = await zoomUserResponse.json();
 
+        zoomUser.integrationUserUniqueId = zoomUser.account_id;
+
         return zoomUser;
     }
 

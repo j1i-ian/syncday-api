@@ -16,6 +16,7 @@ import { EventStatus } from '@entity/events/event-status.enum';
 import { FetchZoomMeetingIntegrationResponse } from '@dto/integrations/zoom/fetch-zoom-meeting-integration-response.dto';
 import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
 import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
+import { SearchZoomIntegrationOptions } from '@app/interfaces/integrations/zoom/search-zoom-integration-options.interface';
 
 @Injectable()
 export class ZoomIntegrationsService implements IntegrationsServiceInterface {
@@ -57,15 +58,17 @@ export class ZoomIntegrationsService implements IntegrationsServiceInterface {
         );
     }
 
-    findOne(userSearchOption: SearchByUserOption): Promise<ZoomIntegration | null> {
+    findOne(searchZoomIntegrationOptions: SearchZoomIntegrationOptions): Promise<ZoomIntegration | null> {
 
-        const { userId } = userSearchOption;
+        const { userId, integrationUserUniqueId } = searchZoomIntegrationOptions;
 
         return this.zoomIntegrationRepository.findOne({
+            relations: ['users'],
             where: {
                 users: {
                     id: userId
-                }
+                },
+                integrationUserUniqueId
             }
         });
     }
@@ -88,6 +91,7 @@ export class ZoomIntegrationsService implements IntegrationsServiceInterface {
             email: zoomEmail,
             accessToken: oauth2Token.accessToken,
             refreshToken: oauth2Token.refreshToken,
+            integrationUserUniqueId: zoomOAuth2UserProfile.integrationUserUniqueId,
             users: [{ id: appUser.id }]
         } as ZoomIntegration;
 
@@ -120,7 +124,6 @@ export class ZoomIntegrationsService implements IntegrationsServiceInterface {
         return zoomIntegration;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async remove(zoomIntegrationId: number, userId: number): Promise<boolean> {
 
         // load events that linked with zoom integration

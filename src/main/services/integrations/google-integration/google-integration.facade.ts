@@ -132,7 +132,8 @@ export class GoogleIntegrationFacade implements IntegrationsFacade {
             tokens,
             calendars: calendars as GoogleOAuth2UserWithToken['calendars'],
             schedules,
-            insufficientPermission
+            insufficientPermission,
+            integrationUserUniqueId: googleUserInfo.email as string
         };
     }
 

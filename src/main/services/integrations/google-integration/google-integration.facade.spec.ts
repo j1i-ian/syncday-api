@@ -73,6 +73,9 @@ describe('GoogleIntegrationFacade', () => {
             GoogleOAuthUserService.prototype,
             'getGoogleUserInfo'
         );
+        getGoogleUserInfoStub.resolves({
+            email: 'fakeGoogleUserEmail@gmail.com'
+        });
         googleCalendarListServiceSearchStub = serviceSandbox.stub(
             GoogleCalendarListService.prototype,
             'search'

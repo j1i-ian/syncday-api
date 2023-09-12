@@ -9,6 +9,7 @@ import { ZoomOauthUserService } from '@services/integrations/zoom-integrations/f
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
 import { ZoomCreateMeetingService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
+import { ZoomIntegrationsController } from './zoom-integrations.controller';
 
 @Module({
     imports: [
@@ -24,6 +25,7 @@ import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.enti
         ZoomOauthUserService,
         ZoomCreateMeetingService
     ],
-    exports: [ZoomIntegrationsService, ZoomIntegrationFacade]
+    exports: [ZoomIntegrationsService, ZoomIntegrationFacade],
+    controllers: [ZoomIntegrationsController]
 })
 export class ZoomIntegrationsModule {}
