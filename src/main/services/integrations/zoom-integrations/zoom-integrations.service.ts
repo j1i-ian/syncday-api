@@ -161,6 +161,7 @@ export class ZoomIntegrationsService implements IntegrationsServiceInterface {
             const disableEventTargetIds = disableEventTargets.map((_event) => _event.id);
 
             const eventUpdateResult = await eventRepository.update(disableEventTargetIds, {
+                contacts: [],
                 status: EventStatus.CLOSED
             });
 
