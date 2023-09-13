@@ -9,6 +9,7 @@ import { GoogleConverterService } from '@services/integrations/google-integratio
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { UtilService } from '@services/util/util.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { OAuth2Type } from '@entity/users/oauth2-type.enum';
@@ -42,7 +43,8 @@ export class TokenService {
         private readonly oauth2AccountsService: OAuth2AccountsService,
         private readonly googleIntegrationFacade: GoogleIntegrationFacade,
         private readonly googleIntegrationService: GoogleIntegrationsService,
-        private readonly googleConverterService: GoogleConverterService
+        private readonly googleConverterService: GoogleConverterService,
+        private readonly notificationsService: NotificationsService
     ) {
         this.jwtOption = AppConfigService.getJwtOptions(this.configService);
         this.jwtRefreshTokenOption = AppConfigService.getJwtRefreshOptions(this.configService);
@@ -131,6 +133,9 @@ export class TokenService {
             );
 
             isNewbie = true;
+
+            await this.notificationsService.sendWelcomeEmailForNewUser(loadedUserOrNull.name, loadedUserOrNull.email, loadedUserOrNull.userSetting.preferredLanguage);
+
         } else if (ensuredIntegrationContext === IntegrationContext.SIGN_IN) {
             isNewbie = false;
         } else if (ensuredIntegrationContext === IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN) {

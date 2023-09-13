@@ -11,6 +11,7 @@ import { AvailabilityRedisRepository } from '@services/availability/availability
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
@@ -52,6 +53,7 @@ export class UserService {
         private readonly userSettingService: UserSettingService,
         private readonly syncdayRedisService: SyncdayRedisService,
         private readonly utilService: UtilService,
+        private readonly notificationsService: NotificationsService,
         private readonly eventRedisRepository: EventsRedisRepository,
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly oauth2AccountService: OAuth2AccountsService,
@@ -163,6 +165,8 @@ export class UserService {
         } else {
             throw new EmailVertificationFailException();
         }
+
+        await this.notificationsService.sendWelcomeEmailForNewUser(createdUser.name, createdUser.email, createdUser.userSetting.preferredLanguage);
 
         return createdUser;
     }

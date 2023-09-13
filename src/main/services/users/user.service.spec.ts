@@ -8,6 +8,7 @@ import { AvailabilityRedisRepository } from '@services/availability/availability
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
@@ -40,6 +41,7 @@ describe('Test User Service', () => {
     let eventsRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
     let googleIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let oauth2AccountsServiceStub: sinon.SinonStubbedInstance<OAuth2AccountsService>;
+    let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
 
@@ -65,6 +67,7 @@ describe('Test User Service', () => {
         availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
         googleIntegrationsServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
         oauth2AccountsServiceStub = sinon.createStubInstance(OAuth2AccountsService);
+        notificationsServiceStub = sinon.createStubInstance(NotificationsService);
         eventsRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
@@ -117,6 +120,10 @@ describe('Test User Service', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
+                },
+                {
+                    provide: NotificationsService,
+                    useValue: notificationsServiceStub
                 },
                 {
                     provide: getRepositoryToken(User),
@@ -390,6 +397,8 @@ describe('Test User Service', () => {
                 serviceSandbox.reset();
                 serviceSandbox.restore();
                 tokenServiceStub.comparePassword.reset();
+
+                notificationsServiceStub.sendWelcomeEmailForNewUser.reset();
             });
 
             after(() => {
@@ -414,6 +423,8 @@ describe('Test User Service', () => {
 
                 serviceSandbox.stub(service, '_createUser').resolves(userStub);
 
+                notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(true);
+
                 const createdUser = (await service.createUserWithVerificationByEmail(
                     emailMock,
                     verificationStub.verificationCode,
@@ -425,6 +436,8 @@ describe('Test User Service', () => {
 
                 expect(createdUser).ok;
                 expect(createdUser.id).equals(userStub.id);
+
+                expect(notificationsServiceStub.sendWelcomeEmailForNewUser.called).ok;
             });
 
             it('should be not verified when email and verification is not matched', async () => {

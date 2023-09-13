@@ -12,6 +12,7 @@ import { GoogleConverterService } from '@services/integrations/google-integratio
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { UtilService } from '@services/util/util.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Type } from '@entity/users/oauth2-type.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
@@ -35,6 +36,7 @@ describe('TokenService', () => {
     let googleIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let googleIntegrationFacadeStub: sinon.SinonStubbedInstance<GoogleIntegrationFacade>;
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
+    let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
 
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
@@ -45,6 +47,7 @@ describe('TokenService', () => {
         googleIntegrationsServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
         googleIntegrationFacadeStub = sinon.createStubInstance(GoogleIntegrationFacade);
         googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
+        notificationsServiceStub = sinon.createStubInstance(NotificationsService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -80,6 +83,10 @@ describe('TokenService', () => {
                 {
                     provide: GoogleConverterService,
                     useValue: googleConverterServiceStub
+                },
+                {
+                    provide: NotificationsService,
+                    useValue: notificationsServiceStub
                 }
             ]
         }).compile();
@@ -173,6 +180,8 @@ describe('TokenService', () => {
             googleIntegrationsServiceStub.create.reset();
             googleConverterServiceStub.convertToGoogleCalendarIntegration.reset();
 
+            notificationsServiceStub.sendWelcomeEmailForNewUser.reset();
+
             serviceSandbox.restore();
         });
 
@@ -200,7 +209,8 @@ describe('TokenService', () => {
                 isExpectedNewbie: true,
                 createUserByGoogleOAuth2Call: true,
                 googleIntegrationServiceCreateCall: false,
-                oauth2AccountCreateCall: false
+                oauth2AccountCreateCall: false,
+                sendWelcomeEmailForNewUserCall: true
             },
             {
                 description: 'should be issued token for google oauth sign in user',
@@ -228,7 +238,8 @@ describe('TokenService', () => {
                 isExpectedNewbie: false,
                 createUserByGoogleOAuth2Call: false,
                 googleIntegrationServiceCreateCall: false,
-                oauth2AccountCreateCall: false
+                oauth2AccountCreateCall: false,
+                sendWelcomeEmailForNewUserCall: false
             },
             {
                 description: 'should be issued token for google oauth sign in user without google integration creating',
@@ -256,7 +267,8 @@ describe('TokenService', () => {
                 isExpectedNewbie: false,
                 createUserByGoogleOAuth2Call: false,
                 googleIntegrationServiceCreateCall: false,
-                oauth2AccountCreateCall: false
+                oauth2AccountCreateCall: false,
+                sendWelcomeEmailForNewUserCall: false
             },
             {
                 description: 'should be issued token with google OAuth for already signed up user',
@@ -284,7 +296,8 @@ describe('TokenService', () => {
                 isExpectedNewbie: false,
                 createUserByGoogleOAuth2Call: false,
                 googleIntegrationServiceCreateCall: true,
-                oauth2AccountCreateCall: false
+                oauth2AccountCreateCall: false,
+                sendWelcomeEmailForNewUserCall: false
             },
             {
                 description: 'should be issued token if the user already has Google OAuth associated with the same email.',
@@ -324,7 +337,8 @@ describe('TokenService', () => {
                 isExpectedNewbie: false,
                 createUserByGoogleOAuth2Call: false,
                 googleIntegrationServiceCreateCall: true,
-                oauth2AccountCreateCall: false
+                oauth2AccountCreateCall: false,
+                sendWelcomeEmailForNewUserCall: false
             }
         ].forEach(function({
             description,
@@ -334,12 +348,15 @@ describe('TokenService', () => {
             isExpectedNewbie,
             createUserByGoogleOAuth2Call,
             googleIntegrationServiceCreateCall,
-            oauth2AccountCreateCall
+            oauth2AccountCreateCall,
+            sendWelcomeEmailForNewUserCall
         }) {
 
             it(description, async () => {
-                const createUserStub = stubOne(User);
                 const userSettingMock = stubOne(UserSetting);
+                const createUserStub = stubOne(User, {
+                    userSetting: userSettingMock
+                });
                 const languageDummy = userSettingMock.preferredLanguage;
                 const authorizationCodeMock = faker.datatype.uuid();
                 const findUserStub = getFindUserStub();
@@ -353,6 +370,8 @@ describe('TokenService', () => {
                 utilServiceStub.ensureIntegrationContext.returns(integratinoContext);
 
                 userServiceStub.createUserByGoogleOAuth2.resolves(createUserStub);
+
+                notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(true);
 
                 const issuedTokenStub: CreateTokenResponseDto = {
                     accessToken: 'fakeJwtToken',
@@ -376,6 +395,7 @@ describe('TokenService', () => {
                 expect(googleIntegrationFacadeStub.fetchGoogleUsersWithToken.called).true;
                 expect(userServiceStub.findUserByEmail.called).true;
                 expect(userServiceStub.createUserByGoogleOAuth2.called).equals(createUserByGoogleOAuth2Call);
+                expect(notificationsServiceStub.sendWelcomeEmailForNewUser.called).equals(sendWelcomeEmailForNewUserCall);
                 expect(googleIntegrationsServiceStub.create.called).equals(googleIntegrationServiceCreateCall);
                 expect(googleConverterServiceStub.convertToGoogleCalendarIntegration.called).true;
                 expect(oauth2AccountsServiceStub.create.called).equals(oauth2AccountCreateCall);

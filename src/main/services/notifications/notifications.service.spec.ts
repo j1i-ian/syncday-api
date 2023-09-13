@@ -97,5 +97,26 @@ describe('IntegrationsService', () => {
             expect(awsSnsClientStub.send.called).ok;
             expect(result).true;
         });
+
+        it('should be sent welcome email', async () => {
+            const userNameMock = 'harry';
+            const userEmailMock = faker.internet.email();
+            const preferredLanguageMock = Language.ENGLISH;
+
+            const publishCommandOutputStub = {
+                MessageId: 'a8b9c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d',
+                $metadata: {
+                    httpStatusCode: 200
+                }
+            };
+
+            syncdayAwsSdkClientServiceStub.getSNSClient.returns(awsSnsClientStub);
+            awsSnsClientStub.send.resolves(publishCommandOutputStub);
+
+            const result = await service.sendWelcomeEmailForNewUser(userNameMock, userEmailMock, preferredLanguageMock);
+
+            expect(awsSnsClientStub.send.called).ok;
+            expect(result).true;
+        });
     });
 });
