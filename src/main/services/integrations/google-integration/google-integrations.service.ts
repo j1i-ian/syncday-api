@@ -7,6 +7,8 @@ import { Request, Response } from 'express';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { AppConfigService } from '@config/app-config.service';
+import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
+import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
@@ -17,7 +19,6 @@ import { GoogleCalendarIntegration } from '@entity/integrations/google/google-ca
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Integration } from '@entity/integrations/integration.entity';
-import { SearchByUserOption } from '@app/interfaces/search-by-user-option.interface';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
 
 @Injectable()
@@ -65,10 +66,19 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         return redirectURL.toString();
     }
 
-    async search({ userId }: SearchByUserOption): Promise<GoogleIntegration[]> {
-        return await this.googleIntegrationRepository.findBy({
-            users: {
-                id: userId
+    async search({
+        userId,
+        withCalendarIntegrations
+    }: IntegrationSearchOption): Promise<GoogleIntegration[]> {
+
+        const relations = withCalendarIntegrations ? ['googleCalendarIntegrations'] : [];
+
+        return await this.googleIntegrationRepository.find({
+            relations,
+            where: {
+                users: {
+                    id: userId
+                }
             }
         });
     }
@@ -110,6 +120,14 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
     ): Promise<GoogleIntegration> {
         const { workspace, preferredTimezone: timezone } = userSetting;
 
+        const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
+
+        const _loadedGoogleIntegration = await _googleIntegrationRepository.findOneBy({
+            users: {
+                id: user.id
+            }
+        });
+
         const newGoogleIngration: GoogleIntegration = {
             accessToken: googleAuthToken.accessToken,
             refreshToken: googleAuthToken.refreshToken,
@@ -117,23 +135,28 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
             users: [user],
             googleCalendarIntegrations: googleCalendarIntegrations.map((calendar) => {
 
+                let calendarSetting = {
+                    conflictCheck: false,
+                    outboundWriteSync: false,
+                    inboundDecliningSync: false
+                };
+
                 /**
                  * TODO: It should be extracted as ORM Subscriber.
                  */
-                if (calendar.primary) {
-                    calendar.setting = {
+                if (calendar.primary && _loadedGoogleIntegration === null) {
+                    calendarSetting = {
                         conflictCheck: true,
                         outboundWriteSync: true,
                         inboundDecliningSync: false
                     };
                 }
 
+                calendar.setting = calendarSetting;
                 calendar.users = [user];
                 return calendar;
             })
         } as GoogleIntegration;
-
-        const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
         const createdGoogleIntegration = await _googleIntegrationRepository.save(newGoogleIngration);
 
         const { schedules: googleCalendarScheduleBody } = googleIntegrationBody;

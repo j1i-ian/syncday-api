@@ -1,6 +1,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Param, Patch, Get } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { AuthUser } from '@decorators/auth-user.decorator';
+import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 
@@ -21,11 +22,11 @@ export class CalendarIntegrationsController {
 
     @Patch()
     @HttpCode(HttpStatus.NO_CONTENT)
-    patchGoogleCalendarIntegrations(
+    patchCalendarIntegrations(
         @Param('vendor') vendor: string,
         @AuthUser('id') userId: number,
-        @Body() googleCalendarIntegrations: GoogleCalendarIntegration[]
+        @Body() calendarIntegrations: CalendarIntegration[]
     ): Promise<boolean> {
-        return this.googleCalendarIntegrationsService.patch(userId, googleCalendarIntegrations);
+        return this.googleCalendarIntegrationsService.patch(userId, calendarIntegrations);
     }
 }

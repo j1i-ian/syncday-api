@@ -91,12 +91,18 @@ export class IntegrationsController {
     @Get()
     searchIntegrations(
         @AuthUser('id') userId: number,
-        @Param('vendor') vendor: 'google' | 'zoom'
+        @Param('vendor') vendor: 'google' | 'zoom',
+        @Query('withCalendarIntegrations') withCalendarIntegrations: string | boolean
     ): Promise<Array<Integration | FetchZoomMeetingIntegrationResponse>> {
+
+        withCalendarIntegrations = withCalendarIntegrations === 'true';
 
         const integrationService = this.integrationsServiceLocator.getService(vendor);
 
-        return integrationService.search({ userId });
+        return integrationService.search({
+            userId,
+            withCalendarIntegrations
+        });
     }
 
     @Delete(':vendorIntegrationId(\\d+)')

@@ -311,7 +311,6 @@ export class GoogleCalendarIntegrationsService {
                 'googleIntegration.users.userSetting'
             ],
             where: {
-                id: In(googleCalendarIntegrationIds),
                 users: {
                     id: userId
                 }
@@ -339,7 +338,7 @@ export class GoogleCalendarIntegrationsService {
             const _googleCalendarIntegrationRepo = _transactionManager.getRepository(GoogleCalendarIntegration);
             const _googleIntegrationScheduleRepo = _transactionManager.getRepository(GoogleIntegrationSchedule);
 
-            const _resetUpdateResult = await _googleCalendarIntegrationRepo.update(googleCalendarIntegrationIds, {
+            const _resetUpdateResult = await _googleCalendarIntegrationRepo.update(loadedCalendarIds, {
                 setting: {
                     outboundWriteSync: false
                 }
