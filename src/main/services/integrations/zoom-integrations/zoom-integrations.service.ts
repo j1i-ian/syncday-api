@@ -1,13 +1,13 @@
 import { URL } from 'url';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Raw, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { AppConfigService } from '@config/app-config.service';
-import { ContactType } from '@interfaces/events/contact-type.enum';
 import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
+import { ContactType } from '@interfaces/events/contact-type.enum';
 import { IntegrationsServiceInterface } from '@services/integrations/integrations.service.interface';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Integration } from '@entity/integrations/integration.entity';
@@ -152,9 +152,7 @@ export class ZoomIntegrationsService implements IntegrationsServiceInterface {
                             }
                         }
                     },
-                    contacts: {
-                        type: ContactType.ZOOM
-                    }
+                    contacts: Raw((alias) => `JSON_CONTAINS(${alias}, '"${ContactType.ZOOM}"', '$[0].type')`)
                 }
             });
 
