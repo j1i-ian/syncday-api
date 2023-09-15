@@ -203,7 +203,7 @@ export class UserService {
 
         const createdUser = this.userRepository.create(newUser);
 
-        const emailId = createdUser.email.split('@').shift();
+        const emailId = createdUser.email.replaceAll('.', '').split('@').shift();
         const workspace = emailId || newUser.name;
 
         const alreadyUsedIn = await this.userSettingService.fetchUserWorkspaceStatus(

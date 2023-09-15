@@ -263,8 +263,10 @@ describe('Test User Service', () => {
 
         it('should be created user with email', async () => {
             const plainPassword = 'test';
-            const emailMock = TestMockUtil.faker.internet.email('test', '');
-            const emailId = emailMock.split('@').shift();
+            const emailMock = TestMockUtil.faker.internet.email('t.e.s.t.', undefined, 'gmail.com');
+
+            const expectedWorkspace = 'test';
+
             const userStub = stubOne(User, {
                 email: emailMock,
                 hashedPassword: plainPassword
@@ -330,7 +332,7 @@ describe('Test User Service', () => {
             expect(createdUser).ok;
             expect(createdUser.email).ok;
             expect(createdUser.email).equals(emailMock);
-            expect(createdUser.userSetting.workspace).equals(emailId);
+            expect(createdUser.userSetting.workspace).contains(expectedWorkspace);
         });
 
         it('should be not created user with email when user is already exist', async () => {
