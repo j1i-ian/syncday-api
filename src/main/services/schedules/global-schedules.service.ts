@@ -5,6 +5,7 @@ import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEq
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { calendar_v3 } from 'googleapis';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
+import { IntegrationSchedulesService } from '@core/interfaces/integration-schedules.abstract-service';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
@@ -15,8 +16,8 @@ import { GoogleCalendarIntegrationsService } from '@services/integrations/google
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
+import { NativeSchedulesService } from '@services/schedules/native-schedules.service';
 import { Schedule } from '@entity/schedules/schedule.entity';
-import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
 import { User } from '@entity/users/user.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
@@ -24,95 +25,53 @@ import { TimeRange } from '@entity/events/time-range.entity';
 import { InviteeAnswer } from '@entity/schedules/invitee-answer.entity';
 import { ConferenceLink } from '@entity/schedules/conference-link.entity';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
+import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
 import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
 
+/**
+ * TODO: Apply prototype design pattern
+ */
 @Injectable()
-export class SchedulesService {
+export class GlobalSchedulesService {
 
     constructor(
         private readonly integrationsServiceLocator: IntegrationsServiceLocator,
         private readonly utilService: UtilService,
         private readonly eventsService: EventsService,
+        private readonly nativeSchedulesService: NativeSchedulesService,
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
         private readonly scheduleRedisRepository: SchedulesRedisRepository,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>,
         @InjectRepository(GoogleIntegrationSchedule) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
-    ) {}
+    ) {
+        this.allIntegrationSchedulesServices = this.integrationsServiceLocator.getAllIntegrationSchedulesService();
+    }
+
+    allIntegrationSchedulesServices: IntegrationSchedulesService[];
 
     search(scheduleSearchOption: Partial<ScheduledEventSearchOption>): Observable<InviteeSchedule[]> {
 
-        const {
-            hostUUID,
-            eventUUID,
-            since,
-            until
-        } = scheduleSearchOption;
+        const syncNativeSchedule$ = this.nativeSchedulesService.search(scheduleSearchOption);
 
-        const defaultUntilDateTime = new Date(new Date().getDate() + 90);
-        const ensuredSinceDateTime = since ? new Date(since) : new Date();
-        const ensuredUntilDateTime = until ? new Date(until) : defaultUntilDateTime;
+        const integrationSchedules$ = this.allIntegrationSchedulesServices.map(
+            (_integrationSchedulesService) =>
+                _integrationSchedulesService.search(
+                    scheduleSearchOption
+                )
+        );
 
-        const scheduledEventDefaultOption: FindOptionsWhere<Schedule> = {
-            eventDetail: {
-                event: {
-                    uuid: eventUUID
-                }
-            },
-            host: {
-                uuid: hostUUID
-            }
-        };
-        const scheduleConditionOptions: Array<FindOptionsWhere<Schedule>> = [
-            {
-                scheduledTime: {
-                    startTimestamp: MoreThanOrEqual(ensuredSinceDateTime),
-                    endTimestamp: LessThanOrEqual(ensuredUntilDateTime)
-                },
-                ...scheduledEventDefaultOption
-            },
-            {
-                scheduledBufferTime: {
-                    startBufferTimestamp: MoreThanOrEqual(ensuredSinceDateTime),
-                    endBufferTimestamp: LessThanOrEqual(ensuredUntilDateTime)
-                },
-                ...scheduledEventDefaultOption
-            }
-        ];
-
-        const googleScheduledEventFindOption: FindOptionsWhere<GoogleIntegrationSchedule> = {
-            host: {
-                uuid: hostUUID
-            }
-        };
-
-        const googleScheduleConditionOptions: Array<FindOptionsWhere<Schedule>> = [
-            {
-                scheduledTime: {
-                    startTimestamp: MoreThanOrEqual(ensuredSinceDateTime),
-                    endTimestamp: LessThanOrEqual(ensuredUntilDateTime)
-                },
-                ...googleScheduledEventFindOption
-            },
-            {
-                scheduledBufferTime: {
-                    startBufferTimestamp: MoreThanOrEqual(ensuredSinceDateTime),
-                    endBufferTimestamp: LessThanOrEqual(ensuredUntilDateTime)
-                },
-                ...googleScheduledEventFindOption
-            }
-        ];
-
-        const inviteeSchedule$ = defer(() => from(this.scheduleRepository.findBy(scheduleConditionOptions)));
-
-        const googleIntegrationSchedule$ = defer(() => from(this.googleIntegrationScheduleRepository.findBy(googleScheduleConditionOptions)));
-
-        return forkJoin([inviteeSchedule$, googleIntegrationSchedule$]).pipe(
-            map(([inviteeSchedules, googleCalendarSchedules]) => [...inviteeSchedules, ...googleCalendarSchedules])
+        return forkJoin([syncNativeSchedule$].concat(integrationSchedules$)).pipe(
+            map(
+                (allSchedulesArray) =>
+                    allSchedulesArray.reduce(
+                        (_allSchedules, _schedules) => _allSchedules.concat(_schedules), []
+                    )
+            )
         );
     }
 
@@ -160,7 +119,7 @@ export class SchedulesService {
             userId: host.id
         }));
 
-        const zoomIntegrationService = this.integrationsServiceLocator.getService(IntegrationVendor.ZOOM);
+        const zoomIntegrationService = this.integrationsServiceLocator.getIntegrationFactory(IntegrationVendor.ZOOM);
         const zoomIntegrationFacade: ZoomIntegrationFacade = this.integrationsServiceLocator.getFacade(IntegrationVendor.ZOOM) as ZoomIntegrationFacade;
 
         const loadedZoomIntegration$ = from(zoomIntegrationService.findOne({
@@ -413,6 +372,7 @@ export class SchedulesService {
             ))
         );
 
+        // investigate to find conflicted schedules
         const loadedSchedules$ = defer(() => from(this.scheduleRepository.findOneBy(
             [
                 {

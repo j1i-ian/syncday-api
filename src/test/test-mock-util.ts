@@ -9,6 +9,7 @@ import { DeleteResult, UpdateResult } from 'typeorm';
 import { TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Auth, calendar_v3 } from 'googleapis';
+import { DAVCalendar, DAVObject } from 'tsdav';
 import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -25,6 +26,7 @@ import { Reminder } from '@interfaces/reminders/reminder';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { EventSetting } from '@interfaces/events/event-setting';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
@@ -79,6 +81,172 @@ export class TestMockUtil {
     }
 
     sandbox: SinonSandbox;
+
+    getCalDavMocks(): Array<DAVCalendar & { calendarColor: string }> {
+        return [
+            {
+                description: '',
+                timezone: '',
+                url: 'https://caldav.icloud.com/1452332614/calendars/171C3ADA-C372-41FD-AC3E-A1CE442FF8BA/',
+                ctag: 'HwoQEgwAAD4zQGHQvwAAAAEYAhgAIhYIi5LV1Pfti5L3ARCD6Omr0ZTCio0BKAA=',
+                calendarColor: '#1BADF8FF',
+                displayName: 'Calendar',
+                components: [ 'VEVENT' ],
+                resourcetype: [ 'collection', 'calendar' ],
+                syncToken: 'HwoQEgwAAD4zQGHQvwAAAAEYAhgAIhYIi5LV1Pfti5L3ARCD6Omr0ZTCio0BKAA=',
+                projectedProps: {},
+                reports: [
+                    'aclPrincipalPropSet',
+                    'principalMatch',
+                    'principalPropertySearch',
+                    'syncCollection',
+                    'calendarQuery',
+                    'calendarMultiget',
+                    'freeBusyQuery',
+                    'calendarSearch'
+                ]
+            },
+            {
+                description: '',
+                timezone: '',
+                url: 'https://caldav.icloud.com/1452332614/calendars/7BA94AC2-8277-4C55-9CE4-712339723BCF/',
+                ctag: 'HwoQEgwAAED1GcqmPgAAAAEYAhgAIhUIpJOdyNLvs4ZgEISY6YSs3OWgjQEoAA==',
+                calendarColor: '#0E61B9FF',
+                displayName: '생일',
+                components: [ 'VEVENT' ],
+                resourcetype: [ 'collection', 'calendar' ],
+                syncToken: 'HwoQEgwAAED1GcqmPgAAAAEYAhgAIhUIpJOdyNLvs4ZgEISY6YSs3OWgjQEoAA==',
+                projectedProps: {},
+                reports: [
+                    'aclPrincipalPropSet',
+                    'principalMatch',
+                    'principalPropertySearch',
+                    'syncCollection',
+                    'calendarQuery',
+                    'calendarMultiget',
+                    'freeBusyQuery',
+                    'calendarSearch'
+                ]
+            },
+            {
+                description: '',
+                timezone: '',
+                url: 'https://caldav.icloud.com/1452332614/calendars/7CDB907D-B40F-410A-A266-53A19F702918/',
+                ctag: 'HwoQEgwAAEaL0w2yogAAAAAYARgAIhYI94mFu5L47YqbARDY06uy18ugj4UBKAA=',
+                calendarColor: '#FF2968FF',
+                displayName: '오늘의 목표',
+                components: [ 'VTODO' ],
+                resourcetype: [ 'collection', 'calendar' ],
+                syncToken: 'HwoQEgwAAEaL0w2yogAAAAAYARgAIhYI94mFu5L47YqbARDY06uy18ugj4UBKAA=',
+                projectedProps: {},
+                reports: [
+                    'aclPrincipalPropSet',
+                    'principalMatch',
+                    'principalPropertySearch',
+                    'syncCollection',
+                    'calendarQuery',
+                    'calendarMultiget',
+                    'freeBusyQuery',
+                    'calendarSearch'
+                ]
+            },
+            {
+                description: '',
+                timezone: '',
+                url: 'https://caldav.icloud.com/1452332614/calendars/d049fe64-016a-4a34-a1cf-b428a9e2496f/',
+                ctag: 'HwoQEgwAAECKQ1KnAAAAAAEYARgAIhUIsIf9yoKCuPI2EPWmiOWvuLfojgEoAA==',
+                calendarColor: '#E6C800FF',
+                displayName: '가족',
+                components: [ 'VEVENT' ],
+                resourcetype: [ 'collection', 'calendar' ],
+                syncToken: 'HwoQEgwAAECKQ1KnAAAAAAEYARgAIhUIsIf9yoKCuPI2EPWmiOWvuLfojgEoAA==',
+                projectedProps: {},
+                reports: [
+                    'aclPrincipalPropSet',
+                    'principalMatch',
+                    'principalPropertySearch',
+                    'syncCollection',
+                    'calendarQuery',
+                    'calendarMultiget',
+                    'freeBusyQuery',
+                    'calendarSearch'
+                ]
+            },
+            {
+                description: '',
+                timezone: '',
+                url: 'https://caldav.icloud.com/1452332614/calendars/home/',
+                ctag: 'HwoQEgwAAECznNlRjQAAAAEYAhgAIhYI14Gx+aCqosLsARDosZjX8YLwkZQBKAA=',
+                calendarColor: '#34AADCFF',
+                displayName: '집',
+                components: [ 'VEVENT' ],
+                resourcetype: [ 'collection', 'calendar' ],
+                syncToken: 'HwoQEgwAAECznNlRjQAAAAEYAhgAIhYI14Gx+aCqosLsARDosZjX8YLwkZQBKAA=',
+                projectedProps: {},
+                reports: [
+                    'aclPrincipalPropSet',
+                    'principalMatch',
+                    'principalPropertySearch',
+                    'syncCollection',
+                    'calendarQuery',
+                    'calendarMultiget',
+                    'freeBusyQuery',
+                    'calendarSearch'
+                ]
+            },
+            {
+                description: '',
+                timezone: '',
+                url: 'https://caldav.icloud.com/1452332614/calendars/tasks/',
+                ctag: 'HwoQEgwAADcr6qELFwAAAAAYARgAIhYIzJe1kJz3msDuARDQ/rTrmsDS568BKAA=',
+                calendarColor: '#CC73E1FF',
+                displayName: '미리 알림',
+                components: [ 'VTODO' ],
+                resourcetype: [ 'collection', 'calendar' ],
+                syncToken: 'HwoQEgwAADcr6qELFwAAAAAYARgAIhYIzJe1kJz3msDuARDQ/rTrmsDS568BKAA=',
+                projectedProps: {},
+                reports: [
+                    'aclPrincipalPropSet',
+                    'principalMatch',
+                    'principalPropertySearch',
+                    'syncCollection',
+                    'calendarQuery',
+                    'calendarMultiget',
+                    'freeBusyQuery',
+                    'calendarSearch'
+                ]
+            },
+            {
+                description: '',
+                timezone: '',
+                url: 'https://caldav.icloud.com/1452332614/calendars/work/',
+                ctag: 'HwoQEgwAAD5oK83iFgABAAAYAhgAIhUIwpGt4Mjw+fkkEPv0y5ndhYDHngEoAA==',
+                calendarColor: '#CC73E1FF',
+                displayName: '직장',
+                components: [ 'VEVENT' ],
+                resourcetype: [ 'collection', 'calendar' ],
+                syncToken: 'HwoQEgwAAD5oK83iFgABAAAYAhgAIhUIwpGt4Mjw+fkkEPv0y5ndhYDHngEoAA==',
+                projectedProps: {},
+                reports: [
+                    'aclPrincipalPropSet',
+                    'principalMatch',
+                    'principalPropertySearch',
+                    'syncCollection',
+                    'calendarQuery',
+                    'calendarMultiget',
+                    'freeBusyQuery',
+                    'calendarSearch'
+                ]
+            }
+        ];
+    }
+
+    getAppleCalDavCredentialMock(): AppleCalDAVCredential {
+        return {
+            username: 'alan@icloud.com',
+            password: 'abcd-efgh-ijkl-mnop'
+        };
+    }
 
     getOAuthTokenMock(): OAuthToken {
         return {
@@ -431,5 +599,54 @@ export class TestMockUtil {
             startTimestamp: new Date('2023-07-27 07:30:00'),
             endTimestamp: new Date('2023-07-27 07:30:00')
         } as ScheduledTimeset;
+    }
+
+    getCalDAVCalendarMock(): DAVCalendar & { calendarColor: string } {
+        return   {
+            description: 'this is a sample',
+            timezone: '',
+            url: 'https://caldav.icloud.com/1452332614/calendars/home/',
+            ctag: 'HwoQEgwAAECznNlRjQAAAAEYAhgAIhYI14Gx+aCqosLsARDosZjX8YLwkZQBKAA=',
+            calendarColor: '#34AADCFF',
+            displayName: '집',
+            components: [ 'VEVENT' ],
+            resourcetype: [ 'collection', 'calendar' ],
+            syncToken: 'HwoQEgwAAECznNlRjQAAAAEYAhgAIhYI14Gx+aCqosLsARDosZjX8YLwkZQBKAA=',
+            projectedProps: {},
+            reports: [
+                'aclPrincipalPropSet',
+                'principalMatch',
+                'principalPropertySearch',
+                'syncCollection',
+                'calendarQuery',
+                'calendarMultiget',
+                'freeBusyQuery',
+                'calendarSearch'
+            ]
+        };
+    }
+
+    getCalDAVCalendarObjectMock(): DAVObject {
+
+        const createdItem = '2023-09-15T04:57:54.000Z';
+
+        return {
+            data: {
+                type: 'VEVENT',
+                params: [],
+                created: createdItem,
+                description: 'ㅇㅅㅇ',
+                end: '2023-09-20T00:00:00.000Z',
+                dtstamp: '2023-09-15T05:15:32.000Z',
+                start: '2023-09-19T00:00:00.000Z',
+                datetype: 'date',
+                lastmodified: '2023-09-15T05:15:31.000Z',
+                sequence: '1',
+                summary: '애플 캘린더',
+                uid: '3D4E11ED-BC04-4723-B755-8CEA6DFA216F',
+                url: '',
+                transparency: 'OPAQUE'
+            }
+        } as DAVObject;
     }
 }

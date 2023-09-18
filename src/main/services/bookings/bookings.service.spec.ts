@@ -3,7 +3,7 @@ import { firstValueFrom, of } from 'rxjs';
 import { UserService } from '@services/users/user.service';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
-import { SchedulesService } from '@services/schedules/schedules.service';
+import { GlobalSchedulesService } from '@services/schedules/global-schedules.service';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
@@ -14,14 +14,14 @@ describe('BookingsService', () => {
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
     let availabilityServiceStub: sinon.SinonStubbedInstance<AvailabilityService>;
-    let schedulesServiceStub: sinon.SinonStubbedInstance<SchedulesService>;
+    let schedulesServiceStub: sinon.SinonStubbedInstance<GlobalSchedulesService>;
 
     before(async () => {
 
         userServiceStub = sinon.createStubInstance(UserService);
         availabilityServiceStub = sinon.createStubInstance(AvailabilityService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
-        schedulesServiceStub = sinon.createStubInstance(SchedulesService);
+        schedulesServiceStub = sinon.createStubInstance(GlobalSchedulesService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -39,7 +39,7 @@ describe('BookingsService', () => {
                     useValue: availabilityServiceStub
                 },
                 {
-                    provide: SchedulesService,
+                    provide: GlobalSchedulesService,
                     useValue: schedulesServiceStub
                 }
             ]

@@ -1,10 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { IntegrationSchedulesService } from '@core/interfaces/integration-schedules.abstract-service';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { IntegrationsFacade } from '@services/integrations/integrations.facade.interface';
-import { IntegrationsServiceInterface } from '@services/integrations/integrations.service.interface';
+import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
 import { ZoomIntegrationsService } from '@services/integrations/zoom-integrations/zoom-integrations.service';
+import { AppleIntegrationsService } from '@services/integrations/apple-integrations/apple-integrations.service';
 
 @Injectable()
 export class IntegrationsServiceLocator {
@@ -12,19 +15,23 @@ export class IntegrationsServiceLocator {
     constructor(
         private readonly googleIntegrationsService: GoogleIntegrationsService,
         private readonly zoomIntegrationsService: ZoomIntegrationsService,
+        private readonly appleIntegrationService: AppleIntegrationsService,
         private readonly googleIntegrationFacade: GoogleIntegrationFacade,
         private readonly zoomIntegrationFacade: ZoomIntegrationFacade
     ) {}
 
-    getService(vendor: string): IntegrationsServiceInterface {
+    getIntegrationFactory(vendor: IntegrationVendor): IntegrationsFactory {
 
         let myService;
         switch (vendor) {
-            case 'google':
+            case IntegrationVendor.GOOGLE:
                 myService = this.googleIntegrationsService;
                 break;
-            case 'zoom':
+            case IntegrationVendor.ZOOM:
                 myService = this.zoomIntegrationsService;
+                break;
+            case IntegrationVendor.APPLE:
+                myService = this.appleIntegrationService;
                 break;
             default:
                 throw new BadRequestException('Not yet implemented');
@@ -33,20 +40,29 @@ export class IntegrationsServiceLocator {
         return myService;
     }
 
-    getFacade(vendor: string): IntegrationsFacade {
+    getFacade(vendor: IntegrationVendor): IntegrationsFacade {
 
         let myFacade;
         switch (vendor) {
-            case 'google':
+            case IntegrationVendor.GOOGLE:
                 myFacade = this.googleIntegrationFacade;
                 break;
-            case 'zoom':
+            case IntegrationVendor.ZOOM:
                 myFacade = this.zoomIntegrationFacade;
                 break;
+            case IntegrationVendor.APPLE:
             default:
                 throw new BadRequestException('Not yet implemented');
         }
 
         return myFacade;
+    }
+
+    getAllIntegrationSchedulesService(): IntegrationSchedulesService[] {
+
+        return [
+            this.googleIntegrationsService.getIntegrationSchedulesService(),
+            this.appleIntegrationService.getIntegrationSchedulesService()
+        ];
     }
 }

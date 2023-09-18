@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { calendar_v3 } from 'googleapis';
@@ -18,11 +18,14 @@ import { AvailabilityRedisRepository } from '@services/availability/availability
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { ZoomIntegrationsService } from '@services/integrations/zoom-integrations/zoom-integrations.service';
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
+import { NativeSchedulesService } from '@services/schedules/native-schedules.service';
+import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
+import { AppleIntegrationsSchedulesService } from '@services/integrations/apple-integrations/apple-integrations-schedules/apple-integrations-schedules.service';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledBufferTime } from '@entity/schedules/scheduled-buffer-time.entity';
@@ -30,18 +33,20 @@ import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
+import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { TestMockUtil } from '@test/test-mock-util';
-import { SchedulesService } from './schedules.service';
+import { GlobalSchedulesService } from './global-schedules.service';
 
 const testMockUtil = new TestMockUtil();
 
 describe('SchedulesService', () => {
-    let service: SchedulesService;
+    let service: GlobalSchedulesService;
 
     let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
+    let nativeSchedulesServiceStub: sinon.SinonStubbedInstance<NativeSchedulesService>;
 
     let googleCalendarIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleCalendarIntegrationsService>;
     let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<SchedulesRedisRepository>;
@@ -50,6 +55,9 @@ describe('SchedulesService', () => {
     let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
     let loggerStub: sinon.SinonStubbedInstance<Logger>;
 
+
+    let googleIntegrationSchedulesServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationSchedulesService>;
+    let appleIntegrationsSchedulesServiceStub: sinon.SinonStubbedInstance<AppleIntegrationsSchedulesService>;
     const _1Hour = 60 * 60 * 1000;
 
     before(async () => {
@@ -57,6 +65,7 @@ describe('SchedulesService', () => {
         integrationsServiceLocatorStub = sinon.createStubInstance(IntegrationsServiceLocator);
         utilServiceStub = sinon.createStubInstance(UtilService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
+        nativeSchedulesServiceStub = sinon.createStubInstance(NativeSchedulesService);
 
         googleCalendarIntegrationsServiceStub = sinon.createStubInstance(GoogleCalendarIntegrationsService);
         schedulesRedisRepositoryStub = sinon.createStubInstance(SchedulesRedisRepository);
@@ -67,9 +76,16 @@ describe('SchedulesService', () => {
         );
         loggerStub = sinon.createStubInstance(Logger);
 
+        googleIntegrationSchedulesServiceStub = sinon.createStubInstance(GoogleIntegrationSchedulesService);
+        appleIntegrationsSchedulesServiceStub = sinon.createStubInstance(AppleIntegrationsSchedulesService);
+        integrationsServiceLocatorStub.getAllIntegrationSchedulesService.returns([
+            googleIntegrationSchedulesServiceStub,
+            appleIntegrationsSchedulesServiceStub
+        ]);
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                SchedulesService,
+                GlobalSchedulesService,
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
@@ -77,6 +93,10 @@ describe('SchedulesService', () => {
                 {
                     provide: EventsService,
                     useValue: eventsServiceStub
+                },
+                {
+                    provide: NativeSchedulesService,
+                    useValue: nativeSchedulesServiceStub
                 },
                 {
                     provide: GoogleCalendarIntegrationsService,
@@ -109,7 +129,7 @@ describe('SchedulesService', () => {
             ]
         }).compile();
 
-        service = module.get<SchedulesService>(SchedulesService);
+        service = module.get<GlobalSchedulesService>(GlobalSchedulesService);
     });
 
     it('should be defined', () => {
@@ -128,7 +148,8 @@ describe('SchedulesService', () => {
             eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
             utilServiceStub.localizeDateTime.reset();
-            integrationsServiceLocatorStub.getService.reset();
+            nativeSchedulesServiceStub.search.reset();
+            integrationsServiceLocatorStub.getIntegrationFactory.reset();
             integrationsServiceLocatorStub.getFacade.reset();
 
             googleCalendarIntegrationsServiceStub.findOne.reset();
@@ -155,7 +176,8 @@ describe('SchedulesService', () => {
 
             afterEach(() => {
                 scheduleRepositoryStub.findBy.reset();
-                googleIntegrationScheduleRepositoryStub.findBy.reset();
+                googleIntegrationSchedulesServiceStub.search.reset();
+                appleIntegrationsSchedulesServiceStub.search.reset();
             });
 
             [
@@ -197,9 +219,11 @@ describe('SchedulesService', () => {
                 it(description, async () => {
 
                     const googleIntegartionScheduleStubs = stub(GoogleIntegrationSchedule);
+                    const appleIntegartionScheduleStubs = stub(AppleCalDAVIntegrationSchedule);
 
-                    scheduleRepositoryStub.findBy.resolves(scheduleStubs);
-                    googleIntegrationScheduleRepositoryStub.findBy.resolves(googleIntegartionScheduleStubs);
+                    nativeSchedulesServiceStub.search.returns(of(scheduleStubs));
+                    googleIntegrationSchedulesServiceStub.search.resolves(googleIntegartionScheduleStubs);
+                    appleIntegrationsSchedulesServiceStub.search.resolves(appleIntegartionScheduleStubs);
 
                     const searchedSchedules = await firstValueFrom(
                         service.search(searchOption)
@@ -207,20 +231,9 @@ describe('SchedulesService', () => {
 
                     expect(searchedSchedules).ok;
                     expect(searchedSchedules.length).greaterThan(0);
-                    expect(scheduleRepositoryStub.findBy.called).true;
-
-                    const actualComposedScheduledEventSearchOptions = scheduleRepositoryStub.findBy.getCall(0).args[0] as Array<FindOptionsWhere<Schedule>>;
-                    const actualComposedGoogleScheduledEventSearchOptions = googleIntegrationScheduleRepositoryStub.findBy.getCall(0).args[0] as Array<FindOptionsWhere<Schedule>>;
-
-                    expect((actualComposedScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).startTimestamp).ok;
-                    expect((actualComposedScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).endTimestamp).ok;
-                    expect((actualComposedScheduledEventSearchOptions[1].scheduledBufferTime as ScheduledBufferTime).startBufferTimestamp).ok;
-                    expect((actualComposedScheduledEventSearchOptions[1].scheduledBufferTime as ScheduledBufferTime).endBufferTimestamp).ok;
-
-                    expect((actualComposedGoogleScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).startTimestamp).ok;
-                    expect((actualComposedGoogleScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).endTimestamp).ok;
-                    expect((actualComposedGoogleScheduledEventSearchOptions[1].scheduledBufferTime as ScheduledBufferTime).startBufferTimestamp).ok;
-                    expect((actualComposedGoogleScheduledEventSearchOptions[1].scheduledBufferTime as ScheduledBufferTime).endBufferTimestamp).ok;
+                    expect(nativeSchedulesServiceStub.search.called).true;
+                    expect(googleIntegrationSchedulesServiceStub.search.called).true;
+                    expect(appleIntegrationsSchedulesServiceStub.search.called).true;
                 });
             });
 
@@ -372,7 +385,7 @@ describe('SchedulesService', () => {
                     eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
                     googleCalendarIntegrationsServiceStub.findOne.returns(of(outboundGoogleCalendarIntegrationStub));
 
-                    integrationsServiceLocatorStub.getService.returns(zoomIntegrationServiceStub);
+                    integrationsServiceLocatorStub.getIntegrationFactory.returns(zoomIntegrationServiceStub);
                     integrationsServiceLocatorStub.getFacade.returns(zoomIntegrationFacadeStub);
 
                     zoomIntegrationServiceStub.findOne.resolves(zoomIntegrationStub);
@@ -411,7 +424,7 @@ describe('SchedulesService', () => {
                     expect(createdSchedule).ok;
                     expect(eventsServiceStub.findOneByUserWorkspaceAndUUID.called).true;
                     expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
-                    expect(integrationsServiceLocatorStub.getService.called).true;
+                    expect(integrationsServiceLocatorStub.getIntegrationFactory.called).true;
                     expect(integrationsServiceLocatorStub.getFacade.called).true;
                     expect(zoomIntegrationServiceStub.findOne.called).true;
                     expect(availabilityRedisRepositoryStub.getAvailabilityBody.called).true;

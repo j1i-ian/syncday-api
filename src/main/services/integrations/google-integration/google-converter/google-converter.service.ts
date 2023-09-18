@@ -12,7 +12,7 @@ import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { UtilService } from '@services/util/util.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 
 @Injectable()

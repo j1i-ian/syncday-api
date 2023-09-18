@@ -12,6 +12,7 @@ import { GoogleCalendarEventWatchStopService } from '@services/integrations/goog
 import { GoogleCalendarEventCreateService } from '@services/integrations/google-integration/facades/google-calendar-event-create.service';
 import { GoogleCalendarEventPatchService } from '@services/integrations/google-integration/facades/google-calendar-event-patch.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { GoogleOAuthTokenService } from './facades/google-oauth-token.service';
 import { GoogleCalendarListService } from './facades/google-calendar-list.service';
 import { GoogleConverterService } from './google-converter/google-converter.service';
@@ -21,7 +22,7 @@ import { GoogleCalendarIntegrationsModule } from './google-calendar-integrations
 @Module({
     imports: [
         ConfigModule,
-        TypeOrmModule.forFeature([GoogleIntegration]),
+        TypeOrmModule.forFeature([GoogleIntegration, GoogleIntegrationSchedule]),
         GoogleCalendarIntegrationsModule
     ],
     providers: [

@@ -13,7 +13,7 @@ import { GoogleIntegration } from '@entity/integrations/google/google-integratio
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 
 const testMockUtil = new TestMockUtil();

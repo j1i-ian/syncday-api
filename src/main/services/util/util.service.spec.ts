@@ -10,6 +10,7 @@ import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { Integration } from '@entity/integrations/integration.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { UtilService } from './util.service';
@@ -191,7 +192,7 @@ describe('UtilService', () => {
                     integrationContext,
                     userStub,
                     oauth2AccountStub,
-                    integrationStub
+                    integrationStub as Integration | null
                 );
                 expect(actualIntegrationContext).equals(expectedIntegrationContext);
             });

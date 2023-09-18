@@ -13,7 +13,7 @@ import { GoogleCalendarEventListService } from '@services/integrations/google-in
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
-import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';

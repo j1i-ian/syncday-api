@@ -11,6 +11,7 @@ import { UserModule } from '@services/users/user.module';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { IntegrationsController } from './integrations.controller';
+import { AppleIntegrationsModule } from './apple-integrations/apple-integrations.module';
 
 @Module({
     imports: [
@@ -19,7 +20,8 @@ import { IntegrationsController } from './integrations.controller';
         CalendarIntegrationsModule,
         ZoomIntegrationsModule,
         ConfigModule,
-        forwardRef(() => UserModule)
+        forwardRef(() => UserModule),
+        AppleIntegrationsModule
     ],
     controllers: [IntegrationsController],
     providers: [

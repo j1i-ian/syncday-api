@@ -8,18 +8,18 @@ import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
 import { ContactType } from '@interfaces/events/contact-type.enum';
-import { IntegrationsServiceInterface } from '@services/integrations/integrations.service.interface';
+import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { EventStatus } from '@entity/events/event-status.enum';
-import { FetchZoomMeetingIntegrationResponse } from '@dto/integrations/zoom/fetch-zoom-meeting-integration-response.dto';
+import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
 import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
 import { SearchZoomIntegrationOptions } from '@app/interfaces/integrations/zoom/search-zoom-integration-options.interface';
 
 @Injectable()
-export class ZoomIntegrationsService implements IntegrationsServiceInterface {
+export class ZoomIntegrationsService implements IntegrationsFactory {
     constructor(
         private readonly configService: ConfigService,
         @InjectDataSource() private readonly datasource: DataSource,
@@ -35,7 +35,7 @@ export class ZoomIntegrationsService implements IntegrationsServiceInterface {
     redirectURI: string;
     zoomOAuth2SuccessRedirectURI: string;
 
-    async search(userSearchOption: SearchByUserOption): Promise<FetchZoomMeetingIntegrationResponse[]> {
+    async search(userSearchOption: SearchByUserOption): Promise<IntegrationResponseDto[]> {
 
         const { userId } = userSearchOption;
 
@@ -49,7 +49,7 @@ export class ZoomIntegrationsService implements IntegrationsServiceInterface {
 
         return loadedZoomInterations.map(
             (_integration) => plainToInstance(
-                FetchZoomMeetingIntegrationResponse,
+                IntegrationResponseDto,
                 _integration,
                 {
                     strategy: 'excludeAll'

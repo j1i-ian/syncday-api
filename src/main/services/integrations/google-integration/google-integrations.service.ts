@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
+import { IntegrationSchedulesService } from '@core/interfaces/integration-schedules.abstract-service';
 import { AppConfigService } from '@config/app-config.service';
 import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
@@ -13,7 +14,8 @@ import { IntegrationsRedisRepository } from '@services/integrations/integrations
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
-import { IntegrationsServiceInterface } from '@services/integrations/integrations.service.interface';
+import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
+import { IntegrationScheduleWrapperService } from '@services/integrations/integration-schedule-wrapper-service.interface';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
@@ -22,7 +24,7 @@ import { Integration } from '@entity/integrations/integration.entity';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
 
 @Injectable()
-export class GoogleIntegrationsService implements IntegrationsServiceInterface {
+export class GoogleIntegrationsService implements IntegrationsFactory, IntegrationScheduleWrapperService {
     constructor(
         private readonly configService: ConfigService,
         private readonly googleConverterService: GoogleConverterService,
@@ -269,5 +271,9 @@ export class GoogleIntegrationsService implements IntegrationsServiceInterface {
         }
 
         return true;
+    }
+
+    getIntegrationSchedulesService(): IntegrationSchedulesService {
+        return this.googleIntegrationSchedulesService;
     }
 }

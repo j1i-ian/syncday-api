@@ -5,7 +5,7 @@ import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-even
 import { UserService } from '@services/users/user.service';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
-import { SchedulesService } from '@services/schedules/schedules.service';
+import { GlobalSchedulesService } from '@services/schedules/global-schedules.service';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
@@ -20,7 +20,7 @@ export class BookingsService {
         private readonly userService: UserService,
         private readonly availabilityService: AvailabilityService,
         private readonly eventService: EventsService,
-        private readonly scheduleService: SchedulesService
+        private readonly scheduleService: GlobalSchedulesService
     ) {}
 
     fetchHost(userWorkspace: string): Observable<User> {

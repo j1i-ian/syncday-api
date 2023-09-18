@@ -6,7 +6,7 @@ import { NotificationType } from '@interfaces/notifications/notification-type.en
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { UtilService } from '@services/util/util.service';
-import { GoogleIntegrationSchedule } from '@entity/schedules/google-integration-schedule.entity';
+import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
