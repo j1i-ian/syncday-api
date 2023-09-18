@@ -1,19 +1,19 @@
-# Who
+## Who: Host, Invitee, Team leader ...
 
 
-# What
+## When: When a user has a intention
 
 
-# When
+# Where: Page, Popup location, url etc..
 
 
-# Where
+## What: Action
 
 
-# Why
+## How: Requirements
 
 
-# How
+## Why: Business Impact
 
 
-# _Preview_
+## _Preview_ (Option: Attachment)
