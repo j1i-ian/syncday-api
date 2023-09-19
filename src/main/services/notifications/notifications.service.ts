@@ -6,14 +6,50 @@ import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
 import { AppConfigService } from '@config/app-config.service';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
+import { UtilService } from '@services/util/util.service';
+import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { Language } from '@app/enums/language.enum';
 
 @Injectable()
 export class NotificationsService {
     constructor(
+        private readonly utilService: UtilService,
         private readonly configService: ConfigService,
         private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
     ) {}
+
+    async sendMessages(
+        scheduledEventNotifications: ScheduledEventNotification[]
+    ): Promise<boolean> {
+
+        const notificationDataAndPublishKeyMap = new Map();
+        const notificationDataAndPublishKeyArray = scheduledEventNotifications
+            .filter((_scheduleNotification) => {
+                const {
+                    notificationTarget
+                } = _scheduleNotification;
+
+                const isNotDuplicated = notificationDataAndPublishKeyMap.has(notificationTarget) === false;
+
+                if (isNotDuplicated) {
+                    notificationDataAndPublishKeyMap.set(notificationTarget, _scheduleNotification);
+                }
+
+                return isNotDuplicated;
+            })
+            .map((_scheduleNotification) => this.utilService.convertScheduleNotificationToNotificationDataAndPublishKey(_scheduleNotification));
+
+        await Promise.all(
+            notificationDataAndPublishKeyArray.map(
+                ({
+                    syncdayNotificationPublishKey,
+                    notificationData
+                }) => this.sendMessage(syncdayNotificationPublishKey, notificationData)
+            )
+        );
+
+        return true;
+    }
 
     async sendMessage(
         syncdayNotificationPublishKey: SyncdayNotificationPublishKey,

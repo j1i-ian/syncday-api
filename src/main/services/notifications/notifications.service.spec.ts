@@ -7,6 +7,7 @@ import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws
 import { AppConfigService } from '@config/app-config.service';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { FileUtilsService } from '@services/util/file-utils/file-utils.service';
+import { UtilService } from '@services/util/util.service';
 import { Language } from '@app/enums/language.enum';
 import { TestMockUtil } from '@test/test-mock-util';
 import { faker } from '@faker-js/faker';
@@ -21,12 +22,14 @@ describe('IntegrationsService', () => {
     let awsSnsClientStub: sinon.SinonStubbedInstance<SNSClient>;
     let fileUtilsServiceStub: SinonStubbedInstance<FileUtilsService>;
     let syncdayAwsSdkClientServiceStub: sinon.SinonStubbedInstance<SyncdayAwsSdkClientService>;
+    let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         awsSnsClientStub = sinon.createStubInstance(SNSClient);
         fileUtilsServiceStub = sinon.createStubInstance(FileUtilsService);
         syncdayAwsSdkClientServiceStub = sinon.createStubInstance(SyncdayAwsSdkClientService);
+        utilServiceStub = sinon.createStubInstance(UtilService);
 
         sinon.stub(AppConfigService, 'getAwsSnsTopicARNSyncdayNotification').returns(
             'fakeAwsSnsTopicARNSyncdayNotification'
@@ -50,6 +53,10 @@ describe('IntegrationsService', () => {
                 {
                     provide: SyncdayAwsSdkClientService,
                     useValue: syncdayAwsSdkClientServiceStub
+                },
+                {
+                    provide: UtilService,
+                    useValue: utilServiceStub
                 }
             ]
         }).compile();

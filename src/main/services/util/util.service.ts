@@ -4,12 +4,17 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { TimezoneOffset } from '@core/interfaces/integrations/timezone-offset.interface';
+import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
+import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
+import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
+import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
 import { EventType } from '@interfaces/events/event-type.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 import { Notification } from '@interfaces/notifications/notification';
 import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -58,6 +63,55 @@ type EventDetailInit = Omit<EventDetail,
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
+
+    convertScheduleNotificationToNotificationDataAndPublishKey(
+        scheduleNotification: ScheduledEventNotification
+    ): {
+            notificationData: SyncdayAwsSnsRequest;
+            syncdayNotificationPublishKey: SyncdayNotificationPublishKey;
+        } {
+
+        const notificationOrReminderType =
+        scheduleNotification.notificationType === NotificationType.EMAIL ?
+            scheduleNotification.notificationType :
+            scheduleNotification.reminderType;
+
+        const isNotificationTargetHost = scheduleNotification.notificationTarget === NotificationTarget.HOST;
+
+        let template: EmailTemplate | TextTemplate = isNotificationTargetHost ?
+            TextTemplate.EVENT_CANCELLED_HOST : TextTemplate.EVENT_CANCELLED_INVITEE;
+
+        let syncdayNotificationPublishKey: SyncdayNotificationPublishKey;
+
+        switch (notificationOrReminderType) {
+            case ReminderType.SMS:
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.SMS_GLOBAL;
+                break;
+            case ReminderType.WAHTSAPP:
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.WHATSAPP;
+                break;
+            case ReminderType.KAKAOTALK:
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.KAKAOTALK;
+                break;
+            default:
+                template = EmailTemplate.CANCELLED;
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
+                break;
+        }
+
+        const notificationData = {
+            template,
+            scheduleId: scheduleNotification.scheduleId
+        } as SyncdayAwsSnsRequest;
+
+        const notificationDataAndPublishKey = {
+            notificationData,
+            syncdayNotificationPublishKey
+        };
+
+        return notificationDataAndPublishKey;
+
+    }
 
     ensureIntegrationContext(
         integrationContext: IntegrationContext,

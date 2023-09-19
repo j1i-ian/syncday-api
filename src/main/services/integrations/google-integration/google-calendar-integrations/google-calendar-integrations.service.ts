@@ -8,14 +8,8 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleCalendarIntegrationSearchOption } from '@core/interfaces/integrations/google/google-calendar-integration-search-option.interface';
 import { GoogleCalendarDetail } from '@core/interfaces/integrations/google/google-calendar-detail.interface';
-import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
-import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
-import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
-import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
-import { NotificationType } from '@interfaces/notifications/notification-type.enum';
-import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleCalendarEventWatchService } from '@services/integrations/google-integration/facades/google-calendar-event-watch.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
@@ -29,8 +23,6 @@ import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-in
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
-import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
@@ -145,7 +137,6 @@ export class GoogleCalendarIntegrationsService {
         });
 
         const _scheduleRepository = manager.getRepository(Schedule);
-        const _scheduledEventNotificationRepository = manager.getRepository(ScheduledEventNotification);
         const _googleIntegrationScheduleRepository = manager.getRepository(GoogleIntegrationSchedule);
 
         // create new schedules
@@ -178,72 +169,19 @@ export class GoogleCalendarIntegrationsService {
             }
         });
 
-        schedules.map(async (_schedule) => {
-            const notificationDataAndPublishKeyArray = _schedule.scheduledEventNotifications
-                .map((_scheduleNotification) => {
-                    const notificationOrReminderType = _scheduleNotification.notificationType === NotificationType.EMAIL ?
-                        _scheduleNotification.notificationType : _scheduleNotification.reminderType;
+        const scheduledEventNotifications = schedules.flatMap((schedule) => schedule.scheduledEventNotifications);
 
-                    const isNotificationTargetHost = _scheduleNotification.notificationTarget === NotificationTarget.HOST;
+        await this.notificationsService.sendMessages(scheduledEventNotifications);
 
-                    let template: EmailTemplate | TextTemplate = isNotificationTargetHost ?
-                        TextTemplate.EVENT_CANCELLED_HOST : TextTemplate.EVENT_CANCELLED_INVITEE;
-
-                    let syncdayNotificationPublishKey: SyncdayNotificationPublishKey;
-                    if (notificationOrReminderType === ReminderType.SMS) {
-                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.SMS_GLOBAL;
-                    } else if (notificationOrReminderType === ReminderType.WAHTSAPP) {
-                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.WHATSAPP;
-                    } else if (notificationOrReminderType === ReminderType.KAKAOTALK) {
-                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.KAKAOTALK;
-                    } else {
-                        template = EmailTemplate.CANCELLED;
-                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
-                    }
-                    const notificationData = {
-                        template,
-                        scheduleId: _scheduleNotification.scheduleId
-                    } as SyncdayAwsSnsRequest;
-
-                    const notificationDataAndPublishKeyArray = { notificationData, syncdayNotificationPublishKey };
-
-                    return notificationDataAndPublishKeyArray;
-                }).reduce((
-                    _notificationDataAndPublishKeyArray: Array<{ notificationData: SyncdayAwsSnsRequest; syncdayNotificationPublishKey: SyncdayNotificationPublishKey }>,
-                    _notificationDataAndPublishKey: { notificationData: SyncdayAwsSnsRequest; syncdayNotificationPublishKey: SyncdayNotificationPublishKey }
-                ) => {
-                    const isDuplicated = _notificationDataAndPublishKeyArray.find((__notificationDataAndPublishKey) =>
-                        _notificationDataAndPublishKey.notificationData.template === __notificationDataAndPublishKey.notificationData.template
-                    );
-
-                    if (!isDuplicated) {
-                        _notificationDataAndPublishKeyArray.push(_notificationDataAndPublishKey);
-                    }
-
-                    return _notificationDataAndPublishKeyArray;
-                }, []);
-
-            for (const notificationDataAndPublishKey of notificationDataAndPublishKeyArray) {
-                const notificationData = notificationDataAndPublishKey.notificationData;
-                const syncdayNotificationPublishKey = notificationDataAndPublishKey.syncdayNotificationPublishKey;
-
-                await this.notificationsService.sendMessage(syncdayNotificationPublishKey, notificationData);
-            }
-        });
-
-        const canceledScheduleId = schedules.map((_schedule) => _schedule.id);
+        const canceledScheduleIds = schedules.map((_schedule) => _schedule.id);
 
         await _scheduleRepository.update(
-            {
-                id: In(canceledScheduleId)
-            },
-            {
-                status: ScheduledStatus.CANCELED
-            }
+            { id: In(canceledScheduleIds) },
+            { status: ScheduledStatus.CANCELED }
         );
 
         await _scheduleRepository.softDelete({
-            id: In(canceledScheduleId)
+            id: In(canceledScheduleIds)
         });
     }
 
