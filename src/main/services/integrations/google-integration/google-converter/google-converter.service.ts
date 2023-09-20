@@ -209,10 +209,11 @@ export class GoogleConverterService {
         const inviteeEmailAnswer = (schedule.scheduledNotificationInfo.invitee as Notification[]).find((_item) => _item.type === NotificationType.EMAIL) as Notification;
         const inviteeEmail = (inviteeEmailAnswer.reminders[0] as ScheduledReminder).typeValue;
 
+        const summary = schedule.summary;
         const selectedContact = schedule.contacts[0];
         const generatedUUID = this.utilService.generateUUID();
         const eventRequestBody: calendar_v3.Schema$Event = {
-            summary: schedule.name,
+            summary,
             description: schedule.description,
             attendees: [
                 {
@@ -246,6 +247,8 @@ export class GoogleConverterService {
                     }
                 }
             };
+        } else {
+            eventRequestBody.location = schedule.location.join('\n');
         }
 
         return eventRequestBody;

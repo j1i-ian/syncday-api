@@ -5,7 +5,7 @@ import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEq
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { calendar_v3 } from 'googleapis';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
-import { IntegrationSchedulesService } from '@core/interfaces/integration-schedules.abstract-service';
+import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';

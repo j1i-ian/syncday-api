@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { IntegrationSchedulesService } from '@core/interfaces/integration-schedules.abstract-service';
+import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';

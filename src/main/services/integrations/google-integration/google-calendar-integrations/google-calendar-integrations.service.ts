@@ -24,6 +24,7 @@ import { GoogleIntegration } from '@entity/integrations/google/google-integratio
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
+import { User } from '@entity/users/user.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
 
@@ -68,7 +69,7 @@ export class GoogleCalendarIntegrationsService {
         await this.datasource.transaction(async (transactionManager) => await this._synchronizeWithGoogleCalendarEvents(
             transactionManager,
             loadedGoogleCalendarIntegration,
-            loadedUser.uuid,
+            loadedUser,
             loadedUserSetting,
             {
                 googleOAuthClient
@@ -79,7 +80,7 @@ export class GoogleCalendarIntegrationsService {
     async _synchronizeWithGoogleCalendarEvents(
         manager: EntityManager,
         googleCalendarIntegration: GoogleCalendarIntegration,
-        userUUID: string,
+        user: User,
         userSetting: UserSetting,
         {
             userRefreshToken,
@@ -129,9 +130,10 @@ export class GoogleCalendarIntegrationsService {
             _newSchedule.originatedCalendarId = googleCalendarIntegration.name;
             _newSchedule.googleCalendarIntegrationId = googleCalendarIntegration.id;
             _newSchedule.host = {
-                timezone: userSetting.preferredTimezone,
-                uuid: userUUID,
-                workspace: userSetting.workspace
+                uuid: user.uuid,
+                name: user.name,
+                workspace: userSetting.workspace,
+                timezone: userSetting.preferredTimezone
             };
             return _newSchedule;
         });
@@ -333,7 +335,7 @@ export class GoogleCalendarIntegrationsService {
                             await this._synchronizeWithGoogleCalendarEvents(
                                 _transactionManager,
                                 __googleCalendarIntegration,
-                                loadedUser.uuid,
+                                loadedUser,
                                 loadedUserSetting,
                                 {
                                     googleOAuthClient: __googleOAuthClient

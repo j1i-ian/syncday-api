@@ -323,11 +323,15 @@ export class UtilService {
         newSchedule.contacts = sourceEvent.contacts;
         newSchedule.type = sourceEvent.type;
         newSchedule.eventDetailId = sourceEvent.eventDetail.id;
+
+        newSchedule.additionalDescription = sourceEvent.eventDetail.description;
+
         newSchedule.scheduledNotificationInfo.host = sourceEvent.eventDetail.notificationInfo?.host;
 
         newSchedule.host = {
-            workspace,
             uuid: host.uuid,
+            name: host.name,
+            workspace,
             timezone
         };
 

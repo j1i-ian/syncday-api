@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
-import { IntegrationSchedulesService } from '@core/interfaces/integration-schedules.abstract-service';
+import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
 import { AppConfigService } from '@config/app-config.service';
 import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
@@ -186,6 +186,7 @@ export class GoogleIntegrationsService implements IntegrationsFactory, Integrati
 
                 _googleIntegrationSchedule.host = {
                     uuid: user.uuid,
+                    name: user.name,
                     workspace,
                     timezone
                 };

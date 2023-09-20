@@ -200,7 +200,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                 description: 'should be synchronized for calendar items searching',
                 managerDummy: datasourceMock as EntityManager,
                 googleCalendarIntegrationDummy: stubOne(GoogleCalendarIntegration),
-                userUUIDDummy: stubOne(User).uuid,
+                userDummy: stubOne(User),
                 userSettingDummy: stubOne(UserSetting),
                 refrashTokenAndGoogleOAuthClientDummy: {
                     userRefreshToken: 'dummyToken',
@@ -216,7 +216,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                 description: 'synchronization should occur for searching calendar items, but scheduled event notifications should not be deleted and cancel messages sent when there is no target schedule to delete',
                 managerDummy: datasourceMock as EntityManager,
                 googleCalendarIntegrationDummy: stubOne(GoogleCalendarIntegration),
-                userUUIDDummy: stubOne(User).uuid,
+                userDummy: stubOne(User),
                 userSettingDummy: stubOne(UserSetting),
                 refrashTokenAndGoogleOAuthClientDummy: {
                     userRefreshToken: 'dummyToken',
@@ -230,7 +230,7 @@ describe('GoogleCalendarIntegrationsService', () => {
             description,
             managerDummy,
             googleCalendarIntegrationDummy,
-            userUUIDDummy,
+            userDummy,
             userSettingDummy,
             refrashTokenAndGoogleOAuthClientDummy,
             googleScheduleStubValue,
@@ -256,7 +256,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                 await service._synchronizeWithGoogleCalendarEvents(
                     managerDummy,
                     googleCalendarIntegrationDummy,
-                    userUUIDDummy,
+                    userDummy,
                     userSettingDummy,
                     refrashTokenAndGoogleOAuthClientDummy
                 );

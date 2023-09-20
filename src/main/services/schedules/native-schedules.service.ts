@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Observable, defer, from } from 'rxjs';
 import { FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { SchedulesService } from '@core/interfaces/schedules.service.interface';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
+import { SchedulesService } from '@core/interfaces/schedules/schedules.service.interface';
 import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
 import { Schedule } from '@entity/schedules/schedule.entity';
 

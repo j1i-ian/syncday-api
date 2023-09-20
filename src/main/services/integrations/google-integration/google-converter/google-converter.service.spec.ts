@@ -11,6 +11,8 @@ import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { QuestionInputType } from '@entity/invitee-questions/question-input-type.enum';
+import { Host } from '@entity/schedules/host.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleConverterService } from './google-converter.service';
 
@@ -201,90 +203,175 @@ describe('GoogleConverterService', () => {
             expect(convertedDates.length).greaterThan(0);
         });
 
-        it('should be converted to google calendar event from sync scheduled event', () => {
-            const hostTimezoneMock = stubOne(UserSetting).preferredTimezone;
-            const googleCalendarIntegrationEmailMock = stubOne(GoogleCalendarIntegration).name;
-            const scheduledTimeMock = stubOne(ScheduledTimeset);
-            const scheduleMock = stubOne(Schedule, {
-                scheduledTime: scheduledTimeMock,
-                scheduledNotificationInfo: {
-                    invitee: [
+        [
+            {
+                description: 'should be converted to google calendar event from sync scheduled event',
+                hostTimezoneMock: stubOne(UserSetting).preferredTimezone,
+                googleCalendarIntegrationEmailMock: stubOne(GoogleCalendarIntegration).name,
+                scheduleMock: stubOne(Schedule, {
+                    scheduledTime: stubOne(ScheduledTimeset),
+                    scheduledNotificationInfo: {
+                        invitee: [
+                            {
+                                type: NotificationType.EMAIL,
+                                reminders: [ { typeValue: 'alan@sync.day' } ]
+                            }
+                        ]
+                    },
+                    inviteeAnswers: [
                         {
-                            type: NotificationType.EMAIL,
-                            reminders: [ { typeValue: 'alan@sync.day' } ]
+                            name: 'alan',
+                            inputType: QuestionInputType.TEXT,
+                            required: true
                         }
-                    ]
-                },
-                contacts: [
-                    {
-                        type: ContactType.GOOGLE_MEET,
-                        value: 'in company'
-                    }
-                ],
-                conferenceLinks: [{ type: IntegrationVendor.GOOGLE, link: 'https://video.sync.day', serviceName: 'Syncday Living Streaming Service' }]
-            });
-
-            const convertedGoogleSchedule = service.convertScheduledEventToGoogleCalendarEvent(
-                hostTimezoneMock,
-                googleCalendarIntegrationEmailMock,
-                scheduleMock
-            );
-
-            const {
-                start: convertedStartDatetimeString,
-                end: convertedEndDatetimeString,
-                conferenceData
-            } = convertedGoogleSchedule as {
-                start: calendar_v3.Schema$EventDateTime;
-                end: calendar_v3.Schema$EventDateTime;
-                conferenceData: calendar_v3.Schema$ConferenceData;
-            };
-            const convertedStartDatetime = new Date(convertedStartDatetimeString.dateTime as string);
-            const convertedEndDatetime = new Date(convertedEndDatetimeString.dateTime as string);
-
-            expect(convertedGoogleSchedule).ok;
-            expect(convertedStartDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
-            expect(convertedEndDatetime.getTime()).equals(scheduleMock.scheduledTime.endTimestamp.getTime());
-            expect(convertedGoogleSchedule).ok;
-            expect(conferenceData).ok;
-
-            expect(utilServiceStub.generateUUID.called).true;
-        });
-
-        it('should be converted to google calendar event from sync scheduled event without conference link when event contact is not link method', () => {
-            const hostTimezoneMock = stubOne(UserSetting).preferredTimezone;
-            const googleCalendarIntegrationEmailMock = stubOne(GoogleCalendarIntegration).name;
-            const scheduledTimeMock = stubOne(ScheduledTimeset);
-            const scheduleMock = stubOne(Schedule, {
-                scheduledTime: scheduledTimeMock,
-                scheduledNotificationInfo: {
-                    invitee: [
+                    ],
+                    host: stubOne(Host),
+                    contacts: [
                         {
-                            type: NotificationType.EMAIL,
-                            reminders: [ { typeValue: 'alan@sync.day' } ]
+                            type: ContactType.GOOGLE_MEET,
+                            value: 'in company'
                         }
-                    ]
-                },
-                contacts: [
-                    {
-                        type: ContactType.IN_PERSON,
-                        value: 'in company'
-                    }
-                ],
-                conferenceLinks: []
+                    ],
+                    conferenceLinks: [{ type: IntegrationVendor.GOOGLE, link: 'https://video.sync.day', serviceName: 'Syncday Living Streaming Service' }]
+                }),
+                expectedPropertyConvertedGoogleScheduleContain: 'conferenceData',
+                expectedPropertyConvertedGoogleScheduleNotContain: 'location'
+            },
+            {
+                description: 'should be converted to google calendar event from sync scheduled event when event detail descript is null',
+                hostTimezoneMock: stubOne(UserSetting).preferredTimezone,
+                googleCalendarIntegrationEmailMock: stubOne(GoogleCalendarIntegration).name,
+                scheduleMock: stubOne(Schedule, {
+                    scheduledTime: stubOne(ScheduledTimeset),
+                    scheduledNotificationInfo: {
+                        invitee: [
+                            {
+                                type: NotificationType.EMAIL,
+                                reminders: [ { typeValue: 'alan@sync.day' } ]
+                            }
+                        ]
+                    },
+                    inviteeAnswers: [
+                        {
+                            name: 'alan',
+                            inputType: QuestionInputType.TEXT,
+                            required: true
+                        }
+                    ],
+                    host: stubOne(Host),
+                    contacts: [
+                        {
+                            type: ContactType.GOOGLE_MEET,
+                            value: 'in company'
+                        }
+                    ],
+                    conferenceLinks: [{ type: IntegrationVendor.GOOGLE, link: 'https://video.sync.day', serviceName: 'Syncday Living Streaming Service' }]
+                }),
+                expectedPropertyConvertedGoogleScheduleContain: 'conferenceData',
+                expectedPropertyConvertedGoogleScheduleNotContain: 'location'
+            },
+            {
+                description: 'should be converted to google calendar event from sync scheduled event with conference link when event contact is zoom link',
+                hostTimezoneMock: stubOne(UserSetting).preferredTimezone,
+                googleCalendarIntegrationEmailMock: stubOne(GoogleCalendarIntegration).name,
+                scheduleMock: stubOne(Schedule, {
+                    scheduledTime: stubOne(ScheduledTimeset),
+                    scheduledNotificationInfo: {
+                        invitee: [
+                            {
+                                type: NotificationType.EMAIL,
+                                reminders: [ { typeValue: 'alan@sync.day' } ]
+                            }
+                        ]
+                    },
+                    inviteeAnswers: [
+                        {
+                            name: 'alan',
+                            inputType: QuestionInputType.TEXT,
+                            required: true
+                        }
+                    ],
+                    host: stubOne(Host),
+                    contacts: [
+                        {
+                            type: ContactType.ZOOM,
+                            value: 'in company'
+                        }
+                    ],
+                    conferenceLinks: [{ type: IntegrationVendor.ZOOM, link: 'https://video.sync.day', serviceName: 'Syncday Living Streaming Service' }]
+                }),
+                expectedPropertyConvertedGoogleScheduleContain: 'location',
+                expectedPropertyConvertedGoogleScheduleNotContain: 'conferenceData'
+            },
+            {
+                description: 'should be converted to google calendar event from sync scheduled event without conference link when event contact is not link method',
+                hostTimezoneMock: stubOne(UserSetting).preferredTimezone,
+                googleCalendarIntegrationEmailMock: stubOne(GoogleCalendarIntegration).name,
+                scheduleMock: stubOne(Schedule, {
+                    scheduledTime: stubOne(ScheduledTimeset),
+                    scheduledNotificationInfo: {
+                        invitee: [
+                            {
+                                type: NotificationType.EMAIL,
+                                reminders: [ { typeValue: 'alan@sync.day' } ]
+                            }
+                        ]
+                    },
+                    inviteeAnswers: [
+                        {
+                            name: 'alan',
+                            inputType: QuestionInputType.TEXT,
+                            required: true
+                        }
+                    ],
+                    host: stubOne(Host),
+                    contacts: [
+                        {
+                            type: ContactType.IN_PERSON,
+                            value: 'in company'
+                        }
+                    ],
+                    conferenceLinks: []
+                }),
+                expectedPropertyConvertedGoogleScheduleContain: 'location',
+                expectedPropertyConvertedGoogleScheduleNotContain: 'conferenceData'
+            }
+        ].forEach(function ({
+            description,
+            hostTimezoneMock,
+            googleCalendarIntegrationEmailMock,
+            scheduleMock,
+            expectedPropertyConvertedGoogleScheduleContain,
+            expectedPropertyConvertedGoogleScheduleNotContain
+        }) {
+            it(description, () => {
+                const convertedGoogleSchedule = service.convertScheduledEventToGoogleCalendarEvent(
+                    hostTimezoneMock,
+                    googleCalendarIntegrationEmailMock,
+                    scheduleMock
+                );
+
+                const {
+                    start: convertedStartDatetimeString,
+                    end: convertedEndDatetimeString
+                } = convertedGoogleSchedule as {
+                    start: calendar_v3.Schema$EventDateTime;
+                    end: calendar_v3.Schema$EventDateTime;
+                };
+
+                const convertedStartDatetime = new Date(convertedStartDatetimeString.dateTime as string);
+                const convertedEndDatetime = new Date(convertedEndDatetimeString.dateTime as string);
+
+                expect(convertedGoogleSchedule).ok;
+                expect(convertedStartDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
+                expect(convertedEndDatetime.getTime()).equals(scheduleMock.scheduledTime.endTimestamp.getTime());
+                expect(convertedGoogleSchedule).ok;
+
+                expect(utilServiceStub.generateUUID.called).true;
+
+                expect(convertedGoogleSchedule).has.property(expectedPropertyConvertedGoogleScheduleContain);
+                expect(convertedGoogleSchedule).has.not.property(expectedPropertyConvertedGoogleScheduleNotContain);
             });
-
-            const convertedGoogleSchedule = service.convertScheduledEventToGoogleCalendarEvent(
-                hostTimezoneMock,
-                googleCalendarIntegrationEmailMock,
-                scheduleMock
-            );
-
-            const {
-                conferenceData
-            } = convertedGoogleSchedule;
-
-            expect(conferenceData).not.ok;
         });
 
         it('should be converted google integration schedules from google schedule although google schedule has no summary', () => {
