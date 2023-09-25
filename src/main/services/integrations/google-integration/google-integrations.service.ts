@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
+import { plainToInstance } from 'class-transformer';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
@@ -156,7 +157,7 @@ export class GoogleIntegrationsService implements IntegrationsFactory, Integrati
 
                 calendar.setting = calendarSetting;
                 calendar.users = [user];
-                return calendar;
+                return plainToInstance(GoogleCalendarIntegration, calendar);
             })
         } as GoogleIntegration;
         const createdGoogleIntegration = await _googleIntegrationRepository.save(newGoogleIngration);
