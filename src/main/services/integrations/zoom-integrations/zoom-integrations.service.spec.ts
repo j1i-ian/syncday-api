@@ -130,7 +130,7 @@ describe('ZoomIntegrationsService', () => {
         expect(zoomIntegrationRepositoryStub.findOneOrFail.called).true;
         expect(zoomIntegrationRepositoryStub.delete.called).true;
         expect(eventRepositoryStub.find.called).true;
-        expect(eventRepositoryStub.update.called).true;
+        expect(eventRepositoryStub.update.called).false;
 
         expect(deleteSuccess).true;
     });

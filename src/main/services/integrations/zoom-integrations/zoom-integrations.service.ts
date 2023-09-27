@@ -158,14 +158,19 @@ export class ZoomIntegrationsService implements IntegrationsFactory {
 
             const disableEventTargetIds = disableEventTargets.map((_event) => _event.id);
 
-            const eventUpdateResult = await eventRepository.update(disableEventTargetIds, {
-                contacts: [],
-                status: EventStatus.CLOSED
-            });
+            let isEventsUpdateSuccess = true;
 
-            const isEventsUpdateSuccess = eventUpdateResult &&
-            eventUpdateResult.affected &&
-            eventUpdateResult.affected > 0;
+            if (disableEventTargetIds.length > 0) {
+                const eventUpdateResult = await eventRepository.update(disableEventTargetIds, {
+                    contacts: [],
+                    status: EventStatus.CLOSED
+                });
+
+                isEventsUpdateSuccess = (eventUpdateResult &&
+                    eventUpdateResult.affected &&
+                    eventUpdateResult.affected > 0) || false;
+            }
+
 
             const zoomDeleteResult = await zoomIntegrationRepository.delete(zoomIntegration.id);
 
