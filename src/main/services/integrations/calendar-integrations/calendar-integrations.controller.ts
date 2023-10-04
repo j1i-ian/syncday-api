@@ -2,20 +2,24 @@ import { Body, Controller, HttpCode, HttpStatus, Param, Patch, Get } from '@nest
 import { Observable } from 'rxjs';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
-import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
-import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
 
 @Controller(':vendor')
 export class CalendarIntegrationsController {
     constructor(
-        private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService
+        private readonly calendarIntegrationsServiceLocator: CalendarIntegrationsServiceLocator
     ) {}
 
     @Get()
     searchGoogleCalendarIntegrations(
-        @AuthUser('id') userId: number
-    ): Observable<GoogleCalendarIntegration[]> {
-        return this.googleCalendarIntegrationsService.search({
+        @AuthUser('id') userId: number,
+        @Param('vendor') vendor: IntegrationVendor
+    ): Observable<CalendarIntegration[]> {
+
+        const calendarIntegrationsService = this.calendarIntegrationsServiceLocator.getCalendarIntegrationService(vendor);
+
+        return calendarIntegrationsService.search({
             userId
         });
     }
@@ -23,10 +27,13 @@ export class CalendarIntegrationsController {
     @Patch()
     @HttpCode(HttpStatus.NO_CONTENT)
     patchCalendarIntegrations(
-        @Param('vendor') vendor: string,
+        @Param('vendor') vendor: IntegrationVendor,
         @AuthUser('id') userId: number,
         @Body() calendarIntegrations: CalendarIntegration[]
     ): Promise<boolean> {
-        return this.googleCalendarIntegrationsService.patch(userId, calendarIntegrations);
+
+        const calendarIntegrationsService = this.calendarIntegrationsServiceLocator.getCalendarIntegrationService(vendor);
+
+        return calendarIntegrationsService.patch(userId, calendarIntegrations);
     }
 }

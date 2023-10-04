@@ -97,6 +97,7 @@ export class UserService {
             },
             select: {
                 id: true,
+                name: true,
                 uuid: true,
                 email: true,
                 profileImage: true,

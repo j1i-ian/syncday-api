@@ -2,14 +2,36 @@ import { Injectable } from '@nestjs/common';
 import * as ical from 'ical';
 import { plainToInstance } from 'class-transformer';
 import { DAVCalendar, DAVObject } from 'tsdav';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { UtilService } from '@services/util/util.service';
 import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
+import { User } from '@entity/users/user.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { Schedule } from '@entity/schedules/schedule.entity';
 import { ParsedICSBody } from '@app/interfaces/integrations/parsed-ics-body.interface';
 
 interface ParsedICS { [iCalUID: string]: ParsedICSBody }
 
 @Injectable()
 export class AppleConverterService {
+
+    constructor(
+        private readonly utilService: UtilService,
+        private readonly timeUtilService: TimeUtilService
+    ) {}
+
+    convertScheduleToICalICSString(
+        organizerEmail: string,
+        schedule: Schedule
+    ): string {
+
+        return this.timeUtilService.convertToICSString(
+            schedule.uuid,
+            organizerEmail,
+            schedule
+        );
+    }
 
     convertCalDAVCalendarToAppleCalendarIntegration(
         userTimezone: string,
@@ -28,17 +50,16 @@ export class AppleConverterService {
             timezone: ensuredTimezone,
             primary: false,
             setting: {
-                conflictCheck: false,
+                conflictCheck: true,
                 outboundWriteSync: false,
                 inboundDecliningSync: false
             }
         } as AppleCalDAVCalendarIntegration);
     }
 
-    convertCalDAVCalendarObjectsToAppleCalDAVIntegrationSchedules(
-        userUUID: string,
-        userWorkspace: string,
-        userTimezone: string,
+    convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
+        user: User,
+        userSetting: UserSetting,
         calDAVObject: DAVObject
     ): AppleCalDAVIntegrationSchedule[] {
 
@@ -48,16 +69,19 @@ export class AppleConverterService {
         const convertedAppleSchedules = Object.values(parsedICS).map((_parsedSchedule) => {
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const timezone = (_parsedSchedule.created as any).tz || userTimezone;
-            const startDate = new Date(_parsedSchedule.start);
-            const endDate = new Date(_parsedSchedule.end);
+            const timezone = (_parsedSchedule.created as any).tz as string | undefined || userSetting.preferredTimezone;
+            const gmtString = this.timeUtilService.getTimezoneGMTString(timezone) ?? '';
+
+            const startDate = new Date(`${ _parsedSchedule.start as string }${gmtString}`);
+            const endDate = new Date(`${_parsedSchedule.end as string }${gmtString}`);
 
             return plainToInstance(AppleCalDAVIntegrationSchedule, {
                 name: _parsedSchedule.summary,
                 host: {
-                    uuid: userUUID,
+                    uuid: user.uuid,
+                    name: user.name,
                     timezone,
-                    workspace: userWorkspace
+                    workspace: userSetting.workspace
                 },
                 scheduledTime: {
                     startTimestamp: startDate,
@@ -68,7 +92,7 @@ export class AppleConverterService {
                     endBufferTimestamp: null
                 },
                 iCalUID: _parsedSchedule.uid
-            });
+            } as AppleCalDAVIntegrationSchedule);
         });
 
         return convertedAppleSchedules;

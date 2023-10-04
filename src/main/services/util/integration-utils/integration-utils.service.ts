@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Auth, google } from 'googleapis';
+import { Auth, calendar_v3, google } from 'googleapis';
 import { ConfigService } from '@nestjs/config';
 import { AppConfigService } from '@config/app-config.service';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { ConferenceLink } from '@entity/schedules/conference-link.entity';
 
 @Injectable()
 export class IntegrationUtilsService {
@@ -22,4 +24,16 @@ export class IntegrationUtilsService {
         return newOAuthClient;
     }
 
+    getGoogleMeetLink(createdGoogleCalendarEvent: calendar_v3.Schema$Event): ConferenceLink {
+
+        const googleMeetConferenceLink = createdGoogleCalendarEvent.conferenceData as calendar_v3.Schema$ConferenceData;
+        const generatedGoogleMeetLink = (googleMeetConferenceLink.entryPoints as calendar_v3.Schema$EntryPoint[])[0].uri;
+        const convertedConferenceLink: ConferenceLink = {
+            type: IntegrationVendor.GOOGLE,
+            serviceName: 'Google Meet',
+            link: generatedGoogleMeetLink
+        };
+
+        return convertedConferenceLink;
+    }
 }

@@ -8,8 +8,12 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleCalendarIntegrationSearchOption } from '@core/interfaces/integrations/google/google-calendar-integration-search-option.interface';
 import { GoogleCalendarDetail } from '@core/interfaces/integrations/google/google-calendar-detail.interface';
+import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
+import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
+import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleCalendarEventWatchService } from '@services/integrations/google-integration/facades/google-calendar-event-watch.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
@@ -29,7 +33,7 @@ import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
 
 @Injectable()
-export class GoogleCalendarIntegrationsService {
+export class GoogleCalendarIntegrationsService extends CalendarIntegrationService {
     constructor(
         private readonly integrationUtilService: IntegrationUtilsService,
         private readonly googleConverterService: GoogleConverterService,
@@ -37,13 +41,13 @@ export class GoogleCalendarIntegrationsService {
         private readonly integrationsRedisRepository: IntegrationsRedisRepository,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @InjectDataSource() private readonly datasource: DataSource,
-        @InjectRepository(GoogleIntegration)
-        private readonly googleIntegrationRepository: Repository<GoogleIntegration>,
         @InjectRepository(GoogleIntegrationSchedule)
         private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
         @InjectRepository(GoogleCalendarIntegration)
         private readonly googleCalendarIntegrationRepository: Repository<GoogleCalendarIntegration>
-    ) {}
+    ) {
+        super();
+    }
 
     async synchronizeWithGoogleCalendarEvents(syncdayGoogleCalendarIntegrationUUID: string): Promise<void> {
 
@@ -187,36 +191,6 @@ export class GoogleCalendarIntegrationsService {
         });
     }
 
-    search({
-        userId,
-        googleCalendarIntegrationUUID
-    }: Partial<GoogleCalendarIntegrationSearchOption> = {}): Observable<GoogleCalendarIntegration[]> {
-
-        let options: FindOptionsWhere<GoogleCalendarIntegration> = {};
-
-        if (userId) {
-            options = {
-                ...options,
-                users: {
-                    id: userId
-                }
-            };
-        }
-
-        if (googleCalendarIntegrationUUID) {
-            options = {
-                ...options,
-                uuid: googleCalendarIntegrationUUID
-            };
-        }
-
-        return from(
-            this.googleCalendarIntegrationRepository.find({
-                where: options
-            })
-        );
-    }
-
     findOne(searchOptions: Partial<GoogleCalendarIntegrationSearchOption>): Observable<GoogleCalendarIntegration | null> {
 
         const options = this.__patchSearchOption(searchOptions);
@@ -235,16 +209,17 @@ export class GoogleCalendarIntegrationsService {
 
     async patch(
         userId: number,
-        googleCalendarIntegrations:
+        calendarIntegrations:
         Array<Partial<GoogleCalendarIntegration> & Pick<GoogleCalendarIntegration, 'id' | 'setting'>>
     ): Promise<boolean> {
 
-        const googleCalendarIntegrationIds = googleCalendarIntegrations.map(
+        const calendarIntegrationIds = calendarIntegrations.map(
             (_calendarIntegration) => _calendarIntegration.id
         );
 
+        const calendarIntegrationRepository = this.getCalendarIntegrationRepository();
         // check owner permission
-        const loadedCalendars = await this.googleCalendarIntegrationRepository.find({
+        const loadedCalendars = await calendarIntegrationRepository.find({
             relations: [
                 'googleIntegration',
                 'googleIntegration.users',
@@ -258,7 +233,7 @@ export class GoogleCalendarIntegrationsService {
         });
         const loadedCalendarIds = loadedCalendars.map((_loadedCalendar) => _loadedCalendar.id);
 
-        const noPermissionCalendar = googleCalendarIntegrationIds.find(
+        const noPermissionCalendar = calendarIntegrationIds.find(
             (_calendarId) => loadedCalendarIds.includes(_calendarId) === false
         );
 
@@ -266,11 +241,8 @@ export class GoogleCalendarIntegrationsService {
             throw new NotAnOwnerException();
         }
 
-        const loadedUser = loadedCalendars[0].googleIntegration.users[0];
-        const loadedUserSetting = loadedUser.userSetting;
-
-        const calendarsToDeleteSchedules = googleCalendarIntegrations.filter((googleCalendarSettingStatus) =>
-            googleCalendarSettingStatus.setting.conflictCheck === false
+        const calendarsToDeleteSchedules = calendarIntegrations.filter((calendarSettingStatus) =>
+            calendarSettingStatus.setting.conflictCheck === false
         );
         const calendarIdsToDeleteSchedules = calendarsToDeleteSchedules.map((_calendarsToDeleteSchedule) => _calendarsToDeleteSchedule.id);
 
@@ -292,7 +264,7 @@ export class GoogleCalendarIntegrationsService {
             const _resultToDeleteSchedulesSuccess = _resultToDeleteSchedules.affected && _resultToDeleteSchedules.affected > 0;
 
             const _googleCalendarIntegrations = await _googleCalendarIntegrationRepo.save(
-                googleCalendarIntegrations,
+                calendarIntegrations,
                 {
                     transaction: true
                 }
@@ -326,6 +298,10 @@ export class GoogleCalendarIntegrationsService {
                 });
 
             if (_inboundGoogleCalendarIntegrations.length > 0) {
+
+                const loadedUser = loadedCalendars[0].googleIntegration.users[0];
+                const loadedUserSetting = loadedUser.userSetting;
+
                 await Promise.all(
                     _inboundGoogleCalendarIntegrations
                         .map(async (__googleCalendarIntegration) => {
@@ -353,12 +329,12 @@ export class GoogleCalendarIntegrationsService {
         return true;
     }
 
-    async createGoogleCalendarEvent(
+    async createCalendarEvent(
         googleIntegration: GoogleIntegration,
         googleCalendarIntegration: GoogleCalendarIntegration,
         hostTimezone: string,
         schedule: Schedule
-    ): Promise<calendar_v3.Schema$Event> {
+    ): Promise<CreatedCalendarEvent> {
 
         const calendarId = googleCalendarIntegration.name;
 
@@ -386,15 +362,23 @@ export class GoogleCalendarIntegrationsService {
             true
         );
 
-        return createdGoogleEvent;
+        const createdCalendarEvent = {
+            iCalUID: createdGoogleEvent.iCalUID,
+            generatedEventUrl: createdGoogleEvent.htmlLink,
+            raw: createdGoogleEvent
+        } as CreatedCalendarEvent;
+
+        return createdCalendarEvent;
     }
 
-    async patchGoogleCalendarEvent(
+    async patchCalendarEvent(
         googleIntegration: GoogleIntegration,
         googleCalendarIntegration: GoogleCalendarIntegration,
-        googleCalendarEventId: string,
-        patchedSchedule: Schedule
-    ): Promise<calendar_v3.Schema$Event> {
+        patchedSchedule: Schedule,
+        createdCalendarEvent: CreatedCalendarEvent & { raw: calendar_v3.Schema$Event & { id: string } }
+    ): Promise<boolean> {
+
+        const { raw: googleCalendarEvent } = createdCalendarEvent;
 
         const calendarId = googleCalendarIntegration.name;
 
@@ -409,13 +393,13 @@ export class GoogleCalendarIntegrationsService {
         const patchedGoogleCalendarEvent = await googleCalendarEventPatchService.patch(
             ensuredOAuthClient,
             calendarId,
-            googleCalendarEventId,
+            googleCalendarEvent.id,
             {
                 description: patchedSchedule.description
             }
         );
 
-        return patchedGoogleCalendarEvent;
+        return !!patchedGoogleCalendarEvent;
     }
 
     async resubscriptionCalendar(
@@ -610,5 +594,22 @@ export class GoogleCalendarIntegrationsService {
         }
 
         return options;
+    }
+
+    getCalendarIntegrationRepository(): Repository<GoogleCalendarIntegration> {
+        return this.googleCalendarIntegrationRepository;
+    }
+
+    getUserRelationConditions(userId: number, options: FindOptionsWhere<CalendarIntegration>): FindOptionsWhere<CalendarIntegration> {
+        return {
+            ...options,
+            users: {
+                id: userId
+            }
+        } as FindOptionsWhere<GoogleCalendarIntegration> as FindOptionsWhere<CalendarIntegration>;
+    }
+
+    getIntegrationVendor(): IntegrationVendor {
+        return IntegrationVendor.GOOGLE;
     }
 }

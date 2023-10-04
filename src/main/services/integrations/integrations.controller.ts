@@ -93,7 +93,7 @@ export class IntegrationsController {
     }
 
     @Get()
-    searchIntegrations(
+    async searchIntegrations(
         @AuthUser('id') userId: number,
         @Param('vendor') vendor: IntegrationVendor,
         @Query('withCalendarIntegrations') withCalendarIntegrations: string | boolean
@@ -103,10 +103,16 @@ export class IntegrationsController {
 
         const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
 
-        return integrationService.search({
+        const integrations = await integrationService.search({
             userId,
             withCalendarIntegrations
         });
+
+        return integrations.map(
+            (_integration) => plainToInstance(IntegrationResponseDto, _integration, {
+                excludeExtraneousValues: true
+            })
+        );
     }
 
     @Post()

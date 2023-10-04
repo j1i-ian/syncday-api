@@ -5,10 +5,13 @@ import { DataSource, Raw, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
 import { AppConfigService } from '@config/app-config.service';
 import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
+import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/conference-link-integration-wrapper-service.interface';
+import { ZoomConferenceLinkIntegrationsService } from '@services/integrations/zoom-integrations/zoom-conference-link-integrations/zoom-conference-link-integrations.service';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
@@ -19,9 +22,13 @@ import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user
 import { SearchZoomIntegrationOptions } from '@app/interfaces/integrations/zoom/search-zoom-integration-options.interface';
 
 @Injectable()
-export class ZoomIntegrationsService implements IntegrationsFactory {
+export class ZoomIntegrationsService implements
+    IntegrationsFactory,
+    ConferenceLinkIntegrationWrapperService
+{
     constructor(
         private readonly configService: ConfigService,
+        private readonly zoomConferenceLinkIntegrationService: ZoomConferenceLinkIntegrationsService,
         @InjectDataSource() private readonly datasource: DataSource,
         @InjectRepository(ZoomIntegration)
         private readonly zoomIntegrationRepository: Repository<ZoomIntegration>
@@ -183,5 +190,9 @@ export class ZoomIntegrationsService implements IntegrationsFactory {
 
 
         return true;
+    }
+
+    getConferenceLinkIntegrationService(): ConferenceLinkIntegrationService {
+        return this.zoomConferenceLinkIntegrationService;
     }
 }

@@ -105,10 +105,6 @@ describe('GoogleCalendarIntegrationsService', () => {
                     useValue: scheduledEventNotificationStub
                 },
                 {
-                    provide: getRepositoryToken(GoogleIntegration),
-                    useValue: googleIntegrationRepositoryStub
-                },
-                {
                     provide: getRepositoryToken(GoogleIntegrationSchedule),
                     useValue: googleIntegrationScheduleRepositoryStub
                 },
