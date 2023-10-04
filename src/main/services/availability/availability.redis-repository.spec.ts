@@ -202,6 +202,73 @@ describe('Availability Redis Repository Test', () => {
             ).greaterThan(new Date(parsedUpdateAvailabilityBody.overrides[1].targetDate).getTime());
         });
 
+        it('should be saved only overrides without available time changes ', async () => {
+            const userUUIDMock = stubOne(User).uuid;
+            const availabilityUUIDStub = stubOne(Availability).uuid;
+            const updateAvailabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
+            const availableTimeMocks = [
+                { day: Weekday.MONDAY, timeRanges: [{ startTime: '09:00', endTime: '19:00' }] },
+                { day: Weekday.SUNDAY, timeRanges: [{ startTime: '09:00', endTime: '19:00' }] }
+            ];
+
+            (updateAvailabilityBodyStub as any).availableTimes = undefined;
+
+            const timestamp = Date.now();
+            updateAvailabilityBodyStub.overrides = [
+                {
+                    targetDate: new Date(timestamp + 1000 * 10),
+                    timeRanges: [{ startTime: '09:00', endTime: '19:00' }]
+                },
+                {
+                    targetDate: new Date(timestamp + 1000 * 5),
+                    timeRanges: [{ startTime: '09:00', endTime: '19:00' }]
+                }
+            ];
+
+            const availabilityBodyMocks = [
+                {
+                    uuid: availabilityUUIDStub,
+                    availableTimes: availableTimeMocks,
+                    overrides: updateAvailabilityBodyStub.overrides
+                }
+            ];
+            const availabilityRecordStub =
+                testMockUtil.getAvailabilityBodyRecordMocks(availabilityBodyMocks);
+            const createdItemCountStub = 0;
+
+            const getAvailabilityBodyRecordStub = serviceSandbox
+                .stub(service, 'getAvailabilityBodyRecord')
+                .resolves(availabilityRecordStub);
+            syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(userUUIDMock);
+            clusterStub.hset.resolves(createdItemCountStub);
+
+            const result = await service.updateAll(userUUIDMock, updateAvailabilityBodyStub);
+
+            expect(result).true;
+            expect(getAvailabilityBodyRecordStub.called).true;
+            expect(syncdayRedisServiceStub._getAvailabilityHashMapKey.called).true;
+            expect(clusterStub.hset.called).true;
+
+            const availabilityBodyMapStub = clusterStub.hset.getCall(0).args[1] as unknown as Map<
+            string,
+            string
+            >;
+            expect(availabilityBodyMapStub).ok;
+
+            const parsedUpdateAvailabilityBodyJsonString = availabilityBodyMapStub.get(
+                availabilityUUIDStub
+            ) as string;
+            const parsedUpdateAvailabilityBody: AvailabilityBody = JSON.parse(
+                parsedUpdateAvailabilityBodyJsonString
+            );
+
+            expect(parsedUpdateAvailabilityBody).ok;
+            expect(parsedUpdateAvailabilityBody.availableTimes.length).greaterThan(0);
+            expect(
+                new Date(parsedUpdateAvailabilityBody.overrides[0].targetDate).getTime()
+            ).greaterThan(new Date(parsedUpdateAvailabilityBody.overrides[1].targetDate).getTime());
+        });
+
         it('should be threw error when one or more availability body is created on update', async () => {
             const userUUIDMock = stubOne(User).uuid;
             const availabilityUUIDStub = stubOne(Availability).uuid;
