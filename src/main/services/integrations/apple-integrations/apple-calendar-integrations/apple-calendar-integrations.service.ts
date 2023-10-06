@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Repository, FindOptionsWhere, DataSource, In, EntityManager } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { Observable, from } from 'rxjs';
+import { Observable, firstValueFrom, from } from 'rxjs';
 import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
 import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
 import { CalendarIntegrationSearchOption } from '@interfaces/integrations/calendar-integration-search-option.interface';
@@ -155,17 +155,15 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
             const _calendarIntegrationRepository = _transactionManager.getRepository(AppleCalDAVCalendarIntegration);
             const _integrationScheduleRepository = _transactionManager.getRepository(AppleCalDAVIntegrationSchedule);
 
-            const _resetUpdateResult = await _calendarIntegrationRepository.update(loadedCalendarIds, {
-                setting: {
-                    outboundWriteSync: false
-                }
-            });
+            const _outboundResetSuccess = await firstValueFrom(this._resetOutboundSetting(
+                _transactionManager,
+                userId
+            ));
 
             const _resultToDeleteSchedules = await _integrationScheduleRepository.delete({
                 appleCalDAVCalendarIntegrationId: In(calendarIdsToDeleteSchedules)
             });
 
-            const _outboundResetSuccess = _resetUpdateResult.affected && _resetUpdateResult.affected > 0;
             const _resultToDeleteSchedulesSuccess = _resultToDeleteSchedules.affected && _resultToDeleteSchedules.affected > 0;
 
             const _calendarIntegrations = await _calendarIntegrationRepository.save(
@@ -296,6 +294,22 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         };
 
         return options;
+    }
+
+    getIntegrationUserRelationPath(integrationAlias = 'integration'): string {
+        return `${integrationAlias}.user`;
+    }
+
+    getIntegrationIdAlias(): string {
+        return 'appleCalDAVIntegrationId';
+    }
+
+    getIntegrationEntity(): new () => AppleCalDAVIntegration {
+        return AppleCalDAVIntegration;
+    }
+
+    getCalendarIntegrationEntity(): new () => AppleCalDAVCalendarIntegration {
+        return AppleCalDAVCalendarIntegration;
     }
 
     getIntegrationVendor(): IntegrationVendor {

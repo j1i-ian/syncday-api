@@ -8,9 +8,10 @@ import { CalendarIntegrationsModule } from '@services/integrations/calendar-inte
 import { ZoomIntegrationsModule } from '@services/integrations/zoom-integrations/zoom-integrations.module';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { UserModule } from '@services/users/user.module';
+import { IntegrationsController } from '@services/integrations/integrations.controller';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { IntegrationsController } from './integrations.controller';
+import { VendorIntegrationsController } from './vendor-integrations.controller';
 import { AppleIntegrationsModule } from './apple-integrations/apple-integrations.module';
 
 @Module({
@@ -23,7 +24,10 @@ import { AppleIntegrationsModule } from './apple-integrations/apple-integrations
         forwardRef(() => UserModule),
         AppleIntegrationsModule
     ],
-    controllers: [IntegrationsController],
+    controllers: [
+        IntegrationsController,
+        VendorIntegrationsController
+    ],
     providers: [
         JwtService,
         IntegrationsServiceLocator,

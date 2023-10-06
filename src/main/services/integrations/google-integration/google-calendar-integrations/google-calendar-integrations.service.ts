@@ -250,17 +250,15 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             const _googleCalendarIntegrationRepo = _transactionManager.getRepository(GoogleCalendarIntegration);
             const _googleIntegrationScheduleRepo = _transactionManager.getRepository(GoogleIntegrationSchedule);
 
-            const _resetUpdateResult = await _googleCalendarIntegrationRepo.update(loadedCalendarIds, {
-                setting: {
-                    outboundWriteSync: false
-                }
-            });
+            const _resetSuccess = await firstValueFrom(this._resetOutboundSetting(
+                _transactionManager,
+                userId
+            ));
 
             const _resultToDeleteSchedules = await _googleIntegrationScheduleRepo.delete({
                 googleCalendarIntegrationId: In(calendarIdsToDeleteSchedules)
             });
 
-            const _resetSuccess = _resetUpdateResult.affected && _resetUpdateResult.affected > 0;
             const _resultToDeleteSchedulesSuccess = _resultToDeleteSchedules.affected && _resultToDeleteSchedules.affected > 0;
 
             const _googleCalendarIntegrations = await _googleCalendarIntegrationRepo.save(
@@ -594,6 +592,22 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         }
 
         return options;
+    }
+
+    getIntegrationUserRelationPath(integrationAlias = 'integration'): string {
+        return `${integrationAlias}.users`;
+    }
+
+    getIntegrationIdAlias(): string {
+        return 'googleIntegrationId';
+    }
+
+    getIntegrationEntity(): new () => GoogleIntegration {
+        return GoogleIntegration;
+    }
+
+    getCalendarIntegrationEntity(): new () => GoogleCalendarIntegration {
+        return GoogleCalendarIntegration;
     }
 
     getCalendarIntegrationRepository(): Repository<GoogleCalendarIntegration> {

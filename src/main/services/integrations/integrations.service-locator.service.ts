@@ -66,6 +66,13 @@ export class IntegrationsServiceLocator {
         return myFacade;
     }
 
+    getAllCalendarSubjectIntegrationFactories(): IntegrationsFactory[] {
+        return [
+            this.googleIntegrationsService,
+            this.appleIntegrationService
+        ];
+    }
+
     getAllIntegrationSchedulesService(): IntegrationSchedulesService[] {
 
         return [

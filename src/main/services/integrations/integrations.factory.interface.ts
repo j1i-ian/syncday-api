@@ -7,7 +7,6 @@ import { Integration } from '@entity/integrations/integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
 
 type GoogleIntegrationRequest =  [User, UserSetting, OAuthToken, GoogleCalendarIntegration[], GoogleIntegrationBody];
@@ -23,9 +22,9 @@ export interface IntegrationsFactory {
         syncdayGoogleOAuthTokenResponseOrSyncdayAccessToken?: string | SyncdayGoogleOAuthTokenResponse
     ): string;
 
-    search(userSearchOption: IntegrationSearchOption): Promise<Array<Integration | IntegrationResponseDto>>;
+    search(userSearchOption: IntegrationSearchOption): Promise<Integration[]>;
 
-    findOne(userSearchOption: IntegrationSearchOption): Promise<(Integration | IntegrationResponseDto) | null>;
+    findOne(userSearchOption: IntegrationSearchOption): Promise<(Integration) | null>;
 
     create(...argument: (ZoomIntegrationRequest | GoogleIntegrationRequest | AppleIntegrationRequest)): Promise<Integration>;
 

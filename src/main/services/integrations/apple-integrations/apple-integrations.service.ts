@@ -17,9 +17,8 @@ import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
-import { AlreadyIntegratedCalendar } from '@app/exceptions/integrations/already-integrated-calendar.exception';
+import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
 
 @Injectable()
 export class AppleIntegrationsService implements
@@ -45,19 +44,21 @@ export class AppleIntegrationsService implements
     async search({
         userId,
         withCalendarIntegrations
-    }: IntegrationSearchOption): Promise<AppleCalDAVIntegration[]> {
+    }: IntegrationSearchOption): Promise<Integration[]> {
 
         const relations = withCalendarIntegrations ? ['appleCalDAVCalendarIntegrations'] : [];
 
-        return await this.appleCalDAVIntegrationRepository.find({
+        const loadedAppleIntegrations = await this.appleCalDAVIntegrationRepository.find({
             relations,
             where: {
                 userId
             }
         });
+
+        return loadedAppleIntegrations.map((_loadedAppleIntegration) => _loadedAppleIntegration.toIntegration());
     }
 
-    findOne(userSearchOption: IntegrationSearchOption): Promise<Integration | IntegrationResponseDto | null> {
+    findOne(userSearchOption: IntegrationSearchOption): Promise<Integration | null> {
         throw new Error('Method not implemented.');
     }
 
@@ -79,7 +80,7 @@ export class AppleIntegrationsService implements
         });
 
         if (loadedAppleIntegration) {
-            throw new AlreadyIntegratedCalendar();
+            throw new AlreadyIntegratedCalendarException();
         }
 
         const client = await this.appleIntegrationFacade.generateCalDAVClient(appleCalDAVCredential);

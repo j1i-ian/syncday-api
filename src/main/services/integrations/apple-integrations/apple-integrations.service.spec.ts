@@ -11,7 +11,7 @@ import { User } from '@entity/users/user.entity';
 import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
-import { AlreadyIntegratedCalendar } from '@app/exceptions/integrations/already-integrated-calendar.exception';
+import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { AppleIntegrationsService } from './apple-integrations.service';
 
@@ -145,7 +145,7 @@ describe('AppleIntegrationsService', () => {
                 userSettingMock,
                 appleCalDAVCredentialMock,
                 timezoneMock
-            )).rejectedWith(AlreadyIntegratedCalendar);
+            )).rejectedWith(AlreadyIntegratedCalendarException);
         });
     });
 

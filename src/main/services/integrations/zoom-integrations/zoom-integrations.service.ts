@@ -42,7 +42,7 @@ export class ZoomIntegrationsService implements
     redirectURI: string;
     zoomOAuth2SuccessRedirectURI: string;
 
-    async search(userSearchOption: SearchByUserOption): Promise<IntegrationResponseDto[]> {
+    async search(userSearchOption: SearchByUserOption): Promise<Integration[]> {
 
         const { userId } = userSearchOption;
 
@@ -62,7 +62,7 @@ export class ZoomIntegrationsService implements
                     strategy: 'excludeAll'
                 }
             )
-        );
+        ) as Integration[];
     }
 
     findOne(searchZoomIntegrationOptions: SearchZoomIntegrationOptions): Promise<ZoomIntegration | null> {
