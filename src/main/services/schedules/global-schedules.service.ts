@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, defer, filter, first, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
+import { Observable, defer, first, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
@@ -116,8 +116,7 @@ export class GlobalSchedulesService {
                         outboundWriteSync: true,
                         userId: host.id
                     })
-                ),
-                filter((_calendarIntegration) => !!_calendarIntegration)
+                )
             );
 
         return loadedEventByUserWorkspace$.pipe(
