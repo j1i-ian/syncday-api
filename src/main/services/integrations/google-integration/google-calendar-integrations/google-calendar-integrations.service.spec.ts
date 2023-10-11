@@ -105,6 +105,10 @@ describe('GoogleCalendarIntegrationsService', () => {
                     useValue: scheduledEventNotificationStub
                 },
                 {
+                    provide: getRepositoryToken(GoogleIntegration),
+                    useValue: googleIntegrationRepositoryStub
+                },
+                {
                     provide: getRepositoryToken(GoogleIntegrationSchedule),
                     useValue: googleIntegrationScheduleRepositoryStub
                 },
@@ -290,98 +294,84 @@ describe('GoogleCalendarIntegrationsService', () => {
             expect(googleCalendarIntegrationRepositoryStub.find.called).true;
         });
 
-        describe('Test patch', () => {
-
-            beforeEach(() => {
-                serviceSandbox = sinon.createSandbox();
-                serviceSandbox.stub(service, '_resetOutboundSetting').returns(of(true));
+        it('should be patched for calendar items', async () => {
+            const userSettingStub = stubOne(UserSetting);
+            const userStub = stubOne(User, {
+                userSetting: userSettingStub
+            });
+            const googleIntegrationStub = stubOne(GoogleIntegration, {
+                users: [userStub]
             });
 
-            afterEach(() => {
-                serviceSandbox.reset();
-                serviceSandbox.restore();
+            const calendarStubs = stub(GoogleCalendarIntegration, 5, {
+                setting: {
+                    conflictCheck: true,
+                    outboundWriteSync: true,
+                    inboundDecliningSync: false
+                },
+                googleIntegration: googleIntegrationStub
             });
 
-            it('should be patched for calendar items', async () => {
-                const userSettingStub = stubOne(UserSetting);
-                const userStub = stubOne(User, {
-                    userSetting: userSettingStub
-                });
-                const googleIntegrationStub = stubOne(GoogleIntegration, {
-                    users: [userStub]
-                });
+            const googleCalendarIntegrationsMock = calendarStubs[0];
 
-                const calendarStubs = stub(GoogleCalendarIntegration, 5, {
-                    setting: {
-                        conflictCheck: true,
-                        outboundWriteSync: true,
-                        inboundDecliningSync: false
-                    },
-                    googleIntegration: googleIntegrationStub
-                });
+            googleCalendarIntegrationRepositoryStub.find.resolves([calendarStubs[0]] as any);
+            googleCalendarIntegrationRepositoryStub.save.resolves([calendarStubs[0]] as any);
 
-                const googleCalendarIntegrationsMock = calendarStubs[0];
+            const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+            googleCalendarIntegrationRepositoryStub.update.resolves(updateResultMock);
 
-                googleCalendarIntegrationRepositoryStub.find.resolves([calendarStubs[0]] as any);
-                googleCalendarIntegrationRepositoryStub.save.resolves([calendarStubs[0]] as any);
+            const deleteResultMock = TestMockUtil.getTypeormUpdateResultMock();
+            googleIntegrationScheduleRepositoryStub.delete.resolves(deleteResultMock);
 
-                const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
-                googleCalendarIntegrationRepositoryStub.update.resolves(updateResultMock);
+            const googleOAuthClientStub = testMockUtil.getGoogleOAuthClientMock();
 
-                const deleteResultMock = TestMockUtil.getTypeormUpdateResultMock();
-                googleIntegrationScheduleRepositoryStub.delete.resolves(deleteResultMock);
+            integrationUtilsServiceStub.getGoogleOAuthClient.returns(googleOAuthClientStub);
 
-                const googleOAuthClientStub = testMockUtil.getGoogleOAuthClientMock();
+            const synchronizeWithGoogleCalendarEventsStub = serviceSandbox.stub(service, '_synchronizeWithGoogleCalendarEvents');
+            const resubscriptionCalendarStub = serviceSandbox.stub(service, 'resubscriptionCalendar');
 
-                integrationUtilsServiceStub.getGoogleOAuthClient.returns(googleOAuthClientStub);
+            const patchSuccess = await service.patch(userStub.id, [googleCalendarIntegrationsMock]);
 
-                const synchronizeWithGoogleCalendarEventsStub = serviceSandbox.stub(service, '_synchronizeWithGoogleCalendarEvents');
-                const resubscriptionCalendarStub = serviceSandbox.stub(service, 'resubscriptionCalendar');
-
-                const patchSuccess = await service.patch(userStub.id, [googleCalendarIntegrationsMock]);
-
-                expect(patchSuccess).true;
-                expect(googleCalendarIntegrationRepositoryStub.find.called).true;
-                expect(googleCalendarIntegrationRepositoryStub.save.called).true;
-                expect(googleIntegrationScheduleRepositoryStub.delete.called).true;
-                expect(integrationUtilsServiceStub.getGoogleOAuthClient.called).true;
-                expect(synchronizeWithGoogleCalendarEventsStub.called).true;
-                expect(resubscriptionCalendarStub.called).true;
-            });
-
-            it('should be threw error when there is calendar in request array that is not owned of user', async () => {
-
-                const userSettingStub = stubOne(UserSetting);
-                const userStub = stubOne(User, {
-                    userSetting: userSettingStub
-                });
-                const googleIntegrationStub = stubOne(GoogleIntegration, {
-                    users: [userStub]
-                });
-                const calendarStubs = stub(GoogleCalendarIntegration, 1, {
-                    setting: {
-                        conflictCheck: false,
-                        outboundWriteSync: true,
-                        inboundDecliningSync: false
-                    },
-                    googleIntegration: googleIntegrationStub
-                });
-
-                const googleCalendarIntegrationsMock = calendarStubs[0];
-
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const [_first, ...rest] = calendarStubs;
-
-                googleCalendarIntegrationRepositoryStub.find.resolves(rest as any);
-
-                await expect(service.patch(userStub.id, [googleCalendarIntegrationsMock])).rejectedWith(
-                    NotAnOwnerException
-                );
-
-                expect(googleCalendarIntegrationRepositoryStub.find.called).true;
-                expect(googleCalendarIntegrationRepositoryStub.save.called).false;
-            });
+            expect(patchSuccess).true;
+            expect(googleCalendarIntegrationRepositoryStub.find.called).true;
+            expect(googleCalendarIntegrationRepositoryStub.save.called).true;
+            expect(googleIntegrationScheduleRepositoryStub.delete.called).true;
+            expect(integrationUtilsServiceStub.getGoogleOAuthClient.called).true;
+            expect(synchronizeWithGoogleCalendarEventsStub.called).true;
+            expect(resubscriptionCalendarStub.called).true;
         });
 
+        it('should be threw error when there is calendar in request array that is not owned of user', async () => {
+
+            const userSettingStub = stubOne(UserSetting);
+            const userStub = stubOne(User, {
+                userSetting: userSettingStub
+            });
+            const googleIntegrationStub = stubOne(GoogleIntegration, {
+                users: [userStub]
+            });
+            const calendarStubs = stub(GoogleCalendarIntegration, 1, {
+                setting: {
+                    conflictCheck: false,
+                    outboundWriteSync: true,
+                    inboundDecliningSync: false
+                },
+                googleIntegration: googleIntegrationStub
+            });
+
+            const googleCalendarIntegrationsMock = calendarStubs[0];
+
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const [_first, ...rest] = calendarStubs;
+
+            googleCalendarIntegrationRepositoryStub.find.resolves(rest as any);
+
+            await expect(service.patch(userStub.id, [googleCalendarIntegrationsMock])).rejectedWith(
+                NotAnOwnerException
+            );
+
+            expect(googleCalendarIntegrationRepositoryStub.find.called).true;
+            expect(googleCalendarIntegrationRepositoryStub.save.called).false;
+        });
     });
 });

@@ -18,7 +18,6 @@ import { GoogleCalendarListService } from './facades/google-calendar-list.servic
 import { GoogleConverterService } from './google-converter/google-converter.service';
 import { GoogleCalendarEventListService } from './facades/google-calendar-event-list.service';
 import { GoogleCalendarIntegrationsModule } from './google-calendar-integrations/google-calendar-integrations.module';
-import { GoogleConferenceLinkIntegrationService } from './google-conference-link-integration/google-conference-link-integration.service';
 
 @Module({
     imports: [
@@ -43,8 +42,7 @@ import { GoogleConferenceLinkIntegrationService } from './google-conference-link
         IntegrationsRedisRepository,
 
         GoogleCalendarEventCreateService,
-        GoogleCalendarEventPatchService,
-        GoogleConferenceLinkIntegrationService
+        GoogleCalendarEventPatchService
     ],
     exports: [GoogleIntegrationFacade, GoogleConverterService, GoogleIntegrationsService, GoogleIntegrationSchedulesService]
 })

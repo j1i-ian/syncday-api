@@ -7,7 +7,6 @@ import { GoogleCalendarIntegrationsModule } from '@services/integrations/google-
 import { AvailabilityModule } from '@services/availability/availability.module';
 import { IntegrationsModule } from '@services/integrations/integrations.module';
 import { NativeSchedulesService } from '@services/schedules/native-schedules.service';
-import { CalendarIntegrationsModule } from '@services/integrations/calendar-integrations/calendar-integrations.module';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { GlobalSchedulesService } from './global-schedules.service';
@@ -19,8 +18,7 @@ import { GlobalSchedulesService } from './global-schedules.service';
         GoogleCalendarIntegrationsModule,
         EventsModule,
         AvailabilityModule,
-        IntegrationsModule,
-        CalendarIntegrationsModule
+        IntegrationsModule
     ],
     providers: [GlobalSchedulesService, NativeSchedulesService, SchedulesRedisRepository],
     exports: [GlobalSchedulesService, SchedulesRedisRepository]
