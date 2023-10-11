@@ -277,13 +277,13 @@ export class AvailabilityService {
          */
         let availabilityBodyUpdateSuccess = false;
 
-        if (availableTimes && overrides) {
+        if (availableTimes || overrides) {
             availabilityBodyUpdateSuccess = await this.availabilityRedisRepository.updateAll(
                 userUUID,
                 {
                     availableTimes,
                     overrides
-                }
+                } as Partial<AvailabilityBody>
             );
         }
 

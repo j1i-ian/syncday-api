@@ -28,6 +28,7 @@ export class UserSettingService {
                 'user',
                 'user.oauth2Accounts',
                 'user.googleIntergrations',
+                'user.appleCalDAVIntegrations',
                 'user.zoomIntegrations'
             ],
             where: {

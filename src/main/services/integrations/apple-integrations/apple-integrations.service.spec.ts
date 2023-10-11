@@ -1,16 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import * as tsdavModule from 'tsdav';
 import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 import { AppleIntegrationsSchedulesService } from '@services/integrations/apple-integrations/apple-integrations-schedules/apple-integrations-schedules.service';
+import { AppleIntegrationFacadeService } from '@services/integrations/apple-integrations/apple-integration-facade.service';
+import { AppleCalendarIntegrationsService } from '@services/integrations/apple-integrations/apple-calendar-integrations/apple-calendar-integrations.service';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
 
 import { User } from '@entity/users/user.entity';
 import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
-import { AlreadyIntegratedCalendar } from '@app/exceptions/integrations/already-integrated-calendar.exception';
+import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { AppleIntegrationsService } from './apple-integrations.service';
 
@@ -19,42 +20,20 @@ const testMockUtil = new TestMockUtil();
 describe('AppleIntegrationsService', () => {
     let service: AppleIntegrationsService;
 
-    let tsdavModuleStub: sinon.SinonStub;
-    let tsdavModuleDAVClientLoginStub: sinon.SinonStub;
-    let tsdavModuleDAVClientFetchCalendarStub: sinon.SinonStub;
-    let tsdavModuleDAVClientfetchCalendarObjectsStub: sinon.SinonStub;
-    let tsdavModuleGetBasicAuthHeadersStub: sinon.SinonStub;
-
-    let appleIntegrationsSchedulesServiceStub: sinon.SinonStubbedInstance<AppleIntegrationsSchedulesService>;
     let appleConverterServiceStub: sinon.SinonStubbedInstance<AppleConverterService>;
+    let appleIntegrationsSchedulesServiceStub: sinon.SinonStubbedInstance<AppleIntegrationsSchedulesService>;
+    let appleIntegrationFacadeServiceStub: sinon.SinonStubbedInstance<AppleIntegrationFacadeService>;
+    let appleCalendarIntegrationServiceStub: sinon.SinonStubbedInstance<AppleCalendarIntegrationsService>;
 
     let appleCalDAVIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<AppleCalDAVIntegration>>;
 
     before(async () => {
 
-        tsdavModuleStub = sinon.stub(tsdavModule, 'default');
-        tsdavModuleDAVClientLoginStub = sinon.stub();
-        tsdavModuleDAVClientFetchCalendarStub = sinon.stub();
-        tsdavModuleDAVClientfetchCalendarObjectsStub = sinon.stub();
-        tsdavModuleGetBasicAuthHeadersStub = sinon.stub(tsdavModule, 'getBasicAuthHeaders');
-
-        const calDavCalendarStubs = testMockUtil.getCalDavMocks();
-        tsdavModuleDAVClientFetchCalendarStub.resolves(calDavCalendarStubs);
-        const calDavCalendarObjectStub = testMockUtil.getCalDAVCalendarObjectMock();
-        tsdavModuleDAVClientfetchCalendarObjectsStub.resolves([calDavCalendarObjectStub]);
-
-        tsdavModuleGetBasicAuthHeadersStub.returns({});
-
-        sinon.stub(tsdavModule, 'DAVClient').returns({
-            login: tsdavModuleDAVClientLoginStub,
-            fetchCalendars: tsdavModuleDAVClientFetchCalendarStub,
-            fetchCalendarObjects: tsdavModuleDAVClientfetchCalendarObjectsStub
-        });
-
         appleCalDAVIntegrationRepositoryStub = sinon.createStubInstance<Repository<AppleCalDAVIntegration>>(Repository);
 
-        appleIntegrationsSchedulesServiceStub = sinon.createStubInstance(AppleIntegrationsSchedulesService);
         appleConverterServiceStub = sinon.createStubInstance(AppleConverterService);
+        appleIntegrationsSchedulesServiceStub = sinon.createStubInstance(AppleIntegrationsSchedulesService);
+        appleIntegrationFacadeServiceStub = sinon.createStubInstance(AppleIntegrationFacadeService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -68,6 +47,14 @@ describe('AppleIntegrationsService', () => {
                     useValue: appleIntegrationsSchedulesServiceStub
                 },
                 {
+                    provide: AppleIntegrationFacadeService,
+                    useValue: appleIntegrationFacadeServiceStub
+                },
+                {
+                    provide: AppleCalendarIntegrationsService,
+                    useValue: appleCalendarIntegrationServiceStub
+                },
+                {
                     provide: getRepositoryToken(AppleCalDAVIntegration),
                     useValue: appleCalDAVIntegrationRepositoryStub
                 }
@@ -78,7 +65,6 @@ describe('AppleIntegrationsService', () => {
     });
 
     after(() => {
-        tsdavModuleStub.reset();
         sinon.restore();
     });
 
@@ -88,11 +74,13 @@ describe('AppleIntegrationsService', () => {
 
     describe('Test to create apple cal dav integration', () => {
 
+        beforeEach(() => {
+            appleIntegrationFacadeServiceStub.searchCalendars;
+        });
+
         afterEach(() => {
-            tsdavModuleDAVClientLoginStub.reset();
-            tsdavModuleDAVClientFetchCalendarStub.reset();
-            tsdavModuleGetBasicAuthHeadersStub.reset();
             appleConverterServiceStub.convertCalDAVCalendarToAppleCalendarIntegration.reset();
+            appleIntegrationFacadeServiceStub.searchCalendars.reset();
         });
 
         it('should be created a Apple cal dav integration', async () => {
@@ -101,7 +89,7 @@ describe('AppleIntegrationsService', () => {
             const userMock = stubOne(User, {
                 userSetting: userSettingMock
             });
-            const appleCalDAVCredentialMock = testMockUtil.getAppleCalDavCredentialMock();
+            const appleCalDAVCredentialMock = testMockUtil.getAppleCalDAVCredentialMock();
             const timezoneMock = 'Asia/Seoul';
 
             const appleCalDavCalendarIntegrationStubs = stub(AppleCalDAVCalendarIntegration);
@@ -110,11 +98,16 @@ describe('AppleIntegrationsService', () => {
             });
             const convertedAppleCalDAVCalndarIntegrationStub = stub(AppleCalDAVCalendarIntegration);
             const appleCalDAVIntegrationScheduleStubs = stub(AppleCalDAVIntegrationSchedule);
+            const calDAVCalendarStubs = testMockUtil.getCalDavCalendarMocks();
+            const calDAVCalendarObjectStubs = testMockUtil.getCalDavObjectMocks();
 
             appleCalDAVIntegrationRepositoryStub.save.resolves(appleCalDavIntegrationStub);
             appleCalDAVIntegrationRepositoryStub.findOneBy.resolves(null);
             appleConverterServiceStub.convertCalDAVCalendarToAppleCalendarIntegration.resolves(convertedAppleCalDAVCalndarIntegrationStub);
-            appleConverterServiceStub.convertCalDAVCalendarObjectsToAppleCalDAVIntegrationSchedules.resolves(appleCalDAVIntegrationScheduleStubs);
+            appleConverterServiceStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules.resolves(appleCalDAVIntegrationScheduleStubs);
+
+            appleIntegrationFacadeServiceStub.searchCalendars.resolves(calDAVCalendarStubs);
+            appleIntegrationFacadeServiceStub.searchSchedules.resolves(calDAVCalendarObjectStubs);
 
             await service.create(
                 userMock,
@@ -123,13 +116,11 @@ describe('AppleIntegrationsService', () => {
                 timezoneMock
             );
 
-            expect(tsdavModuleDAVClientLoginStub.called).true;
-            expect(tsdavModuleDAVClientFetchCalendarStub.called).true;
-            expect(tsdavModuleDAVClientfetchCalendarObjectsStub.called).true;
-            expect(tsdavModuleGetBasicAuthHeadersStub.called).true;
             expect(appleConverterServiceStub.convertCalDAVCalendarToAppleCalendarIntegration.called).true;
-            expect(appleConverterServiceStub.convertCalDAVCalendarObjectsToAppleCalDAVIntegrationSchedules.called).true;
+            expect(appleConverterServiceStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules.called).true;
             expect(appleCalDAVIntegrationRepositoryStub.save.called).true;
+            expect(appleIntegrationFacadeServiceStub.searchCalendars.called).true;
+            expect(appleIntegrationFacadeServiceStub.searchSchedules.called).true;
         });
 
         it('should be threw a AlreadyIntegratedCalendar', async () => {
@@ -138,7 +129,7 @@ describe('AppleIntegrationsService', () => {
             const userMock = stubOne(User, {
                 userSetting: userSettingMock
             });
-            const appleCalDAVCredentialMock = testMockUtil.getAppleCalDavCredentialMock();
+            const appleCalDAVCredentialMock = testMockUtil.getAppleCalDAVCredentialMock();
             const timezoneMock = 'Asia/Seoul';
 
             const appleCalDavCalendarIntegrationStubs = stub(AppleCalDAVCalendarIntegration);
@@ -154,7 +145,7 @@ describe('AppleIntegrationsService', () => {
                 userSettingMock,
                 appleCalDAVCredentialMock,
                 timezoneMock
-            )).rejectedWith(AlreadyIntegratedCalendar);
+            )).rejectedWith(AlreadyIntegratedCalendarException);
         });
     });
 

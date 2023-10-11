@@ -260,7 +260,7 @@ describe('AvailabilityService', () => {
                 expect(availabilityRedisRepositoryStub.updateAll.called).true;
             });
 
-            it('should be not patched without available times or overrides', async () => {
+            it('should be patched without available times nor overrides', async () => {
                 const userStub = stubOne(User);
                 const availabilityBody = testMockUtil.getAvailabilityBodyMock();
 
@@ -270,8 +270,8 @@ describe('AvailabilityService', () => {
                     availableTimes: availabilityBody.availableTimes
                 });
 
-                expect(patchAllResult).false;
-                expect(availabilityRedisRepositoryStub.updateAll.called).false;
+                expect(patchAllResult).true;
+                expect(availabilityRedisRepositoryStub.updateAll.called).true;
             });
 
             it('should be patched default as true and previous default availability should be patched default as false ', async () => {

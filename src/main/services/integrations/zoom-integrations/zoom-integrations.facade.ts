@@ -38,7 +38,7 @@ export class ZoomIntegrationFacade implements IntegrationsFacade {
         return this.oauth2SuccessRedirectURI;
     }
 
-    async issueToken(
+    issueToken(
         authorizationCode: string
     ): Promise<OAuthToken> {
 
@@ -49,18 +49,18 @@ export class ZoomIntegrationFacade implements IntegrationsFacade {
         );
     }
 
-    async issueTokenByRefreshToken(refreshToken: string): Promise<OAuthToken> {
+    issueTokenByRefreshToken(refreshToken: string): Promise<OAuthToken> {
         return this.zoomOauthTokenService.issueOAuthTokenByRefreshToken(
             this.basicAuth,
             refreshToken
         );
     }
 
-    async fetchOAuth2User(oauth2Token: OAuthToken): Promise<OAuth2UserProfile> {
-        return await this.zoomOauthUserService.getZoomUser(oauth2Token.accessToken);
+    fetchOAuth2User(oauth2Token: OAuthToken): Promise<OAuth2UserProfile> {
+        return this.zoomOauthUserService.getZoomUser(oauth2Token.accessToken);
     }
 
-    async createMeeting(accessToken: string, zoomCreateMeetingRequestDTO: Partial<ZoomCreateMeetingRequestDTO>): Promise<ZoomCreateMeetingResponseDTO> {
-        return await this.zoomCreateMeetingService.createZoomMeeting(accessToken, zoomCreateMeetingRequestDTO);
+    createMeeting(accessToken: string, zoomCreateMeetingRequestDTO: Partial<ZoomCreateMeetingRequestDTO>): Promise<ZoomCreateMeetingResponseDTO> {
+        return this.zoomCreateMeetingService.createZoomMeeting(accessToken, zoomCreateMeetingRequestDTO);
     }
 }

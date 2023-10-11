@@ -1,29 +1,37 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
-import { DAVClient, getBasicAuthHeaders } from 'tsdav';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
+import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 import { AppleIntegrationsSchedulesService } from '@services/integrations/apple-integrations/apple-integrations-schedules/apple-integrations-schedules.service';
 import { IntegrationScheduleWrapperService } from '@services/integrations/integration-schedule-wrapper-service.interface';
+import { CalendarIntegrationWrapperService } from '@services/integrations/calendar-integration-wrapper-service.interface';
+import { AppleIntegrationFacadeService } from '@services/integrations/apple-integrations/apple-integration-facade.service';
+import { AppleCalendarIntegrationsService } from '@services/integrations/apple-integrations/apple-calendar-integrations/apple-calendar-integrations.service';
 import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
-import { AlreadyIntegratedCalendar } from '@app/exceptions/integrations/already-integrated-calendar.exception';
+import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
 
 @Injectable()
-export class AppleIntegrationsService implements IntegrationsFactory, IntegrationScheduleWrapperService {
+export class AppleIntegrationsService implements
+    IntegrationsFactory,
+    IntegrationScheduleWrapperService,
+    CalendarIntegrationWrapperService
+{
 
     constructor(
         private readonly appleConverter: AppleConverterService,
         private readonly appleIntegrationsSchedulesService: AppleIntegrationsSchedulesService,
+        private readonly appleIntegrationFacade: AppleIntegrationFacadeService,
+        private readonly appleCalendarIntegrationService: AppleCalendarIntegrationsService,
         @InjectRepository(AppleCalDAVIntegration)
         private readonly appleCalDAVIntegrationRepository: Repository<AppleCalDAVIntegration>
     ) {}
@@ -32,11 +40,25 @@ export class AppleIntegrationsService implements IntegrationsFactory, Integratio
         throw new Error('Method not implemented.');
     }
 
-    search(userSearchOption: IntegrationSearchOption): Promise<Array<Integration | IntegrationResponseDto>> {
-        throw new Error('Method not implemented.');
+
+    async search({
+        userId,
+        withCalendarIntegrations
+    }: IntegrationSearchOption): Promise<Integration[]> {
+
+        const relations = withCalendarIntegrations ? ['appleCalDAVCalendarIntegrations'] : [];
+
+        const loadedAppleIntegrations = await this.appleCalDAVIntegrationRepository.find({
+            relations,
+            where: {
+                userId
+            }
+        });
+
+        return loadedAppleIntegrations.map((_loadedAppleIntegration) => _loadedAppleIntegration.toIntegration());
     }
 
-    findOne(userSearchOption: IntegrationSearchOption): Promise<Integration | IntegrationResponseDto | null> {
+    findOne(userSearchOption: IntegrationSearchOption): Promise<Integration | null> {
         throw new Error('Method not implemented.');
     }
 
@@ -47,16 +69,10 @@ export class AppleIntegrationsService implements IntegrationsFactory, Integratio
         timezone: string
     ): Promise<Integration> {
 
-        const icloudCalDAVUrl = this.icloudCalDAVUrl;
         const {
             username: appleId,
             password: appSpecificPassword
         } = appleCalDAVCredential;
-
-        const credentials = {
-            username: appleId,
-            password: appSpecificPassword
-        };
 
         const loadedAppleIntegration = await this.appleCalDAVIntegrationRepository.findOneBy({
             email: appleId,
@@ -64,53 +80,34 @@ export class AppleIntegrationsService implements IntegrationsFactory, Integratio
         });
 
         if (loadedAppleIntegration) {
-            throw new AlreadyIntegratedCalendar();
+            throw new AlreadyIntegratedCalendarException();
         }
 
-        const client = new DAVClient({
-            serverUrl: icloudCalDAVUrl,
-            credentials,
-            authMethod: 'Basic',
-            defaultAccountType: 'caldav'
-        });
+        const client = await this.appleIntegrationFacade.generateCalDAVClient(appleCalDAVCredential);
 
-        await client.login();
+        const calendars = await this.appleIntegrationFacade.searchCalendars(client);
 
-        const calendars = await client.fetchCalendars();
-
-        const calDAVBasicHeaders = getBasicAuthHeaders(credentials);
-
-        const today = new Date();
-        const _3monthAfter = new Date(new Date().setMonth(today.getMonth() + 3));
+        const convertedAppleCalDAVCalndarIntegrations = calendars.map(
+            (_calendar) =>
+                this.appleConverter.convertCalDAVCalendarToAppleCalendarIntegration(
+                    timezone,
+                    _calendar
+                )
+        );
 
         const convertedCalendars = await Promise.all(
-            calendars
-                // Filter events for users' calendar
-                .filter((_webDAVCalendar) => _webDAVCalendar.components?.includes('VEVENT'))
-                .map(async (_calendar) => {
+            convertedAppleCalDAVCalndarIntegrations
+                .map(async (convertedAppleCalDAVCalndarIntegration) => {
 
-                    const convertedAppleCalDAVCalndarIntegration = this.appleConverter.convertCalDAVCalendarToAppleCalendarIntegration(
-                        timezone,
-                        _calendar
+                    const calDAVSchedules = await this.appleIntegrationFacade.searchSchedules(
+                        client,
+                        convertedAppleCalDAVCalndarIntegration.calDavUrl
                     );
 
-                    const calDAVSchedules = await client.fetchCalendarObjects({
-                        calendar: {
-                            url: convertedAppleCalDAVCalndarIntegration.calDavUrl
-                        },
-                        expand: true,
-                        timeRange: {
-                            start: new Date().toISOString(),
-                            end: _3monthAfter.toISOString()
-                        },
-                        headers: calDAVBasicHeaders
-                    });
-
                     const convertedSchedules = calDAVSchedules.flatMap((calDAVSchedule) =>
-                        this.appleConverter.convertCalDAVCalendarObjectsToAppleCalDAVIntegrationSchedules(
-                            user.uuid,
-                            userSetting.workspace,
-                            userSetting.preferredTimezone,
+                        this.appleConverter.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
+                            user,
+                            userSetting,
                             calDAVSchedule
                         )
                     );
@@ -151,7 +148,8 @@ export class AppleIntegrationsService implements IntegrationsFactory, Integratio
         return this.appleIntegrationsSchedulesService;
     }
 
-    get icloudCalDAVUrl(): string {
-        return 'https://caldav.icloud.com';
+    getCalendarIntegrationsService(): CalendarIntegrationService {
+        return this.appleCalendarIntegrationService;
     }
+
 }

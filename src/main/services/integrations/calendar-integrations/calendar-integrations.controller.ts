@@ -1,32 +1,93 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, Patch, Get } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Body, Controller, HttpCode, HttpStatus, Patch, Get, BadRequestException, Inject, Logger } from '@nestjs/common';
+import { Observable, catchError, from, map, mergeAll, mergeMap, of, toArray } from 'rxjs';
+import { plainToInstance } from 'class-transformer';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
-import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
-import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
+import { CalendarIntegrationResponseDto } from '@dto/integrations/calendar-integration-response.dto';
 
-@Controller(':vendor')
+@Controller()
 export class CalendarIntegrationsController {
     constructor(
-        private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+        private readonly calendarIntegrationsServiceLocator: CalendarIntegrationsServiceLocator
     ) {}
 
     @Get()
-    searchGoogleCalendarIntegrations(
+    searchAllCalendarIntegrations(
         @AuthUser('id') userId: number
-    ): Observable<GoogleCalendarIntegration[]> {
-        return this.googleCalendarIntegrationsService.search({
-            userId
-        });
+    ): Observable<CalendarIntegration[]> {
+
+        const calendarIntegrationsServices = this.calendarIntegrationsServiceLocator.getAllCalendarIntegrationServices();
+
+        return from(calendarIntegrationsServices)
+            .pipe(
+                mergeMap((calendarIntegrationsService) => calendarIntegrationsService.search({
+                    userId
+                })),
+                mergeAll(),
+                toArray(),
+                map((_calendarsArray) =>
+                    _calendarsArray.flatMap((__calendarIntegrations) => __calendarIntegrations)
+                        .map(
+                            (__calendarIntegration) => plainToInstance(
+                                CalendarIntegrationResponseDto,
+                                __calendarIntegration.toCalendarIntegration(), {
+                                    excludeExtraneousValues: true
+                                }
+                            )
+                        )
+                )
+            )
+        ;
     }
 
     @Patch()
     @HttpCode(HttpStatus.NO_CONTENT)
-    patchCalendarIntegrations(
-        @Param('vendor') vendor: string,
+    patchAllCalendarIntegrations(
         @AuthUser('id') userId: number,
         @Body() calendarIntegrations: CalendarIntegration[]
-    ): Promise<boolean> {
-        return this.googleCalendarIntegrationsService.patch(userId, calendarIntegrations);
+    ): Observable<boolean> {
+
+        const requestedOutbountCalendars = calendarIntegrations.filter((_calIntegration) => _calIntegration.setting.outboundWriteSync === true);
+        const invalidOutboundCalendarUpdate = requestedOutbountCalendars.length > 1;
+        const hasOutboundUpdate = requestedOutbountCalendars.length > 0;
+
+        if (invalidOutboundCalendarUpdate) {
+            throw new BadRequestException('Outbound calendar should be unique');
+        }
+
+        const calendarIntegrationsServices = this.calendarIntegrationsServiceLocator.getAllCalendarIntegrationServices();
+
+        return from(calendarIntegrationsServices)
+            .pipe(
+                mergeMap((calendarIntegrationsService) => {
+
+                    const _vendor = calendarIntegrationsService.getIntegrationVendor();
+
+                    const _filteredCalendars = calendarIntegrations.filter(
+                        (_calIntegration) => _calIntegration.vendor === _vendor
+                    );
+
+                    if (hasOutboundUpdate || _filteredCalendars.length > 0) {
+                        return calendarIntegrationsService.patch(
+                            userId,
+                            _filteredCalendars
+                        );
+                    } else {
+                        return of(true);
+                    }
+                }),
+                catchError((error) => {
+                    this.logger.error({
+                        message: 'Error while calendar integration updating.',
+                        calendarIntegrations,
+                        error
+                    });
+
+                    throw error;
+                })
+            );
     }
 }
