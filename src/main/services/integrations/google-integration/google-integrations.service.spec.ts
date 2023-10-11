@@ -9,7 +9,6 @@ import { IntegrationsRedisRepository } from '@services/integrations/integrations
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
-import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
@@ -22,12 +21,10 @@ const testMockUtil = new TestMockUtil();
 describe('GoogleIntegrationsService', () => {
     let module: TestingModule;
     let service: GoogleIntegrationsService;
-
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
 
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
     let googleCalendarIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleCalendarIntegrationsService>;
-    let googleConferenceLinkIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleConferenceLinkIntegrationService>;
     let googleIntegrationSchedulesServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationSchedulesService>;
 
     let gogoleIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegration>>;
@@ -45,7 +42,6 @@ describe('GoogleIntegrationsService', () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
         googleCalendarIntegrationsServiceStub = sinon.createStubInstance(GoogleCalendarIntegrationsService);
-        googleConferenceLinkIntegrationServiceStub = sinon.createStubInstance(GoogleConferenceLinkIntegrationService);
         googleIntegrationSchedulesServiceStub = sinon.createStubInstance(GoogleIntegrationSchedulesService);
 
         gogoleIntegrationRepositoryStub =
@@ -71,10 +67,6 @@ describe('GoogleIntegrationsService', () => {
                 {
                     provide: GoogleCalendarIntegrationsService,
                     useValue: googleCalendarIntegrationsServiceStub
-                },
-                {
-                    provide: GoogleConferenceLinkIntegrationService,
-                    useValue: googleConferenceLinkIntegrationServiceStub
                 },
                 {
                     provide: GoogleIntegrationSchedulesService,

@@ -8,8 +8,6 @@ import { plainToInstance } from 'class-transformer';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
-import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
-import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
 import { AppConfigService } from '@config/app-config.service';
 import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
@@ -19,29 +17,19 @@ import { GoogleIntegrationSchedulesService } from '@services/integrations/google
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { IntegrationScheduleWrapperService } from '@services/integrations/integration-schedule-wrapper-service.interface';
-import { CalendarIntegrationWrapperService } from '@services/integrations/calendar-integration-wrapper-service.interface';
-import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/conference-link-integration-wrapper-service.interface';
-import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Integration } from '@entity/integrations/integration.entity';
-import { Host } from '@entity/schedules/host.entity';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
 
 @Injectable()
-export class GoogleIntegrationsService implements
-    IntegrationsFactory,
-    IntegrationScheduleWrapperService,
-    CalendarIntegrationWrapperService,
-    ConferenceLinkIntegrationWrapperService
-{
+export class GoogleIntegrationsService implements IntegrationsFactory, IntegrationScheduleWrapperService {
     constructor(
         private readonly configService: ConfigService,
         private readonly googleConverterService: GoogleConverterService,
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
-        private readonly googleConferenceLinkIntegrationService: GoogleConferenceLinkIntegrationService,
         private readonly googleIntegrationSchedulesService: GoogleIntegrationSchedulesService,
         private readonly integrationsRedisRepository: IntegrationsRedisRepository,
         @InjectRepository(GoogleIntegration)
@@ -55,13 +43,7 @@ export class GoogleIntegrationsService implements
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     findOne(userSearchOption: SearchByUserOption): Promise<Integration | null> {
-        return this.googleIntegrationRepository.findOne({
-            where: {
-                users: {
-                    id: userSearchOption.userId
-                }
-            }
-        });
+        throw new Error('Method not implemented.');
     }
 
     generateOAuth2RedirectURI(
@@ -90,11 +72,11 @@ export class GoogleIntegrationsService implements
     async search({
         userId,
         withCalendarIntegrations
-    }: IntegrationSearchOption): Promise<Integration[]> {
+    }: IntegrationSearchOption): Promise<GoogleIntegration[]> {
 
         const relations = withCalendarIntegrations ? ['googleCalendarIntegrations'] : [];
 
-        const googleIntegrations = await this.googleIntegrationRepository.find({
+        return await this.googleIntegrationRepository.find({
             relations,
             where: {
                 users: {
@@ -102,8 +84,6 @@ export class GoogleIntegrationsService implements
                 }
             }
         });
-
-        return googleIntegrations.map((_googleIntegration) => _googleIntegration.toIntegration());
     }
 
     /**
@@ -210,7 +190,7 @@ export class GoogleIntegrationsService implements
                     name: user.name,
                     workspace,
                     timezone
-                } as Host;
+                };
                 _googleIntegrationSchedule.googleCalendarIntegrationId = _googleCalendarIntegration?.id as number;
 
                 return _googleIntegrationSchedule;
@@ -297,13 +277,5 @@ export class GoogleIntegrationsService implements
 
     getIntegrationSchedulesService(): IntegrationSchedulesService {
         return this.googleIntegrationSchedulesService;
-    }
-
-    getCalendarIntegrationsService(): CalendarIntegrationService {
-        return this.googleCalendarIntegrationsService;
-    }
-
-    getConferenceLinkIntegrationService(): ConferenceLinkIntegrationService {
-        return this.googleConferenceLinkIntegrationService;
     }
 }

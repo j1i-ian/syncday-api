@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ZoomIntegrationsService } from '@services/integrations/zoom-integrations/zoom-integrations.service';
-import { ZoomConferenceLinkIntegrationsService } from '@services/integrations/zoom-integrations/zoom-conference-link-integrations/zoom-conference-link-integrations.service';
 import { User } from '@entity/users/user.entity';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Event } from '@entity/events/event.entity';
@@ -18,7 +17,6 @@ describe('ZoomIntegrationsService', () => {
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let jwtServiceStub: sinon.SinonStubbedInstance<JwtService>;
-    let zoomConferenceLinkIntegrationsServiceStub: sinon.SinonStubbedInstance<ZoomConferenceLinkIntegrationsService>;
 
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
     let zoomIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<ZoomIntegration>>;
@@ -40,10 +38,6 @@ describe('ZoomIntegrationsService', () => {
                 {
                     provide: JwtService,
                     useValue: jwtServiceStub
-                },
-                {
-                    provide: ZoomConferenceLinkIntegrationsService,
-                    useValue: zoomConferenceLinkIntegrationsServiceStub
                 },
                 {
                     provide: getRepositoryToken(Event),

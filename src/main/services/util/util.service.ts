@@ -30,7 +30,6 @@ import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-no
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { Integration } from '@entity/integrations/integration.entity';
-import { Host } from '@entity/schedules/host.entity';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 
@@ -318,7 +317,6 @@ export class UtilService {
         workspace: string,
         timezone: string
     ): Schedule {
-        newSchedule.uuid = this.generateUUID();
         newSchedule.name = sourceEvent.name;
         newSchedule.color = sourceEvent.color;
         newSchedule.status = ScheduledStatus.OPENED;
@@ -329,14 +327,13 @@ export class UtilService {
         newSchedule.additionalDescription = sourceEvent.eventDetail.description;
 
         newSchedule.scheduledNotificationInfo.host = sourceEvent.eventDetail.notificationInfo?.host;
-        newSchedule.conferenceLinks = [];
 
         newSchedule.host = {
             uuid: host.uuid,
             name: host.name,
             workspace,
             timezone
-        } as Host;
+        };
 
         newSchedule.scheduledEventNotifications = this.getPatchedScheduleNotification(
             host,

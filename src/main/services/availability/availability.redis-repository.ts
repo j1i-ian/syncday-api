@@ -112,42 +112,27 @@ export class AvailabilityRedisRepository {
         return createdHashFields;
     }
 
-    async updateAll(userUUID: string, updateAvailabilityBody: Partial<AvailabilityBody>): Promise<boolean> {
+    async updateAll(userUUID: string, updateAvailabilityBody: AvailabilityBody): Promise<boolean> {
         const allAvailabilityRecordOfUser = await this.getAvailabilityBodyRecord(userUUID);
 
-        let {
-            availableTimes: updatedAvailableTimes,
-            overrides: updatedOverrides
-        } = updateAvailabilityBody;
+        // sort
+        updateAvailabilityBody.availableTimes = updateAvailabilityBody.availableTimes.sort(
+            (availableTimeA, availableTimeB) => availableTimeA.day - availableTimeB.day
+        );
 
-        if (updatedAvailableTimes) {
-            updatedAvailableTimes = updatedAvailableTimes.sort(
-                (availableTimeA, availableTimeB) => availableTimeA.day - availableTimeB.day
+        // ascending
+        updateAvailabilityBody.overrides = updateAvailabilityBody.overrides
+            .filter((override) => new Date(override.targetDate).getTime() > Date.now())
+            .sort(
+                (overrideA, overrideB) =>
+                    new Date(overrideB.targetDate).getTime() -
+                    new Date(overrideA.targetDate).getTime()
             );
-        }
-
-        if (updatedOverrides) {
-            updatedOverrides = updatedOverrides
-                .filter((override) => new Date(override.targetDate).getTime() > Date.now())
-                .sort(
-                    (overrideA, overrideB) =>
-                        new Date(overrideB.targetDate).getTime() -
-                        new Date(overrideA.targetDate).getTime()
-                );
-        }
 
         const updatedAvailabilityMap: Map<string, string> = Object.keys(
             allAvailabilityRecordOfUser
         ).reduce((_availabilityBodyMap, availabilityUUIDKey) => {
-
-            const previousAvailabilityBody = allAvailabilityRecordOfUser[availabilityUUIDKey];
-            const updatedAvailabilityBody = {
-                availableTimes: updatedAvailableTimes || previousAvailabilityBody.availableTimes,
-                overrides: updatedOverrides || previousAvailabilityBody.availableTimes
-            } as AvailabilityBody;
-
-            _availabilityBodyMap.set(availabilityUUIDKey, JSON.stringify(updatedAvailabilityBody));
-
+            _availabilityBodyMap.set(availabilityUUIDKey, JSON.stringify(updateAvailabilityBody));
             return _availabilityBodyMap;
         }, new Map());
 

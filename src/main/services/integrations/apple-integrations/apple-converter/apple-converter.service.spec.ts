@@ -1,7 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import * as icalModule from 'ical';
-import { TimeUtilService } from '@services/util/time-util/time-util.service';
-import { UtilService } from '@services/util/util.service';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { TestMockUtil } from '@test/test-mock-util';
@@ -12,30 +10,14 @@ const testMockUtil = new TestMockUtil();
 describe('AppleConverterService', () => {
     let service: AppleConverterService;
 
-    let utilServiceStub: UtilService;
-    let timeUtilServiceStub: TimeUtilService;
-
     let icalModuleParseICSStub: sinon.SinonStub;
 
     before(async () => {
 
-        utilServiceStub = sinon.createStubInstance(UtilService);
-        timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
-
         icalModuleParseICSStub = sinon.stub(icalModule, 'parseICS');
 
         const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                AppleConverterService,
-                {
-                    provide: UtilService,
-                    useValue: utilServiceStub
-                },
-                {
-                    provide: TimeUtilService,
-                    useValue: timeUtilServiceStub
-                }
-            ]
+            providers: [AppleConverterService]
         }).compile();
 
         service = module.get<AppleConverterService>(AppleConverterService);
@@ -72,9 +54,10 @@ describe('AppleConverterService', () => {
 
             icalModuleParseICSStub.returns(calDAVCalendarObjectMock);
 
-            const convertedAppleCalendarIntegrationSchedules = service.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
-                userStub,
-                userSettingStub,
+            const convertedAppleCalendarIntegrationSchedules = service.convertCalDAVCalendarObjectsToAppleCalDAVIntegrationSchedules(
+                userStub.uuid,
+                userSettingStub.workspace,
+                userSettingStub.preferredTimezone,
                 calDAVCalendarObjectMock
             );
 

@@ -9,7 +9,7 @@ import { DeleteResult, UpdateResult } from 'typeorm';
 import { TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Auth, calendar_v3 } from 'googleapis';
-import { DAVCalendar, DAVClient, DAVObject } from 'tsdav';
+import { DAVCalendar, DAVObject } from 'tsdav';
 import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -18,7 +18,6 @@ import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
-import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
@@ -83,42 +82,7 @@ export class TestMockUtil {
 
     sandbox: SinonSandbox;
 
-    getAppleCalDAVCredentialMock(): AppleCalDAVCredential {
-
-        const appleCredentialMock: AppleCalDAVCredential = {
-            username: 'fake-user-name',
-            password: 'fake-app-specific-password'
-        };
-
-        return appleCredentialMock;
-    }
-
-    getCalDavClientMock({
-        calendars,
-        calendarObjects
-    } = {
-        calendars: [],
-        calendarObjects: []
-    } as {
-        calendars: DAVCalendar[];
-        calendarObjects: DAVObject[];
-    }): DAVClient {
-        return {
-            fetchCalendars: () => calendars,
-            fetchCalendarObjects: () => calendarObjects
-        } as any;
-    }
-
-    getCalDavObjectMocks(): DAVObject[] {
-        return [
-            {
-                url: '',
-                etag: ''
-            }
-        ];
-    }
-
-    getCalDavCalendarMocks(): Array<DAVCalendar & { calendarColor: string }> {
+    getCalDavMocks(): Array<DAVCalendar & { calendarColor: string }> {
         return [
             {
                 description: '',
@@ -277,6 +241,13 @@ export class TestMockUtil {
         ];
     }
 
+    getAppleCalDavCredentialMock(): AppleCalDAVCredential {
+        return {
+            username: 'alan@icloud.com',
+            password: 'abcd-efgh-ijkl-mnop'
+        };
+    }
+
     getOAuthTokenMock(): OAuthToken {
         return {
             accessToken: 'access-token-mock',
@@ -314,14 +285,6 @@ export class TestMockUtil {
         defaultGoogleScheduleMock.timezone = 'Asia/Seoul';
 
         return defaultGoogleScheduleMock;
-    }
-
-    getCreatedCalendarEventMock(): CreatedCalendarEvent {
-        return {
-            generatedEventUrl: '',
-            iCalUID: 'icaluid',
-            raw: {}
-        };
     }
 
     getBearerTokenMock(): string {
