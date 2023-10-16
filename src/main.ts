@@ -8,6 +8,7 @@ import { AppConfigService } from '@config/app-config.service';
 import { AppModule } from './app.module';
 
 const PORT = 3011;
+const ENV = process.env.ENV ?? 'unknown';
 
 const logger = new Logger('App');
 
@@ -35,7 +36,7 @@ async function bootstrap(): Promise<void> {
     });
 
     await app.listen(PORT, () => {
-        logger.log(`Server is started with port ${PORT} ✨`);
+        logger.log(`Server is started with port ${PORT} on ${ENV} ✨`);
     });
 }
 

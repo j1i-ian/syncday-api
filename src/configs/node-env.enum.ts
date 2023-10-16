@@ -7,6 +7,8 @@ export enum NodeEnv {
 
     LOCAL_PRODUCTION = 'local_production',
 
+    LOCAL_STAGING = 'local_staging',
+
     LOCAL_DEVELOP = 'local_development',
 
     LOCAL = 'local',

@@ -10,7 +10,7 @@ ENV TZ UTC
 COPY . .
 
 # RUN npm install
-RUN npm install --ignore-scripts --production
+RUN npm install --ignore-scripts --omit=dev
 
 # fixing for bcrypt error
 RUN rm -rf node_modules/bcrypt && npm install bcrypt @nestjs/cli

@@ -59,10 +59,14 @@ export class AppConfigService {
             case NodeEnv.PRODUCTION:
                 host = 'https://api.sync.day';
                 break;
+            case NodeEnv.STAGING:
+                host = 'https://api.stg.sync.day';
+                break;
             case NodeEnv.DEVELOP:
                 host = 'https://api.dev.sync.day';
                 break;
             case NodeEnv.LOCAL_DEVELOP:
+            case NodeEnv.LOCAL_STAGING:
             case NodeEnv.LOCAL_PRODUCTION:
             case NodeEnv.TEST:
             case NodeEnv.LOCAL:
@@ -122,18 +126,21 @@ export class AppConfigService {
             case NodeEnv.DEVELOP:
                 dotenvFilePath = '.env.dev';
                 break;
-            case 'staging':
+            case NodeEnv.STAGING:
                 dotenvFilePath = '.env.staging';
                 break;
             case NodeEnv.LOCAL_PRODUCTION:
                 dotenvFilePath = '.env.local.production';
                 break;
+            case NodeEnv.LOCAL_STAGING:
+                dotenvFilePath = '.env.local.staging';
+                break;
             case NodeEnv.LOCAL_DEVELOP:
                 dotenvFilePath = '.env.local.dev';
                 break;
-            default:
             case NodeEnv.LOCAL:
             case NodeEnv.TEST:
+            default:
                 dotenvFilePath = '.env.local';
                 break;
         }
@@ -167,6 +174,7 @@ export class AppConfigService {
                 const env = process.env.ENV;
                 const isLocal = env === NodeEnv.LOCAL
                     || env === NodeEnv.LOCAL_DEVELOP
+                    || env === NodeEnv.LOCAL_STAGING
                     || env === NodeEnv.LOCAL_PRODUCTION;
 
                 const transports: winston.transport[] =
@@ -200,6 +208,8 @@ export class AppConfigService {
 
                 if (env === NodeEnv.LOCAL_DEVELOP) {
                     env = NodeEnv.DEVELOP;
+                } else if (env === NodeEnv.LOCAL_STAGING) {
+                    env = NodeEnv.STAGING;
                 } else if (env === NodeEnv.LOCAL_PRODUCTION) {
                     env = NodeEnv.PRODUCTION;
                 }

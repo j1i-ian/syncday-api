@@ -37,18 +37,66 @@ stages:
     - !reference [.resolve-bash-git-for-alpine, before_script]
     - !reference [.resolve-core, before_script]
 
+.upload-container-repository: &upload-container-repository
+  <<: *resolve-submodule
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
+  needs:
+    - lint
+    - test
+  services:
+    - docker:dind
+  before_script:
+    - |
+      apt-get update && apt-get install -y git
+      # Install Docker
+      curl -fsSL https://get.docker.com -o get-docker.sh
+      sh get-docker.sh
+      # Install AWS CLI
+      apt-get install -y awscli
+      aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
+    - !reference [.resolve-core, before_script]
+  script: |
+    curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
+    cp ./.secure_files/.env.production ./.env.production
+    cp ./.secure_files/.env.staging ./.env.staging
+    docker build -t $APP_NAME .
+    docker tag $APP_NAME:latest $ECR_REPOSITORY_URL/$APP_NAME:latest
+    docker push $ECR_REPOSITORY_URL/$APP_NAME:latest
+    docker logout
+
 variables:
-  APP_NAME: syncday-api
   DOCKER_HOST: tcp://docker:2375
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: ""
 
 init:
   stage: .pre
-  script:
-    - npm install
+  script: |
+    if [ $CI_COMMIT_BRANCH == "main" ]; then
+      EMV=production
+      CI_ENVIRONMENT_NAME=production
+      APP_NAME=syncday-api
+    elif [ $CI_COMMIT_TAG != null ]; then
+      EMV=staging
+      CI_ENVIRONMENT_NAME=staging
+      APP_NAME=stg-syncday-api
+    elif [ $CI_COMMIT_BRANCH == "develop" ]; then
+      EMV=development
+      CI_ENVIRONMENT_NAME=development
+      APP_NAME=dev-syncday-api
+    else
+      npm run build
+    fi
+
+    echo "DYNAMIC_ENVIRONMENT_NAME=$EMV" >> deploy.env    # Add the value to a dotenv file.
+
+    npm install
+  artifacts:
+    reports:
+      dotenv: deploy.env
   only:
     - main
+    - tags # for staging
     - develop
 
 build:
@@ -65,17 +113,18 @@ build:
       - dist/
     expire_in: 1 week
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG != null || $CI_COMMIT_BRANCH == "develop"'
 
 lint:
   <<: *resolve-submodule
-  stage: test
+  stage: lint
   needs:
     - build
   script: |
     npm run lint
   only:
     - main
+    - tags # for staging
     - develop
 
 test:
@@ -87,6 +136,7 @@ test:
     npm run test:ci
   only:
     - main
+    - tags # for staging
     - develop
   artifacts:
     when: always
@@ -105,9 +155,12 @@ build-docs-with-coverage:
     npm i -D @compodoc/compodoc
     npm i -D nyc
     npm run test:coverage
-    npm run build:docs
+    if [ "$ENV" = "production" ]; then
+      npm run build:docs
+    fi
   only:
     - main
+    - tags # for staging
     - develop
 
 deploy-docs-to-s3:
@@ -121,60 +174,57 @@ deploy-docs-to-s3:
     S3_BUCKET: "docs.sync.day"
   only:
     - main
-    - develop
 
-upload-container-repository:
-  <<: *resolve-submodule
+upload-staging-container-repository:
   stage: deploy
-  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
-  needs:
-    - lint
-    - test
-  services:
-    - docker:dind
-  environment:
-    name: production
-  before_script:
-    - |
-      apt-get update && apt-get install -y git
-      # Install Docker
-      curl -fsSL https://get.docker.com -o get-docker.sh
-      sh get-docker.sh
-      # Install AWS CLI
-      apt-get install -y awscli
-      aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
-    - !reference [.resolve-core, before_script]
+  environment: staging
+  <<: *upload-container-repository
   script: |
-    curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
-    cp ./.secure_files/.env.production ./.env.production
-    docker build -t $APP_NAME .
-    docker tag $APP_NAME:latest $ECR_REPOSITORY_URL/$APP_NAME:latest
-    docker push $ECR_REPOSITORY_URL/$APP_NAME:latest
-    docker logout
+    echo "CI_ENVIRONMENT_NAME: $CI_ENVIRONMENT_NAME"
+    echo "CI_AWS_ECS_CLUSTER: $CI_AWS_ECS_CLUSTER"
+    echo "CI_AWS_ECS_SERVICE: $CI_AWS_ECS_SERVICE"
+    echo "CI_AWS_ECS_TASK_DEFINITION: $CI_AWS_ECS_TASK_DEFINITION"
+  only:
+    - tags # for staging
+
+upload-production-container-repository:
+  stage: deploy
+  environment: production
+  <<: *upload-container-repository
   only:
     - main
 
+deploy-to-stagig:
+  stage: deploy
+  environment: staging
+  dependencies:
+    - upload-staging-container-repository
+  needs:
+    - upload-staging-container-repository
+  script:
+    - echo "Deploy to $ENV"
+  only:
+    - tags
+include:
+  - template: AWS/Deploy-ECS.gitlab-ci.yml
+    rules:
+      - if: '$CI_COMMIT_TAG != null'
+
 deploy-to-production:
   stage: deploy
+  environment: production
   dependencies:
-    - lint
-    - test
-    - upload-container-repository
+    - upload-production-container-repository
   needs:
-    - lint
-    - test
-    - upload-container-repository
-  environment:
-    name: production
-    url: https://api.sync.day
+    - upload-production-container-repository
   script:
-    - echo "Deploy to production"
+    - echo "Deploy to $ENV"
   only:
     - main
 include:
   - template: AWS/Deploy-ECS.gitlab-ci.yml
     rules:
-      - if: $CI_COMMIT_BRANCH == "main"
+      - if: '$CI_COMMIT_BRANCH == "main"'
 
 deploy-to-development:
   stage: deploy
