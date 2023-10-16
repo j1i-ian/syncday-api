@@ -59,7 +59,7 @@ stages:
     curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     cp ./.secure_files/.env.production ./.env.production
     cp ./.secure_files/.env.staging ./.env.staging
-    docker build -t $APP_NAME .
+    docker build -t $APP_NAME -f $DOCKER_FILE .
     docker tag $APP_NAME:latest $ECR_REPOSITORY_URL/$APP_NAME:latest
     docker push $ECR_REPOSITORY_URL/$APP_NAME:latest
     docker logout
@@ -76,14 +76,17 @@ init:
       EMV=production
       CI_ENVIRONMENT_NAME=production
       APP_NAME=syncday-api
+      DOCKER_FILE=Dockerfile
     elif [ $CI_COMMIT_TAG != null ]; then
       EMV=staging
       CI_ENVIRONMENT_NAME=staging
       APP_NAME=stg-syncday-api
+      DOCKER_FILE=Dockerfile.stg
     elif [ $CI_COMMIT_BRANCH == "develop" ]; then
       EMV=development
       CI_ENVIRONMENT_NAME=development
       APP_NAME=dev-syncday-api
+      DOCKER_FILE=Dockerfile.dev
     else
       npm run build
     fi
