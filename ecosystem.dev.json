@@ -8,8 +8,7 @@
             "exec_mode": "fork",
             "log_date_format": "YYYY-MM-DD HH:mm Z",
             "env_dev": {
-                "NODE_ENV": "development",
-                "ENV": "development"
+                "NODE_ENV": "development"
             },
             "interpreter": "node",
             "error_file": "/dev/null"
