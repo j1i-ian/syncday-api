@@ -37,6 +37,26 @@ stages:
     - !reference [.resolve-bash-git-for-alpine, before_script]
     - !reference [.resolve-core, before_script]
 
+.resolve-variables-by-env: &resolve-variables-by-env
+  before_script:
+    - |
+      if [ $CI_COMMIT_BRANCH == "main" ]; then
+        EMV=production
+        CI_ENVIRONMENT_NAME=production
+        APP_NAME=syncday-api
+        DOCKER_FILE=Dockerfile
+      elif [ $CI_COMMIT_TAG != null ]; then
+        EMV=staging
+        CI_ENVIRONMENT_NAME=staging
+        APP_NAME=stg-syncday-api
+        DOCKER_FILE=Dockerfile.stg
+      else
+        EMV=development
+        CI_ENVIRONMENT_NAME=development
+        APP_NAME=dev-syncday-api
+        DOCKER_FILE=Dockerfile.dev
+      fi
+
 .upload-container-repository: &upload-container-repository
   <<: *resolve-submodule
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
@@ -46,6 +66,7 @@ stages:
   services:
     - docker:dind
   before_script:
+    - !reference [.resolve-variables-by-env, before_script]
     - |
       apt-get update && apt-get install -y git
       # Install Docker
@@ -82,13 +103,11 @@ init:
       CI_ENVIRONMENT_NAME=staging
       APP_NAME=stg-syncday-api
       DOCKER_FILE=Dockerfile.stg
-    elif [ $CI_COMMIT_BRANCH == "develop" ]; then
+    else
       EMV=development
       CI_ENVIRONMENT_NAME=development
       APP_NAME=dev-syncday-api
       DOCKER_FILE=Dockerfile.dev
-    else
-      npm run build
     fi
 
     echo "DYNAMIC_ENVIRONMENT_NAME=$EMV" >> deploy.env    # Add the value to a dotenv file.
@@ -182,11 +201,6 @@ upload-staging-container-repository:
   stage: deploy
   environment: staging
   <<: *upload-container-repository
-  script: |
-    echo "CI_ENVIRONMENT_NAME: $CI_ENVIRONMENT_NAME"
-    echo "CI_AWS_ECS_CLUSTER: $CI_AWS_ECS_CLUSTER"
-    echo "CI_AWS_ECS_SERVICE: $CI_AWS_ECS_SERVICE"
-    echo "CI_AWS_ECS_TASK_DEFINITION: $CI_AWS_ECS_TASK_DEFINITION"
   only:
     - tags # for staging
 
