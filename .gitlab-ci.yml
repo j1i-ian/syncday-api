@@ -197,7 +197,7 @@ upload-production-container-repository:
   only:
     - main
 
-deploy-to-stagig:
+deploy-to-staging:
   stage: deploy
   environment: staging
   dependencies:
