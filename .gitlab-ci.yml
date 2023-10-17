@@ -92,27 +92,12 @@ variables:
 
 init:
   stage: .pre
-  script: |
-    if [ $CI_COMMIT_BRANCH == "main" ]; then
-      EMV=production
-      CI_ENVIRONMENT_NAME=production
-      APP_NAME=syncday-api
-      DOCKER_FILE=Dockerfile
-    elif [ $CI_COMMIT_TAG != null ]; then
-      EMV=staging
-      CI_ENVIRONMENT_NAME=staging
-      APP_NAME=stg-syncday-api
-      DOCKER_FILE=Dockerfile.stg
-    else
-      EMV=development
-      CI_ENVIRONMENT_NAME=development
-      APP_NAME=dev-syncday-api
-      DOCKER_FILE=Dockerfile.dev
-    fi
+  script:
+    - !reference [.resolve-variables-by-env, before_script]
+    - |
+      echo "DYNAMIC_ENVIRONMENT_NAME=$EMV" >> deploy.env    # Add the value to a dotenv file.
 
-    echo "DYNAMIC_ENVIRONMENT_NAME=$EMV" >> deploy.env    # Add the value to a dotenv file.
-
-    npm install
+      npm install
   artifacts:
     reports:
       dotenv: deploy.env
@@ -201,8 +186,6 @@ upload-staging-container-repository:
   stage: deploy
   environment: staging
   <<: *upload-container-repository
-  script: |
-    echo "Deploy to $ENV"
   only:
     - tags # for staging
 
@@ -220,6 +203,7 @@ deploy-to-staging:
     - upload-staging-container-repository
   needs:
     - upload-staging-container-repository
+  script: echo "Deploy to Staging"
   only:
     - tags
 include:
@@ -234,6 +218,7 @@ deploy-to-production:
     - upload-production-container-repository
   needs:
     - upload-production-container-repository
+  script: echo "Deploy to Production"
   only:
     - main
 include:
