@@ -28,7 +28,7 @@
     "start:local:prod:pm2": "ENV=local_production pm2 start ecosystem.json",
     "start:debug": "nest start --debug --watch",
     "start:prod": "ENV=production pm2-runtime start ecosystem.json",
-    "start:staging": "ENV=staging pm2-runtime start ecosystem.json",
+    "start:staging": "ENV=staging pm2-runtime start ecosystem.stg.json",
     "start:docker:nginx": "docker compose up nginx",
     "start:docker:mariadb": "docker compose up mariadb",
     "start:docker:redis": "docker compose up redis",
