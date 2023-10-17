@@ -201,6 +201,8 @@ upload-staging-container-repository:
   stage: deploy
   environment: staging
   <<: *upload-container-repository
+  script: |
+    echo "Deploy to $ENV"
   only:
     - tags # for staging
 
@@ -218,8 +220,6 @@ deploy-to-staging:
     - upload-staging-container-repository
   needs:
     - upload-staging-container-repository
-  script:
-    - echo "Deploy to $ENV"
   only:
     - tags
 include:
@@ -234,8 +234,6 @@ deploy-to-production:
     - upload-production-container-repository
   needs:
     - upload-production-container-repository
-  script:
-    - echo "Deploy to $ENV"
   only:
     - main
 include:
