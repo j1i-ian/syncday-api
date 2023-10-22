@@ -33,7 +33,7 @@ export class GoogleConferenceLinkIntegrationService implements ConferenceLinkInt
 
         let generatedConferenceLink = null;
 
-        if (shouldGenerateLink) {
+        if (shouldGenerateLink && raw) {
             generatedConferenceLink = this.getConferenceLinkFromVendorCalendarEvent(raw);
         }
 

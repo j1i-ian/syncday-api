@@ -1,11 +1,13 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, defer, first, forkJoin, from, iif, map, mergeMap, of, throwError } from 'rxjs';
+import { Observable, combineLatest, defer, forkJoin, from, iif, last, map, mergeMap, of, throwError } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
 import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
 import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { UtilService } from '@services/util/util.service';
@@ -20,6 +22,8 @@ import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
 import { InviteeAnswer } from '@entity/schedules/invitee-answer.entity';
 import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
+import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
+import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
@@ -39,6 +43,7 @@ export class GlobalSchedulesService {
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>,
         @InjectRepository(GoogleIntegrationSchedule) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
+        @InjectRepository(AppleCalDAVIntegrationSchedule) private readonly appleCalDAVIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
         this.allIntegrationSchedulesServices = this.integrationsServiceLocator.getAllIntegrationSchedulesService();
@@ -121,7 +126,7 @@ export class GlobalSchedulesService {
 
         return loadedEventByUserWorkspace$.pipe(
             mergeMap(
-                (event) => forkJoin([
+                (event) => combineLatest([
                     this.availabilityRedisRepository.getAvailabilityBody(host.uuid, event.availability.uuid),
                     of(this.utilService.getPatchedScheduledEvent(
                         host,
@@ -147,7 +152,7 @@ export class GlobalSchedulesService {
                         patchedSchedule,
                         availabilityTimezone,
                         availabilityBody,
-                        loadedOutboundCalendarIntegrationOrNull?.id
+                        loadedOutboundCalendarIntegrationOrNull
                     ).pipe(
                         mergeMap((patchedSchedule) => {
 
@@ -189,7 +194,7 @@ export class GlobalSchedulesService {
                                                     return loadedIntegration$.pipe(
                                                         mergeMap((loadedIntegration) => {
 
-                                                            const createMeeting$ = loadedIntegration?
+                                                            const createMeeting$ = loadedIntegration ?
                                                                 from(conferenceLinkIntegrationService.createMeeting(
                                                                     loadedIntegration,
                                                                     contacts,
@@ -223,7 +228,7 @@ export class GlobalSchedulesService {
                                 );
                             }
                         }),
-                        first(),
+                        last(),
                         mergeMap((patchedSchedule) => from(_scheduleRepository.save(patchedSchedule))),
                         mergeMap((createdSchedule) =>
                             this.scheduleRedisRepository.save(createdSchedule.uuid, {
@@ -259,7 +264,7 @@ export class GlobalSchedulesService {
         schedule: Schedule,
         availabilityTimezone: string,
         availabilityBody: AvailabilityBody,
-        googleCalendarIntegrationId?: number | undefined
+        calendarIntegrationOrNull?: CalendarIntegration | null
     ): Observable<Schedule> {
 
         const { scheduledTime, scheduledBufferTime } = schedule;
@@ -291,11 +296,15 @@ export class GlobalSchedulesService {
         );
 
         let isInvalidTimeOverlappingWithOverrides = true;
+        let isInvalidTimeOverlappingWithAvailableTimes = true;
         let _isUnavailableDateOverride;
         let _isTimeOverlappingWithAvailableTimeOverrides;
         let _isTimeOverlappingWithAvailableTimes;
 
         if (overlappingDateOverride) {
+
+            isInvalidTimeOverlappingWithAvailableTimes = false;
+
             // checking unavailable override
             _isUnavailableDateOverride = overlappingDateOverride.timeRanges.length === 0;
 
@@ -314,6 +323,9 @@ export class GlobalSchedulesService {
             }
 
         } else {
+
+            isInvalidTimeOverlappingWithOverrides = false;
+
             // checking available time
             _isTimeOverlappingWithAvailableTimes = this._isTimeOverlappingWithAvailableTimes(
                 availableTimes,
@@ -321,23 +333,25 @@ export class GlobalSchedulesService {
                 ensuredStartDateTime,
                 ensuredEndDateTime
             );
-            isInvalidTimeOverlappingWithOverrides = !_isTimeOverlappingWithAvailableTimes;
+            isInvalidTimeOverlappingWithAvailableTimes = !_isTimeOverlappingWithAvailableTimes;
         }
 
-        const isInvalid = isPast || isNotConcatenatedTimes || isInvalidTimeOverlappingWithOverrides;
+        const isInvalid = isPast || isNotConcatenatedTimes || isInvalidTimeOverlappingWithOverrides || isInvalidTimeOverlappingWithAvailableTimes;
 
         if (isInvalid) {
 
-            const results = `isPast: ${String(isPast)},
-            isNotConcatenatedTimes: ${String(isNotConcatenatedTimes)},
-            (isInvalidTimeOverlappingWithOverrides: ${String(isInvalidTimeOverlappingWithOverrides)}
-                && _isUnavailableDateOverride: ${String(_isUnavailableDateOverride)},
-                && _isTimeOverlappingWithAvailableTimeOverrides: ${String(_isTimeOverlappingWithAvailableTimeOverrides)},
-                && _isTimeOverlappingWithAvailableTimes: ${String(_isTimeOverlappingWithAvailableTimes)})`;
+            this.logger.info({
+                isPast,
+                isNotConcatenatedTimes,
+                isInvalidTimeOverlappingWithOverrides,
+                _isUnavailableDateOverride,
+                _isTimeOverlappingWithAvailableTimeOverrides,
+                isInvalidTimeOverlappingWithAvailableTimes,
+                availabilityTimezone,
+                ensuredStartDateTime,
+                ensuredEndDateTime
+            });
 
-            this.logger.debug(
-                `invalid reason: ${results}`
-            );
             throw new CannotCreateByInvalidTimeRange();
         }
 
@@ -349,38 +363,58 @@ export class GlobalSchedulesService {
             }
         );
 
-        const googleIntegrationScheduleConditionOptions = this._getScheduleConflictCheckOptions(
-            ensuredStartDateTime,
-            ensuredEndDateTime,
-            {
-                googleCalendarIntegrationId
-            }
-        );
-        const loadedGoogleIntegrationSchedules$ = defer(() => from(
-            this.googleIntegrationScheduleRepository.findOneBy(
-                googleIntegrationScheduleConditionOptions
-            ))
-        );
-
         // investigate to find conflicted schedules
         const loadedSchedules$ = defer(() => from(this.scheduleRepository.findOneBy(
             scheduleConditionOptions
         )));
 
-        const scheduleObservables = googleCalendarIntegrationId ?
-            [loadedSchedules$, loadedGoogleIntegrationSchedules$] :
-            [loadedSchedules$];
+        const scheduleObservables = [loadedSchedules$] as Array<Observable<Schedule | GoogleIntegrationSchedule | AppleCalDAVIntegrationSchedule | null>>;
+
+        if (calendarIntegrationOrNull) {
+
+            const integrationVendor = calendarIntegrationOrNull.getIntegrationVendor();
+
+            let vendorIntegrationIdCondition;
+            let repository: Repository<GoogleIntegrationSchedule> | Repository<AppleCalDAVIntegrationSchedule>;
+
+            if (integrationVendor === IntegrationVendor.GOOGLE) {
+                repository = this.googleIntegrationScheduleRepository;
+                vendorIntegrationIdCondition = {
+                    googleCalendarIntegrationId: calendarIntegrationOrNull.id
+                };
+            } else if (integrationVendor === IntegrationVendor.APPLE) {
+                repository = this.appleCalDAVIntegrationScheduleRepository;
+                vendorIntegrationIdCondition = {
+                    appleCalDAVCalendarIntegrationId: calendarIntegrationOrNull.id
+                };
+
+            } else {
+                throw new BadRequestException('Unsupported integration vendor type for schedule validation');
+            }
+
+            const vendorIntegrationScheduleConditionOptions = this._getScheduleConflictCheckOptions(
+                ensuredStartDateTime,
+                ensuredEndDateTime,
+                vendorIntegrationIdCondition
+            );
+            const loadedVendorIntegrationSchedules$ = defer(() => from(
+                repository.findOneBy(
+                    vendorIntegrationScheduleConditionOptions
+                ))
+            );
+            scheduleObservables.push(loadedVendorIntegrationSchedules$);
+        }
 
         return forkJoin(scheduleObservables).pipe(
-            mergeMap(([loadedScheduleOrNull, loadedGoogleIntegrationScheduleOrNull]) =>
+            mergeMap(([loadedScheduleOrNull, loadedVendorIntegrationScheduleOrNull]) =>
                 iif(
                     () => {
                         this.logger.debug({
-                            message: 'a previous engagement is detected: !loadedScheduleOrNull && !loadedGoogleIntegrationScheduleOrNull is true',
+                            message: 'a previous engagement is detected: !loadedScheduleOrNull && !loadedVendorIntegrationScheduleOrNull is true',
                             loadedScheduleOrNull,
-                            loadedGoogleIntegrationScheduleOrNull
+                            loadedVendorIntegrationScheduleOrNull
                         });
-                        return !loadedScheduleOrNull && !loadedGoogleIntegrationScheduleOrNull;
+                        return !loadedScheduleOrNull && !loadedVendorIntegrationScheduleOrNull;
                     },
                     of(schedule),
                     throwError(() => new CannotCreateByInvalidTimeRange())
@@ -392,7 +426,10 @@ export class GlobalSchedulesService {
     _getScheduleConflictCheckOptions(
         startDateTime: Date,
         endDateTime: Date,
-        additionalOption?: FindOptionsWhere<Schedule> | FindOptionsWhere<GoogleIntegrationSchedule> | undefined
+        additionalOption?: FindOptionsWhere<Schedule>
+        | FindOptionsWhere<GoogleIntegrationSchedule>
+        | FindOptionsWhere<AppleCalDAVIntegrationSchedule>
+        | undefined
     ): Array<FindOptionsWhere<InviteeSchedule>> {
         return [
             {

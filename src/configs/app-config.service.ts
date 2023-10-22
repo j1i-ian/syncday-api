@@ -65,11 +65,6 @@ export class AppConfigService {
             case NodeEnv.DEVELOP:
                 host = 'https://api.dev.sync.day';
                 break;
-            case NodeEnv.LOCAL_DEVELOP:
-            case NodeEnv.LOCAL_STAGING:
-            case NodeEnv.LOCAL_PRODUCTION:
-            case NodeEnv.TEST:
-            case NodeEnv.LOCAL:
             default:
                 host = process.env.HOST as string;
                 break;
@@ -138,8 +133,14 @@ export class AppConfigService {
             case NodeEnv.LOCAL_DEVELOP:
                 dotenvFilePath = '.env.local.dev';
                 break;
-            case NodeEnv.LOCAL:
             case NodeEnv.TEST:
+                dotenvFilePath = '.env.test';
+                break;
+            case NodeEnv.INTEGRATION_TEST:
+            case NodeEnv.LOCAL_INTEGRATION_TEST:
+                dotenvFilePath = '.env.test.integration';
+                break;
+            case NodeEnv.LOCAL:
             default:
                 dotenvFilePath = '.env.local';
                 break;
@@ -150,8 +151,22 @@ export class AppConfigService {
     static getDatabaseConfigs(): TypeOrmModuleAsyncOptions {
         return {
             imports: [ConfigModule],
-            useFactory: (configService: ConfigService) =>
-                ({
+            useFactory: (configService: ConfigService) => {
+
+                const env = configService.get<string>('ENV') as NodeEnv;
+
+                switch (env) {
+                    case NodeEnv.TEST:
+                    case NodeEnv.INTEGRATION_TEST:
+                    case NodeEnv.LOCAL_INTEGRATION_TEST:
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (ormConfig as any).entities = ormConfig.entities.map((_entityPath) => _entityPath.replace('dist', 'src'));
+                        break;
+                    default:
+                        break;
+                }
+
+                return {
                     ...ormConfig,
                     host: configService.get<string>('MYSQL_HOST'),
                     username: configService.get<string>('MYSQL_USER'),
@@ -160,7 +175,8 @@ export class AppConfigService {
                     synchronize: configService.get<string>('ORM_ENTITY_SYNC') === 'true',
                     logging: configService.get<string>('ORM_LOGGING') === 'true',
                     namingStrategy: new SnakeNamingStrategy()
-                } as TypeOrmModuleOptions),
+                } as TypeOrmModuleOptions;
+            },
             inject: [ConfigService]
         };
     }
@@ -172,10 +188,22 @@ export class AppConfigService {
             useFactory: (configService: ConfigService) => {
                 const level = (configService.get<string>('LOG_LEVEL') as string) || 'debug';
                 const env = process.env.ENV;
-                const isLocal = env === NodeEnv.LOCAL
-                    || env === NodeEnv.LOCAL_DEVELOP
-                    || env === NodeEnv.LOCAL_STAGING
-                    || env === NodeEnv.LOCAL_PRODUCTION;
+
+                let isLocal = false;
+
+                switch (env) {
+                    case NodeEnv.LOCAL:
+                    case NodeEnv.LOCAL_DEVELOP:
+                    case NodeEnv.LOCAL_STAGING:
+                    case NodeEnv.LOCAL_PRODUCTION:
+                    case NodeEnv.LOCAL_INTEGRATION_TEST:
+                    case NodeEnv.TEST:
+                        isLocal = true;
+                        break;
+                    default:
+                        isLocal = false;
+                        break;
+                }
 
                 const transports: winston.transport[] =
                     isLocal === false

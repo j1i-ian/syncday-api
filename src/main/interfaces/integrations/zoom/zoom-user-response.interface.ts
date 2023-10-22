@@ -4,6 +4,7 @@ export interface ZoomUserResponseDTO extends OAuth2UserProfile {
     id: string;
     first_name: string;
     last_name: string;
+    display_name: string;
     email: string;
     type: number;
     role_name: string;
@@ -25,10 +26,13 @@ export interface ZoomUserResponseDTO extends OAuth2UserProfile {
     phone_country: string;
     phone_number: string;
     status: string;
+    company: string;
+    account_number: number;
     job_title: string;
     location: string;
     login_types: number[];
     role_id: string;
     cluster: string;
     user_created_at: string;
+    last_client_version: string;
 }

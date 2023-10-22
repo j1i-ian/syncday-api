@@ -1,4 +1,3 @@
-import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -15,7 +14,6 @@ import { ZoomConferenceLinkIntegrationsService } from './zoom-conference-link-in
 @Module({
     imports: [
         ConfigModule,
-        HttpModule,
         TypeOrmModule.forFeature([ZoomIntegration])
     ],
     providers: [

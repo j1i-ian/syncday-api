@@ -34,7 +34,7 @@ describe('AppleCalendarListService', () => {
 
         const calDAVCalendarStubs = testMockUtil.getCalDavCalendarMocks();
 
-        const davClientMock = testMockUtil.getCalDavClientMock({
+        const davClientMock = testMockUtil.getCalDavClientMock(undefined, {
             calendars: calDAVCalendarStubs as any[],
             calendarObjects: []
         });

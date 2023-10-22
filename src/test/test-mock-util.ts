@@ -8,8 +8,9 @@ import { ArgumentsHost } from '@nestjs/common';
 import { DeleteResult, UpdateResult } from 'typeorm';
 import { TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Auth, calendar_v3 } from 'googleapis';
+import { Auth, calendar_v3, oauth2_v2 } from 'googleapis';
 import { DAVCalendar, DAVClient, DAVObject } from 'tsdav';
+import { Request } from 'express';
 import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -28,6 +29,7 @@ import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { EventSetting } from '@interfaces/events/event-setting';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
+import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
@@ -40,6 +42,12 @@ import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface'
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
 import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
 import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
+import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
+import { Audio } from '@app/interfaces/integrations/zoom/enum/audio.enum';
+import { AutoRecording } from '@app/interfaces/integrations/zoom/enum/auto-recording.enum';
+import { EncryptionType } from '@app/interfaces/integrations/zoom/enum/encryption-type.enum';
+import { ApprovedOrDeniedCountriesOrRegions } from '@app/interfaces/integrations/zoom/interface/approved-denied-countries-regions.interface';
+import { BreakoutRoom } from '@app/interfaces/integrations/zoom/interface/breakout-room.interface';
 import { Faker, faker } from '@faker-js/faker';
 import { DataSourceMock } from '@test/datasource-mock.interface';
 import { Language } from '../main/enums/language.enum';
@@ -72,10 +80,10 @@ export class TestMockUtil {
         return faker;
     }
 
-    constructor() {
+    constructor(locale = 'ko') {
         if (!TestMockUtil._instance) {
             TestMockUtil._instance = this;
-            faker.locale = 'ko';
+            faker.locale = locale;
         }
 
         return TestMockUtil._instance;
@@ -93,7 +101,7 @@ export class TestMockUtil {
         return appleCredentialMock;
     }
 
-    getCalDavClientMock({
+    getCalDavClientMock(fakeUserEmail = 'alan@sync.day', {
         calendars,
         calendarObjects
     } = {
@@ -105,15 +113,66 @@ export class TestMockUtil {
     }): DAVClient {
         return {
             fetchCalendars: () => calendars,
-            fetchCalendarObjects: () => calendarObjects
+            fetchCalendarObjects: () => calendarObjects,
+            credentials: {
+                username: fakeUserEmail
+            }
         } as any;
     }
 
     getCalDavObjectMocks(): DAVObject[] {
         return [
             {
-                url: '',
-                etag: ''
+                url: 'https://caldav.icloud.com/1452332614/calendars/5BA94AC2-8277-4C55-9CE4-712339723BCF/18931BE2-FBB9-4D65-9BC0-2C401E3B9870.ics',
+                etag: '"ln9ydv5i"',
+                data: 'BEGIN:VCALENDAR\r\n' +
+                  'BEGIN:VEVENT\r\n' +
+                  'CREATED:20231003T064307Z\r\n' +
+                  'DTEND;TZID=Asia/Seoul:20231113T160000\r\n' +
+                  'DTSTAMP:20231003T065032Z\r\n' +
+                  'DTSTART;TZID=Asia/Seoul:20231113T150000\r\n' +
+                  'LAST-MODIFIED:20231003T065031Z\r\n' +
+                  'SEQUENCE:0\r\n' +
+                  'SUMMARY:이삿날\r\n' +
+                  'UID:18931BE2-FBB9-4D65-9BC0-2C401E3B9870\r\n' +
+                  'TRANSP:OPAQUE\r\n' +
+                  'END:VEVENT\r\n' +
+                  'END:VCALENDAR'
+            },
+            {
+                url: 'https://caldav.icloud.com/1452332614/calendars/5BA94AC2-8277-4C55-9CE4-712339723BCF/DBA9D3C4-0DB6-4A13-855F-48C32CAE2C3F.ics',
+                etag: '"llyqw26z"',
+                data: 'BEGIN:VCALENDAR\r\n' +
+                  'BEGIN:VEVENT\r\n' +
+                  'CREATED:20230831T054809Z\r\n' +
+                  'DTEND;TZID=Asia/Seoul:20231123T150000\r\n' +
+                  'DTSTAMP:20230831T054810Z\r\n' +
+                  'DTSTART;TZID=Asia/Seoul:20231123T140000\r\n' +
+                  'LAST-MODIFIED:20230831T054809Z\r\n' +
+                  'SEQUENCE:0\r\n' +
+                  'SUMMARY:병원가기\r\n' +
+                  'UID:DBA9D3C4-0DB6-4A13-855F-48C32CAE2C3F\r\n' +
+                  'TRANSP:OPAQUE\r\n' +
+                  'END:VEVENT\r\n' +
+                  'END:VCALENDAR'
+            },
+            {
+                url: 'https://caldav.icloud.com/1452332614/calendars/171B3ADA-C372-41FD-AC3E-A1CE442FF8BA/3AE32725-18D0-4A6D-B178-34E5E355FEE8.ics',
+                etag: '"lnbuozw4"',
+                data: 'BEGIN:VCALENDAR\r\n' +
+                  'BEGIN:VEVENT\r\n' +
+                  'CREATED:20231004T143513Z\r\n' +
+                  'UID:3AE32725-18D0-4A6D-B178-34E5E355FEE8\r\n' +
+                  'DTEND;TZID=Asia/Seoul:20231028T100000\r\n' +
+                  'SUMMARY:아는 동생과 점심\r\n' +
+                  'LAST-MODIFIED:20231004T143649Z\r\n' +
+                  'DTSTAMP:20231004T143521Z\r\n' +
+                  'DTSTART;TZID=Asia/Seoul:20231028T090000\r\n' +
+                  'SEQUENCE:1\r\n' +
+                  'TRANSP:OPAQUE\r\n' +
+                  'X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC\r\n' +
+                  'END:VEVENT\r\n' +
+                  'END:VCALENDAR'
             }
         ];
     }
@@ -685,5 +744,275 @@ export class TestMockUtil {
                 transparency: 'OPAQUE'
             }
         } as DAVObject;
+    }
+
+    getGoogleUserInfoMock(): oauth2_v2.Schema$Userinfo {
+        return {
+            id: '123456789101112131415',
+            email: 'alan@sync.day',
+            verified_email: true,
+            name: '_alan',
+            given_name: '_',
+            family_name: 'alan',
+            picture: 'https://lh3.googleusercontent.com/a/ABc8efGh-ijkLmNop1rSt3rePVjkfIeN3mCeOMrSIa_Lf6Hho8A=s96-c',
+            locale: 'en'
+        };
+    }
+
+    getGoogleEventsMock(
+        calendarKey = 'alan@sync.day'
+    ): calendar_v3.Schema$Events {
+        return {
+            [calendarKey]: [
+                {
+                    kind: 'calendar#event',
+                    etag: '"3150357311349000"',
+                    id: '_6kr3gc238kp34b9k70qk2b9k6kr46ba2751k4ba489344h2165148g9h6c',
+                    status: 'confirmed',
+                    htmlLink: 'https://www.google.com/calendar/event?eid=XzZrcjNnYzIzOGtwMzRiOWs3MHFrMmI5azZrcjQ2YmEyNzUxazRiYTQ4OTM0NGgyMTY1MTQ4ZzloNmNfMjAxNjA0MTUgNHRoc3RvbkBt',
+                    created: '2023-10-16T10:49:33.000Z',
+                    updated: '2023-10-17T00:25:37.693Z',
+                    summary: '개명 기념일',
+                    creator: {
+                        email: 'alan@sync.day',
+                        displayName: 'alan',
+                        self: true
+                    },
+                    organizer: {
+                        email: 'alan@sync.day',
+                        displayName: 'alan',
+                        self: true
+                    },
+                    start: {
+                        date: '2023-04-15'
+                    },
+                    end: {
+                        date: '2025-04-16'
+                    },
+                    recurrence: [
+                        'RRULE:FREQ=YEARLY'
+                    ],
+                    iCalUID: '5680CE22-485A-789C-B9CB-DBFBDA1BDA13',
+                    sequence: 0,
+                    reminders: {
+                        useDefault: false
+                    },
+                    eventType: 'default'
+                }
+            ]
+        };
+    }
+
+    getGoogleCalendarsMock(): calendar_v3.Schema$CalendarList {
+        return {
+            kind: 'calendar#calendarList',
+            etag: '"p33s9hal3tfso20o"',
+            nextSyncToken: 'ABcDefGh-ABCDeF0hIjklM9uQGdtYWlsLmNvbQ==',
+            items: [
+                {
+                    kind: 'calendar#calendarListEntry',
+                    etag: '1631269230776000',
+                    id: 'en.south_korea#holiday@group.v.calendar.google.com',
+                    summary: 'Holidays in South Korea',
+                    description: 'Holidays and Observances in South Korea',
+                    timeZone: 'Asia/Seoul',
+                    colorId: '1',
+                    backgroundColor: '#ac725e',
+                    foregroundColor: '#000000',
+                    selected: true,
+                    accessRole: 'reader',
+                    defaultReminders: [],
+                    conferenceProperties: [] as calendar_v3.Schema$ConferenceProperties
+                },
+                {
+                    kind: 'calendar#calendarListEntry',
+                    etag: '1688747380011000',
+                    id: 'alan@sync.day',
+                    summary: 'alan@sync.day',
+                    timeZone: 'Asia/Seoul',
+                    colorId: '16',
+                    backgroundColor: '#0e61b9',
+                    foregroundColor: '#ffffff',
+                    selected: true,
+                    accessRole: 'owner',
+                    defaultReminders: [],
+                    notificationSettings: {} as {
+                        notifications?: calendar_v3.Schema$CalendarNotification[];
+                    },
+                    primary: true,
+                    conferenceProperties: [] as calendar_v3.Schema$ConferenceProperties
+                },
+                {
+                    kind: 'calendar#calendarListEntry',
+                    etag: '1689362322226000',
+                    id: '3d5887b1f569d9416b54eb5d5218564f6e24e313d2ef7df6052ca08c89169d19@group.calendar.google.com',
+                    summary: 'working',
+                    description: 'working',
+                    timeZone: 'Asia/Seoul',
+                    colorId: '16',
+                    backgroundColor: '#4986e7',
+                    foregroundColor: '#000000',
+                    selected: true,
+                    accessRole: 'owner',
+                    defaultReminders: [],
+                    conferenceProperties: [] as calendar_v3.Schema$ConferenceProperties
+                }
+            ]
+
+        };
+    }
+
+    getGoogleOAuthCallbackRequestMock(
+        integrationContext: IntegrationContext
+    ): Request {
+        return {
+            protocol: 'https',
+            url: `/v1/tokens/google/callback?state=%7B%22integrationContext%22:%22${integrationContext}%22,%22timezone%22:%22Asia/Seoul%22%7D&code=4/0AfJohXkPyR5k0e9aIfEDCqPny4WMTkWAV-9ffmY8C9mT4zC7l2_D4LlIrz0I-Ab3Lo6yfw&scope=email%20profile%20https://www.googleapis.com/auth/calendar%20openid%20https://www.googleapis.com/auth/userinfo.profile%20https://www.googleapis.com/auth/userinfo.email&authuser=1&prompt=consent`,
+            headers: {
+                host: 'localhost:3011'
+            }
+        } as Request;
+    }
+
+    getGoogleAuthorizationUrlMock(): string {
+        return 'https://accounts.google.com/o/oauth2/v2/auth/oauthchooseaccount?access_type=offline&prompt=select_account%20consent&scope=email%20profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar&include_granted_scopes=true&state=%7B%22integrationContext%22%3A%22sign_in%22%2C%22timezone%22%3A%22Asia%2FSeoul%22%7D&response_type=code&client_id=804392781525-ilthgvpdp39ps7nojhauo1uua5jotg4a.apps.googleusercontent.com&redirect_uri=https%3A%2F%2Fapi.stg.sync.day%2Fv1%2Ftokens%2Fgoogle%2Fcallback&service=lso&o2v=2&theme=glif&flowName=GeneralOAuthFlow';
+    }
+
+    getZoomUser({
+        email,
+        timezone
+    } = {
+        email: 'alan@sync.day',
+        timezone: 'Asia/Seoul'
+    }): ZoomUserResponseDTO {
+        return {
+            id: '7weRVdMZT7-Z-ZQcjYbITg',
+            first_name: 'Sync',
+            last_name: 'Developer',
+            display_name: 'Syync Developer',
+            email,
+            type: 1,
+            role_name: 'Owner',
+            pmi: 9227567326,
+            use_pmi: false,
+            personal_meeting_url: 'https://us05web.zoom.us/j/9227567326?pwd=THJLWjBlZGx1NWFtaC9GZWljYlMxQT09',
+            timezone,
+            verified: 0,
+            dept: '',
+            created_at: '2023-02-20T05:04:23Z',
+            last_login_time: '2023-10-19T02:57:36Z',
+            last_client_version: '5.14.2.17213(mac)',
+            pic_url: 'https://us05web.zoom.us/p/7weRVdMZT7-Z-ZQcjYbITg/3389ff77-435b-42ee-addc-17099af7d9c3-146    5',
+            cms_user_id: '',
+            jid: '7wervdmzt7-z-zqcjybitg@xmpp.zoom.us',
+            group_ids: [],
+            im_group_ids: [],
+            account_id: 'vydvDS82ThyYCyeCY76l-w',
+            language: 'ko-KO',
+            phone_country: '',
+            phone_number: '',
+            status: 'active',
+            job_title: '',
+            company: 'Sync',
+            location: '',
+            login_types: [ 1 ],
+            role_id: '0',
+            account_number: 5074040974,
+            cluster: 'us05',
+            user_created_at: '2023-02-20T05:04:23Z',
+            integrationUserUniqueId: 'vydvDS82ThyYCyeCY76l-w'
+        };
+    }
+
+    getZoomAuthCode(): string {
+        return 'uYPNBQw5QwFF19IRjiCS2-W6kaiGYcEFg';
+    }
+
+    getZoomOAuthCallbackRequestMock(
+        userAccessToken: string
+    ): Request {
+
+        const zoomCallbackUrl = `/v1/integrations/zoom/callback?code=uYPNBQw5QwFF19IRjiCS2-W6kaiGYcEFg&state=%7B%22accessToken%22%3A%22${userAccessToken}%22%7D`;
+
+        return {
+            protocol: 'https',
+            url: zoomCallbackUrl,
+            headers: {
+                host: 'localhost:3011'
+            },
+            req: {
+                originalUrl: zoomCallbackUrl
+            }
+        } as Request & { req: any };
+    }
+
+    getZoomMeetingMock(): ZoomCreateMeetingResponseDTO {
+        return {
+            uuid: '1CiOzIVfQLq91BQXzMFUpw==',
+            id: 84153303437,
+            host_id: '7weRVdMZT7-Z-ZQcjYbITg',
+            host_email: 'partners@sync.day',
+            topic: '30 Minute Meeting',
+            type: 2,
+            status: 'waiting',
+            start_time: new Date(),
+            duration: 2,
+            timezone: 'Asia/Seoul',
+            agenda: 'Event Name: 30 Minute Meeting\n' +
+              'Location: \n' +
+              'Note: testetet\n' +
+              '\n' +
+              'Powered by Sync.day',
+            created_at: new Date(),
+            start_url: 'https://us05web.zoom.us/s/84153303437?zak=eyJ0eXAiOiJKV1QiLCJzdiI6IjAwMDAwMSIsInptX3NrbSI6InptX28ybSIsImFsZyI6IkhTMjU2In0.eyJhdWQiOiJjbGllbnRzbSIsInVpZCI6Ijd3ZVJWZE1aVDctWi1aUWNqWWJJVGciLCJpc3MiOiJ3ZWIiLCJzayI6IjAiLCJzdHkiOjEsIndjZCI6InVzMDUiLCJjbHQiOjAsIm1udW0iOiI4NDE1MzMwMzQzNyIsImV4cCI6MTY5MzUzMzkyNywiaWF0IjoxNjkzNTI2NzI3LCJhaWQiOiJ2eWR2RFM4MlRoeVlDeWVDWTc2bC13IiwiY2lkIjoiIn0.l1HYeodjvpYqGM8E5QHL0MwBTjvBmdQkMc6e-WigsRQ',
+            join_url: 'https://us05web.zoom.us/j/84153303437?pwd=5FRhadxBYxNZ5RALysPBFY8LBEtDck.1',
+            password: 'vgn6x8',
+            h323_password: '843724',
+            pstn_password: '843724',
+            encrypted_password: '5FRhadxBYxNZ5RALysPBFY8LBEtDck.1',
+            settings: {
+                host_video: false,
+                participant_video: false,
+                cn_meeting: false,
+                in_meeting: false,
+                join_before_host: false,
+                jbh_time: 0,
+                mute_upon_entry: false,
+                watermark: false,
+                use_pmi: false,
+                approval_type: 2,
+                audio: Audio.Voip,
+                auto_recording: AutoRecording.None,
+                enforce_login: false,
+                enforce_login_domains: '',
+                alternative_hosts: '',
+                alternative_host_update_polls: false,
+                close_registration: false,
+                show_share_button: false,
+                allow_multiple_devices: false,
+                registrants_confirmation_email: true,
+                waiting_room: false,
+                request_permission_to_unmute_participants: false,
+                registrants_email_notification: true,
+                meeting_authentication: false,
+                encryption_type: EncryptionType.EnhancedEncryption,
+                approved_or_denied_countries_or_regions: { enable: false } as ApprovedOrDeniedCountriesOrRegions,
+                breakout_room: { enable: false } as BreakoutRoom,
+                internal_meeting: false,
+                continuous_meeting_chat: { enable: false, auto_add_invited_external_users: false },
+                participant_focused_meeting: false,
+                alternative_hosts_email_notification: true,
+                show_join_info: false,
+                device_testing: false,
+                focus_mode: false,
+                enable_dedicated_group_chat: false,
+                private_meeting: false,
+                email_notification: true,
+                host_save_video_order: false,
+                sign_language_interpretation: { enable: false },
+                email_in_attendee_report: false
+            },
+            pre_schedule: false
+        } as unknown as ZoomCreateMeetingResponseDTO;
     }
 }

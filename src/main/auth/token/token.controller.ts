@@ -24,7 +24,7 @@ export class TokenController {
      * Token is issued from google, so this action should be treated as POST action originally.
      * But it seems to enforce direct move by security reaons like CSP,
      *
-     * Client would be redirected to Google OAuth2 Server by Passport with 302 Found
+     * Client would be redirected to Google OAuth2 Server by Http 302 Found
      *
      * @param createTemporaryUserWithGoogleRequestDto
      * @param language

@@ -21,7 +21,7 @@ export class IntegrationsController {
         @Query('withCalendarIntegrations') withCalendarIntegrations: string | boolean
     ): Observable<Integration[]> {
 
-        const ensuredWithCalendarIntegrations = withCalendarIntegrations === 'true';
+        const ensuredWithCalendarIntegrations = withCalendarIntegrations === 'true' || withCalendarIntegrations === true;
 
         if (integrationSubject === IntegrationSubject.CALENDAR) {
             const calendarSubjectIntegrationFactories = this.integrationsServiceLocator.getAllCalendarSubjectIntegrationFactories();

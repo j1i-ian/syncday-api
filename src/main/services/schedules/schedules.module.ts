@@ -10,11 +10,12 @@ import { NativeSchedulesService } from '@services/schedules/native-schedules.ser
 import { CalendarIntegrationsModule } from '@services/integrations/calendar-integrations/calendar-integrations.module';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
+import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
 import { GlobalSchedulesService } from './global-schedules.service';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Schedule, GoogleIntegrationSchedule]),
+        TypeOrmModule.forFeature([Schedule, GoogleIntegrationSchedule, AppleCalDAVIntegrationSchedule]),
         SyncdayRedisModule,
         GoogleCalendarIntegrationsModule,
         EventsModule,

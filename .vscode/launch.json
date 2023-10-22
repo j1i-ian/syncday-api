@@ -50,6 +50,24 @@
             "cwd": "${workspaceRoot}",
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
-        }
+        },
+        {
+            "type": "node",
+            "name": "Mocha Single Integration Test",
+            "request": "launch",
+            "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/mocha",
+            "args": [
+                "--config",
+                ".mocharc.yml",
+                "${file}"
+            ],
+            "env": {
+                "ENV": "local_integration_test",
+                "TS_NODE_PROJECT": "${workspaceRoot}/tsconfig.json"
+            },
+            "cwd": "${workspaceRoot}",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
     ]
 }

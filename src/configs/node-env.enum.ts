@@ -13,5 +13,9 @@ export enum NodeEnv {
 
     LOCAL = 'local',
 
-    TEST = 'test'
+    TEST = 'test',
+
+    INTEGRATION_TEST = 'integration_test',
+
+    LOCAL_INTEGRATION_TEST = 'local_integration_test'
 }

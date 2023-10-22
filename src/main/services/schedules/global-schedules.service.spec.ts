@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Weekday } from '@interfaces/availability/weekday.enum';
 import { AvailableTime } from '@interfaces/availability/available-time';
@@ -54,7 +53,7 @@ describe('SchedulesService', () => {
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
     let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
     let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
-    let loggerStub: sinon.SinonStubbedInstance<Logger>;
+    let appleCalDAVIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<AppleCalDAVIntegrationSchedule>>;
 
     let googleIntegrationSchedulesServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationSchedulesService>;
     let appleIntegrationsSchedulesServiceStub: sinon.SinonStubbedInstance<AppleIntegrationsSchedulesService>;
@@ -77,7 +76,9 @@ describe('SchedulesService', () => {
         googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationSchedule>>(
             Repository
         );
-        loggerStub = sinon.createStubInstance(Logger);
+        appleCalDAVIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<AppleCalDAVIntegrationSchedule>>(
+            Repository
+        );
 
         googleIntegrationSchedulesServiceStub = sinon.createStubInstance(GoogleIntegrationSchedulesService);
         appleIntegrationsSchedulesServiceStub = sinon.createStubInstance(AppleIntegrationsSchedulesService);
@@ -132,13 +133,24 @@ describe('SchedulesService', () => {
                     useValue: googleIntegrationScheduleRepositoryStub
                 },
                 {
+                    provide: getRepositoryToken(AppleCalDAVIntegrationSchedule),
+                    useValue: appleCalDAVIntegrationScheduleRepositoryStub
+                },
+                {
                     provide: WINSTON_MODULE_PROVIDER,
-                    useValue: loggerStub
+                    useValue: {
+                        debug: sinon.stub(),
+                        info: sinon.stub()
+                    }
                 }
             ]
         }).compile();
 
         service = module.get<GlobalSchedulesService>(GlobalSchedulesService);
+    });
+
+    after(() => {
+        sinon.restore();
     });
 
     it('should be defined', () => {
@@ -171,6 +183,7 @@ describe('SchedulesService', () => {
             scheduleRepositoryStub.findOneByOrFail.reset();
             scheduleRepositoryStub.update.reset();
             googleIntegrationScheduleRepositoryStub.findOneBy.reset();
+            appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.reset();
 
             availabilityRedisRepositoryStub.getAvailabilityBody.reset();
 
@@ -445,6 +458,7 @@ describe('SchedulesService', () => {
             scheduleRepositoryStub.findOneByOrFail.reset();
             scheduleRepositoryStub.update.reset();
             googleIntegrationScheduleRepositoryStub.findOneBy.reset();
+            appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.reset();
 
             serviceSandbox.restore();
         });
@@ -463,7 +477,7 @@ describe('SchedulesService', () => {
                     _isTimeOverlappingWithAvailableTimesStubCall: true,
                     _isTimeOverlappingWithAvailableTimesStubValue: true,
                     conflictedScheduleStub: null,
-                    googleIntegrationScheduleStub: null
+                    vendorIntegrationScheduleStub: null
                 },
                 {
                     description: 'should be passed if the schedule is not within available time but is within the available override time',
@@ -477,7 +491,7 @@ describe('SchedulesService', () => {
                     _isTimeOverlappingWithAvailableTimesStubCall: false,
                     _isTimeOverlappingWithAvailableTimesStubValue: true,
                     conflictedScheduleStub: null,
-                    googleIntegrationScheduleStub: null
+                    vendorIntegrationScheduleStub: null
                 },
                 {
                     description: 'should be passed if the schedule is within available time but is not within the unavailable override availability time',
@@ -491,7 +505,7 @@ describe('SchedulesService', () => {
                     _isTimeOverlappingWithAvailableTimesStubCall: true,
                     _isTimeOverlappingWithAvailableTimesStubValue: true,
                     conflictedScheduleStub: null,
-                    googleIntegrationScheduleStub: null
+                    vendorIntegrationScheduleStub: null
                 }
             ].forEach(function ({
                 description,
@@ -505,7 +519,7 @@ describe('SchedulesService', () => {
                 _isTimeOverlappingWithAvailableTimesStubCall,
                 _isTimeOverlappingWithAvailableTimesStubValue,
                 conflictedScheduleStub,
-                googleIntegrationScheduleStub
+                vendorIntegrationScheduleStub
             }) {
                 it(description, async () => {
                     const _isPastTimestampStub = serviceSandbox.stub(service, '_isPastTimestamp').returns(_isPastTimestampStubValue);
@@ -516,7 +530,8 @@ describe('SchedulesService', () => {
                     const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(_isTimeOverlappingWithAvailableTimesStubValue);
 
                     scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
-                    googleIntegrationScheduleRepositoryStub.findOneBy.resolves(googleIntegrationScheduleStub);
+                    googleIntegrationScheduleRepositoryStub.findOneBy.resolves(vendorIntegrationScheduleStub);
+                    appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.resolves(vendorIntegrationScheduleStub);
 
                     const validatedSchedule = await firstValueFrom(
                         service.validate(
@@ -529,6 +544,7 @@ describe('SchedulesService', () => {
                     expect(validatedSchedule).ok;
                     expect(scheduleRepositoryStub.findOneBy.called).true;
                     expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
+                    expect(appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.called).false;
 
                     expect(_isPastTimestampStub.called).true;
                     expect(_isTimeOverlappingWithOverridesStub.called).equals(_isTimeOverlappingWithAvailableTimeOverridesCall);
@@ -551,7 +567,7 @@ describe('SchedulesService', () => {
                     _isTimeOverlappingWithAvailableTimesStubCall: true,
                     _isTimeOverlappingWithAvailableTimesStubValue: true,
                     conflictedScheduleStub: null,
-                    googleIntegrationScheduleStub: null
+                    vendorIntegrationScheduleStub: null
                 },
                 {
                     description: 'should be not passed if the ensured schedule start time is earlier than the ensured end time: scheduledTime',
@@ -574,7 +590,7 @@ describe('SchedulesService', () => {
                     _isTimeOverlappingWithAvailableTimesStubCall: true,
                     _isTimeOverlappingWithAvailableTimesStubValue: true,
                     conflictedScheduleStub: null,
-                    googleIntegrationScheduleStub: null
+                    vendorIntegrationScheduleStub: null
                 },
                 {
                     description: 'should be not passed if the ensured schedule start time is earlier than the ensured end time: scheduledBufferTime',
@@ -597,7 +613,7 @@ describe('SchedulesService', () => {
                     _isTimeOverlappingWithAvailableTimesStubCall: true,
                     _isTimeOverlappingWithAvailableTimesStubValue: true,
                     conflictedScheduleStub: null,
-                    googleIntegrationScheduleStub: null
+                    vendorIntegrationScheduleStub: null
                 },
                 {
                     description: 'should be not passed if the schedule is not within the availability of the event to be scheduled and is also not within the override availability time',
@@ -611,7 +627,7 @@ describe('SchedulesService', () => {
                     _isTimeOverlappingWithAvailableTimesStubCall: true,
                     _isTimeOverlappingWithAvailableTimesStubValue: false,
                     conflictedScheduleStub: null,
-                    googleIntegrationScheduleStub: null
+                    vendorIntegrationScheduleStub: null
                 }
             ].forEach(function ({
                 description,
@@ -625,7 +641,7 @@ describe('SchedulesService', () => {
                 _isTimeOverlappingWithAvailableTimesStubCall,
                 _isTimeOverlappingWithAvailableTimesStubValue,
                 conflictedScheduleStub,
-                googleIntegrationScheduleStub
+                vendorIntegrationScheduleStub
             }) {
                 it(description, () => {
                     const scheduleMock = stubOne(Schedule, scheduleTimeMock);
@@ -638,12 +654,14 @@ describe('SchedulesService', () => {
                     const _isTimeOverlappingWithAvailableTimesStub = serviceSandbox.stub(service, '_isTimeOverlappingWithAvailableTimes').returns(_isTimeOverlappingWithAvailableTimesStubValue);
 
                     scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
-                    googleIntegrationScheduleRepositoryStub.findOneBy.resolves(googleIntegrationScheduleStub);
+                    googleIntegrationScheduleRepositoryStub.findOneBy.resolves(vendorIntegrationScheduleStub);
+                    appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.resolves(vendorIntegrationScheduleStub);
 
                     expect(() => service.validate(scheduleMock, timezoneMock, availabilityBodyMock)).throws(CannotCreateByInvalidTimeRange);
 
                     expect(scheduleRepositoryStub.findOneBy.called).false;
                     expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
+                    expect(appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.called).false;
 
                     expect(_isPastTimestampStub.called).true;
                     expect(_isTimeOverlappingWithOverridesStub.called).equals(_isTimeOverlappingWithAvailableTimeOverridesCall);
@@ -714,7 +732,7 @@ describe('SchedulesService', () => {
                             scheduleMock,
                             timezoneMock,
                             availabilityBodyMock,
-                            googleCalendarIntegrationMock?.id
+                            googleCalendarIntegrationMock
                         )
                     )
                     ).rejectedWith(CannotCreateByInvalidTimeRange);
@@ -727,6 +745,7 @@ describe('SchedulesService', () => {
                         expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).true;
                     }
 
+                    expect(appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.called).false;
                     expect(_isPastTimestampStub.called).true;
                     expect(_isTimeOverlappingWithOverridesStub.called).equals(_isTimeOverlappingWithAvailableTimeOverridesCall);
                     expect(_isTimeOverlappingWithAvailableTimesStub.called).equals(_isTimeOverlappingWithAvailableTimesStubCall);

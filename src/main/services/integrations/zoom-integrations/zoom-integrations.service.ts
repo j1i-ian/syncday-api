@@ -67,15 +67,14 @@ export class ZoomIntegrationsService implements
 
     findOne(searchZoomIntegrationOptions: SearchZoomIntegrationOptions): Promise<ZoomIntegration | null> {
 
-        const { userId, integrationUserUniqueId } = searchZoomIntegrationOptions;
+        const { userId } = searchZoomIntegrationOptions;
 
         return this.zoomIntegrationRepository.findOne({
             relations: ['users'],
             where: {
                 users: {
                     id: userId
-                },
-                integrationUserUniqueId
+                }
             }
         });
     }

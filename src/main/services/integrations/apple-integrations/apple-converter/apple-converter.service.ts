@@ -3,7 +3,6 @@ import * as ical from 'ical';
 import { plainToInstance } from 'class-transformer';
 import { DAVCalendar, DAVObject } from 'tsdav';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
-import { UtilService } from '@services/util/util.service';
 import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
 import { User } from '@entity/users/user.entity';
@@ -17,7 +16,6 @@ interface ParsedICS { [iCalUID: string]: ParsedICSBody }
 export class AppleConverterService {
 
     constructor(
-        private readonly utilService: UtilService,
         private readonly timeUtilService: TimeUtilService
     ) {}
 

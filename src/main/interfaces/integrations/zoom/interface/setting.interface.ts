@@ -45,6 +45,25 @@ export interface Setting {
     email_notification: boolean;
     encryption_type: EncryptionType;
     focus_mode: boolean;
+    cn_meeting: boolean;
+    in_meeting: boolean;
+    enforce_login: boolean;
+    enforce_login_domains: string;
+    request_permission_to_unmute_participants: boolean;
+    internal_meeting: boolean;
+    continuous_meeting_chat: {
+        enable: boolean;
+        auto_add_invited_external_users: boolean;
+    };
+    participant_focused_meeting: boolean;
+    show_join_info: boolean;
+    device_testing: boolean;
+    enable_dedicated_group_chat: boolean;
+    sign_language_interpretation: {
+        enable: boolean;
+    };
+    email_in_attendee_report: boolean;
+
     /**
      * Country code provided by zoom
      * [docs] {@link https://marketplace.zoom.us/docs/api-reference/other-references/abbreviation-lists/#countries}

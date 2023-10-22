@@ -50,6 +50,8 @@ export class CalendarIntegrationsController {
         @Body() calendarIntegrations: CalendarIntegration[]
     ): Observable<boolean> {
 
+        // When user requests multiple outbounds it is considered as exception
+        // but in the future we should remove exception after multiple outbound implement
         const requestedOutbountCalendars = calendarIntegrations.filter((_calIntegration) => _calIntegration.setting.outboundWriteSync === true);
         const invalidOutboundCalendarUpdate = requestedOutbountCalendars.length > 1;
         const hasOutboundUpdate = requestedOutbountCalendars.length > 0;
