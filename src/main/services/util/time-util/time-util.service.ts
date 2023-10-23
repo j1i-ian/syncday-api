@@ -17,7 +17,7 @@ export class TimeUtilService {
         schedule: Schedule
     ): string {
         const {
-            name,
+            summary,
             scheduledTime: {
                 startTimestamp,
                 endTimestamp
@@ -60,7 +60,7 @@ export class TimeUtilService {
             duration: {
                 seconds: duration
             },
-            title: name,
+            title: summary,
             description,
             location: location.join('\n'),
             organizer: {
