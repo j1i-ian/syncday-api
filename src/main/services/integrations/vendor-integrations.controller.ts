@@ -8,6 +8,7 @@ import { AuthUser } from '@decorators/auth-user.decorator';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { UserService } from '@services/users/user.service';
+import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
 import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
@@ -24,6 +25,7 @@ import { AppleCalendarIntegrationsExceptionFilter } from '@app/filters/integrati
 export class VendorIntegrationsController {
     constructor(
         private readonly integrationsServiceLocator: IntegrationsServiceLocator,
+        private readonly integrationsValidator: IntegrationsValidator,
         private readonly userService: UserService,
         private readonly jwtService: JwtService
     ) {}
@@ -131,6 +133,11 @@ export class VendorIntegrationsController {
         if (!loadedAppUserByEmail) {
             throw new BadRequestException('Invalid user request - email: ' + user.email);
         }
+
+        await this.integrationsValidator.validateMaxAddLimit(
+            this.integrationsServiceLocator,
+            user.id
+        );
 
         const createdIntegration = await integrationService.create(
             loadedAppUserByEmail,

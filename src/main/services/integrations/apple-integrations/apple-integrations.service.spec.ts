@@ -72,6 +72,28 @@ describe('AppleIntegrationsService', () => {
         expect(service).ok;
     });
 
+    describe('Test Count Apple Integration', () => {
+
+        beforeEach(() => {
+            appleCalDAVIntegrationRepositoryStub.countBy.resolves(1);
+        });
+
+        afterEach(() => {
+            appleCalDAVIntegrationRepositoryStub.countBy.reset();
+        });
+
+        it('should be counted integration length by condition', async () => {
+
+            const userIdMock = stubOne(User).id;
+
+            const counted = await service.count({
+                userId: userIdMock
+            });
+
+            expect(counted).greaterThan(0);
+        });
+    });
+
     describe('Test to create apple cal dav integration', () => {
 
         beforeEach(() => {

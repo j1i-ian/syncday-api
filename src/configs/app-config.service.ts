@@ -21,6 +21,9 @@ import { NodeEnv } from './node-env.enum';
 import { ZoomBasicAuth } from '../main/interfaces/zoom-basic-auth.interface';
 
 export class AppConfigService {
+
+    static INTEGRATION_MAX_ADD_LIMIT = 6;
+
     static getGoogleOAuth2Setting(configService: ConfigService): GoogleOAuth2Setting {
         const redirectURI = configService.getOrThrow<string>('GOOGLE_REDIRECT_URI');
         const clientId = configService.getOrThrow<string>('GOOGLE_CLIENT_ID');

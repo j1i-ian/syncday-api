@@ -53,6 +53,16 @@ export class GoogleIntegrationsService implements
         throw new Error('Method not implemented.');
     }
 
+    count({
+        userId
+    }: IntegrationSearchOption): Promise<number> {
+        return this.googleIntegrationRepository.countBy({
+            users: {
+                id: userId
+            }
+        });
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     findOne(userSearchOption: SearchByUserOption): Promise<Integration | null> {
         return this.googleIntegrationRepository.findOne({

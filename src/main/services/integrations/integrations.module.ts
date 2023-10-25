@@ -9,6 +9,7 @@ import { ZoomIntegrationsModule } from '@services/integrations/zoom-integrations
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { UserModule } from '@services/users/user.module';
 import { IntegrationsController } from '@services/integrations/integrations.controller';
+import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { VendorIntegrationsController } from './vendor-integrations.controller';
@@ -30,9 +31,10 @@ import { AppleIntegrationsModule } from './apple-integrations/apple-integrations
     ],
     providers: [
         JwtService,
+        IntegrationsValidator,
         IntegrationsServiceLocator,
         IntegrationsRedisRepository
     ],
-    exports: [IntegrationsServiceLocator, IntegrationsRedisRepository]
+    exports: [IntegrationsServiceLocator, IntegrationsValidator, IntegrationsRedisRepository]
 })
 export class IntegrationsModule {}

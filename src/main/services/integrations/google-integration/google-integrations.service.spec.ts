@@ -117,6 +117,28 @@ describe('GoogleIntegrationsService', () => {
         serviceSandbox.restore();
     });
 
+    describe('Test Count Google Integration', () => {
+
+        beforeEach(() => {
+            gogoleIntegrationRepositoryStub.countBy.resolves(1);
+        });
+
+        afterEach(() => {
+            gogoleIntegrationRepositoryStub.countBy.reset();
+        });
+
+        it('should be counted integration length by condition', async () => {
+
+            const userIdMock = stubOne(User).id;
+
+            const counted = await service.count({
+                userId: userIdMock
+            });
+
+            expect(counted).greaterThan(0);
+        });
+    });
+
     describe('Test Creating Google Calendar', () => {
 
         afterEach(() => {

@@ -62,6 +62,17 @@ export class AppleIntegrationsService implements
         throw new Error('Method not implemented.');
     }
 
+    async count({
+        userId
+    }: IntegrationSearchOption): Promise<number> {
+
+        const appleIntegrationLength = await this.appleCalDAVIntegrationRepository.countBy({
+            userId
+        });
+
+        return appleIntegrationLength;
+    }
+
     async create(
         user: User,
         userSetting: UserSetting,

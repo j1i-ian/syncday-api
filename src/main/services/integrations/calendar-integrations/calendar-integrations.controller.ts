@@ -52,9 +52,9 @@ export class CalendarIntegrationsController {
 
         // When user requests multiple outbounds it is considered as exception
         // but in the future we should remove exception after multiple outbound implement
-        const requestedOutbountCalendars = calendarIntegrations.filter((_calIntegration) => _calIntegration.setting.outboundWriteSync === true);
-        const invalidOutboundCalendarUpdate = requestedOutbountCalendars.length > 1;
-        const hasOutboundUpdate = requestedOutbountCalendars.length > 0;
+        const requestedOutboundCalendars = calendarIntegrations.filter((_calIntegration) => _calIntegration.setting.outboundWriteSync === true);
+        const invalidOutboundCalendarUpdate = requestedOutboundCalendars.length > 1;
+        const hasOutboundUpdate = requestedOutboundCalendars.length > 0;
 
         if (invalidOutboundCalendarUpdate) {
             throw new BadRequestException('Outbound calendar should be unique');

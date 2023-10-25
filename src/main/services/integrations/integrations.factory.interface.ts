@@ -24,6 +24,8 @@ export interface IntegrationsFactory {
 
     search(userSearchOption: IntegrationSearchOption): Promise<Integration[]>;
 
+    count(userSearchOption: IntegrationSearchOption): Promise<number>;
+
     findOne(userSearchOption: IntegrationSearchOption): Promise<(Integration) | null>;
 
     create(...argument: (ZoomIntegrationRequest | GoogleIntegrationRequest | AppleIntegrationRequest)): Promise<Integration>;

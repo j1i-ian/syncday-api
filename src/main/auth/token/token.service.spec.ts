@@ -13,6 +13,8 @@ import { GoogleIntegrationsService } from '@services/integrations/google-integra
 import { UtilService } from '@services/util/util.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
+import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
+import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Type } from '@entity/users/oauth2-type.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
@@ -33,6 +35,8 @@ describe('TokenService', () => {
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
     let oauth2AccountsServiceStub: sinon.SinonStubbedInstance<OAuth2AccountsService>;
+    let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
+    let integrationsValidatorStub: sinon.SinonStubbedInstance<IntegrationsValidator>;
     let googleIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let googleIntegrationFacadeStub: sinon.SinonStubbedInstance<GoogleIntegrationFacade>;
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
@@ -44,6 +48,8 @@ describe('TokenService', () => {
         utilServiceStub = sinon.createStubInstance(UtilService);
         userServiceStub = sinon.createStubInstance(UserService);
         oauth2AccountsServiceStub = sinon.createStubInstance(OAuth2AccountsService);
+        integrationsServiceLocatorStub = sinon.createStubInstance(IntegrationsServiceLocator);
+        integrationsValidatorStub = sinon.createStubInstance(IntegrationsValidator);
         googleIntegrationsServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
         googleIntegrationFacadeStub = sinon.createStubInstance(GoogleIntegrationFacade);
         googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
@@ -71,6 +77,14 @@ describe('TokenService', () => {
                 {
                     provide: OAuth2AccountsService,
                     useValue: oauth2AccountsServiceStub
+                },
+                {
+                    provide: IntegrationsServiceLocator,
+                    useValue: integrationsServiceLocatorStub
+                },
+                {
+                    provide: IntegrationsValidator,
+                    useValue: integrationsValidatorStub
                 },
                 {
                     provide: GoogleIntegrationsService,

@@ -99,6 +99,29 @@ describe('ZoomIntegrationsService', () => {
         expect(zoomIntegrationRepositoryStub.find.called).true;
     });
 
+    describe('Test Count Zoom Integration', () => {
+
+        beforeEach(() => {
+            zoomIntegrationRepositoryStub.countBy.resolves(1);
+        });
+
+        afterEach(() => {
+            zoomIntegrationRepositoryStub.countBy.reset();
+        });
+
+        it('should be counted integration length by condition', async () => {
+
+            const userIdMock = stubOne(User).id;
+
+            const counted = await service.count({
+                userId: userIdMock
+            });
+
+            expect(counted).greaterThan(0);
+        });
+    });
+
+
     it('should be got zoom integration with findOne', async () => {
 
         const userMock = stubOne(User);

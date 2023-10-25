@@ -10,6 +10,8 @@ import { GoogleIntegrationsService } from '@services/integrations/google-integra
 import { UtilService } from '@services/util/util.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
+import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
+import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { OAuth2Type } from '@entity/users/oauth2-type.enum';
@@ -41,6 +43,8 @@ export class TokenService {
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
         private readonly oauth2AccountsService: OAuth2AccountsService,
+        private readonly integrationsServiceLocator: IntegrationsServiceLocator,
+        private readonly integrationsValidator: IntegrationsValidator,
         private readonly googleIntegrationFacade: GoogleIntegrationFacade,
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly googleConverterService: GoogleConverterService,
@@ -152,6 +156,11 @@ export class TokenService {
         } else if (ensuredIntegrationContext === IntegrationContext.INTEGRATE) {
             // when integrationContext is integrationContext.Integrate
             const ensuredUser = loadedUserOrNull as User;
+
+            await this.integrationsValidator.validateMaxAddLimit(
+                this.integrationsServiceLocator,
+                ensuredUser.id
+            );
 
             await this.googleIntegrationService.create(
                 ensuredUser,
