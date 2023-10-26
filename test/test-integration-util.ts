@@ -572,7 +572,7 @@ export class TestIntegrationUtil {
         // 10:00 KST
         nextWorkingDay.setDate(nextWorkingDay.getDate() + 1);
 
-        if (nextWorkingDay.getDay() === 5 || nextWorkingDay.getDay() === 6) {
+        if (nextWorkingDay.getDay() === 6 || nextWorkingDay.getDay() === 0) {
             nextWorkingDay.setDate(nextWorkingDay.getDate() + 2);
         }
         return nextWorkingDay;
