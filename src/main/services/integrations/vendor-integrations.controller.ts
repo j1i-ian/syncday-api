@@ -12,6 +12,7 @@ import { UserService } from '@services/users/user.service';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
+import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
 import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
 import { CreateAppleCalDAVRequestDto } from '@dto/integrations/apple/create-apple-cal-dav-request.dto';
 import { CreateIntegrationResponseDto } from '@dto/integrations/create-integration-response.dto';
@@ -157,12 +158,13 @@ export class VendorIntegrationsController {
     patchVendorIntegration(
         @AuthUser() user: User,
         @Param('vendor') vendor: IntegrationVendor,
-        @Param('vendorIntegrationId', ParseIntPipe) vendorIntegrationId: number
+        @Param('vendorIntegrationId', ParseIntPipe) vendorIntegrationId: number,
+        @Body() partialAppleCalDavIntegration: Partial<AppleCalDAVIntegration>
     ): Observable<boolean> {
 
         const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
 
-        return integrationService.patch(vendorIntegrationId, user.id);
+        return integrationService.patch(vendorIntegrationId, user.id, partialAppleCalDavIntegration);
     }
 
     @Delete(':vendorIntegrationId(\\d+)')

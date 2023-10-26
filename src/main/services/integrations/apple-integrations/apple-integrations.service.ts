@@ -163,7 +163,7 @@ export class AppleIntegrationsService implements
         return creatdIntegration.toIntegration();
     }
 
-    patch(vendorIntegrationId: number, userId: number, partialIntegration?: Partial<Integration> | undefined): Observable<boolean> {
+    patch(vendorIntegrationId: number, userId: number, partialIntegration?: Partial<AppleCalDAVIntegration> | undefined): Observable<boolean> {
 
         return from(
             this.appleCalDAVIntegrationRepository.findOneByOrFail({
@@ -197,7 +197,9 @@ export class AppleIntegrationsService implements
                     this.appleCalDAVIntegrationRepository.update(
                         vendorIntegrationId,
                         {
-                            lastAppleIdAccessAt: new Date()
+                            lastAppleIdAccessAt: new Date(),
+                            email: partialIntegration?.email,
+                            appSpecificPassword: partialIntegration?.appSpecificPassword
                         }
                     )
                 ).pipe(

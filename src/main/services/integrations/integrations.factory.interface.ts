@@ -33,7 +33,7 @@ export interface IntegrationsFactory {
 
     create(...argument: (ZoomIntegrationRequest | GoogleIntegrationRequest | AppleIntegrationRequest)): Promise<Integration>;
 
-    patch(vendorIntegrationId: number, userId: number, paritalIntegration?: Integration): Observable<boolean>;
+    patch(vendorIntegrationId: number, userId: number, paritalIntegration?: Partial<Integration>): Observable<boolean>;
 
     remove(vendorIntegrationId: number, userId: number): Promise<boolean>;
 }
