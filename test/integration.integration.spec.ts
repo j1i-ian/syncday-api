@@ -81,8 +81,10 @@ describe('Integration Integration Test', () => {
 
                         testIntegrationUtil.setAppleCalendarStubs(fakeUser.email);
 
+                        const integrationLimitHalf = INTEGRATION_MAX_ADD_LIMIT / 2;
+
                         await Promise.all(
-                            Array(3).fill(0).map(async () => {
+                            Array(integrationLimitHalf).fill(0).map(async () => {
                                 await testIntegrationUtil.integrateGoogleOAuthUser(
                                     IntegrationContext.INTEGRATE,
                                     userTimezoneISO8601Seoul,
@@ -92,7 +94,7 @@ describe('Integration Integration Test', () => {
                             })
                         );
                         await Promise.all(
-                            Array(3).fill(0).map(async () => {
+                            Array(integrationLimitHalf).fill(0).map(async () => {
                                 await testIntegrationUtil.integrateApple(
                                     fakeUser,
                                     'Asia/Seoul'

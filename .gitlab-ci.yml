@@ -172,6 +172,13 @@ integration-test:
     - bash ./scripts/upload-then-run-integration-test.sh $DEV_EC2_INSTANCE_ID
     - mkdir coverage/
     - cp ./integration-junit-report.xml ./coverage/integration-junit-report.xml
+    - |
+      echo "Evaluate integration test result."
+      INTEGRATION_TEST_RESULT=$(grep 'failure' ./integration-junit-report.xml | awk '{ print $NF}' | head -n 1 | xargs -n1 | grep -oE '[0-9]+')
+      echo "INTEGRATION_TEST_RESULT IS "$INTEGRATION_TEST_RESULT
+      if [ "$INTEGRATION_TEST_RESULT" -ne 0 ]; then
+        exit 1;
+      fi
   only:
     - main
     - tags # for staging

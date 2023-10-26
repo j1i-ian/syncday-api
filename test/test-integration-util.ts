@@ -50,7 +50,6 @@ import { AppleCalendarListService } from '@services/integrations/apple-integrati
 import { AppleCalendarEventListService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-list.service';
 import { AppleCalendarEventCreateService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-create.service';
 import { AppleCalendarEventPatchService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-patch.service';
-import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { Verification } from '@entity/verifications/verification.interface';
 import { QuestionInputType } from '@entity/invitee-questions/question-input-type.enum';
@@ -98,9 +97,6 @@ export class TestIntegrationUtil {
     tokenService: TokenService;
     syncdayRedisService: SyncdayRedisService;
     googleCalendarIntegrationsService: GoogleCalendarIntegrationsService;
-
-    // Prevent AWS Requests
-    notificationServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
 
     // for user test
     googleCalendarIntegrationsServiceSubscribeCalendarStub: sinon.SinonStub;
@@ -626,8 +622,6 @@ export class TestIntegrationUtil {
 
     private async initializeModule(): Promise<TestingModule> {
 
-        this.notificationServiceStub = sinon.createStubInstance(NotificationsService);
-
         this.zoomOauthTokenServiceStub = sinon.createStubInstance(ZoomOauthTokenService);
         this.zoomOauthUserServiceStub = sinon.createStubInstance(ZoomOauthUserService);
         this.zoomCreateMeetingServiceStub = sinon.createStubInstance(ZoomCreateMeetingService);
@@ -720,8 +714,6 @@ export class TestIntegrationUtil {
                 SchedulesModule
             ]
         })
-            .overrideProvider(NotificationsService)
-            .useValue(this.notificationServiceStub)
             .overrideProvider(ZoomOauthTokenService)
             .useValue(this.zoomOauthTokenServiceStub)
             .overrideProvider(ZoomOauthUserService)
