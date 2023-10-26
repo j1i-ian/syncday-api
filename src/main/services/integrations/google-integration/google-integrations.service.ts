@@ -69,7 +69,6 @@ export class GoogleIntegrationsService implements
         });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     findOne(userSearchOption: SearchByUserOption): Promise<Integration | null> {
         return this.googleIntegrationRepository.findOne({
             where: {
@@ -130,7 +129,6 @@ export class GoogleIntegrationsService implements
      * @param googleCalendarIntegrations
      * @returns
      */
-    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
     async create(
         user: User,
         userSetting: UserSetting,
@@ -147,7 +145,6 @@ export class GoogleIntegrationsService implements
             googleIntegrationBody
         );
     }
-    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     async _create(
         manager: EntityManager,
