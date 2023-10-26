@@ -59,7 +59,8 @@
             "args": [
                 "--config",
                 ".mocharc.yml",
-                "${file}"
+                "${file}",
+                "--exit"
             ],
             "env": {
                 "ENV": "local_integration_test",

@@ -54,7 +54,7 @@ export class VerificationService {
             isAlreadySignedUpUserOnEmailVerification = false;
         }
 
-        const publishResult = await this.publishSyncdayNotification(
+        await this.publishSyncdayNotification(
             language,
             newVerificationParam,
             isAlreadySignedUpUserOnEmailVerification
@@ -70,7 +70,7 @@ export class VerificationService {
 
         const redisSetResult = _result === 'OK';
 
-        return publishResult && redisSetResult;
+        return redisSetResult;
     }
 
     async publishSyncdayNotification(

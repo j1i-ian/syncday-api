@@ -50,6 +50,7 @@ import { AppleCalendarListService } from '@services/integrations/apple-integrati
 import { AppleCalendarEventListService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-list.service';
 import { AppleCalendarEventCreateService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-create.service';
 import { AppleCalendarEventPatchService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-patch.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { Verification } from '@entity/verifications/verification.interface';
 import { QuestionInputType } from '@entity/invitee-questions/question-input-type.enum';
@@ -98,6 +99,9 @@ export class TestIntegrationUtil {
     syncdayRedisService: SyncdayRedisService;
     googleCalendarIntegrationsService: GoogleCalendarIntegrationsService;
 
+    // Prevent AWS Requests
+    notificationServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
+
     // for user test
     googleCalendarIntegrationsServiceSubscribeCalendarStub: sinon.SinonStub;
     generateGoogleOAuthClientStub: sinon.SinonStub;
@@ -128,30 +132,34 @@ export class TestIntegrationUtil {
 
     async initializeApp(): Promise<INestApplication> {
 
-        const moduleFixture = await this.initializeModule();
+        if (!this.app) {
 
-        this.app = moduleFixture.createNestApplication();
+            const moduleFixture = await this.initializeModule();
 
-        await this.app.init();
+            this.app = moduleFixture.createNestApplication();
 
-        this.redisCluster = this.app.get<Cluster>(getClusterToken(DEFAULT_CLUSTER_NAMESPACE));
-        this.logger = this.app.get<Logger>(WINSTON_MODULE_PROVIDER);
+            await this.app.init();
 
-        this.calendarIntegrationsController = this.app.get<CalendarIntegrationsController>(CalendarIntegrationsController);
-        this.vendorIntegrationsController = this.app.get<VendorIntegrationsController>(VendorIntegrationsController);
-        this.bookingsController = this.app.get<BookingsController>(BookingsController);
-        this.userController = this.app.get<UserController>(UserController);
-        this.tokenController = this.app.get<TokenController>(TokenController);
-        this.temporaryUsersController = this.app.get<TemporaryUsersController>(TemporaryUsersController);
-        this.verificationController = this.app.get<VerificationController>(VerificationController);
+            this.redisCluster = this.app.get<Cluster>(getClusterToken(DEFAULT_CLUSTER_NAMESPACE));
+            this.logger = this.app.get<Logger>(WINSTON_MODULE_PROVIDER);
 
-        this.tokenService = this.app.get<TokenService>(TokenService);
-        this.syncdayRedisService = this.app.get<SyncdayRedisService>(SyncdayRedisService);
-        this.googleCalendarIntegrationsService = this.app.get<GoogleCalendarIntegrationsService>(GoogleCalendarIntegrationsService);
+            this.calendarIntegrationsController = this.app.get<CalendarIntegrationsController>(CalendarIntegrationsController);
+            this.vendorIntegrationsController = this.app.get<VendorIntegrationsController>(VendorIntegrationsController);
+            this.bookingsController = this.app.get<BookingsController>(BookingsController);
+            this.userController = this.app.get<UserController>(UserController);
+            this.tokenController = this.app.get<TokenController>(TokenController);
+            this.temporaryUsersController = this.app.get<TemporaryUsersController>(TemporaryUsersController);
+            this.verificationController = this.app.get<VerificationController>(VerificationController);
 
-        this.scheduleRepository = this.app.get(getRepositoryToken(Schedule));
-        this.googleScheduleRepository = this.app.get(getRepositoryToken(GoogleIntegrationSchedule));
-        this.appleScheduleRepository = this.app.get(getRepositoryToken(AppleCalDAVIntegrationSchedule));
+            this.tokenService = this.app.get<TokenService>(TokenService);
+            this.syncdayRedisService = this.app.get<SyncdayRedisService>(SyncdayRedisService);
+            this.googleCalendarIntegrationsService = this.app.get<GoogleCalendarIntegrationsService>(GoogleCalendarIntegrationsService);
+
+            this.scheduleRepository = this.app.get(getRepositoryToken(Schedule));
+            this.googleScheduleRepository = this.app.get(getRepositoryToken(GoogleIntegrationSchedule));
+            this.appleScheduleRepository = this.app.get(getRepositoryToken(AppleCalDAVIntegrationSchedule));
+        }
+
 
         return this.app;
     }
@@ -386,14 +394,14 @@ export class TestIntegrationUtil {
                         _integrationVendor,
                         true
                     );
-                    await Promise.all(
-                        allIntegrations.map(async (integration) => {
+                    return await Promise.all(
+                        allIntegrations.map(async (integration) =>
                             await this.vendorIntegrationsController.remove(
                                 userId,
                                 _integrationVendor,
                                 integration.id
-                            );
-                        })
+                            )
+                        )
                     );
 
                 })
@@ -520,9 +528,10 @@ export class TestIntegrationUtil {
 
     getFakeUser(): User {
 
+        const fakeUserName = faker.internet.userName();
         const fakeUser = {
-            email: faker.internet.email('foobar'),
-            name: faker.internet.userName()
+            email: faker.internet.email(fakeUserName),
+            name: fakeUserName
         } as User;
 
         return fakeUser;
@@ -617,6 +626,8 @@ export class TestIntegrationUtil {
 
     private async initializeModule(): Promise<TestingModule> {
 
+        this.notificationServiceStub = sinon.createStubInstance(NotificationsService);
+
         this.zoomOauthTokenServiceStub = sinon.createStubInstance(ZoomOauthTokenService);
         this.zoomOauthUserServiceStub = sinon.createStubInstance(ZoomOauthUserService);
         this.zoomCreateMeetingServiceStub = sinon.createStubInstance(ZoomCreateMeetingService);
@@ -709,6 +720,8 @@ export class TestIntegrationUtil {
                 SchedulesModule
             ]
         })
+            .overrideProvider(NotificationsService)
+            .useValue(this.notificationServiceStub)
             .overrideProvider(ZoomOauthTokenService)
             .useValue(this.zoomOauthTokenServiceStub)
             .overrideProvider(ZoomOauthUserService)

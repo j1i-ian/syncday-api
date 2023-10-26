@@ -13,7 +13,6 @@ import { EventsService } from '@services/events/events.service';
 import { User } from '@entity/users/user.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { Event } from '@entity/events/event.entity';
-import { EventStatus } from '@entity/events/event-status.enum';
 import { TestIntegrationUtil } from './test-integration-util';
 
 const testIntegrationUtil = new TestIntegrationUtil();
@@ -54,41 +53,43 @@ describe('Schedule Integration Test', () => {
 
         const timezone = 'Asia/Seoul';
 
+        beforeEach(async () => {
+
+            const newFakeHostUser = testIntegrationUtil.setNewFakeUserEmail(true);
+
+            const loadedUser = await userService.findUserByEmail(newFakeHostUser.email);
+
+            if (!loadedUser) {
+                await testIntegrationUtil.createEmailUser(newFakeHostUser);
+            }
+
+            fakeHostUser = await userService.findUserByEmail(newFakeHostUser.email) as User;
+
+            hostWorkspace = fakeHostUser.workspace as string;
+
+            // fetch host events
+            const hostEventDtoArray = await firstValueFrom(bookingsController.fetchHostEvents(hostWorkspace));
+            expect(hostEventDtoArray.length).greaterThan(0);
+
+            fakeHostEvent = hostEventDtoArray[0] as HostEvent;
+
+            // fetch host availabilities
+            const hostAvailabilityDto = await firstValueFrom(bookingsController.searchHostAvailabilities(
+                hostWorkspace,
+                fakeHostEvent.link
+            ));
+            expect(hostAvailabilityDto).ok;
+
+            // fetching host data
+            const hostUser = await firstValueFrom(bookingsController.fetchHost(hostWorkspace));
+            expect(hostUser).ok;
+        });
+
+        afterEach(async () => {
+            await testIntegrationUtil.clearSchedule(hostWorkspace);
+        });
+
         describe('Test booking for email user', () => {
-
-            beforeEach(async () => {
-
-                const newFakeHostUser = testIntegrationUtil.setNewFakeUserEmail(true);
-
-                const loadedUser = await userService.findUserByEmail(newFakeHostUser.email);
-
-                if (!loadedUser) {
-                    await testIntegrationUtil.createEmailUser(newFakeHostUser);
-                }
-
-                fakeHostUser = await userService.findUserByEmail(newFakeHostUser.email) as User;
-
-                hostWorkspace = fakeHostUser.workspace as string;
-
-                // fetch host events
-                const hostEventDtoArray = await firstValueFrom(bookingsController.fetchHostEvents(hostWorkspace));
-                expect(hostEventDtoArray.length).greaterThan(0);
-
-                fakeHostEvent = hostEventDtoArray[0] as HostEvent;
-
-                // fetch host availabilities
-                const hostAvailabilityDto = await firstValueFrom(bookingsController.searchHostAvailabilities(
-                    hostWorkspace,
-                    fakeHostEvent.link
-                ));
-                expect(hostAvailabilityDto).ok;
-
-                // fetching host data
-                const hostUser = await firstValueFrom(bookingsController.fetchHost(hostWorkspace));
-                expect(hostUser).ok;
-
-                await testIntegrationUtil.clearSchedule(hostUser.workspace);
-            });
 
             it('should be booked an appointment by invitee for email user', async () => {
 
@@ -128,12 +129,14 @@ describe('Schedule Integration Test', () => {
                 {
                     description: 'Google Calendar Outbound Test',
                     integrationVendor: IntegrationVendor.GOOGLE,
-                    integrateVendor: async () => {
+                    integrateVendor: async (_fakeHostUser: User) => {
+
+                        const accessToken = testIntegrationUtil.getAccessToken(_fakeHostUser);
 
                         await testIntegrationUtil.integrateGoogleOAuthUser(
                             IntegrationContext.INTEGRATE,
                             timezone,
-                            null,
+                            accessToken,
                             serviceSandbox
                         );
                     },
@@ -152,16 +155,18 @@ describe('Schedule Integration Test', () => {
                 {
                     description: 'Apple Calendar Outbound Test',
                     integrationVendor: IntegrationVendor.APPLE,
-                    integrateVendor: async () => {
+                    integrateVendor: async (_fakeHostUser: User) => {
                         await testIntegrationUtil.integrateApple(
-                            fakeHostUser,
+                            _fakeHostUser,
                             timezone
                         );
+
+                        const accessToken = testIntegrationUtil.getAccessToken(_fakeHostUser);
 
                         await testIntegrationUtil.integrateGoogleOAuthUser(
                             IntegrationContext.INTEGRATE,
                             timezone,
-                            null,
+                            accessToken,
                             serviceSandbox
                         );
                     },
@@ -194,20 +199,9 @@ describe('Schedule Integration Test', () => {
 
                         serviceSandbox = sinon.createSandbox();
 
-                        const loadedUser = await userService.findUserByEmail(fakeHostUser.email);
-
-                        if (!loadedUser) {
-                            const newFakeHostUser = testIntegrationUtil.setNewFakeUserEmail();
-
-                            await testIntegrationUtil.createEmailUser(newFakeHostUser);
-
-                            fakeHostUser = await userService.findUserByEmail(newFakeHostUser.email) as User;
-
-                        }
-
                         setCalendarEventStubs();
 
-                        await integrateVendor();
+                        await integrateVendor(fakeHostUser);
 
                         hostWorkspace = fakeHostUser.workspace as string;
 
@@ -271,20 +265,9 @@ describe('Schedule Integration Test', () => {
 
                         await testIntegrationUtil.clearAllIntegrations(fakeHostUser.id);
 
-                        const events = await firstValueFrom(eventsService.search({
-                            userId: fakeHostUser.id
-                        }));
-                        const targetEvent = events[0];
-                        // fetch host events
-                        await eventsService.patch(
-                            targetEvent.id,
-                            fakeHostUser.id,
-                            {
-                                status: EventStatus.OPENED,
-                                contacts: []
-                            }
-                        );
+                        await userService.deleteUser(fakeHostUser.id);
 
+                        serviceSandbox.reset();
                         serviceSandbox.restore();
                     });
 
@@ -325,6 +308,8 @@ describe('Schedule Integration Test', () => {
                                         contacts: newContacts
                                     }
                                 );
+
+                                fakeHostEvent.contacts = newContacts;
                             }
                         },
                         {
@@ -333,7 +318,6 @@ describe('Schedule Integration Test', () => {
                             initializeOutboundSetting: async () => {
 
                                 const timezone = 'Asia/Seoul';
-                                // set up Google Meet integration
 
                                 const accessToken = testIntegrationUtil.getAccessToken(fakeHostUser);
 
@@ -361,6 +345,8 @@ describe('Schedule Integration Test', () => {
                                         contacts: newContacts
                                     }
                                 );
+
+                                fakeHostEvent.contacts = newContacts;
                             }
                         },
                         {
@@ -417,6 +403,8 @@ describe('Schedule Integration Test', () => {
                                         contacts: newContacts
                                     }
                                 );
+
+                                fakeHostEvent.contacts = newContacts;
                             }
                         }
                     ].forEach(function({

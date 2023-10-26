@@ -62,7 +62,7 @@ stages:
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   needs:
     - lint
-    - test
+    - unit-test
   services:
     - docker:dind
   before_script:
@@ -134,7 +134,7 @@ lint:
     - tags # for staging
     - develop
 
-test:
+unit-test:
   <<: *resolve-submodule
   stage: test
   needs:
@@ -152,12 +152,42 @@ test:
     reports:
       junit: coverage/junit-report.xml
 
+integration-test:
+  stage: test
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
+  dependencies:
+    - lint
+    - unit-test
+  before_script:
+    - apt-get update -y && apt-get -y install openssh-server rsync
+    - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
+    - dpkg -i session-manager-plugin.deb
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash  #download secure files(https://docs.gitlab.com/ee/ci/secure_files/index.html)
+  script:
+    - mkdir $HOME/.ssh
+    - echo -e "host i-* mi-*\n
+          ProxyCommand sh -c \"aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters 'portNumber=%p'\"" > $HOME/.ssh/config
+    - cp .secure_files/syncday.pem ./syncday.pem && chmod 400 syncday.pem
+    - cp .secure_files/.env.test.integration .env.test.integration
+    - bash ./scripts/upload-then-run-integration-test.sh $DEV_EC2_INSTANCE_ID
+    - mkdir coverage/
+    - cp ./integration-junit-report.xml ./coverage/integration-junit-report.xml
+  only:
+    - main
+    - tags # for staging
+  artifacts:
+    when: always
+    paths:
+      - coverage/integration-junit-report.xml
+    reports:
+      junit: coverage/integration-junit-report.xml
+
 build-docs-with-coverage:
   <<: *resolve-submodule
   stage: deploy
   needs:
     - lint
-    - test
+    - unit-test
   script: |
     npm i -D @compodoc/compodoc
     npm i -D nyc
@@ -185,6 +215,9 @@ deploy-docs-to-s3:
 upload-staging-container-repository:
   stage: deploy
   environment: staging
+  needs:
+    - unit-test
+    - integration-test
   <<: *upload-container-repository
   only:
     - tags # for staging
@@ -192,24 +225,12 @@ upload-staging-container-repository:
 upload-production-container-repository:
   stage: deploy
   environment: production
+  needs:
+    - unit-test
+    - integration-test
   <<: *upload-container-repository
   only:
     - main
-
-deploy-to-staging:
-  stage: deploy
-  environment: staging
-  dependencies:
-    - upload-staging-container-repository
-  needs:
-    - upload-staging-container-repository
-  script: echo "Deploy to Staging"
-  only:
-    - tags
-include:
-  - template: AWS/Deploy-ECS.gitlab-ci.yml
-    rules:
-      - if: '$CI_COMMIT_TAG != null'
 
 deploy-to-production:
   stage: deploy
@@ -226,13 +247,28 @@ include:
     rules:
       - if: '$CI_COMMIT_BRANCH == "main"'
 
+deploy-to-staging:
+  stage: deploy
+  environment: staging
+  dependencies:
+    - upload-staging-container-repository
+  needs:
+    - upload-staging-container-repository
+  script: echo "Deploy to Staging"
+  only:
+    - tags
+include:
+  - template: AWS/Deploy-ECS.gitlab-ci.yml
+    rules:
+      - if: '$CI_COMMIT_TAG != null'
+
 deploy-to-development:
   stage: deploy
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   environment: development
   dependencies:
     - lint
-    - test
+    - unit-test
   before_script:
     - apt-get update -y && apt-get -y install openssh-server
     - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
