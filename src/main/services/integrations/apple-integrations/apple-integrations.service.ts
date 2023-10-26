@@ -173,7 +173,10 @@ export class AppleIntegrationsService implements
         ).pipe(
             mergeMap(
                 (loadedAppleIntegration) =>
-                    this.validate(loadedAppleIntegration)
+                    this.validate(
+                        partialIntegration as AppleCalDAVIntegration ||
+                        loadedAppleIntegration
+                    )
             ),
             catchError((errorOrException: Error) => {
 
