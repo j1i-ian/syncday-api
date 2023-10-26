@@ -1,3 +1,4 @@
+import { Observable } from 'rxjs';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
@@ -24,11 +25,15 @@ export interface IntegrationsFactory {
 
     search(userSearchOption: IntegrationSearchOption): Promise<Integration[]>;
 
+    validate(loadedIntegration: Integration): Observable<boolean>;
+
     count(userSearchOption: IntegrationSearchOption): Promise<number>;
 
     findOne(userSearchOption: IntegrationSearchOption): Promise<(Integration) | null>;
 
     create(...argument: (ZoomIntegrationRequest | GoogleIntegrationRequest | AppleIntegrationRequest)): Promise<Integration>;
+
+    patch(vendorIntegrationId: number, userId: number, paritalIntegration?: Integration): Observable<boolean>;
 
     remove(vendorIntegrationId: number, userId: number): Promise<boolean>;
 }

@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { firstValueFrom } from 'rxjs';
 import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 import { AppleIntegrationsSchedulesService } from '@services/integrations/apple-integrations/apple-integrations-schedules/apple-integrations-schedules.service';
 import { AppleIntegrationFacadeService } from '@services/integrations/apple-integrations/apple-integration-facade.service';
@@ -20,6 +23,8 @@ const testMockUtil = new TestMockUtil();
 describe('AppleIntegrationsService', () => {
     let service: AppleIntegrationsService;
 
+    let loggerStub: sinon.SinonStub;
+
     let appleConverterServiceStub: sinon.SinonStubbedInstance<AppleConverterService>;
     let appleIntegrationsSchedulesServiceStub: sinon.SinonStubbedInstance<AppleIntegrationsSchedulesService>;
     let appleIntegrationFacadeServiceStub: sinon.SinonStubbedInstance<AppleIntegrationFacadeService>;
@@ -28,6 +33,10 @@ describe('AppleIntegrationsService', () => {
     let appleCalDAVIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<AppleCalDAVIntegration>>;
 
     before(async () => {
+
+        loggerStub = sinon.stub({
+            error: () => { }
+        } as unknown as Logger) as unknown as sinon.SinonStub;
 
         appleCalDAVIntegrationRepositoryStub = sinon.createStubInstance<Repository<AppleCalDAVIntegration>>(Repository);
 
@@ -38,6 +47,10 @@ describe('AppleIntegrationsService', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AppleIntegrationsService,
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: loggerStub
+                },
                 {
                     provide: AppleConverterService,
                     useValue: appleConverterServiceStub
@@ -70,6 +83,57 @@ describe('AppleIntegrationsService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    describe('Test Validate Apple Integration', () => {
+
+        beforeEach(() => {
+        });
+
+        afterEach(() => {
+            appleIntegrationFacadeServiceStub.generateCalDAVClient.reset();
+        });
+
+        [
+            {
+                description: 'should be fulfilled for valid Apple integration that has a connection with CalDav',
+                shouldThrowException: false,
+                setGenerateCalDAVClientStub: () => {
+                    const calDavClientMock = testMockUtil.getCalDavClientMock();
+
+                    appleIntegrationFacadeServiceStub.generateCalDAVClient.resolves(calDavClientMock);
+                }
+            },
+            {
+                description: 'should be rejected for invalid Apple integration that has a connection with CalDav',
+                shouldThrowException: true,
+                setGenerateCalDAVClientStub: () => {
+                    appleIntegrationFacadeServiceStub.generateCalDAVClient.throws(new Error('Invalid credentials'));
+                }
+            }
+        ].forEach(function({
+            description,
+            shouldThrowException,
+            setGenerateCalDAVClientStub
+        }) {
+            it(description, async () => {
+
+                setGenerateCalDAVClientStub();
+
+                const appleIntegrationMock = stubOne(AppleCalDAVIntegration);
+
+                if (shouldThrowException) {
+                    expect(() => service.validate(appleIntegrationMock)).throws();
+
+                } else {
+                    await firstValueFrom(service.validate(appleIntegrationMock));
+                }
+
+                expect(appleIntegrationFacadeServiceStub.generateCalDAVClient.called).true;
+            });
+
+        });
+
     });
 
     describe('Test Count Apple Integration', () => {
@@ -168,6 +232,76 @@ describe('AppleIntegrationsService', () => {
                 appleCalDAVCredentialMock,
                 timezoneMock
             )).rejectedWith(AlreadyIntegratedCalendarException);
+        });
+    });
+
+    describe('Apple Integration Patch Test', () => {
+
+        let serviceSandbox: sinon.SinonSandbox;
+
+        let appleIntegrationMock: AppleCalDAVIntegration;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+
+            const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+
+            appleIntegrationMock = stubOne(AppleCalDAVIntegration);
+
+            appleCalDAVIntegrationRepositoryStub.findOneByOrFail.resolves(appleIntegrationMock);
+
+            appleCalDAVIntegrationRepositoryStub.update.resolves(updateResultMock);
+        });
+
+        afterEach(() => {
+            appleCalDAVIntegrationRepositoryStub.findOneByOrFail.reset();
+
+            appleCalDAVIntegrationRepositoryStub.update.reset();
+
+            serviceSandbox.restore();
+        });
+
+        [
+            {
+                description: 'should be patched to revoked with throwing error when integration credentials are no longer valid',
+                stubServiceValidate: () => {
+                    serviceSandbox.stub(service, 'validate').throws(new Error('Invalid Credentials'));
+                },
+                shouldThrowException: true
+            },
+            {
+                description: 'should be patched last apple id access at when integration credentials are valid',
+                stubServiceValidate: () => {
+                    serviceSandbox.stub(service, 'validate').resolves();
+                },
+                shouldThrowException: false
+            }
+        ].forEach(function({
+            description,
+            stubServiceValidate,
+            shouldThrowException
+        }) {
+            it(description, async () => {
+
+                stubServiceValidate();
+
+                const userMock = stubOne(User);
+
+                if (shouldThrowException) {
+                    await expect(firstValueFrom(service.patch(appleIntegrationMock.id, userMock.id))).rejected;
+                    expect(appleCalDAVIntegrationRepositoryStub.update.called).false;
+                } else {
+                    const result = await firstValueFrom(
+                        service.patch(
+                            appleIntegrationMock.id,
+                            userMock.id
+                        )
+                    );
+
+                    expect(result).true;
+                    expect(appleCalDAVIntegrationRepositoryStub.update.called).true;
+                }
+            });
         });
     });
 

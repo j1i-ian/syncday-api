@@ -1,8 +1,9 @@
 import { URL } from 'url';
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, Query, Res, UseFilters } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, Res, UseFilters } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
+import { Observable } from 'rxjs';
 import { AppConfigService } from '@config/app-config.service';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
@@ -149,6 +150,19 @@ export class VendorIntegrationsController {
         return plainToInstance(CreateIntegrationResponseDto, createdIntegration, {
             excludeExtraneousValues: true
         }) as Integration;
+    }
+
+    @Patch(':vendorIntegrationId(\\d+)')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    patchVendorIntegration(
+        @AuthUser() user: User,
+        @Param('vendor') vendor: IntegrationVendor,
+        @Param('vendorIntegrationId', ParseIntPipe) vendorIntegrationId: number
+    ): Observable<boolean> {
+
+        const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
+
+        return integrationService.patch(vendorIntegrationId, user.id);
     }
 
     @Delete(':vendorIntegrationId(\\d+)')

@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Observable, catchError, from, map, mergeMap, throwError } from 'rxjs';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
 import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
@@ -17,6 +20,7 @@ import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { IntegrationStatus } from '@dto/integrations/integration-status.enum';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
 import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
 
@@ -32,6 +36,7 @@ export class AppleIntegrationsService implements
         private readonly appleIntegrationsSchedulesService: AppleIntegrationsSchedulesService,
         private readonly appleIntegrationFacade: AppleIntegrationFacadeService,
         private readonly appleCalendarIntegrationService: AppleCalendarIntegrationsService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @InjectRepository(AppleCalDAVIntegration)
         private readonly appleCalDAVIntegrationRepository: Repository<AppleCalDAVIntegration>
     ) {}
@@ -40,6 +45,24 @@ export class AppleIntegrationsService implements
         throw new Error('Method not implemented.');
     }
 
+    validate(loadedAppleCalDAVIntegration: AppleCalDAVIntegration): Observable<boolean> {
+        return from(
+            this.appleIntegrationFacade.generateCalDAVClient({
+                username: loadedAppleCalDAVIntegration.email,
+                password: loadedAppleCalDAVIntegration.appSpecificPassword
+            })
+        ).pipe(
+            catchError((error) => {
+                this.logger.error({
+                    integration: loadedAppleCalDAVIntegration,
+                    error
+                });
+
+                throw error;
+            }),
+            map((client) => !!client)
+        );
+    }
 
     async search({
         userId,
@@ -138,6 +161,57 @@ export class AppleIntegrationsService implements
         const creatdIntegration = await this.appleCalDAVIntegrationRepository.save(appleCalDAVIntegration);
 
         return creatdIntegration.toIntegration();
+    }
+
+    patch(vendorIntegrationId: number, userId: number, partialIntegration?: Partial<Integration> | undefined): Observable<boolean> {
+
+        return from(
+            this.appleCalDAVIntegrationRepository.findOneByOrFail({
+                id: vendorIntegrationId,
+                userId
+            })
+        ).pipe(
+            mergeMap(
+                (loadedAppleIntegration) =>
+                    this.validate(loadedAppleIntegration)
+            ),
+            catchError((errorOrException: Error) => {
+
+                if (errorOrException.message?.trim() === 'Invalid credentials') {
+                    return from(
+                        this.appleCalDAVIntegrationRepository.update(
+                            vendorIntegrationId,
+                            {
+                                status: IntegrationStatus.REVOKED
+                            }
+                        )
+                    ).pipe(
+                        mergeMap(() => throwError(() => errorOrException))
+                    );
+                } else {
+                    throw errorOrException;
+                }
+            }),
+            mergeMap(() =>
+                from(
+                    this.appleCalDAVIntegrationRepository.update(
+                        vendorIntegrationId,
+                        {
+                            lastAppleIdAccessAt: new Date()
+                        }
+                    )
+                ).pipe(
+                    map(
+                        (updateResult) =>
+                            !!(
+                                updateResult &&
+                                updateResult.affected &&
+                                updateResult.affected > 0
+                            )
+                    )
+                )
+            )
+        );
     }
 
     async remove(vendorIntegrationId: number, userId: number): Promise<boolean> {

@@ -4,6 +4,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Raw, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
+import { Observable } from 'rxjs';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
 import { AppConfigService } from '@config/app-config.service';
@@ -42,6 +43,11 @@ export class ZoomIntegrationsService implements
     oauthClientId: string;
     redirectURI: string;
     zoomOAuth2SuccessRedirectURI: string;
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    validate(loadedIntegration: Integration): Observable<boolean> {
+        throw new Error('Method not implemented.');
+    }
 
     async search(userSearchOption: SearchByUserOption): Promise<Integration[]> {
 
@@ -139,6 +145,17 @@ export class ZoomIntegrationsService implements
         });
 
         return zoomIntegration;
+    }
+
+    patch(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        _vendorIntegrationId: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        userId: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        _paritalIntegration?: Integration | undefined
+    ): Observable<boolean> {
+        throw new Error('Method not implemented.');
     }
 
     async remove(zoomIntegrationId: number, userId: number): Promise<boolean> {

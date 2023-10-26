@@ -5,6 +5,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { plainToInstance } from 'class-transformer';
+import { Observable } from 'rxjs';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
@@ -50,6 +51,11 @@ export class GoogleIntegrationsService implements
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     callback(_request: Request, _response: Response): void {
+        throw new Error('Method not implemented.');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    validate(loadedIntegration: Integration): Observable<boolean> {
         throw new Error('Method not implemented.');
     }
 
@@ -241,6 +247,17 @@ export class GoogleIntegrationsService implements
         );
 
         return createdGoogleIntegration;
+    }
+
+    patch(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        _vendorIntegrationId: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        userId: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        _paritalIntegration?: Integration | undefined
+    ): Observable<boolean> {
+        throw new Error('Method not implemented.');
     }
 
     async remove(
