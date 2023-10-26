@@ -161,12 +161,6 @@ export class GoogleIntegrationsService implements
 
         const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
 
-        const _loadedGoogleIntegration = await _googleIntegrationRepository.findOneBy({
-            users: {
-                id: user.id
-            }
-        });
-
         const newGoogleIngration: GoogleIntegration = {
             accessToken: googleAuthToken.accessToken,
             refreshToken: googleAuthToken.refreshToken,
@@ -180,10 +174,7 @@ export class GoogleIntegrationsService implements
                     inboundDecliningSync: false
                 };
 
-                /**
-                 * TODO: It should be extracted as ORM Subscriber.
-                 */
-                if (calendar.primary && _loadedGoogleIntegration === null) {
+                if (calendar.primary) {
                     calendarSetting = {
                         conflictCheck: true,
                         outboundWriteSync: true,
