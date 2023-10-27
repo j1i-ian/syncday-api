@@ -204,6 +204,7 @@ deploy-docs-to-s3:
   stage: deploy
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   needs:
+    - integration-test
     - build-docs-with-coverage
   script: |
     aws s3 sync ./docs s3://$S3_BUCKET --delete --acl public-read
