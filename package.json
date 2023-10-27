@@ -1,6 +1,6 @@
 {
   "name": "syncday-api",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "description": "api for syncday",
   "author": "Alan",
   "private": true,
