@@ -167,7 +167,7 @@ integration-test:
     - cp .secure_files/syncday.pem ./syncday.pem && chmod 400 syncday.pem
     - cp .secure_files/.env.test.integration .env.test.integration
     - bash ./scripts/upload-then-run-integration-test.sh $DEV_EC2_INSTANCE_ID
-    - mkdir coverage/
+    - mkdir -p coverage/
     - cp ./integration-junit-report.xml ./coverage/integration-junit-report.xml
     - |
       echo "Evaluate integration test result."
