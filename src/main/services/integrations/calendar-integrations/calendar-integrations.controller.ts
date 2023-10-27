@@ -88,7 +88,12 @@ export class CalendarIntegrationsController {
                         error
                     });
 
-                    throw error;
+                    if (error.message === 'Invalid credentials') {
+                        return of(true);
+                    } else {
+                        throw error;
+                    }
+
                 })
             );
     }

@@ -173,7 +173,6 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
                 }
             );
 
-
             const _inboundCalendarIntegrations = loadedCalendarIntegrations
                 .filter((_loadedCalendarIntegration) =>
                     _calendarIntegrations.find(
