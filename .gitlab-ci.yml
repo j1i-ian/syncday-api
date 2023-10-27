@@ -189,6 +189,7 @@ build-docs-with-coverage:
     - lint
     - unit-test
   before_script:
+    - !reference [.resolve-submodule, before_script]
     - !reference [.resolve-variables-by-env, before_script]
   script: |
     npm i -D @compodoc/compodoc
