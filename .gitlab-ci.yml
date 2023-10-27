@@ -219,22 +219,22 @@ deploy-docs-to-s3:
     - main
 
 upload-staging-container-repository:
+  <<: *upload-container-repository
   stage: deploy
   environment: staging
   needs:
     - unit-test
     - integration-test
-  <<: *upload-container-repository
   only:
     - tags # for staging
 
 upload-production-container-repository:
+  <<: *upload-container-repository
   stage: deploy
   environment: production
   needs:
     - unit-test
     - integration-test
-  <<: *upload-container-repository
   only:
     - main
 
