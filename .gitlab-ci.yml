@@ -257,28 +257,43 @@ deploy-to-development:
     - develop
 
 deploy-to-staging:
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-ecs:latest
   stage: deploy
   environment: staging
   dependencies:
     - upload-staging-container-repository
   needs:
     - upload-staging-container-repository
-  before_script:
-    - !reference [.resolve-variables-by-env, before_script]
-  script: echo "Deploy to Staging"
+  script:
+    - cp $CI_AWS_ECS_TASK_DEFINITION_FILE task-definition.json
+    - aws ecs register-task-definition --cli-input-json file://task-definition.json --family $CI_AWS_ECS_TASK_DEFINITION
+    - aws ecs update-service --cluster $CI_AWS_ECS_CLUSTER --service $CI_AWS_ECS_SERVICE --task-definition $CI_AWS_ECS_TASK_DEFINITION --force-new-deployment
+  variables:
+    EMV: staging
+    CI_ENVIRONMENT_NAME: staging
+    APP_NAME: stg-syncday-api
+    DOCKER_FILE: Dockerfile.stg
   only:
     - tags
 
 deploy-to-production:
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-ecs:latest
   stage: deploy
-  environment: production
+  environment:
+    name: production
+    on_stop: stop-deploy
   dependencies:
     - upload-production-container-repository
   needs:
     - upload-production-container-repository
-  before_script:
-    - !reference [.resolve-variables-by-env, before_script]
-  script: echo "Deploy to Production"
+  script:
+    - aws ecs register-task-definition --cli-input-json $CI_AWS_ECS_TASK_DEFINITION_FILE --family $CI_AWS_ECS_TASK_DEFINITION
+    - aws ecs update-service --cluster $CI_AWS_ECS_CLUSTER --service $CI_AWS_ECS_SERVICE --task-definition $CI_AWS_ECS_TASK_DEFINITION --desired-count 1 --force-new-deployment
+  variables:
+    EMV: production
+    CI_ENVIRONMENT_NAME: production
+    APP_NAME: syncday-api
+    DOCKER_FILE: Dockerfile
   only:
     - main
 
