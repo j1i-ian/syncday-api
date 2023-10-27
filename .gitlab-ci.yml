@@ -306,4 +306,6 @@ stop-deploy:
   allow_failure: true
   script:
     - ecs stop-task
-  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH || $CI_COMMIT_TAG'
+      when: manual
