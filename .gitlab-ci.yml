@@ -98,9 +98,6 @@ init:
       echo "DYNAMIC_ENVIRONMENT_NAME=$EMV" >> deploy.env    # Add the value to a dotenv file.
 
       npm install
-  artifacts:
-    reports:
-      dotenv: deploy.env
   only:
     - main
     - tags # for staging
@@ -155,7 +152,8 @@ unit-test:
 integration-test:
   stage: test
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
-  dependencies:
+  needs:
+    - lint
     - unit-test
   before_script:
     - apt-get update -y && apt-get -y install openssh-server rsync
@@ -238,36 +236,6 @@ upload-production-container-repository:
   only:
     - main
 
-deploy-to-production:
-  stage: deploy
-  environment: production
-  dependencies:
-    - upload-production-container-repository
-  needs:
-    - upload-production-container-repository
-  script: echo "Deploy to Production"
-  only:
-    - main
-include:
-  - template: AWS/Deploy-ECS.gitlab-ci.yml
-    rules:
-      - if: '$CI_COMMIT_BRANCH == "main"'
-
-deploy-to-staging:
-  stage: deploy
-  environment: staging
-  dependencies:
-    - upload-staging-container-repository
-  needs:
-    - upload-staging-container-repository
-  script: echo "Deploy to Staging"
-  only:
-    - tags
-include:
-  - template: AWS/Deploy-ECS.gitlab-ci.yml
-    rules:
-      - if: '$CI_COMMIT_TAG != null'
-
 deploy-to-development:
   stage: deploy
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
@@ -276,6 +244,7 @@ deploy-to-development:
     - lint
     - unit-test
   before_script:
+    - !reference [.resolve-variables-by-env, before_script]
     - apt-get update -y && apt-get -y install openssh-server
     - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
     - dpkg -i session-manager-plugin.deb
@@ -290,3 +259,37 @@ deploy-to-development:
     - bash ./scripts/deploy-to-dev.sh $DEV_EC2_INSTANCE_ID
   only:
     - develop
+
+deploy-to-staging:
+  stage: deploy
+  environment: staging
+  dependencies:
+    - upload-staging-container-repository
+  needs:
+    - upload-staging-container-repository
+  before_script:
+    - !reference [.resolve-variables-by-env, before_script]
+  script: echo "Deploy to Staging"
+  only:
+    - tags
+include:
+  - template: AWS/Deploy-ECS.gitlab-ci.yml
+    rules:
+      - if: '$CI_COMMIT_TAG != null'
+
+deploy-to-production:
+  stage: deploy
+  environment: production
+  dependencies:
+    - upload-production-container-repository
+  needs:
+    - upload-production-container-repository
+  before_script:
+    - !reference [.resolve-variables-by-env, before_script]
+  script: echo "Deploy to Production"
+  only:
+    - main
+include:
+  - template: AWS/Deploy-ECS.gitlab-ci.yml
+    rules:
+      - if: '$CI_COMMIT_BRANCH == "main"'
