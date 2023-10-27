@@ -188,6 +188,8 @@ build-docs-with-coverage:
   needs:
     - lint
     - unit-test
+  before_script:
+    - !reference [.resolve-variables-by-env, before_script]
   script: |
     npm i -D @compodoc/compodoc
     npm i -D nyc
@@ -206,6 +208,7 @@ deploy-docs-to-s3:
   needs:
     - integration-test
     - build-docs-with-coverage
+  allow_failure: true
   script: |
     aws s3 sync ./docs s3://$S3_BUCKET --delete --acl public-read
   variables:
