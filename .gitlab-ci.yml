@@ -13,6 +13,7 @@ stages:
   - test
   - security
   - deploy
+  - stop
 
 .resolve-bash-git-for-alpine:
   image: node:19-alpine
@@ -280,3 +281,14 @@ deploy-to-production:
   script: echo "Deploy to Production"
   only:
     - main
+
+stop-deploy:
+  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-ecs:latest
+  environment:
+    name: production
+    action: stop
+  stage: stop
+  allow_failure: true
+  script:
+    - ecs stop-task
+  when: manual
