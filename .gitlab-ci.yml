@@ -13,11 +13,6 @@ stages:
   - test
   - security
   - deploy
-  # for ecs template
-  - review
-  - dast
-  - production
-  - cleanup
 
 .resolve-bash-git-for-alpine:
   image: node:19-alpine
@@ -272,10 +267,6 @@ deploy-to-staging:
   script: echo "Deploy to Staging"
   only:
     - tags
-include:
-  - template: AWS/Deploy-ECS.gitlab-ci.yml
-    rules:
-      - if: '$CI_COMMIT_TAG != null'
 
 deploy-to-production:
   stage: deploy
@@ -289,7 +280,3 @@ deploy-to-production:
   script: echo "Deploy to Production"
   only:
     - main
-include:
-  - template: AWS/Deploy-ECS.gitlab-ci.yml
-    rules:
-      - if: '$CI_COMMIT_BRANCH == "main"'
