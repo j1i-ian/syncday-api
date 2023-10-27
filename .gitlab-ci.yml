@@ -290,8 +290,9 @@ deploy-to-production:
   before_script:
     - !reference [.resolve-variables-by-env, before_script]
   script:
-    - aws ecs register-task-definition --cli-input-json $CI_AWS_ECS_TASK_DEFINITION_FILE --family $CI_AWS_ECS_TASK_DEFINITION
-    - aws ecs update-service --cluster $CI_AWS_ECS_CLUSTER --service $CI_AWS_ECS_SERVICE --task-definition $CI_AWS_ECS_TASK_DEFINITION --desired-count 1 --force-new-deployment
+    - cp $CI_AWS_ECS_TASK_DEFINITION_FILE task-definition.json
+    - aws ecs register-task-definition --cli-input-json file://task-definition.json --family $CI_AWS_ECS_TASK_DEFINITION
+    - aws ecs update-service --cluster $CI_AWS_ECS_CLUSTER --service $CI_AWS_ECS_SERVICE --task-definition $CI_AWS_ECS_TASK_DEFINITION --force-new-deployment
   only:
     - main
 
