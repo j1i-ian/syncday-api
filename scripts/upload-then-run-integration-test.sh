@@ -13,6 +13,9 @@ rsync -a -e "ssh -i $PEM_PATH -o StrictHostKeyChecking=no" \
     $(pwd)/typings \
     ubuntu@$1:/home/ubuntu/integration-test/
 
+# Clear
+ssh -o StrictHostKeyChecking=no -i $PEM_PATH ubuntu@$1 "rm integration-test/coverage/integration-junit-report.xml"
+
 # Install dependencies
 ssh -o StrictHostKeyChecking=no -i $PEM_PATH ubuntu@$1 "cd integration-test && npm install --ignore-scripts"
 
