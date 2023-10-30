@@ -5,13 +5,15 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { AuthUser } from '@decorators/auth-user.decorator';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
+import { GlobalCalendarIntegrationService } from '@services/integrations/calendar-integrations/global-calendar-integration.service';
 import { CalendarIntegrationResponseDto } from '@dto/integrations/calendar-integration-response.dto';
 
 @Controller()
 export class CalendarIntegrationsController {
     constructor(
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-        private readonly calendarIntegrationsServiceLocator: CalendarIntegrationsServiceLocator
+        private readonly calendarIntegrationsServiceLocator: CalendarIntegrationsServiceLocator,
+        private readonly globalCalendarIntegrationService: GlobalCalendarIntegrationService
     ) {}
 
     @Get()
@@ -54,34 +56,18 @@ export class CalendarIntegrationsController {
         // but in the future we should remove exception after multiple outbound implement
         const requestedOutboundCalendars = calendarIntegrations.filter((_calIntegration) => _calIntegration.setting.outboundWriteSync === true);
         const invalidOutboundCalendarUpdate = requestedOutboundCalendars.length > 1;
-        const hasOutboundUpdate = requestedOutboundCalendars.length > 0;
 
         if (invalidOutboundCalendarUpdate) {
             throw new BadRequestException('Outbound calendar should be unique');
         }
 
-        const calendarIntegrationsServices = this.calendarIntegrationsServiceLocator.getAllCalendarIntegrationServices();
+        const patchAll$ = this.globalCalendarIntegrationService.patchAll(
+            userId,
+            calendarIntegrations
+        );
 
-        return from(calendarIntegrationsServices)
+        return from(patchAll$)
             .pipe(
-                mergeMap((calendarIntegrationsService) => {
-
-                    const _vendor = calendarIntegrationsService.getIntegrationVendor();
-
-                    const _filteredCalendars = calendarIntegrations.filter(
-                        (_calIntegration) => _calIntegration.vendor === _vendor
-                    );
-
-                    if (hasOutboundUpdate || _filteredCalendars.length > 0) {
-                        return calendarIntegrationsService.patchAll(
-                            userId,
-                            _filteredCalendars
-                        );
-                    } else {
-                        return of(true);
-                    }
-                }),
-                toArray(),
                 map(
                     (results) => {
 
