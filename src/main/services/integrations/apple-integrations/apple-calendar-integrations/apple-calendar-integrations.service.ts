@@ -112,7 +112,16 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         );
     }
 
-    async patch(
+    patch(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        userId: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        calendarIntegration: Partial<CalendarIntegration> & Pick<CalendarIntegration, 'id' | 'setting'>
+    ): Promise<boolean> {
+        throw new Error('Method not implemented.');
+    }
+
+    async patchAll(
         userId: number,
         calendarIntegrations: Array<Partial<CalendarIntegration> & Pick<CalendarIntegration, 'id' | 'setting'>>
     ): Promise<boolean> {

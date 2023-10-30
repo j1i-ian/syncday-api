@@ -73,7 +73,7 @@ export class CalendarIntegrationsController {
                     );
 
                     if (hasOutboundUpdate || _filteredCalendars.length > 0) {
-                        return calendarIntegrationsService.patch(
+                        return calendarIntegrationsService.patchAll(
                             userId,
                             _filteredCalendars
                         );

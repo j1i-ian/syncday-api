@@ -46,7 +46,7 @@ export class VendorCalendarIntegrationsController {
 
         const calendarIntegrationsService = this.calendarIntegrationsServiceLocator.getCalendarIntegrationService(vendor);
 
-        return calendarIntegrationsService.patch(userId, calendarIntegrations);
+        return calendarIntegrationsService.patchAll(userId, calendarIntegrations);
     }
 
 }
