@@ -292,23 +292,17 @@ describe('GoogleCalendarIntegrationsService', () => {
 
         describe('Test patch', () => {
 
-            let serviceSynchronizeStub: sinon.SinonStub;
-
             beforeEach(() => {
                 serviceSandbox = sinon.createSandbox();
                 serviceSandbox.stub(service, '_resetOutboundSetting').returns(of(true));
-                serviceSynchronizeStub = serviceSandbox.stub(service, 'synchronize').resolves(true);
             });
 
             afterEach(() => {
-
-                serviceSynchronizeStub.reset();
-
                 serviceSandbox.reset();
                 serviceSandbox.restore();
             });
 
-            it('should be patched all for calendar items', async () => {
+            it('should be patched for calendar items', async () => {
                 const userSettingStub = stubOne(UserSetting);
                 const userStub = stubOne(User, {
                     userSetting: userSettingStub
@@ -337,16 +331,25 @@ describe('GoogleCalendarIntegrationsService', () => {
                 const deleteResultMock = TestMockUtil.getTypeormUpdateResultMock();
                 googleIntegrationScheduleRepositoryStub.delete.resolves(deleteResultMock);
 
-                const patchSuccess = await service.patchAll(userStub.id, [googleCalendarIntegrationsMock]);
+                const googleOAuthClientStub = testMockUtil.getGoogleOAuthClientMock();
+
+                integrationUtilsServiceStub.getGoogleOAuthClient.returns(googleOAuthClientStub);
+
+                const synchronizeWithGoogleCalendarEventsStub = serviceSandbox.stub(service, '_synchronizeWithGoogleCalendarEvents');
+                const resubscriptionCalendarStub = serviceSandbox.stub(service, 'resubscriptionCalendar');
+
+                const patchSuccess = await service.patch(userStub.id, [googleCalendarIntegrationsMock]);
 
                 expect(patchSuccess).true;
-                expect(serviceSynchronizeStub.called).true;
                 expect(googleCalendarIntegrationRepositoryStub.find.called).true;
                 expect(googleCalendarIntegrationRepositoryStub.save.called).true;
                 expect(googleIntegrationScheduleRepositoryStub.delete.called).true;
+                expect(integrationUtilsServiceStub.getGoogleOAuthClient.called).true;
+                expect(synchronizeWithGoogleCalendarEventsStub.called).true;
+                expect(resubscriptionCalendarStub.called).true;
             });
 
-            it('should be threw error when there is calendar in request array that is not owned of user for patching all', async () => {
+            it('should be threw error when there is calendar in request array that is not owned of user', async () => {
 
                 const userSettingStub = stubOne(UserSetting);
                 const userStub = stubOne(User, {
@@ -371,65 +374,12 @@ describe('GoogleCalendarIntegrationsService', () => {
 
                 googleCalendarIntegrationRepositoryStub.find.resolves(rest as any);
 
-                await expect(service.patchAll(userStub.id, [googleCalendarIntegrationsMock])).rejectedWith(
+                await expect(service.patch(userStub.id, [googleCalendarIntegrationsMock])).rejectedWith(
                     NotAnOwnerException
                 );
 
                 expect(googleCalendarIntegrationRepositoryStub.find.called).true;
                 expect(googleCalendarIntegrationRepositoryStub.save.called).false;
-            });
-        });
-
-        describe('Test Synchronizing', () => {
-
-            let serviceSandbox: sinon.SinonSandbox;
-
-            let synchronizeWithGoogleCalendarEventsStub: sinon.SinonStub;
-            let resubscriptionCalendarStub: sinon.SinonStub;
-
-            beforeEach(() => {
-                serviceSandbox = sinon.createSandbox();
-
-                const googleOAuthClientStub = testMockUtil.getGoogleOAuthClientMock();
-                integrationUtilsServiceStub.getGoogleOAuthClient.returns(googleOAuthClientStub);
-
-                synchronizeWithGoogleCalendarEventsStub = serviceSandbox.stub(service, '_synchronizeWithGoogleCalendarEvents');
-                resubscriptionCalendarStub = serviceSandbox.stub(service, 'resubscriptionCalendar');
-                resubscriptionCalendarStub.resolves(true);
-            });
-
-            afterEach(() => {
-                integrationUtilsServiceStub.getGoogleOAuthClient.reset();
-                synchronizeWithGoogleCalendarEventsStub.reset();
-                resubscriptionCalendarStub.reset();
-
-                serviceSandbox.reset();
-                serviceSandbox.restore();
-            });
-
-            it('should be synchronizing with google calendar events', async () => {
-                const userMock = stubOne(User);
-                const userSettingMock = stubOne(UserSetting);
-                const googleIntegrationMock = stubOne(GoogleIntegration, {
-                    users: [userMock]
-                });
-                const googleCalendarIntegrationMock = stubOne(GoogleCalendarIntegration, {
-                    users: [userMock],
-                    googleIntegration: googleIntegrationMock
-                });
-
-                await service.synchronize(
-                    datasourceMock as EntityManager,
-                    userMock,
-                    userSettingMock,
-                    googleIntegrationMock,
-                    googleCalendarIntegrationMock
-                );
-
-                expect(synchronizeWithGoogleCalendarEventsStub.called).true;
-                expect(resubscriptionCalendarStub.called).true;
-
-                expect(integrationUtilsServiceStub.getGoogleOAuthClient.called).true;
             });
         });
 

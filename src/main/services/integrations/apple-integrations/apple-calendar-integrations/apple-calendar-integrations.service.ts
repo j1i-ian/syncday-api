@@ -46,13 +46,13 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         } as FindOptionsWhere<AppleCalDAVCalendarIntegration> as FindOptionsWhere<CalendarIntegration>;
     }
 
-    async synchronize(
+    async _synchronizeWithCalDAVCalendars(
         manager: EntityManager,
-        user: User,
-        userSetting: UserSetting,
         integration: AppleCalDAVIntegration,
-        calendarIntegration: AppleCalDAVCalendarIntegration
-    ): Promise<boolean> {
+        calendarIntegration: AppleCalDAVCalendarIntegration,
+        user: User,
+        userSetting: UserSetting
+    ): Promise<void> {
 
         const client = await this.appleIntegrationFacade.generateCalDAVClient({
             username: integration.email,
@@ -94,23 +94,6 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         });
 
         await appleCalDAVIntegrationScheduleRepository.save(newSchedules);
-
-        return true;
-    }
-
-    find(searchOptions: Partial<CalendarIntegrationSearchOption>): Observable<AppleCalDAVCalendarIntegration[]> {
-        const options = this.__patchSearchOption(searchOptions);
-
-        return from(
-            this.appleCalDAVCalendarIntegrationRepository.find({
-                relations: [
-                    'appleCalDAVIntegration',
-                    'appleCalDAVIntegration.user',
-                    'appleCalDAVIntegration.user.userSetting'
-                ],
-                where: options
-            })
-        );
     }
 
     findOne(searchOptions: Partial<CalendarIntegrationSearchOption>): Observable<CalendarIntegration | null> {
@@ -129,26 +112,6 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         );
     }
 
-    validate(
-        requestCalendarIntegrations: Array<
-            Partial<CalendarIntegration> &
-            Pick<CalendarIntegration, 'id' | 'setting'>
-            | AppleCalDAVCalendarIntegration>,
-        loadedCalendarIntegrationsFromRepository: AppleCalDAVCalendarIntegration[]
-    ): void {
-
-        const loadedCalendarIds = loadedCalendarIntegrationsFromRepository.map((_loadedCalendar) => _loadedCalendar.id);
-
-        // validate that request user has a permission
-        const noPermissionCalendar = requestCalendarIntegrations.find(
-            (_requestCalendarIntegration) => loadedCalendarIds.includes(_requestCalendarIntegration.id) === false
-        );
-
-        if (noPermissionCalendar) {
-            throw new NotAnOwnerException();
-        }
-    }
-
     patch(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         userId: number,
@@ -163,14 +126,34 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         calendarIntegrations: Array<Partial<CalendarIntegration> & Pick<CalendarIntegration, 'id' | 'setting'>>
     ): Promise<boolean> {
 
-        const loadedCalendarIntegrations = await firstValueFrom(this.find({
-            userId
-        }));
-
-        this.validate(
-            calendarIntegrations,
-            loadedCalendarIntegrations
+        const calendarIntegrationIds = calendarIntegrations.map(
+            (_calendarIntegration) => _calendarIntegration.id
         );
+
+        const calendarIntegrationRepository = this.getCalendarIntegrationRepository();
+        // check owner permission
+        const loadedCalendarIntegrations = await calendarIntegrationRepository.find({
+            relations: [
+                'appleCalDAVIntegration',
+                'appleCalDAVIntegration.user',
+                'appleCalDAVIntegration.user.userSetting'
+            ],
+            where: {
+                appleCalDAVIntegration: {
+                    userId
+                }
+            }
+        });
+        const loadedCalendarIds = loadedCalendarIntegrations.map((_loadedCalendar) => _loadedCalendar.id);
+
+        // validate that request user has a permission
+        const noPermissionCalendar = calendarIntegrationIds.find(
+            (_calendarId) => loadedCalendarIds.includes(_calendarId) === false
+        );
+
+        if (noPermissionCalendar) {
+            throw new NotAnOwnerException();
+        }
 
         const calendarsToDeleteSchedules = calendarIntegrations.filter((calendarSettingStatus) =>
             calendarSettingStatus.setting.conflictCheck === false
@@ -219,12 +202,12 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
                                 const user = appleCalDAVIntegration.user;
                                 const userSetting = user.userSetting;
 
-                                await this.synchronize(
+                                await this._synchronizeWithCalDAVCalendars(
                                     _transactionManager,
-                                    user,
-                                    userSetting,
                                     appleCalDAVIntegration,
-                                    __inboundCalendarIntegration
+                                    __inboundCalendarIntegration,
+                                    user,
+                                    userSetting
                                 );
 
                                 return;
@@ -339,9 +322,5 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
 
     getIntegrationVendor(): IntegrationVendor {
         return IntegrationVendor.APPLE;
-    }
-
-    getUserFromCalendarIntegration(calendarIntegration: AppleCalDAVCalendarIntegration): User {
-        return calendarIntegration.appleCalDAVIntegration.user;
     }
 }

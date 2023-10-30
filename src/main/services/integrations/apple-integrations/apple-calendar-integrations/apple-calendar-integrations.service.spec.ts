@@ -97,7 +97,7 @@ describe('AppleCalendarIntegrationsService', () => {
             const userMock = stubOne(User);
             const userSettingMock = stubOne(UserSetting);
 
-            await service.synchronize(
+            await service._synchronizeWithCalDAVCalendars(
                 datasourceMock as EntityManager,
                 appleIntegrationMock,
                 appleCalDAVCalendarIntegrationMock,

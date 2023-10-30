@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { AppleCalendarIntegrationsModule } from '@services/integrations/apple-integrations/apple-calendar-integrations/apple-calendar-integrations.module';
 import { CalendarIntegrationsController } from '@services/integrations/calendar-integrations/calendar-integrations.controller';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
-import { GlobalCalendarIntegrationService } from '@services/integrations/calendar-integrations/global-calendar-integration.service';
 import { VendorCalendarIntegrationsController } from '@services/integrations/calendar-integrations/vendor-calendar-integrations.controller';
 import { GoogleCalendarIntegrationsModule } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.module';
 import { GoogleIntegrationModule } from '@services/integrations/google-integration/google-integration.module';
@@ -10,7 +9,7 @@ import { GoogleIntegrationModule } from '@services/integrations/google-integrati
 @Module({
     imports: [GoogleIntegrationModule, GoogleCalendarIntegrationsModule, AppleCalendarIntegrationsModule],
     controllers: [CalendarIntegrationsController, VendorCalendarIntegrationsController],
-    providers: [CalendarIntegrationsServiceLocator, GlobalCalendarIntegrationService],
-    exports: [CalendarIntegrationsServiceLocator, GlobalCalendarIntegrationService]
+    providers: [CalendarIntegrationsServiceLocator],
+    exports: [CalendarIntegrationsServiceLocator]
 })
 export class CalendarIntegrationsModule {}

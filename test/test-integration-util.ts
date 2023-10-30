@@ -516,7 +516,7 @@ export class TestIntegrationUtil {
             outboundWriteSync: true
         };
 
-        return this.googleCalendarIntegrationsService.patchAll(
+        return this.googleCalendarIntegrationsService.patch(
             userId,
             [calendarIntegration]
         );
