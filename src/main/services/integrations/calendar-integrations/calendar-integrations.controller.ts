@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Patch, Get, BadRequestException, Inject, Logger } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Patch, Get, BadRequestException, Inject, Logger, InternalServerErrorException } from '@nestjs/common';
 import { Observable, catchError, from, map, mergeAll, mergeMap, of, toArray } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -81,6 +81,24 @@ export class CalendarIntegrationsController {
                         return of(true);
                     }
                 }),
+                toArray(),
+                map(
+                    (results) => {
+
+                        const hasError = results.find((_result) => _result === false);
+
+                        if (hasError) {
+                            this.logger.error({
+                                message: '',
+                                results
+                            });
+
+                            throw new InternalServerErrorException('Unable to complete the calendar setting patch');
+                        } else {
+                            return true;
+                        }
+                    }
+                ),
                 catchError((error) => {
                     this.logger.error({
                         message: 'Error while calendar integration updating.',
