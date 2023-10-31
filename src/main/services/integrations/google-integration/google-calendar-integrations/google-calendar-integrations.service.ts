@@ -177,7 +177,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
 
         const scheduledEventNotifications = schedules.flatMap((schedule) => schedule.scheduledEventNotifications);
 
-        await this.notificationsService.sendMessages(scheduledEventNotifications);
+        await this.notificationsService.sendCancellationMessages(scheduledEventNotifications);
 
         const canceledScheduleIds = schedules.map((_schedule) => _schedule.id);
 

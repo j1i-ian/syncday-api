@@ -5,6 +5,7 @@ import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/sy
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
 import { AppConfigService } from '@config/app-config.service';
+import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { UtilService } from '@services/util/util.service';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
@@ -18,21 +19,20 @@ export class NotificationsService {
         private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
     ) {}
 
-    async sendMessages(
+    async sendCancellationMessages(
         scheduledEventNotifications: ScheduledEventNotification[]
     ): Promise<boolean> {
 
         const notificationDataAndPublishKeyMap = new Map();
         const notificationDataAndPublishKeyArray = scheduledEventNotifications
             .filter((_scheduleNotification) => {
-                const {
-                    notificationTarget
-                } = _scheduleNotification;
+                const { notificationType } = _scheduleNotification;
 
-                const isNotDuplicated = notificationDataAndPublishKeyMap.has(notificationTarget) === false;
+                const isNotifcationTypeEmail = notificationType === NotificationType.EMAIL;
+                const isNotDuplicated = notificationDataAndPublishKeyMap.has(notificationType) === false;
 
-                if (isNotDuplicated) {
-                    notificationDataAndPublishKeyMap.set(notificationTarget, _scheduleNotification);
+                if (isNotifcationTypeEmail && isNotDuplicated) {
+                    notificationDataAndPublishKeyMap.set(notificationType, _scheduleNotification);
                 }
 
                 return isNotDuplicated;

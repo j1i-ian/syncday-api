@@ -1,6 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
+import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
+import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
@@ -11,6 +16,7 @@ import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-no
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Integration } from '@entity/integrations/integration.entity';
+import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { UtilService } from './util.service';
@@ -474,6 +480,101 @@ describe('UtilService', () => {
                 const defaultName = service.getDefaultAvailabilityName(language);
 
                 expect(defaultName).ok;
+            });
+        });
+    });
+
+    describe('Test convertScheduleNotificationToNotificationDataAndPublishKey', () => {
+        [
+            {
+                description: 'If the notificationTarget is "host" and the notificationType is "email", then the temaplate must be "email cancelled" and the notification publish key must be "email"',
+                scheduleNotificationMock: stubOne(ScheduledEventNotification, {
+                    notificationTarget: NotificationTarget.HOST,
+                    notificationType: NotificationType.EMAIL
+                }),
+                expectedTemplate: EmailTemplate.CANCELLED,
+                expectedSyncdayNotificationPublishKey: SyncdayNotificationPublishKey.EMAIL
+            },
+            {
+                description: 'If the notificationTarget is "invitee" and the notificationType is "email", then the temaplate must be "email cancelled" and the notification publish key must be "email"',
+                scheduleNotificationMock: stubOne(ScheduledEventNotification, {
+                    notificationTarget: NotificationTarget.INVITEE,
+                    notificationType: NotificationType.EMAIL
+                }),
+                expectedTemplate: EmailTemplate.CANCELLED,
+                expectedSyncdayNotificationPublishKey: SyncdayNotificationPublishKey.EMAIL
+            },
+            {
+                description: 'If the notificationTarget is "host" and the notificationType is "text" and reminderType is "kakaotalk", then the temaplate must be "text cancelled host" and the notification publish key must be "kakaotalk"',
+                scheduleNotificationMock: stubOne(ScheduledEventNotification, {
+                    notificationTarget: NotificationTarget.HOST,
+                    notificationType: NotificationType.TEXT,
+                    reminderType: ReminderType.KAKAOTALK
+                }),
+                expectedTemplate: TextTemplate.EVENT_CANCELLED_HOST,
+                expectedSyncdayNotificationPublishKey: SyncdayNotificationPublishKey.KAKAOTALK
+            },
+            {
+                description: 'If the notificationTarget is "invitee" and the notificationType is "text" and reminderType is "kakaotalk", then the temaplate must be "text cancelled invitee" and the notification publish key must be "kakaotalk"',
+                scheduleNotificationMock: stubOne(ScheduledEventNotification, {
+                    notificationTarget: NotificationTarget.INVITEE,
+                    notificationType: NotificationType.TEXT,
+                    reminderType: ReminderType.KAKAOTALK
+                }),
+                expectedTemplate: TextTemplate.EVENT_CANCELLED_INVITEE,
+                expectedSyncdayNotificationPublishKey: SyncdayNotificationPublishKey.KAKAOTALK
+            },
+            {
+                description: 'If the notificationTarget is "host" and the notificationType is "text" and reminderType is "sms", then the temaplate must be "text cancelled host" and the notification publish key must be "sms-global"',
+                scheduleNotificationMock: stubOne(ScheduledEventNotification, {
+                    notificationTarget: NotificationTarget.HOST,
+                    notificationType: NotificationType.TEXT,
+                    reminderType: ReminderType.SMS
+                }),
+                expectedTemplate: TextTemplate.EVENT_CANCELLED_HOST,
+                expectedSyncdayNotificationPublishKey: SyncdayNotificationPublishKey.SMS_GLOBAL
+            },
+            {
+                description: 'If the notificationTarget is "invitee" and the notificationType is "text" and reminderType is "sms", then the temaplate must be "text cancelled invitee" and the notification publish key must be "sms-global"',
+                scheduleNotificationMock: stubOne(ScheduledEventNotification, {
+                    notificationTarget: NotificationTarget.INVITEE,
+                    notificationType: NotificationType.TEXT,
+                    reminderType: ReminderType.SMS
+                }),
+                expectedTemplate: TextTemplate.EVENT_CANCELLED_INVITEE,
+                expectedSyncdayNotificationPublishKey: SyncdayNotificationPublishKey.SMS_GLOBAL
+            },
+            {
+                description: 'If the notificationTarget is "host" and the notificationType is "text" and reminderType is "whatsapp", then the temaplate must be "text cancelled host" and the notification publish key must be "whatsapp"',
+                scheduleNotificationMock: stubOne(ScheduledEventNotification, {
+                    notificationTarget: NotificationTarget.HOST,
+                    notificationType: NotificationType.TEXT,
+                    reminderType: ReminderType.WAHTSAPP
+                }),
+                expectedTemplate: TextTemplate.EVENT_CANCELLED_HOST,
+                expectedSyncdayNotificationPublishKey: SyncdayNotificationPublishKey.WHATSAPP
+            },
+            {
+                description: 'If the notificationTarget is "invitee" and the notificationType is "text" and reminderType is "whatsapp", then the temaplate must be "text cancelled invitee" and the notification publish key must be "whatsapp"',
+                scheduleNotificationMock: stubOne(ScheduledEventNotification, {
+                    notificationTarget: NotificationTarget.INVITEE,
+                    notificationType: NotificationType.TEXT,
+                    reminderType: ReminderType.WAHTSAPP
+                }),
+                expectedTemplate: TextTemplate.EVENT_CANCELLED_INVITEE,
+                expectedSyncdayNotificationPublishKey: SyncdayNotificationPublishKey.WHATSAPP
+            }
+        ].forEach( function ({
+            description,
+            scheduleNotificationMock,
+            expectedTemplate,
+            expectedSyncdayNotificationPublishKey
+        }) {
+            it(description, () => {
+                const convertResult = service.convertScheduleNotificationToNotificationDataAndPublishKey(scheduleNotificationMock);
+
+                expect(convertResult.notificationData.template).equals(expectedTemplate);
+                expect(convertResult.syncdayNotificationPublishKey).equals(expectedSyncdayNotificationPublishKey);
             });
         });
     });

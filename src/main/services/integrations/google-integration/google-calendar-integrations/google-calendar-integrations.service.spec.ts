@@ -136,7 +136,7 @@ describe('GoogleCalendarIntegrationsService', () => {
             integrationUtilsServiceStub.getGoogleOAuthClient.reset();
             googleConverterServiceStub.convertToGoogleIntegrationSchedules.reset();
 
-            notificationsServiceStub.sendMessages.reset();
+            notificationsServiceStub.sendCancellationMessages.reset();
 
             googleIntegrationRepositoryStub.findOneOrFail.reset();
             googleCalendarIntegrationRepositoryStub.delete.reset();
@@ -206,7 +206,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                 deleteTargetScheduleStubsValue: stub(Schedule, 10, {
                     scheduledEventNotifications: stub(ScheduledEventNotification)
                 }),
-                sendMessageStubValue: true
+                sendCancellationMessagesStubValue: true
             },
             {
                 description: 'synchronization should occur for searching calendar items, but scheduled event notifications should not be deleted and cancel messages sent when there is no target schedule to delete',
@@ -220,7 +220,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                 },
                 googleScheduleStubValue: testMockUtil.getGoogleScheduleMock(),
                 deleteTargetScheduleStubsValue: [],
-                sendMessageStubValue: true
+                sendCancellationMessagesStubValue: true
             }
         ].forEach(function ({
             description,
@@ -231,7 +231,7 @@ describe('GoogleCalendarIntegrationsService', () => {
             refrashTokenAndGoogleOAuthClientDummy,
             googleScheduleStubValue,
             deleteTargetScheduleStubsValue,
-            sendMessageStubValue
+            sendCancellationMessagesStubValue
         }) {
             it(description, async () => {
                 const googleCalendarEventListServiceSearchStub = serviceSandbox.stub(GoogleCalendarEventListService.prototype, 'search').resolves(googleScheduleStubValue);
@@ -247,7 +247,7 @@ describe('GoogleCalendarIntegrationsService', () => {
 
                 scheduleRepositoryStub.find.resolves(deleteTargetScheduleStubsValue);
 
-                notificationsServiceStub.sendMessages.resolves(sendMessageStubValue);
+                notificationsServiceStub.sendCancellationMessages.resolves(sendCancellationMessagesStubValue);
 
                 await service._synchronizeWithGoogleCalendarEvents(
                     managerDummy,
@@ -266,7 +266,7 @@ describe('GoogleCalendarIntegrationsService', () => {
 
                 expect(scheduleRepositoryStub.find.called).true;
 
-                expect(notificationsServiceStub.sendMessages.called).equals(sendMessageStubValue);
+                expect(notificationsServiceStub.sendCancellationMessages.called).equals(sendCancellationMessagesStubValue);
 
                 expect(scheduleRepositoryStub.update.called).true;
                 expect(scheduleRepositoryStub.softDelete.called).true;
