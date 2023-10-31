@@ -338,7 +338,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                 const synchronizeWithGoogleCalendarEventsStub = serviceSandbox.stub(service, '_synchronizeWithGoogleCalendarEvents');
                 const resubscriptionCalendarStub = serviceSandbox.stub(service, 'resubscriptionCalendar');
 
-                const patchSuccess = await service.patch(userStub.id, [googleCalendarIntegrationsMock]);
+                const patchSuccess = await service.patchAll(userStub.id, [googleCalendarIntegrationsMock]);
 
                 expect(patchSuccess).true;
                 expect(googleCalendarIntegrationRepositoryStub.find.called).true;
@@ -374,7 +374,7 @@ describe('GoogleCalendarIntegrationsService', () => {
 
                 googleCalendarIntegrationRepositoryStub.find.resolves(rest as any);
 
-                await expect(service.patch(userStub.id, [googleCalendarIntegrationsMock])).rejectedWith(
+                await expect(service.patchAll(userStub.id, [googleCalendarIntegrationsMock])).rejectedWith(
                     NotAnOwnerException
                 );
 
