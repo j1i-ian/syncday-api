@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { Event } from '@core/entities/events/event.entity';
 import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
@@ -376,7 +376,22 @@ export class EventsService {
         availabilityId: number,
         defaultAvailabilityId: number
     ): Promise<boolean> {
-        const updateResult = await this.eventRepository.update(
+        return this._unlinksToAvailability(
+            this.eventRepository.manager,
+            availabilityId,
+            defaultAvailabilityId
+        );
+    }
+
+    async _unlinksToAvailability(
+        manager: EntityManager,
+        availabilityId: number,
+        defaultAvailabilityId: number
+    ): Promise<boolean> {
+
+        const eventRepository = manager.getRepository(Event);
+
+        const updateResult = await eventRepository.update(
             {
                 availabilityId
             },

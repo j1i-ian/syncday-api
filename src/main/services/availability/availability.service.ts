@@ -302,9 +302,27 @@ export class AvailabilityService {
             throw new CannotDeleteDefaultAvailabilityException();
         }
 
-        const deleteResult = await this.availabilityRepository.delete(availabilityId);
+        const defaultAvailability = await this.availabilityRepository.findOneByOrFail({
+            userId,
+            default: true
+        });
 
-        if (loadedAvailability && deleteResult.affected && deleteResult.affected > 0) {
+        const deleteSuccess = await this.datasource.transaction(async (transactionManager) => {
+
+            const _availabilityRepository = transactionManager.getRepository(Availability);
+
+            const result = await this.eventsService._unlinksToAvailability(
+                transactionManager,
+                availabilityId,
+                defaultAvailability.id
+            );
+
+            const _deleteResult = await _availabilityRepository.delete(availabilityId);
+
+            return result && !!(_deleteResult && _deleteResult.affected && _deleteResult.affected > 0);
+        });
+
+        if (loadedAvailability && deleteSuccess) {
             await this.availabilityRedisRepository.deleteAvailabilityBody(
                 userUUID,
                 loadedAvailability.uuid

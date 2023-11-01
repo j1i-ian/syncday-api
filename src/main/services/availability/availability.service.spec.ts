@@ -431,11 +431,16 @@ describe('AvailabilityService', () => {
                 const availabilityStub = stubOne(Availability, {
                     default: false
                 });
+                const defaultAvailabilityStub = stubOne(Availability, {
+                    default: true
+                });
                 const userStub = stubOne(User);
                 const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
                 availabilityRepositoryStub.findOne.resolves(availabilityStub);
+                availabilityRepositoryStub.findOneByOrFail.resolves(defaultAvailabilityStub);
                 availabilityRepositoryStub.delete.resolves(deleteResultStub);
+                eventsServiceStub._unlinksToAvailability.resolves(true);
 
                 const result = await service.remove(
                     availabilityStub.id,
@@ -445,8 +450,10 @@ describe('AvailabilityService', () => {
 
                 expect(result).true;
                 expect(availabilityRepositoryStub.findOne.called).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(availabilityRepositoryStub.delete.called).true;
                 expect(availabilityRedisRepositoryStub.deleteAvailabilityBody.called).true;
+                expect(eventsServiceStub._unlinksToAvailability.called).true;
             });
 
             it('should be not removed availability which is default', async () => {

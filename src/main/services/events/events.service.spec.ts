@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom, from, of } from 'rxjs';
 import { InternalServerErrorException } from '@nestjs/common';
@@ -44,6 +44,8 @@ describe('EventsService', () => {
         eventDetailRepositoryStub = sinon.createStubInstance<Repository<EventDetail>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
         utilServiceStub = sinon.createStubInstance(UtilService);
+
+        (eventRepositoryStub as any).manager = datasourceMock as EntityManager;
 
         module = await Test.createTestingModule({
             providers: [
