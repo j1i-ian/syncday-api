@@ -50,6 +50,7 @@ import { AppleCalendarListService } from '@services/integrations/apple-integrati
 import { AppleCalendarEventListService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-list.service';
 import { AppleCalendarEventCreateService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-create.service';
 import { AppleCalendarEventPatchService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-patch.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { Verification } from '@entity/verifications/verification.interface';
 import { QuestionInputType } from '@entity/invitee-questions/question-input-type.enum';
@@ -114,6 +115,9 @@ export class TestIntegrationUtil {
     zoomOauthTokenServiceStub: sinon.SinonStubbedInstance<ZoomOauthTokenService>;
     zoomOauthUserServiceStub: sinon.SinonStubbedInstance<ZoomOauthUserService>;
     zoomCreateMeetingServiceStub: sinon.SinonStubbedInstance<ZoomCreateMeetingService>;
+
+    // Prevent to send a email to fake account email address.
+    notificationServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
 
     // for schedule with Apple outbound test
     appleCaldavClientServiceStub: sinon.SinonStubbedInstance<AppleCaldavClientService>;
@@ -516,7 +520,7 @@ export class TestIntegrationUtil {
             outboundWriteSync: true
         };
 
-        return this.googleCalendarIntegrationsService.patch(
+        return this.googleCalendarIntegrationsService.patchAll(
             userId,
             [calendarIntegration]
         );
@@ -626,6 +630,12 @@ export class TestIntegrationUtil {
         this.zoomOauthUserServiceStub = sinon.createStubInstance(ZoomOauthUserService);
         this.zoomCreateMeetingServiceStub = sinon.createStubInstance(ZoomCreateMeetingService);
 
+        this.notificationServiceStub = sinon.createStubInstance(NotificationsService);
+        this.notificationServiceStub._sendNotification.resolves(true);
+        this.notificationServiceStub.sendWelcomeEmailForNewUser.resolves(true);
+        this.notificationServiceStub.sendMessage.resolves(true);
+        this.notificationServiceStub.sendCancellationMessages.resolves(true);
+
         this.appleCaldavClientServiceStub = sinon.createStubInstance(AppleCaldavClientService);
         this.appleCalendarListServiceStub = sinon.createStubInstance(AppleCalendarListService);
         this.appleCalendarEventListServiceStub = sinon.createStubInstance(AppleCalendarEventListService);
@@ -720,6 +730,8 @@ export class TestIntegrationUtil {
             .useValue(this.zoomOauthUserServiceStub)
             .overrideProvider(ZoomCreateMeetingService)
             .useValue(this.zoomCreateMeetingServiceStub)
+            .overrideProvider(NotificationsService)
+            .useValue(this.notificationServiceStub)
             .overrideProvider(AppleCaldavClientService)
             .useValue(this.appleCaldavClientServiceStub)
             .overrideProvider(AppleCalendarListService)
