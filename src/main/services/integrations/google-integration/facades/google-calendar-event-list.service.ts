@@ -18,7 +18,13 @@ export class GoogleCalendarEventListService {
             showDeleted: false
         });
 
-        events.items = events.items?.filter((_item) => _item.status !== 'cancelled');
+        events.items = events.items?.filter((_item) => _item.status !== 'cancelled')
+            .map((item) => {
+                if (item.iCalUID) {
+                    item.iCalUID = item.iCalUID.replace(/_R\d{8}T\d{6}/, '');
+                }
+                return item;
+            });
 
         return events;
     }
