@@ -214,6 +214,11 @@ deploy-docs-to-s3:
     aws s3 sync ./docs s3://$S3_BUCKET --delete --acl public-read
   variables:
     S3_BUCKET: "docs.sync.day"
+  artifacts:
+    when: on_success
+    paths:
+      - docs/
+    expire_in: 1 day
   only:
     - main
 
