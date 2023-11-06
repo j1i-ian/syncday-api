@@ -49,7 +49,10 @@
             ],
             "cwd": "${workspaceRoot}",
             "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen"
+            "internalConsoleOptions": "neverOpen",
+            "env": {
+                "TZ": "UTC"
+            },
         },
         {
             "type": "node",

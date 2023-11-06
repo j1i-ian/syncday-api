@@ -205,27 +205,65 @@ describe('UtilService', () => {
         });
     });
 
+    [
+        {
+            description: 'should be equal to the New York localized date with the input date in New York Time',
+            hostTimezone: 'America/New_York',
+            hostAvailableStartTimeString: '10:00',
+            availableStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
+            expectedLocalizedStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
+            inviteeRequestTime: new Date('2023-07-13 13:00:00 GMT-04:00'),
+            overrideOptions: null
+        },
+        {
+            description: 'should be equal to the New York localized date with the input date in New York Time for date override calculation',
+            hostTimezone: 'America/New_York',
+            hostAvailableStartTimeString: '10:00',
+            availableStartTime: new Date('2023-07-13T00:00:00'),
+            expectedLocalizedStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
+            inviteeRequestTime: new Date('2023-07-13 13:00:00 GMT-04:00'),
+            overrideOptions: {
+                day: 13
+            }
+        },
+        {
+            description: 'should be equal to the New York localized date with the input date in New York Time for date override calculation',
+            hostTimezone: 'Asia/Seoul',
+            hostAvailableStartTimeString: '13:00',
+            availableStartTime: new Date('2023-07-13T00:00:00'),
+            expectedLocalizedStartTime: new Date('2023-07-13 13:00:00 GMT+09:00'),
+            inviteeRequestTime: new Date('2023-07-13 18:00:00 GMT-04:00'),
+            overrideOptions: {
+                day: 13
+            }
+        }
+    ].forEach(function({
+        description,
+        hostTimezone,
+        hostAvailableStartTimeString,
+        availableStartTime,
+        expectedLocalizedStartTime,
+        inviteeRequestTime,
+        overrideOptions
+    }) {
 
-    it('should be converted date that is applied timezone', () => {
+        it(description, () => {
 
-        const hostTimezone = 'America/New_York';
-        const hostAvailableStartTimeString = '10:00';
+            const localizedDateTime = service.localizeDateTime(
+                availableStartTime,
+                hostTimezone,
+                hostAvailableStartTimeString,
+                overrideOptions
+            );
 
-        const availableStartTime = new Date('2023-07-13 10:00:00 GMT-04:00');
+            const localizedDateTimestamp = localizedDateTime.getTime();
+            expect(localizedDateTimestamp).equals(expectedLocalizedStartTime.getTime());
 
-        // 2023-07-13 03:00:00 GMT-04:00
-        const scheduledEventStartTimeByInvitee = new Date('2023-07-13 16:00:00 GMT+09:00');
-
-        const localizedStartTime = service.localizeDateTime(
-            availableStartTime,
-            hostTimezone,
-            hostAvailableStartTimeString
-        );
-
-        const isValidStartTime = localizedStartTime.getTime() < scheduledEventStartTimeByInvitee.getTime();
-
-        expect(isValidStartTime).false;
+            const isInviteeRequestTimeInOverrideRange = localizedDateTime.getTime() < inviteeRequestTime.getTime();
+            expect(isInviteeRequestTimeInOverrideRange).true;
+        });
     });
+
 
     it('should be generated for uuid', () => {
         const uuidMap = new Map<string, boolean>();

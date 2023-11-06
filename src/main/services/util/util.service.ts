@@ -163,14 +163,17 @@ export class UtilService {
     localizeDateTime(
         date: Date,
         timezone: string,
-        timeString: string
+        timeString: string,
+        overrideOptions: null | {
+            day: number;
+        } = null
     ): Date {
 
         const formatPartObject = this.localizeDateTimeFormatPartObject(date, timezone);
 
         const year = formatPartObject['year'] as string;
         const month = formatPartObject['month'] as string;
-        const day = formatPartObject['day'] as string;
+        const day = overrideOptions ? String(overrideOptions.day) : formatPartObject['day'] as string;
         const GMTShortString = formatPartObject['timeZoneName'] as string;
 
         const YYYYMMDD = `${year}-${month}-${day}`;

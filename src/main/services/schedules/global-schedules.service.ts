@@ -512,15 +512,22 @@ export class GlobalSchedulesService {
             const _dateStartTime = '00:00';
             const _dateEndTime = '23:59';
 
+            const ensuredTargetDate = new Date(_targetDate);
             const _localizedDateStartTime = this.utilService.localizeDateTime(
-                new Date(_targetDate),
+                ensuredTargetDate,
                 timezone,
-                _dateStartTime
+                _dateStartTime,
+                {
+                    day: ensuredTargetDate.getUTCDate()
+                }
             );
             const _localizedDateEndTime = this.utilService.localizeDateTime(
-                new Date(_targetDate),
+                ensuredTargetDate,
                 timezone,
-                _dateEndTime
+                _dateEndTime,
+                {
+                    day: ensuredTargetDate.getUTCDate()
+                }
             );
 
             const isOverlapping = (_localizedDateStartTime.getTime() < requestedStartDateTimestamp && requestedStartDateTimestamp < _localizedDateEndTime.getTime()) ||
@@ -563,15 +570,22 @@ export class GlobalSchedulesService {
                     startTime: string;
                     endTime: string;
                 };
+                const ensuredTargetDate = new Date(_targetDate);
                 const _startDateTime = this.utilService.localizeDateTime(
-                    new Date(_targetDate),
+                    ensuredTargetDate,
                     timezone,
-                    startTime
+                    startTime,
+                    {
+                        day: ensuredTargetDate.getUTCDate()
+                    }
                 );
                 const _endDateTime = this.utilService.localizeDateTime(
-                    new Date(_targetDate),
+                    ensuredTargetDate,
                     timezone,
-                    endTime
+                    endTime,
+                    {
+                        day: ensuredTargetDate.getUTCDate()
+                    }
                 );
                 return _startDateTime.getTime() < requestedStartDateTimestamp &&
                     requestedEndDateTimestamp < _endDateTime.getTime();
