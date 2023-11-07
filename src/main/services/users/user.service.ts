@@ -27,6 +27,7 @@ import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
+import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
@@ -296,7 +297,10 @@ export class UserService {
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
         googleIntegrationBody: GoogleIntegrationBody,
-        language: Language
+        language: Language,
+        options: CalendarCreateOption = {
+            isFirstIntegration: true
+        }
     ): Promise<User> {
 
         const createdUser = await this.datasource.transaction(async (manager) => {
@@ -322,7 +326,10 @@ export class UserService {
                 userSetting,
                 googleAuthToken,
                 googleCalendarIntegrations,
-                googleIntegrationBody
+                googleIntegrationBody,
+                {
+                    isFirstIntegration: false
+                }
             );
 
             const _newOAuth2Account: OAuth2Account = {

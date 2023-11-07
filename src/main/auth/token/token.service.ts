@@ -133,7 +133,10 @@ export class TokenService {
                     calendars,
                     schedules
                 },
-                language
+                language,
+                {
+                    isFirstIntegration: true
+                }
             );
 
             isNewbie = true;
@@ -171,6 +174,9 @@ export class TokenService {
                     googleUserEmail,
                     calendars,
                     schedules
+                },
+                {
+                    isFirstIntegration: false
                 }
             );
 
