@@ -298,9 +298,7 @@ export class UserService {
         googleCalendarIntegrations: GoogleCalendarIntegration[],
         googleIntegrationBody: GoogleIntegrationBody,
         language: Language,
-        options: CalendarCreateOption = {
-            isFirstIntegration: true
-        }
+        options: CalendarCreateOption
     ): Promise<User> {
 
         const createdUser = await this.datasource.transaction(async (manager) => {
@@ -327,9 +325,7 @@ export class UserService {
                 googleAuthToken,
                 googleCalendarIntegrations,
                 googleIntegrationBody,
-                {
-                    isFirstIntegration: false
-                }
+                options
             );
 
             const _newOAuth2Account: OAuth2Account = {
