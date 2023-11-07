@@ -15,6 +15,7 @@ import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
+import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 import { TestMockUtil } from '@test/test-mock-util';
 
 const testMockUtil = new TestMockUtil();
@@ -30,7 +31,7 @@ describe('GoogleIntegrationsService', () => {
     let googleConferenceLinkIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleConferenceLinkIntegrationService>;
     let googleIntegrationSchedulesServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationSchedulesService>;
 
-    let gogoleIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegration>>;
+    let googleIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegration>>;
     let integrationsRedisRepositoryStub: sinon.SinonStubbedInstance<IntegrationsRedisRepository>;
 
     const _getRepository = (EntityClass: new () => any) =>
@@ -48,7 +49,7 @@ describe('GoogleIntegrationsService', () => {
         googleConferenceLinkIntegrationServiceStub = sinon.createStubInstance(GoogleConferenceLinkIntegrationService);
         googleIntegrationSchedulesServiceStub = sinon.createStubInstance(GoogleIntegrationSchedulesService);
 
-        gogoleIntegrationRepositoryStub =
+        googleIntegrationRepositoryStub =
             sinon.createStubInstance<Repository<GoogleIntegration>>(Repository);
 
         integrationsRedisRepositoryStub = sinon.createStubInstance<IntegrationsRedisRepository>(IntegrationsRedisRepository);
@@ -86,7 +87,7 @@ describe('GoogleIntegrationsService', () => {
                 },
                 {
                     provide: getRepositoryToken(GoogleIntegration),
-                    useValue: gogoleIntegrationRepositoryStub
+                    useValue: googleIntegrationRepositoryStub
                 }
             ]
         }).compile();
@@ -120,11 +121,11 @@ describe('GoogleIntegrationsService', () => {
     describe('Test Count Google Integration', () => {
 
         beforeEach(() => {
-            gogoleIntegrationRepositoryStub.countBy.resolves(1);
+            googleIntegrationRepositoryStub.countBy.resolves(1);
         });
 
         afterEach(() => {
-            gogoleIntegrationRepositoryStub.countBy.reset();
+            googleIntegrationRepositoryStub.countBy.reset();
         });
 
         it('should be counted integration length by condition', async () => {
@@ -143,52 +144,116 @@ describe('GoogleIntegrationsService', () => {
 
         afterEach(() => {
             integrationsRedisRepositoryStub.setGoogleCalendarSubscriptionStatus.reset();
-            gogoleIntegrationRepositoryStub.save.reset();
+            googleIntegrationRepositoryStub.save.reset();
             googleIntegrationSchedulesServiceStub._saveAll.reset();
             googleConverterServiceStub.convertToGoogleIntegrationSchedules.reset();
             googleCalendarIntegrationsServiceStub.subscribeCalendar.reset();
         });
 
-        it('should be created google integration where email is patched from google user', async () => {
+        [
+            {
+                description: 'should be created google integration where email is patched from google user',
+                userMock: stubOne(User, { email: 'alan@sync.day' }),
+                userSettingMock: stubOne(UserSetting),
+                googleCalendarIntegrationsMocks: [
+                    stubOne(GoogleCalendarIntegration, {
+                        primary: true
+                    }),
+                    ...stub(GoogleCalendarIntegration, 3, {
+                        primary: false
+                    })
+                ],
+                googleIntegrationBodyMock: testMockUtil.getGoogleIntegrationBodyMock(),
+                googleOAuthTokenMock: testMockUtil.getGoogleOAuthTokenMock(),
+                googleSchedules: stub(GoogleIntegrationSchedule),
+                options: undefined,
+                expectedOutboundCalendarCount: 1
+            },
+            {
+                description: 'should be created first google integration with outbound setting',
+                userMock: stubOne(User, { email: 'alan@sync.day' }),
+                userSettingMock: stubOne(UserSetting),
+                googleCalendarIntegrationsMocks: stub(GoogleCalendarIntegration, 3, {
+                    setting: {
+                        conflictCheck: true,
+                        outboundWriteSync: true,
+                        inboundDecliningSync: false
+                    },
+                    primary: true
+                }),
+                googleIntegrationBodyMock: testMockUtil.getGoogleIntegrationBodyMock(),
+                googleOAuthTokenMock: testMockUtil.getGoogleOAuthTokenMock(),
+                googleSchedules: stub(GoogleIntegrationSchedule),
+                options: {
+                    isFirstIntegration: true
+                } as CalendarCreateOption,
+                expectedOutboundCalendarCount: 1
+            },
+            {
+                description: 'should be created second google integration without outbound setting',
+                userMock: stubOne(User, { email: 'alan@sync.day' }),
+                userSettingMock: stubOne(UserSetting),
+                googleCalendarIntegrationsMocks: stub(GoogleCalendarIntegration, 3, {
+                    setting: {
+                        conflictCheck: true,
+                        outboundWriteSync: true,
+                        inboundDecliningSync: false
+                    },
+                    primary: true
+                }),
+                googleIntegrationBodyMock: testMockUtil.getGoogleIntegrationBodyMock(),
+                googleOAuthTokenMock: testMockUtil.getGoogleOAuthTokenMock(),
+                googleSchedules: stub(GoogleIntegrationSchedule),
+                options: {
+                    isFirstIntegration: false
+                } as CalendarCreateOption,
+                expectedOutboundCalendarCount: 0
+            }
+        ].forEach(function({
+            description,
+            userMock,
+            userSettingMock,
+            googleCalendarIntegrationsMocks,
+            googleIntegrationBodyMock,
+            googleOAuthTokenMock,
+            googleSchedules,
+            options,
+            expectedOutboundCalendarCount
+        }) {
 
-            const userMock = stubOne(User, {
-                email: 'alan@sync.day'
+            beforeEach(() => {
+
+                googleIntegrationRepositoryStub.save.callsFake((entity) => Promise.resolve(entity as GoogleIntegration));
+                googleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(googleSchedules);
             });
-            const userSettingMock = stubOne(UserSetting);
-            const googleCalendarIntegrationsMock = stub(GoogleCalendarIntegration);
-            googleCalendarIntegrationsMock[0].primary = true;
 
-            const googleIntegrationBodyMock = testMockUtil.getGoogleIntegrationBodyMock();
-            const googleOAuthTokenMock = testMockUtil.getGoogleOAuthTokenMock();
+            it(description, async () => {
 
-            const googleIntegrationStub = stubOne(GoogleIntegration, {
-                email: googleIntegrationBodyMock.googleUserEmail,
-                googleCalendarIntegrations: googleCalendarIntegrationsMock
+                const createdGoogleIntegration = await service._create(
+                    datasourceMock as EntityManager,
+                    userMock,
+                    userSettingMock,
+                    googleOAuthTokenMock,
+                    googleCalendarIntegrationsMocks,
+                    googleIntegrationBodyMock,
+                    options
+                );
+
+                expect(createdGoogleIntegration).ok;
+                expect(createdGoogleIntegration.email).not.equals(userMock.email);
+                expect(createdGoogleIntegration.email).equals(googleIntegrationBodyMock.googleUserEmail);
+
+                expect(googleIntegrationRepositoryStub.save.called).true;
+                expect(integrationsRedisRepositoryStub.setGoogleCalendarSubscriptionStatus.called).true;
+                expect(googleConverterServiceStub.convertToGoogleIntegrationSchedules.called).true;
+                expect(googleIntegrationSchedulesServiceStub._saveAll.called).true;
+                expect(googleCalendarIntegrationsServiceStub.subscribeCalendar.called).true;
+
+                const outboundCalendars = createdGoogleIntegration.googleCalendarIntegrations.filter((_googleCalendar) => _googleCalendar.setting.outboundWriteSync);
+
+                expect(outboundCalendars.length).equals(expectedOutboundCalendarCount);
             });
-
-            const googleSchedules = stub(GoogleIntegrationSchedule);
-
-            gogoleIntegrationRepositoryStub.save.resolves(googleIntegrationStub);
-            googleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(googleSchedules);
-
-            const createdGoogleIntegration = await service._create(
-                datasourceMock as EntityManager,
-                userMock,
-                userSettingMock,
-                googleOAuthTokenMock,
-                googleCalendarIntegrationsMock,
-                googleIntegrationBodyMock
-            );
-
-            expect(createdGoogleIntegration).ok;
-            expect(createdGoogleIntegration.email).not.equals(userMock.email);
-            expect(createdGoogleIntegration.email).equals(googleIntegrationBodyMock.googleUserEmail);
-
-            expect(gogoleIntegrationRepositoryStub.save.called).true;
-            expect(integrationsRedisRepositoryStub.setGoogleCalendarSubscriptionStatus.called).true;
-            expect(googleConverterServiceStub.convertToGoogleIntegrationSchedules.called).true;
-            expect(googleIntegrationSchedulesServiceStub._saveAll.called).true;
-            expect(googleCalendarIntegrationsServiceStub.subscribeCalendar.called).true;
         });
+
     });
 });

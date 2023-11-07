@@ -30,6 +30,7 @@ import { UserSetting } from '@entity/users/user-setting.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { Host } from '@entity/schedules/host.entity';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
+import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
 @Injectable()
 export class GoogleIntegrationsService implements
@@ -134,7 +135,10 @@ export class GoogleIntegrationsService implements
         userSetting: UserSetting,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
-        googleIntegrationBody: GoogleIntegrationBody
+        googleIntegrationBody: GoogleIntegrationBody,
+        options: CalendarCreateOption = {
+            isFirstIntegration: true
+        }
     ): Promise<GoogleIntegration> {
         return this._create(
             this.googleIntegrationRepository.manager,
@@ -142,7 +146,8 @@ export class GoogleIntegrationsService implements
             userSetting,
             googleAuthToken,
             googleCalendarIntegrations,
-            googleIntegrationBody
+            googleIntegrationBody,
+            options
         );
     }
 
@@ -152,11 +157,18 @@ export class GoogleIntegrationsService implements
         userSetting: UserSetting,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
-        googleIntegrationBody: GoogleIntegrationBody
+        googleIntegrationBody: GoogleIntegrationBody,
+        {
+            isFirstIntegration
+        }: CalendarCreateOption = {
+            isFirstIntegration: true
+        } as CalendarCreateOption
     ): Promise<GoogleIntegration> {
         const { workspace, preferredTimezone: timezone } = userSetting;
 
         const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
+
+        let isFirstPrimary = true;
 
         const newGoogleIngration: GoogleIntegration = {
             accessToken: googleAuthToken.accessToken,
@@ -171,12 +183,14 @@ export class GoogleIntegrationsService implements
                     inboundDecliningSync: false
                 };
 
-                if (calendar.primary) {
+                if (calendar.primary && isFirstIntegration && isFirstPrimary) {
                     calendarSetting = {
                         conflictCheck: true,
                         outboundWriteSync: true,
                         inboundDecliningSync: false
                     };
+
+                    isFirstPrimary = false;
                 }
 
                 calendar.setting = calendarSetting;

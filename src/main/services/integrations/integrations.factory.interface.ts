@@ -9,8 +9,9 @@ import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
+import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
-type GoogleIntegrationRequest =  [User, UserSetting, OAuthToken, GoogleCalendarIntegration[], GoogleIntegrationBody];
+type GoogleIntegrationRequest =  [User, UserSetting, OAuthToken, GoogleCalendarIntegration[], GoogleIntegrationBody, CalendarCreateOption?];
 type ZoomIntegrationRequest = [User, OAuthToken, OAuth2UserProfile];
 type AppleIntegrationRequest = [User, UserSetting, AppleCalDAVCredential, string];
 
