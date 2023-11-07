@@ -1,5 +1,6 @@
-import { BadRequestException, Controller, Headers, Inject, Logger, Param, Post } from '@nestjs/common';
+import { BadRequestException, Controller, Headers, Inject, Param, Post } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { Public } from '@app/auth/strategy/jwt/public.decorator';
 
@@ -30,7 +31,7 @@ export class GoogleCalendarIntegrationsController {
         @Param('syncdayGoogleCalendarIntegrationUUID') syncdayGoogleCalendarIntegrationUUID: string
     ): Promise<boolean> {
 
-        this.logger.debug({
+        this.logger.info({
             message: 'Google Calendar is notified',
             xGoogChannelId,
             xGoogResourceId,
@@ -44,13 +45,21 @@ export class GoogleCalendarIntegrationsController {
         // unsubscribe orphan channel
         const subscriptionStatus = await this.googleCalendarIntegrationsService.getGoogleCalendarSubscriptionStatus(xGoogChannelId);
 
+        this.logger.info({
+            message: 'Subscription status',
+            xGoogChannelId,
+            subscriptionStatus
+        });
+
         if (subscriptionStatus) {
             await this.googleCalendarIntegrationsService.synchronizeWithGoogleCalendarEvents(
                 syncdayGoogleCalendarIntegrationUUID
             );
         } else {
             // TODO: unsubscribe orphan calendar
-            this.logger.warn('Orphan Calendar is detected. You should implement the code for unsubscription');
+            this.logger.warn({
+                message: 'Orphan Calendar is detected. You should implement the code for unsubscription'
+            });
         }
 
 

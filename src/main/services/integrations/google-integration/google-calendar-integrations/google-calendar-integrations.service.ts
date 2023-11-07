@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Inject, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, FindOptionsWhere, In, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, In, MoreThan, Not, Repository } from 'typeorm';
 import { Observable, firstValueFrom, from } from 'rxjs';
 import { Auth, calendar_v3 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleCalendarIntegrationSearchOption } from '@core/interfaces/integrations/google/google-calendar-integration-search-option.interface';
 import { GoogleCalendarDetail } from '@core/interfaces/integrations/google/google-calendar-detail.interface';
@@ -168,10 +169,14 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         /**
          * TODO: We should find a way to improve soft delete for schedules with removing notifications
          */
+        const now = new Date();
         const schedules = await _scheduleRepository.find({
             relations: ['scheduledEventNotifications'],
             where: {
-                iCalUID: In(deleteICalUIDs)
+                iCalUID: In(deleteICalUIDs),
+                scheduledTime: {
+                    endTimestamp: MoreThan(now)
+                }
             }
         });
 
@@ -436,6 +441,9 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                 );
             }
         }
+
+        // set subscription status as enable
+        await this.integrationsRedisRepository.setGoogleCalendarSubscriptionStatus(loadedInboundConflictCheckCalendar.uuid);
 
         await this.subscribeCalendar(
             inboundGoogleIntegration,
