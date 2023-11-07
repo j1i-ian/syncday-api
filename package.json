@@ -47,7 +47,7 @@
     "prepare": "husky install",
     "core": "git submodule update --remote",
     "core:clean": "git submodule update --checkout -f && git submodule foreach 'git clean -df'",
-    "init": "npm install && git submodule update --init --remote",
+    "init": "bash scripts/init.sh && bash scripts/download-gitlab-secret-files.sh",
     "typeorm": "typeorm-ts-node-commonjs",
     "premigration": "npm run build && npm run migration:clean",
     "premigration:local": "npm run premigration",
