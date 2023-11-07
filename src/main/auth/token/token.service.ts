@@ -165,6 +165,12 @@ export class TokenService {
                 ensuredUser.id
             );
 
+            const hasOutboundCalendar = await this.integrationsValidator.hasOutboundCalendar(
+                this.integrationsServiceLocator,
+                ensuredUser.id
+            );
+            const isFirstIntegration = !hasOutboundCalendar;
+
             await this.googleIntegrationService.create(
                 ensuredUser,
                 ensuredUser.userSetting,
@@ -176,7 +182,7 @@ export class TokenService {
                     schedules
                 },
                 {
-                    isFirstIntegration: false
+                    isFirstIntegration
                 }
             );
 

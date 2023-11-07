@@ -11,6 +11,7 @@ import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/
 import { ZoomIntegrationsService } from '@services/integrations/zoom-integrations/zoom-integrations.service';
 import { AppleIntegrationsService } from '@services/integrations/apple-integrations/apple-integrations.service';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
+import { CalendarIntegrationWrapperService } from '@services/integrations/calendar-integration-wrapper-service.interface';
 
 @Injectable()
 export class IntegrationsServiceLocator {
@@ -66,7 +67,7 @@ export class IntegrationsServiceLocator {
         return myFacade;
     }
 
-    getAllCalendarSubjectIntegrationFactories(): IntegrationsFactory[] {
+    getAllCalendarSubjectIntegrationFactories(): Array<IntegrationsFactory & CalendarIntegrationWrapperService> {
         return [
             this.googleIntegrationsService,
             this.appleIntegrationService

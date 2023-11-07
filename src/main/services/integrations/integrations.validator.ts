@@ -1,4 +1,4 @@
-import { firstValueFrom, from, mergeMap, reduce } from 'rxjs';
+import { firstValueFrom, from, map, mergeMap, reduce } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
@@ -34,5 +34,31 @@ export class IntegrationsValidator {
         ) {
             throw new TooManyIntegrationRequestException();
         }
+    }
+
+    async hasOutboundCalendar(
+        integrationsServiceLocator: IntegrationsServiceLocator,
+        userId: number
+    ): Promise<boolean> {
+
+        const calendarSubjectIntegrationFactories = integrationsServiceLocator.getAllCalendarSubjectIntegrationFactories();
+
+        const hasOutboundCalendar = await firstValueFrom(
+            from(calendarSubjectIntegrationFactories)
+                .pipe(
+                    map((integrationFactory) => integrationFactory.getCalendarIntegrationsService()),
+                    mergeMap((calendarIntegrationService) => from(calendarIntegrationService.findOne({
+                        userId,
+                        outboundWriteSync: true
+                    }))),
+                    map((outboundCalendarIntegration) => !!outboundCalendarIntegration),
+                    reduce(
+                        (acc, curr) => (acc || curr),
+                        false
+                    )
+                )
+        );
+
+        return hasOutboundCalendar;
     }
 }
