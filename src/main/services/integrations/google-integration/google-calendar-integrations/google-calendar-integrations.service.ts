@@ -60,6 +60,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         );
 
         if (!loadedGoogleCalendarIntegration) {
+            this.logger.info('Channel is subscribed but Conflict check flag is false. Skipping Calendar event synchronizing.');
             return;
         }
 

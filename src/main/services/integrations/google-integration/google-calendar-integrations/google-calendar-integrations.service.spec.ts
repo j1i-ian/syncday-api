@@ -28,8 +28,9 @@ describe('GoogleCalendarIntegrationsService', () => {
     let module: TestingModule;
     let service: GoogleCalendarIntegrationsService;
 
+    let loggerStub: sinon.SinonStub;
+
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
-    let loggerStub: sinon.SinonStubbedInstance<Logger>;
     let integrationUtilsServiceStub: sinon.SinonStubbedInstance<IntegrationUtilsService>;
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
     let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
@@ -50,8 +51,14 @@ describe('GoogleCalendarIntegrationsService', () => {
     };
 
     before(async () => {
+
+        loggerStub = sinon.stub({
+            debug: () => {},
+            info: () => {},
+            error: () => {}
+        } as unknown as Logger) as unknown as sinon.SinonStub;
+
         configServiceStub = sinon.createStubInstance(ConfigService);
-        loggerStub = sinon.createStubInstance(Logger);
         integrationUtilsServiceStub = sinon.createStubInstance(IntegrationUtilsService);
         googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
         notificationsServiceStub = sinon.createStubInstance(NotificationsService);
@@ -68,6 +75,10 @@ describe('GoogleCalendarIntegrationsService', () => {
         module = await Test.createTestingModule({
             providers: [
                 GoogleCalendarIntegrationsService,
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: loggerStub
+                },
                 {
                     provide: ConfigService,
                     useValue: configServiceStub

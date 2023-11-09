@@ -35,7 +35,8 @@ export class GoogleCalendarIntegrationsController {
             message: 'Google Calendar is notified',
             xGoogChannelId,
             xGoogResourceId,
-            xGoogChannelExpiration
+            xGoogChannelExpiration,
+            syncdayGoogleCalendarIntegrationUUID
         });
 
         if (!syncdayGoogleCalendarIntegrationUUID) {
