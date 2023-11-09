@@ -16,6 +16,8 @@ export class GoogleCalendarEventWatchService {
             version: 'v3',
             auth: oauthClient
         });
+        const _1YearAfter = new Date();
+        const _1YearAfterTimestamp = _1YearAfter.setFullYear(_1YearAfter.getFullYear() + 1);
 
         const watchResult = await googleCalendar.events.watch({
             showHiddenInvitations: true,
@@ -24,7 +26,8 @@ export class GoogleCalendarEventWatchService {
                 id: notificationId,
                 type: 'webhook',
                 address: notificationCallbackURL,
-                payload: true
+                payload: true,
+                expiration: String(_1YearAfterTimestamp)
             },
             calendarId
         });
