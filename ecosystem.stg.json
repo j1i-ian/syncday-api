@@ -3,11 +3,12 @@
         {
             "name": "stg-syncday-api",
             "script": "dist/main.js",
-            "instances": 1,
+            "instances": -1,
             "max_memory_restart": "2G",
-            "exec_mode": "fork",
+            "exec_mode": "cluster",
             "log_date_format": "YYYY-MM-DD HH:mm Z",
             "env": {
+                "ENV": "staging",
                 "NODE_ENV": "staging"
             },
             "interpreter": "node",

@@ -3,11 +3,12 @@
         {
             "name": "syncday-api",
             "script": "dist/main.js",
-            "instances": 1,
-            "max_memory_restart": "2G",
-            "exec_mode": "fork",
+            "instances": -1,
+            "max_memory_restart": "4G",
+            "exec_mode": "cluster",
             "log_date_format": "YYYY-MM-DD HH:mm Z",
             "env": {
+                "ENV": "production",
                 "NODE_ENV": "production"
             },
             "interpreter": "node",
