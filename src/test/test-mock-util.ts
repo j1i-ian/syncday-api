@@ -68,9 +68,14 @@ export class TestMockUtil {
             getNestTestingModuleCallback().get(getRepositoryToken(EntityClass));
 
         const datasourceMock = {
+            stub: null,
             getRepository: _getRepository,
             transaction: (callback: any) =>
-                Promise.resolve(callback({ getRepository: _getRepository }))
+                Promise.resolve(callback({ getRepository: _getRepository })),
+            // eslint-disable-next-line object-shorthand
+            setQuery: function (stubValue: any) { this.stub = stubValue; },
+            // eslint-disable-next-line object-shorthand
+            query: function() { return Promise.resolve(this.stub); }
         };
 
         return datasourceMock;
