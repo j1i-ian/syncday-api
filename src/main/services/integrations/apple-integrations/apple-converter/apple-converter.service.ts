@@ -67,7 +67,7 @@ export class AppleConverterService {
         const convertedAppleSchedules = Object.values(parsedICS).map((_parsedSchedule) => {
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const timezone = (_parsedSchedule.created as any).tz as string | undefined || userSetting.preferredTimezone;
+            const timezone = (_parsedSchedule.created as any)?.tz as string | undefined || userSetting.preferredTimezone;
             const gmtString = this.timeUtilService.getTimezoneGMTString(timezone) ?? '';
 
             const startDate = new Date(`${ _parsedSchedule.start as string }${gmtString}`);

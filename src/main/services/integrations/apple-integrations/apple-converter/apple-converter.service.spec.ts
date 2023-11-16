@@ -89,5 +89,28 @@ describe('AppleConverterService', () => {
             expect(convertedAppleCalendarIntegrationSchedule.scheduledTime.endTimestamp).ok;
             expect(convertedAppleCalendarIntegrationSchedule.iCalUID).ok;
         });
+
+        it('should be converted to apple calendar integration schedules that have no cerated timezone data', () => {
+
+            const userStub = stubOne(User);
+            const userSettingStub = stubOne(UserSetting);
+            const calDAVCalendarObjectMock = testMockUtil.getCalDAVCalendarObjectMock();
+
+            calDAVCalendarObjectMock.data.created = undefined;
+
+            icalModuleParseICSStub.returns(calDAVCalendarObjectMock);
+
+            const convertedAppleCalendarIntegrationSchedules = service.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
+                userStub,
+                userSettingStub,
+                calDAVCalendarObjectMock
+            );
+
+            expect(convertedAppleCalendarIntegrationSchedules).ok;
+            expect(convertedAppleCalendarIntegrationSchedules.length).greaterThan(0);
+
+            const convertedAppleCalendarIntegrationSchedule = convertedAppleCalendarIntegrationSchedules[0];
+            expect(convertedAppleCalendarIntegrationSchedule).ok;
+        });
     });
 });
