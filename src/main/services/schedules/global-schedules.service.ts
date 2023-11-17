@@ -18,9 +18,6 @@ import { CalendarIntegrationsServiceLocator } from '@services/integrations/calen
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { User } from '@entity/users/user.entity';
-import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
-import { AvailableTime } from '@entity/availability/availability-time.entity';
-import { TimeRange } from '@entity/events/time-range.entity';
 import { InviteeAnswer } from '@entity/schedules/invitee-answer.entity';
 import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
@@ -306,11 +303,11 @@ export class GlobalSchedulesService {
         const ensuredEndDateTimestamp = ensuredEndDateTime.getTime();
 
         const isNotConcatenatedTimes = ensuredEndDateTimestamp <= ensuredStartDateTimestamp;
-        const isPast = this._isPastTimestamp(ensuredStartDateTimestamp, ensuredEndDateTimestamp);
+        const isPast = this.timeUtilService.isPastTimestamp(ensuredStartDateTimestamp, ensuredEndDateTimestamp);
 
         const { availableTimes, overrides } = availabilityBody;
 
-        const overlappingDateOverride = this._findOverlappingDateOverride(
+        const overlappingDateOverride = this.timeUtilService.findOverlappingDateOverride(
             availabilityTimezone,
             overrides,
             ensuredStartDateTimestamp,
@@ -334,7 +331,7 @@ export class GlobalSchedulesService {
                 isInvalidTimeOverlappingWithOverrides = true;
             } else {
                 // or checking available override time match
-                _isTimeOverlappingWithAvailableTimeOverrides = this._isTimeOverlappingWithAvailableTimeOverrides(
+                _isTimeOverlappingWithAvailableTimeOverrides = this.timeUtilService.isTimeOverlappingWithAvailableTimeOverrides(
                     availabilityTimezone,
                     overlappingDateOverride,
                     ensuredStartDateTimestamp,
@@ -349,7 +346,7 @@ export class GlobalSchedulesService {
             isInvalidTimeOverlappingWithOverrides = false;
 
             // checking available time
-            _isTimeOverlappingWithAvailableTimes = this._isTimeOverlappingWithAvailableTimes(
+            _isTimeOverlappingWithAvailableTimes = this.timeUtilService.isTimeOverlappingWithAvailableTimes(
                 availableTimes,
                 availabilityTimezone,
                 ensuredStartDateTime,
@@ -493,206 +490,5 @@ export class GlobalSchedulesService {
                 ...additionalOption
             }
         ];
-    }
-
-    _isPastTimestamp(startDateTimestamp: number, ensuredEndDateTimestamp: number): boolean {
-        return startDateTimestamp < Date.now() ||
-            ensuredEndDateTimestamp < Date.now();
-    }
-
-    _findOverlappingDateOverride(
-        timezone: string,
-        overrides: OverridedAvailabilityTime[],
-        requestedStartDateTimestamp: number,
-        requestedEndDateTimestamp: number
-    ): OverridedAvailabilityTime | undefined {
-
-        const overlappingDateOverride = overrides.find((_override) => {
-
-            const { targetDate: _targetDate } = _override;
-            // check request time is in date override range
-            const _dateStartTime = '00:00';
-            const _dateEndTime = '23:59';
-
-            const ensuredTargetDate = new Date(_targetDate);
-            const _localizedDateStartTime = this.timeUtilService.localizeDateTime(
-                ensuredTargetDate,
-                timezone,
-                _dateStartTime,
-                {
-                    day: ensuredTargetDate.getUTCDate()
-                }
-            );
-            const _localizedDateEndTime = this.timeUtilService.localizeDateTime(
-                ensuredTargetDate,
-                timezone,
-                _dateEndTime,
-                {
-                    day: ensuredTargetDate.getUTCDate()
-                }
-            );
-
-            const isOverlapping = (_localizedDateStartTime.getTime() < requestedStartDateTimestamp && requestedStartDateTimestamp < _localizedDateEndTime.getTime()) ||
-                (_localizedDateStartTime.getTime() < requestedEndDateTimestamp && requestedEndDateTimestamp < _localizedDateEndTime.getTime());
-
-            return isOverlapping;
-        });
-
-        return overlappingDateOverride;
-    }
-
-    /**
-     * This method returns true if given params are valid
-     * nor returns false for invalid
-     *
-     * @param timezone
-     * @param overrides
-     * @param requestedStartDateTimestamp The schedule start time requested by the invitee
-     * @param requestedEndDateTimestamp The schedule end time requested by the invitee
-     * @returns true: valid / false: invalid
-     */
-    _isTimeOverlappingWithAvailableTimeOverrides(
-        timezone: string,
-        overlappingOverride: OverridedAvailabilityTime,
-        requestedStartDateTimestamp: number,
-        requestedEndDateTimestamp: number
-    ): boolean {
-
-        const { targetDate: _targetDate } = overlappingOverride;
-
-        let matchedTimeRange = false;
-
-        if (overlappingOverride.timeRanges.length > 0) {
-
-            const _foundOverlappingTimeRange = overlappingOverride.timeRanges.find((__timeRange) => {
-                const {
-                    startTime,
-                    endTime
-                } = __timeRange as {
-                    startTime: string;
-                    endTime: string;
-                };
-                const ensuredTargetDate = new Date(_targetDate);
-                const _startDateTime = this.timeUtilService.localizeDateTime(
-                    ensuredTargetDate,
-                    timezone,
-                    startTime,
-                    {
-                        day: ensuredTargetDate.getUTCDate()
-                    }
-                );
-                const _endDateTime = this.timeUtilService.localizeDateTime(
-                    ensuredTargetDate,
-                    timezone,
-                    endTime,
-                    {
-                        day: ensuredTargetDate.getUTCDate()
-                    }
-                );
-                return _startDateTime.getTime() < requestedStartDateTimestamp &&
-                    requestedEndDateTimestamp < _endDateTime.getTime();
-            });
-
-            matchedTimeRange = !!_foundOverlappingTimeRange;
-        } else {
-            const targetNextDateTimestamp = new Date().setDate(new Date(_targetDate).getDate() + 1);
-            const targetDateTimestamp = _targetDate.getTime();
-
-            matchedTimeRange =
-            (targetDateTimestamp < requestedStartDateTimestamp && requestedStartDateTimestamp < targetNextDateTimestamp)
-            || (targetDateTimestamp < requestedEndDateTimestamp && requestedEndDateTimestamp < targetNextDateTimestamp);
-        }
-
-        return matchedTimeRange;
-    }
-
-    _isTimeOverlappingWithAvailableTimes(
-        availableTimes: AvailableTime[],
-        availabilityTimezone: string,
-        startDateTime: Date,
-        endDateTime: Date
-    ): boolean {
-
-        const startTimeString = this.timeUtilService.dateToTimeString(startDateTime, availabilityTimezone);
-        const endTimeString = this.timeUtilService.dateToTimeString(endDateTime, availabilityTimezone);
-
-        const localizedStartDateTime = this.timeUtilService.localizeDateTime(
-            startDateTime,
-            availabilityTimezone,
-            startTimeString
-        );
-
-        const localizedEndDateTime = this.timeUtilService.localizeDateTime(
-            endDateTime,
-            availabilityTimezone,
-            endTimeString
-        );
-
-        const localizedDate = Intl.DateTimeFormat([], {
-            timeZone: availabilityTimezone,
-            day: '2-digit'
-        }).format(new Date(localizedStartDateTime));
-
-        let startWeekday: number;
-        let endWeekday: number;
-
-        if (+localizedDate !== localizedStartDateTime.getDate()) {
-            startWeekday = (localizedStartDateTime.getDay() + 1) % 7;
-            endWeekday = (localizedEndDateTime.getDay() + 1) % 7;
-        } else {
-            startWeekday = localizedStartDateTime.getDay();
-            endWeekday = localizedEndDateTime.getDay();
-        }
-
-        const startWeekdayAvailableTime = availableTimes.find((_availableTime) => _availableTime.day === startWeekday);
-        const endWeekdayAvailableTime = availableTimes.find((_availableTime) => _availableTime.day === endWeekday);
-
-        let isTimeOverlapping;
-
-        if (startWeekdayAvailableTime && endWeekdayAvailableTime) {
-            const isTimeOverlappingWithStartDateTime = this._isTimeOverlappingWithAvailableTimeRange(
-                localizedStartDateTime,
-                availabilityTimezone,
-                startWeekdayAvailableTime.timeRanges
-            );
-            const isTimeOverlappingWithEndDateTime = this._isTimeOverlappingWithAvailableTimeRange(
-                localizedStartDateTime,
-                availabilityTimezone,
-                endWeekdayAvailableTime.timeRanges
-            );
-
-            isTimeOverlapping = isTimeOverlappingWithStartDateTime && isTimeOverlappingWithEndDateTime;
-        } else {
-            isTimeOverlapping = false;
-        }
-
-        return isTimeOverlapping;
-    }
-
-    _isTimeOverlappingWithAvailableTimeRange(dateTime: Date, timezone: string, timeRanges: TimeRange[]): boolean {
-
-        const isTimeOverlappingDateTime = timeRanges.some((_timeRange) => {
-            const {
-                startTime: timeRangeStartTime,
-                endTime: timeRangeEndTime
-            } = _timeRange as { startTime: string; endTime: string };
-
-            const localizedTimeRangeStartDateTime = this.timeUtilService.localizeDateTime(
-                dateTime,
-                timezone,
-                timeRangeStartTime
-            );
-
-            const localizedTimeRangeEndDateTime = this.timeUtilService.localizeDateTime(
-                dateTime,
-                timezone,
-                timeRangeEndTime
-            );
-
-            return localizedTimeRangeStartDateTime.getTime() <= dateTime.getTime() &&
-                dateTime.getTime() <= localizedTimeRangeEndDateTime.getTime();
-        });
-
-        return isTimeOverlappingDateTime;
     }
 }
