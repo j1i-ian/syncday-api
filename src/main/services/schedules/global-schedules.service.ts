@@ -15,6 +15,7 @@ import { AvailabilityRedisRepository } from '@services/availability/availability
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { NativeSchedulesService } from '@services/schedules/native-schedules.service';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { User } from '@entity/users/user.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
@@ -37,6 +38,7 @@ export class GlobalSchedulesService {
     constructor(
         private readonly integrationsServiceLocator: IntegrationsServiceLocator,
         private readonly utilService: UtilService,
+        private readonly timeUtilService: TimeUtilService,
         private readonly eventsService: EventsService,
         private readonly nativeSchedulesService: NativeSchedulesService,
         private readonly calendarIntegrationsServiceLocator: CalendarIntegrationsServiceLocator,
@@ -513,7 +515,7 @@ export class GlobalSchedulesService {
             const _dateEndTime = '23:59';
 
             const ensuredTargetDate = new Date(_targetDate);
-            const _localizedDateStartTime = this.utilService.localizeDateTime(
+            const _localizedDateStartTime = this.timeUtilService.localizeDateTime(
                 ensuredTargetDate,
                 timezone,
                 _dateStartTime,
@@ -521,7 +523,7 @@ export class GlobalSchedulesService {
                     day: ensuredTargetDate.getUTCDate()
                 }
             );
-            const _localizedDateEndTime = this.utilService.localizeDateTime(
+            const _localizedDateEndTime = this.timeUtilService.localizeDateTime(
                 ensuredTargetDate,
                 timezone,
                 _dateEndTime,
@@ -571,7 +573,7 @@ export class GlobalSchedulesService {
                     endTime: string;
                 };
                 const ensuredTargetDate = new Date(_targetDate);
-                const _startDateTime = this.utilService.localizeDateTime(
+                const _startDateTime = this.timeUtilService.localizeDateTime(
                     ensuredTargetDate,
                     timezone,
                     startTime,
@@ -579,7 +581,7 @@ export class GlobalSchedulesService {
                         day: ensuredTargetDate.getUTCDate()
                     }
                 );
-                const _endDateTime = this.utilService.localizeDateTime(
+                const _endDateTime = this.timeUtilService.localizeDateTime(
                     ensuredTargetDate,
                     timezone,
                     endTime,
@@ -611,16 +613,16 @@ export class GlobalSchedulesService {
         endDateTime: Date
     ): boolean {
 
-        const startTimeString = this.utilService.dateToTimeString(startDateTime, availabilityTimezone);
-        const endTimeString = this.utilService.dateToTimeString(endDateTime, availabilityTimezone);
+        const startTimeString = this.timeUtilService.dateToTimeString(startDateTime, availabilityTimezone);
+        const endTimeString = this.timeUtilService.dateToTimeString(endDateTime, availabilityTimezone);
 
-        const localizedStartDateTime = this.utilService.localizeDateTime(
+        const localizedStartDateTime = this.timeUtilService.localizeDateTime(
             startDateTime,
             availabilityTimezone,
             startTimeString
         );
 
-        const localizedEndDateTime = this.utilService.localizeDateTime(
+        const localizedEndDateTime = this.timeUtilService.localizeDateTime(
             endDateTime,
             availabilityTimezone,
             endTimeString
@@ -675,13 +677,13 @@ export class GlobalSchedulesService {
                 endTime: timeRangeEndTime
             } = _timeRange as { startTime: string; endTime: string };
 
-            const localizedTimeRangeStartDateTime = this.utilService.localizeDateTime(
+            const localizedTimeRangeStartDateTime = this.timeUtilService.localizeDateTime(
                 dateTime,
                 timezone,
                 timeRangeStartTime
             );
 
-            const localizedTimeRangeEndDateTime = this.utilService.localizeDateTime(
+            const localizedTimeRangeEndDateTime = this.timeUtilService.localizeDateTime(
                 dateTime,
                 timezone,
                 timeRangeEndTime

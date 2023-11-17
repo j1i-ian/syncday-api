@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
-import { TimezoneOffset } from '@core/interfaces/integrations/timezone-offset.interface';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
@@ -33,10 +32,6 @@ import { Integration } from '@entity/integrations/integration.entity';
 import { Host } from '@entity/schedules/host.entity';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
-
-type LocalizedDate = {
-    [key in keyof Intl.DateTimeFormatOptions]: string;
-};
 
 interface UserDefaultSettingOption {
     randomSuffix: boolean;
@@ -142,66 +137,6 @@ export class UtilService {
         }
 
         return ensureIntegrationContext;
-    }
-
-    dateToTimeString(
-        date: Date,
-        timezone: string
-    ): string {
-
-        const formatPartObject = this.localizeDateTimeFormatPartObject(date, timezone);
-
-        const localizedHour = String(formatPartObject.hour).padStart(2, '0');
-        const localizedMins = String(formatPartObject.minute).padStart(2, '0');
-
-        return `${localizedHour}:${localizedMins}`;
-    }
-
-    /**
-     * @param timeString ex) 10:00
-     */
-    localizeDateTime(
-        date: Date,
-        timezone: string,
-        timeString: string,
-        overrideOptions: null | {
-            day: number;
-        } = null
-    ): Date {
-
-        const formatPartObject = this.localizeDateTimeFormatPartObject(date, timezone);
-
-        const year = formatPartObject['year'] as string;
-        const month = formatPartObject['month'] as string;
-        const day = overrideOptions ? String(overrideOptions.day) : formatPartObject['day'] as string;
-        const GMTShortString = formatPartObject['timeZoneName'] as string;
-
-        const YYYYMMDD = `${year}-${month}-${day}`;
-        const parsedDate = new Date(`${YYYYMMDD} ${timeString}:00 ${GMTShortString}`);
-
-        return parsedDate;
-    }
-
-    localizeDateTimeFormatPartObject(
-        date: Date,
-        timezone: string
-    ): LocalizedDate {
-
-        const formatPartEntries = new Intl.DateTimeFormat('en-GB', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            timeZone: timezone,
-            timeZoneName: 'short'
-        }).formatToParts(date)
-            .map((_formatPart) => [_formatPart.type, _formatPart.value]);
-
-        const formatPartObject = Object.fromEntries(formatPartEntries);
-
-        return formatPartObject;
     }
 
     generenateGoogleMeetLink(): string {
@@ -577,89 +512,6 @@ export class UtilService {
         return [store, ...value].join(':');
     }
 
-    // TODO: Should be written test
-    getTimezoneOffset(timezone: string): TimezoneOffset {
-
-        const formatter = Intl.DateTimeFormat([], {
-            timeZone: timezone,
-            timeZoneName: 'short'
-        });
-        const formattedDate = formatter.format(new Date());
-
-        const matchedGMTStringGroup = formattedDate
-            .match(/.*(?<timezoneDiff>GMT[-+]\d(:\d\d)?).*/)?.groups;
-
-        let timezoneOffset: TimezoneOffset;
-
-        const timezoneDiff = matchedGMTStringGroup && matchedGMTStringGroup.timezoneDiff;
-        const matchedTimezoneDiff = timezoneDiff?.match(/GMT(?<sign>[+-])(?<hourOffset>\d)(:(?<minuteOffset>\d\d))?/);
-
-        if (matchedTimezoneDiff) {
-            timezoneOffset = matchedTimezoneDiff.groups as unknown as TimezoneOffset;
-
-            const _sign = (timezoneOffset.sign as unknown as string) === '+';
-            timezoneOffset.sign = _sign;
-        } else {
-
-            const localizedDate = this.localizeDate(new Date(), timezone);
-            const _today = new Date();
-            const utcYYYYMMDD = [ _today.getUTCFullYear(), (_today.getUTCMonth() + 1).toString().padStart(2, '0'), _today.getUTCDate().toString().padStart(2, '0') ].join('');
-
-            const localizedDateYYYYMMDD = [localizedDate.year, localizedDate.month, localizedDate.day].join('');
-
-            let _sign;
-            if (+localizedDateYYYYMMDD > +utcYYYYMMDD) {
-                _sign = true;
-            } else if (+localizedDateYYYYMMDD === +utcYYYYMMDD) {
-                _sign = +(localizedDate.hour as string) > _today.getUTCHours();
-            } else {
-                _sign = false;
-            }
-
-            let _hourOffset;
-
-            const utcHour = new Date().getUTCHours();
-            if (+(localizedDate.hour as string) > utcHour) {
-                _hourOffset = Math.abs(new Date().getUTCHours() - +(localizedDate.hour as string));
-            } else {
-                _hourOffset = 24 - Math.abs(new Date().getUTCHours() - +(localizedDate.hour as string));
-            }
-
-            if (_sign === false) {
-                _hourOffset *= -1;
-            }
-
-            const _minuteOffset = (60 - (Math.abs(+(localizedDate.minute as string) - new Date().getUTCMinutes()))) % 60;
-
-            // eslint-disable-next-line prefer-const
-            timezoneOffset = {
-                sign: _sign,
-                hourOffset: _hourOffset,
-                minuteOffset: _minuteOffset
-            };
-        }
-
-        return timezoneOffset;
-    }
-
-    // TODO: Should be written test
-    localizeDate(date: Date, timezone: string): LocalizedDate {
-
-        const defaultOptions = this.localizingDefaultOption;
-        defaultOptions.timeZone = timezone;
-
-        const formatter = new Intl.DateTimeFormat('en-GB', defaultOptions);
-
-        const parts = formatter.formatToParts(date);
-        const localizedDate: LocalizedDate =
-            Object.fromEntries(
-                parts.map((_p) => [_p.type, _p.value])
-            ) as unknown as LocalizedDate;
-        localizedDate.timeZoneName = 'short';
-
-        return localizedDate;
-    }
-
     generateFilePath(inputFilename: string, prefix = 'images'): string {
         const yyyymmdd = this.toYYYYMMDD(new Date(), '');
         const fileUuid = this.uuid(36, '-', '-');
@@ -687,17 +539,5 @@ export class UtilService {
             .split(splitter)
             .join(joiner);
         return randomUUID.toUpperCase().slice(0, length);
-    }
-
-    get localizingDefaultOption(): Intl.DateTimeFormatOptions {
-        return {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            timeZoneName: 'short'
-        } as Intl.DateTimeFormatOptions;
     }
 }

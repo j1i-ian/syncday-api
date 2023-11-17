@@ -20,6 +20,7 @@ import { AppleIntegrationsSchedulesService } from '@services/integrations/apple-
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
 import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
@@ -44,6 +45,8 @@ describe('SchedulesService', () => {
 
     let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
+    let timeUtilServiceStub: sinon.SinonStubbedInstance<TimeUtilService>;
+
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
     let nativeSchedulesServiceStub: sinon.SinonStubbedInstance<NativeSchedulesService>;
     let calendarIntegrationsServiceLocatorStub: sinon.SinonStubbedInstance<CalendarIntegrationsServiceLocator>;
@@ -65,6 +68,8 @@ describe('SchedulesService', () => {
 
         integrationsServiceLocatorStub = sinon.createStubInstance(IntegrationsServiceLocator);
         utilServiceStub = sinon.createStubInstance(UtilService);
+        timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
+
         eventsServiceStub = sinon.createStubInstance(EventsService);
         nativeSchedulesServiceStub = sinon.createStubInstance(NativeSchedulesService);
         calendarIntegrationsServiceLocatorStub = sinon.createStubInstance(CalendarIntegrationsServiceLocator);
@@ -95,6 +100,10 @@ describe('SchedulesService', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
+                },
+                {
+                    provide: TimeUtilService,
+                    useValue: timeUtilServiceStub
                 },
                 {
                     provide: EventsService,
@@ -168,7 +177,7 @@ describe('SchedulesService', () => {
         afterEach(() => {
             eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
-            utilServiceStub.localizeDateTime.reset();
+            timeUtilServiceStub.localizeDateTime.reset();
             nativeSchedulesServiceStub.search.reset();
             integrationsServiceLocatorStub.getIntegrationFactory.reset();
             integrationsServiceLocatorStub.getFacade.reset();
@@ -447,7 +456,7 @@ describe('SchedulesService', () => {
         afterEach(() => {
             eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
-            utilServiceStub.localizeDateTime.reset();
+            timeUtilServiceStub.localizeDateTime.reset();
             googleCalendarIntegrationsServiceStub.findOne.reset();
             googleCalendarIntegrationsServiceStub.createCalendarEvent.reset();
             googleCalendarIntegrationsServiceStub.patchCalendarEvent.reset();
@@ -814,7 +823,7 @@ describe('SchedulesService', () => {
         const timezoneMock = 'Asia/Seoul';
 
         afterEach(() => {
-            utilServiceStub.localizeDateTime.reset();
+            timeUtilServiceStub.localizeDateTime.reset();
         });
 
         // expected result true means request schedule data is invalid.
@@ -898,8 +907,8 @@ describe('SchedulesService', () => {
         }) {
             it(description, () => {
 
-                utilServiceStub.localizeDateTime.onFirstCall().returns(localizeDateTimeStubOnFirstCall);
-                utilServiceStub.localizeDateTime.onSecondCall().returns(localizeDateTimeStubOnSecondCall);
+                timeUtilServiceStub.localizeDateTime.onFirstCall().returns(localizeDateTimeStubOnFirstCall);
+                timeUtilServiceStub.localizeDateTime.onSecondCall().returns(localizeDateTimeStubOnSecondCall);
 
                 const isTimeOverlappedWithOverrides = service._isTimeOverlappingWithAvailableTimeOverrides(
                     timezoneMock,
@@ -908,7 +917,7 @@ describe('SchedulesService', () => {
                     endDateTimestampMock
                 );
 
-                expect(utilServiceStub.localizeDateTime.callCount).to.be.at.least(expectedLocalizeDateTimeCallCount);
+                expect(timeUtilServiceStub.localizeDateTime.callCount).to.be.at.least(expectedLocalizeDateTimeCallCount);
                 expect(isTimeOverlappedWithOverrides).equal(expectedResult);
             });
         });
@@ -927,8 +936,8 @@ describe('SchedulesService', () => {
         });
 
         afterEach(() => {
-            utilServiceStub.dateToTimeString.reset();
-            utilServiceStub.localizeDateTime.reset();
+            timeUtilServiceStub.dateToTimeString.reset();
+            timeUtilServiceStub.localizeDateTime.reset();
             serviceSandbox.restore();
         });
 
@@ -1035,11 +1044,11 @@ describe('SchedulesService', () => {
             expectedResult
         }) {
             it(description, () => {
-                utilServiceStub.dateToTimeString.onFirstCall().returns('startTimeStringStub');
-                utilServiceStub.dateToTimeString.onSecondCall().returns('endTimeStringStub');
+                timeUtilServiceStub.dateToTimeString.onFirstCall().returns('startTimeStringStub');
+                timeUtilServiceStub.dateToTimeString.onSecondCall().returns('endTimeStringStub');
 
-                utilServiceStub.localizeDateTime.onFirstCall().returns(startDateTimeMock);
-                utilServiceStub.localizeDateTime.onSecondCall().returns(endDateTimeMock);
+                timeUtilServiceStub.localizeDateTime.onFirstCall().returns(startDateTimeMock);
+                timeUtilServiceStub.localizeDateTime.onSecondCall().returns(endDateTimeMock);
 
                 const startWeekdayAvailableTimeStub = availableTimesMock.find((_availableTimeMock) => _availableTimeMock.day === startDateTimeMock.getDay());
                 const endWeekdayAvailableTimeStub = availableTimesMock.find((_availableTimeMock) => _availableTimeMock.day === endDateTimeMock.getDay());
@@ -1056,8 +1065,8 @@ describe('SchedulesService', () => {
                     expect(_isTimeOverlappingWithAvailableTimeRangeStub.called).false;
                 }
 
-                expect(utilServiceStub.dateToTimeString.calledTwice).true;
-                expect(utilServiceStub.localizeDateTime.calledTwice).true;
+                expect(timeUtilServiceStub.dateToTimeString.calledTwice).true;
+                expect(timeUtilServiceStub.localizeDateTime.calledTwice).true;
                 expect(isTimeOverlapping).equal(expectedResult);
             });
         });
@@ -1071,12 +1080,12 @@ describe('SchedulesService', () => {
         const timeRangesMock = overridedAvailabilityTimeMock.timeRanges;
 
         const localizedDateStub = new Date('2023-07-21T13:00:00.000Z');
-        utilServiceStub.localizeDateTime.returns(localizedDateStub);
+        timeUtilServiceStub.localizeDateTime.returns(localizedDateStub);
 
         const result = service._isTimeOverlappingWithAvailableTimeRange(date, timezone, timeRangesMock);
 
         expect(result).true;
-        expect(utilServiceStub.localizeDateTime.called).true;
+        expect(timeUtilServiceStub.localizeDateTime.called).true;
     });
 
 });

@@ -6,6 +6,7 @@ import { NotificationType } from '@interfaces/notifications/notification-type.en
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { UtilService } from '@services/util/util.service';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
@@ -24,11 +25,13 @@ describe('GoogleConverterService', () => {
     let loggerStub: sinon.SinonStubbedInstance<Logger>;
 
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
+    let timeUtilServiceStub: sinon.SinonStubbedInstance<TimeUtilService>;
 
     before(async () => {
 
-        utilServiceStub = sinon.createStubInstance(UtilService);
         loggerStub = sinon.createStubInstance(Logger);
+        utilServiceStub = sinon.createStubInstance(UtilService);
+        timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -36,6 +39,10 @@ describe('GoogleConverterService', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
+                },
+                {
+                    provide: TimeUtilService,
+                    useValue: timeUtilServiceStub
                 },
                 {
                     provide: WINSTON_MODULE_PROVIDER,

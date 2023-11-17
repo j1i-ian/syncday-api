@@ -11,6 +11,7 @@ import { NotificationType } from '@interfaces/notifications/notification-type.en
 import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { UtilService } from '@services/util/util.service';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
@@ -19,7 +20,8 @@ import { Schedule } from '@entity/schedules/schedule.entity';
 export class GoogleConverterService {
 
     constructor(
-        private readonly utilService: UtilService
+        private readonly utilService: UtilService,
+        private readonly timeUtilService: TimeUtilService
     ) {}
 
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
@@ -255,7 +257,7 @@ export class GoogleConverterService {
     }
 
     getTimezoneOffset(timezone: string): TimezoneOffset {
-        return this.utilService.getTimezoneOffset(timezone);
+        return this.timeUtilService.getTimezoneOffset(timezone);
     }
 
     _convertGoogleScheduleToGoogleIntegrationSchedule(

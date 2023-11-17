@@ -8,6 +8,7 @@ import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
@@ -20,6 +21,7 @@ describe('NativeSchedulesService', () => {
 
     let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
+    let timeUtilServiceStub: sinon.SinonStubbedInstance<TimeUtilService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
 
     let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<SchedulesRedisRepository>;
@@ -30,6 +32,7 @@ describe('NativeSchedulesService', () => {
 
         integrationsServiceLocatorStub = sinon.createStubInstance(IntegrationsServiceLocator);
         utilServiceStub = sinon.createStubInstance(UtilService);
+        timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
 
         schedulesRedisRepositoryStub = sinon.createStubInstance(SchedulesRedisRepository);
@@ -42,6 +45,10 @@ describe('NativeSchedulesService', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
+                },
+                {
+                    provide: TimeUtilService,
+                    useValue: timeUtilServiceStub
                 },
                 {
                     provide: EventsService,
@@ -84,7 +91,7 @@ describe('NativeSchedulesService', () => {
         afterEach(() => {
             eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
-            utilServiceStub.localizeDateTime.reset();
+            timeUtilServiceStub.localizeDateTime.reset();
             integrationsServiceLocatorStub.getIntegrationFactory.reset();
             integrationsServiceLocatorStub.getFacade.reset();
 

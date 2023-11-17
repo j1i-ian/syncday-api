@@ -205,66 +205,6 @@ describe('UtilService', () => {
         });
     });
 
-    [
-        {
-            description: 'should be equal to the New York localized date with the input date in New York Time',
-            hostTimezone: 'America/New_York',
-            hostAvailableStartTimeString: '10:00',
-            availableStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
-            expectedLocalizedStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
-            inviteeRequestTime: new Date('2023-07-13 13:00:00 GMT-04:00'),
-            overrideOptions: null
-        },
-        {
-            description: 'should be equal to the New York localized date with the input date in New York Time for date override calculation',
-            hostTimezone: 'America/New_York',
-            hostAvailableStartTimeString: '10:00',
-            availableStartTime: new Date('2023-07-13T00:00:00'),
-            expectedLocalizedStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
-            inviteeRequestTime: new Date('2023-07-13 13:00:00 GMT-04:00'),
-            overrideOptions: {
-                day: 13
-            }
-        },
-        {
-            description: 'should be equal to the New York localized date with the input date in New York Time for date override calculation',
-            hostTimezone: 'Asia/Seoul',
-            hostAvailableStartTimeString: '13:00',
-            availableStartTime: new Date('2023-07-13T00:00:00'),
-            expectedLocalizedStartTime: new Date('2023-07-13 13:00:00 GMT+09:00'),
-            inviteeRequestTime: new Date('2023-07-13 18:00:00 GMT-04:00'),
-            overrideOptions: {
-                day: 13
-            }
-        }
-    ].forEach(function({
-        description,
-        hostTimezone,
-        hostAvailableStartTimeString,
-        availableStartTime,
-        expectedLocalizedStartTime,
-        inviteeRequestTime,
-        overrideOptions
-    }) {
-
-        it(description, () => {
-
-            const localizedDateTime = service.localizeDateTime(
-                availableStartTime,
-                hostTimezone,
-                hostAvailableStartTimeString,
-                overrideOptions
-            );
-
-            const localizedDateTimestamp = localizedDateTime.getTime();
-            expect(localizedDateTimestamp).equals(expectedLocalizedStartTime.getTime());
-
-            const isInviteeRequestTimeInOverrideRange = localizedDateTime.getTime() < inviteeRequestTime.getTime();
-            expect(isInviteeRequestTimeInOverrideRange).true;
-        });
-    });
-
-
     it('should be generated for uuid', () => {
         const uuidMap = new Map<string, boolean>();
 
