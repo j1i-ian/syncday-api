@@ -295,11 +295,9 @@ export class GlobalSchedulesService {
 
         // for exclusive query, reduce 1 second
         const ensuredStartDateTime = ensuredBufferStartDatetime ?? new Date(startTimestamp);
-        ensuredStartDateTime.setSeconds(ensuredStartDateTime.getSeconds() + 1);
         const ensuredStartDateTimestamp = ensuredStartDateTime.getTime();
 
         const ensuredEndDateTime = ensuredBufferEndDatetime ?? new Date(endTimestamp);
-        ensuredEndDateTime.setSeconds(ensuredEndDateTime.getSeconds() - 1);
         const ensuredEndDateTimestamp = ensuredEndDateTime.getTime();
 
         const isNotConcatenatedTimes = ensuredEndDateTimestamp <= ensuredStartDateTimestamp;
@@ -445,49 +443,61 @@ export class GlobalSchedulesService {
     _getScheduleConflictCheckOptions(
         startDateTime: Date,
         endDateTime: Date,
-        additionalOption?: FindOptionsWhere<Schedule>
-        | FindOptionsWhere<GoogleIntegrationSchedule>
-        | FindOptionsWhere<AppleCalDAVIntegrationSchedule>
-        | undefined
+        additionalOptionsWhere?: FindOptionsWhere<Schedule> |
+            FindOptionsWhere<GoogleIntegrationSchedule> |
+            FindOptionsWhere<AppleCalDAVIntegrationSchedule>
+        | undefined,
+        options = {
+            exclusivly: true
+        }
     ): Array<FindOptionsWhere<InviteeSchedule>> {
+
+        const _startDateTime = new Date(startDateTime);
+        const _endDateTime = new Date(endDateTime);
+
+        if (options.exclusivly) {
+            _startDateTime.setSeconds(_startDateTime.getSeconds() + 1);
+            _endDateTime.setSeconds(_startDateTime.getSeconds() - 1);
+        }
+
         return [
             {
                 scheduledTime: {
-                    startTimestamp: MoreThanOrEqual(startDateTime),
-                    endTimestamp: LessThanOrEqual(endDateTime)
+                    startTimestamp: MoreThanOrEqual(_startDateTime),
+                    endTimestamp: LessThanOrEqual(_endDateTime)
                 },
-                ...additionalOption
+                ...additionalOptionsWhere
             },
             {
                 scheduledTime: {
-                    startTimestamp: LessThanOrEqual(startDateTime),
-                    endTimestamp: MoreThanOrEqual(endDateTime)
+                    startTimestamp: LessThanOrEqual(_startDateTime),
+                    endTimestamp: MoreThanOrEqual(_endDateTime)
                 },
-                ...additionalOption
+                ...additionalOptionsWhere
             },
             {
                 scheduledBufferTime: {
-                    startBufferTimestamp: Between(startDateTime, endDateTime)
+                    startBufferTimestamp: Between(_startDateTime, _endDateTime)
                 },
-                ...additionalOption
+                ...additionalOptionsWhere
             },
             {
                 scheduledBufferTime: {
-                    endBufferTimestamp: Between(startDateTime, endDateTime)
+                    endBufferTimestamp: Between(_startDateTime, _endDateTime)
                 },
-                ...additionalOption
+                ...additionalOptionsWhere
             },
             {
                 scheduledTime: {
-                    startTimestamp: Between(startDateTime, endDateTime)
+                    startTimestamp: Between(_startDateTime, _endDateTime)
                 },
-                ...additionalOption
+                ...additionalOptionsWhere
             },
             {
                 scheduledTime: {
-                    endTimestamp: Between(startDateTime, endDateTime)
+                    endTimestamp: Between(_startDateTime, _endDateTime)
                 },
-                ...additionalOption
+                ...additionalOptionsWhere
             }
         ];
     }

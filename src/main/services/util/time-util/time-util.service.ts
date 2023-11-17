@@ -51,8 +51,8 @@ export class TimeUtilService {
                 }
             );
 
-            const isOverlapping = (_localizedDateStartTime.getTime() < requestedStartDateTimestamp && requestedStartDateTimestamp < _localizedDateEndTime.getTime()) ||
-                (_localizedDateStartTime.getTime() < requestedEndDateTimestamp && requestedEndDateTimestamp < _localizedDateEndTime.getTime());
+            const isOverlapping = (_localizedDateStartTime.getTime() <= requestedStartDateTimestamp && requestedStartDateTimestamp <= _localizedDateEndTime.getTime()) ||
+                (_localizedDateStartTime.getTime() <= requestedEndDateTimestamp && requestedEndDateTimestamp <= _localizedDateEndTime.getTime());
 
             return isOverlapping;
         });
@@ -61,14 +61,13 @@ export class TimeUtilService {
     }
 
     /**
-     * This method returns true if given params are valid
-     * nor returns false for invalid
+     * check boolean value by overlapping or not
      *
      * @param timezone
      * @param overrides
      * @param requestedStartDateTimestamp The schedule start time requested by the invitee
      * @param requestedEndDateTimestamp The schedule end time requested by the invitee
-     * @returns true: valid / false: invalid
+     * @returns true: overlapping / false: not overlapping
      */
     isTimeOverlappingWithAvailableTimeOverrides(
         timezone: string,
@@ -108,8 +107,9 @@ export class TimeUtilService {
                         day: ensuredTargetDate.getUTCDate()
                     }
                 );
-                return _startDateTime.getTime() < requestedStartDateTimestamp &&
-                    requestedEndDateTimestamp < _endDateTime.getTime();
+
+                return _startDateTime.getTime() <= requestedStartDateTimestamp &&
+                    requestedEndDateTimestamp <= _endDateTime.getTime();
             });
 
             matchedTimeRange = !!_foundOverlappingTimeRange;
@@ -118,8 +118,8 @@ export class TimeUtilService {
             const targetDateTimestamp = _targetDate.getTime();
 
             matchedTimeRange =
-            (targetDateTimestamp < requestedStartDateTimestamp && requestedStartDateTimestamp < targetNextDateTimestamp)
-            || (targetDateTimestamp < requestedEndDateTimestamp && requestedEndDateTimestamp < targetNextDateTimestamp);
+            (targetDateTimestamp <= requestedStartDateTimestamp && requestedStartDateTimestamp <= targetNextDateTimestamp)
+            || (targetDateTimestamp <= requestedEndDateTimestamp && requestedEndDateTimestamp <= targetNextDateTimestamp);
         }
 
         return matchedTimeRange;
@@ -188,7 +188,11 @@ export class TimeUtilService {
         return isTimeOverlapping;
     }
 
-    isTimeOverlappingWithAvailableTimeRange(dateTime: Date, timezone: string, timeRanges: TimeRange[]): boolean {
+    isTimeOverlappingWithAvailableTimeRange(
+        dateTime: Date,
+        timezone: string,
+        timeRanges: TimeRange[]
+    ): boolean {
 
         const isTimeOverlappingDateTime = timeRanges.some((_timeRange) => {
             const {
@@ -457,5 +461,18 @@ export class TimeUtilService {
             second: '2-digit',
             timeZoneName: 'short'
         } as Intl.DateTimeFormatOptions;
+    }
+
+    timeToNumber(timeString: string): {
+        hour: number;
+        minutes: number;
+    } {
+        const [ hourString, minutesString ] = timeString.split(':');
+        const hour = +hourString % 24;
+        const minutes = +minutesString % 60;
+        return {
+            hour,
+            minutes
+        };
     }
 }

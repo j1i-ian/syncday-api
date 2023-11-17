@@ -311,8 +311,8 @@ describe('TimeUtilService', () => {
                         } as TimeRange
                     ]
                 } as OverridedAvailabilityTime,
-                startDateTimestampMock: new Date('2023-08-25T09:00:00').getTime(),
-                endDateTimestampMock: new Date('2023-08-25T10:00:00').getTime(),
+                startDateTimestampMock: new Date('2023-08-25T08:00:00').getTime(),
+                endDateTimestampMock: new Date('2023-08-25T12:00:00').getTime(),
                 localizeDateTimeStubOnFirstCall: new Date('2023-08-25T09:00:00'),
                 localizeDateTimeStubOnSecondCall: new Date('2023-08-25T11:00:00'),
                 expectedLocalizeDateTimeCallCount: 2,
@@ -330,12 +330,12 @@ describe('TimeUtilService', () => {
                         } as TimeRange
                     ]
                 } as OverridedAvailabilityTime,
-                startDateTimestampMock: new Date('2023-08-25T08:00:00').getTime(),
-                endDateTimestampMock: new Date('2023-08-25T09:00:00').getTime(),
+                startDateTimestampMock: new Date('2023-08-25T09:00:00').getTime(),
+                endDateTimestampMock: new Date('2023-08-25T10:00:00').getTime(),
                 localizeDateTimeStubOnFirstCall: new Date('2023-08-25T09:00:00'),
                 localizeDateTimeStubOnSecondCall: new Date('2023-08-25T11:00:00'),
                 expectedLocalizeDateTimeCallCount: 2,
-                expectedResult: false
+                expectedResult: true
             }
         ].forEach(function ({
             description,
@@ -521,7 +521,7 @@ describe('TimeUtilService', () => {
         });
     });
 
-    describe('Test ', () => {
+    describe('Test getOverridedAvailabilityTimeMock', () => {
 
         let localizeDateTimeStub: sinon.SinonStub<[date: Date, timezone: string, timeString: string, overrideOptions?: { day: number } | null | undefined], Date>;
 
@@ -554,5 +554,44 @@ describe('TimeUtilService', () => {
             expect(result).true;
             expect(localizeDateTimeStub.called).true;
         });
+    });
+
+    it('it should be validated that start, end time is in available time', () => {
+
+        const availableTimes = [
+            { day: 1, timeRanges: [{ startTime: '09:00:00', endTime: '17:00:00' }] },
+            { day: 2, timeRanges: [{ startTime: '09:00:00', endTime: '17:00:00' }] },
+            { day: 3, timeRanges: [{ startTime: '09:00:00', endTime: '17:00:00' }] },
+            { day: 4, timeRanges: [{ startTime: '09:00:00', endTime: '17:00:00' }] },
+            { day: 5, timeRanges: [{ startTime: '09:00:00', endTime: '17:00:00' }] }
+        ] as AvailableTime[];
+
+        const availabilityTimezone = 'Asia/Seoul';
+        const startDateTime = new Date('Mon Nov 20 2023 00:30:00 GMT+0000 (Coordinated Universal Time)');
+        const endDateTime = new Date('Mon Nov 20 2023 01:00:00 GMT+0000 (Coordinated Universal Time)');
+
+        const result = service.isTimeOverlappingWithAvailableTimes(
+            availableTimes,
+            availabilityTimezone,
+            startDateTime,
+            endDateTime
+        );
+
+        expect(result).true;
+    });
+
+    it('should be validated that the localized start date time fall within host\'s time range, taking into account timezone calculation', () => {
+
+        const localizedStartDateTime = new Date('Mon Nov 20 2023 09:30:00 GMT+0900 (Korean Standard Time');
+        const availabilityTimezone = 'Asia/Seoul';
+        const startTimeRanges = [{ startTime: '09:00:00', endTime: '17:00:00' }] ;
+
+        const isTimeOverlappingWithStartDateTime = service.isTimeOverlappingWithAvailableTimeRange(
+            localizedStartDateTime,
+            availabilityTimezone,
+            startTimeRanges
+        );
+
+        expect(isTimeOverlappingWithStartDateTime).true;
     });
 });

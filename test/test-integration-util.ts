@@ -412,8 +412,13 @@ export class TestIntegrationUtil {
         hostWorkspace: string,
         hostEvent: HostEvent,
         _bookingStartTime: Date,
-        _bookingEndTime: Date
+        _bookingEndTime: Date,
+        _bookingBufferStartTime?: Date | undefined,
+        _bookingBufferEndTime?: Date | undefined
     ): Promise<ScheduledEventResponseDto> {
+
+        _bookingBufferStartTime = _bookingBufferStartTime || _bookingStartTime;
+        _bookingBufferEndTime = _bookingBufferEndTime || _bookingEndTime;
 
         const inviteeTimezone = 'Asia/Seoul';
 
@@ -424,8 +429,8 @@ export class TestIntegrationUtil {
                 endTimestamp: _bookingEndTime
             },
             scheduledBufferTime: {
-                startBufferTimestamp: _bookingStartTime,
-                endBufferTimestamp: _bookingEndTime
+                startBufferTimestamp: _bookingBufferStartTime,
+                endBufferTimestamp: _bookingBufferEndTime
             },
             inviteeAnswers: [
                 {
@@ -570,8 +575,8 @@ export class TestIntegrationUtil {
         return this.googleCalendarEventPatchServicePatchStub;
     }
 
-    getNextWorkingDate(): Date {
-        const nextWorkingDay = new Date();
+    getNextWorkingDate(fromDate = new Date()): Date {
+        const nextWorkingDay = fromDate;
 
         // 10:00 KST
         nextWorkingDay.setDate(nextWorkingDay.getDate() + 1);

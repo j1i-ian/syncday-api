@@ -10,9 +10,12 @@ import { UserService } from '@services/users/user.service';
 import { BookingsController } from '@services/bookings/bookings.controller';
 import { IntegrationsController } from '@services/integrations/integrations.controller';
 import { EventsService } from '@services/events/events.service';
+import { AvailabilityService } from '@services/availability/availability.service';
 import { User } from '@entity/users/user.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { Event } from '@entity/events/event.entity';
+import { BufferTime } from '@entity/events/buffer-time.entity';
+import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { TestIntegrationUtil } from './test-integration-util';
 
 const testIntegrationUtil = new TestIntegrationUtil();
@@ -23,6 +26,7 @@ describe('Schedule Integration Test', () => {
 
     let userService: UserService;
     let eventsService: EventsService;
+    let availabilityService: AvailabilityService;
 
     let bookingsController: BookingsController;
     let integrationsController: IntegrationsController;
@@ -32,6 +36,7 @@ describe('Schedule Integration Test', () => {
         app = await testIntegrationUtil.initializeApp();
         userService = app.get<UserService>(UserService);
         eventsService = app.get<EventsService>(EventsService);
+        availabilityService = app.get<AvailabilityService>(AvailabilityService);
 
         bookingsController = app.get<BookingsController>(BookingsController);
         integrationsController = app.get<IntegrationsController>(IntegrationsController);
@@ -44,7 +49,7 @@ describe('Schedule Integration Test', () => {
         sinon.restore();
     });
 
-    describe('Invitee can schedule an appointment for host user', () => {
+    describe('Test Invitee Booking', () => {
 
         let fakeHostUser: User;
         let fakeHostEvent: HostEvent | Event;
@@ -91,7 +96,7 @@ describe('Schedule Integration Test', () => {
 
         describe('Test booking for email user', () => {
 
-            it('should be booked an appointment by invitee for email user', async () => {
+            it('should be booked an event by invitee for email user', async () => {
 
                 // tomorrow 10:00 for KST
                 const nextWorkingDate = testIntegrationUtil.getNextWorkingDate();
@@ -111,6 +116,177 @@ describe('Schedule Integration Test', () => {
 
                 expect(scheduledEventResponseDto).ok;
                 expect(scheduledEventResponseDto.name).ok;
+            });
+        });
+
+        describe('Test Invitee Booking with Host buffer time setup', () => {
+
+            const bufferTime = {
+                before: '00:30:00',
+                after: '00:15:00'
+            } as BufferTime;
+
+            beforeEach(async () => {
+
+                // set up event location to Zoom
+                const events = await firstValueFrom(eventsService.search({
+                    userId: fakeHostUser.id
+                }));
+
+                fakeHostEvent = events[0];
+
+                fakeHostEvent = await firstValueFrom(eventsService.findOne(fakeHostEvent.id, fakeHostUser.id));
+
+                await eventsService.patch(fakeHostEvent.id, fakeHostUser.id, {
+                    bufferTime
+                });
+
+                fakeHostEvent.bufferTime = bufferTime;
+
+                const hostAvailability = await firstValueFrom(availabilityService.fetchDetail(fakeHostUser.id, fakeHostUser.uuid, fakeHostEvent.availabilityId));
+                expect(hostAvailability.availableTimes.length).greaterThan(0);
+            });
+
+            afterEach(async () => {
+
+                const hostUser = await firstValueFrom(bookingsController.fetchHost(hostWorkspace));
+                expect(hostUser).ok;
+
+                await testIntegrationUtil.clearSchedule(hostUser.workspace);
+
+                await userService.deleteUser(fakeHostUser.id);
+            });
+
+            it('should be not booked an event when an invitee requests a time slot from 09:00 to 09:30, and host requires a 30min buffer time before the event, starting their work time at 09:00', async () => {
+
+                const nextWorkingDate = testIntegrationUtil.getNextWorkingDate();
+                nextWorkingDate.setHours(0, 0, 0, 0);
+
+                const bookingStartTime = new Date(nextWorkingDate);
+                const bookingEndTime = new Date(nextWorkingDate);
+                bookingEndTime.setMinutes(30, 0, 0);
+
+                const beforeBufferTime = new Date(bookingStartTime);
+                beforeBufferTime.setMinutes(beforeBufferTime.getMinutes() - 30);
+                const afterBufferTime = new Date(bookingEndTime);
+                afterBufferTime.setMinutes(afterBufferTime.getMinutes() + 15);
+
+                await expect(testIntegrationUtil.createSchedule(
+                    fakeHostUser.workspace as string,
+                    fakeHostEvent as HostEvent,
+                    bookingStartTime,
+                    bookingEndTime,
+                    beforeBufferTime
+                )).rejectedWith(CannotCreateByInvalidTimeRange);
+            });
+
+            it('should be booked an event when an invitee requests a time slot from 09:30 to 10:00, and host requires a 30min buffer time before the event, starting their work time at 09:00', async () => {
+                const nextWorkingDate = testIntegrationUtil.getNextWorkingDate();
+                nextWorkingDate.setHours(0, 30, 0, 0);
+
+                const bookingStartTime = new Date(nextWorkingDate);
+
+                const bookingEndTime = new Date(nextWorkingDate);
+                bookingEndTime.setHours(1, 0);
+
+                const scheduledEventResponseDto = await testIntegrationUtil.createSchedule(
+                    fakeHostUser.workspace as string,
+                    fakeHostEvent as HostEvent,
+                    bookingStartTime,
+                    bookingEndTime
+                );
+
+                expect(scheduledEventResponseDto).ok;
+                expect(scheduledEventResponseDto.name).ok;
+            });
+
+            it('should be not booked an event when an invitee requests a second time slot of the day from 10:30 to 11:00, and host requires a 30min buffer time before the event with 15min buffer time after the event, starting their work time at 09:00, there is a first booked event on that day (09:30 ~ 10:00) ', async () => {
+                const nextWorkingDate = testIntegrationUtil.getNextWorkingDate();
+                nextWorkingDate.setHours(0, 30, 0, 0);
+
+                const someonesBookingStartTime = new Date(nextWorkingDate);
+                const someonesBookingEndTime = new Date(nextWorkingDate);
+                someonesBookingEndTime.setHours(1, 0);
+
+                const someonesBookingBufferStartTime = new Date(someonesBookingStartTime);
+                someonesBookingBufferStartTime.setMinutes(someonesBookingBufferStartTime.getMinutes() - 30);
+
+                const someonesBookingBufferEndTime = new Date(someonesBookingEndTime);
+                someonesBookingBufferEndTime.setMinutes(someonesBookingBufferEndTime.getMinutes() + 15);
+
+                await testIntegrationUtil.createSchedule(
+                    fakeHostUser.workspace as string,
+                    fakeHostEvent as HostEvent,
+                    someonesBookingStartTime,
+                    someonesBookingEndTime,
+                    someonesBookingBufferStartTime,
+                    someonesBookingBufferEndTime
+                );
+
+                const inviteeBookingStartTime = new Date(nextWorkingDate);
+                inviteeBookingStartTime.setHours(1, 30);
+                const inviteeBookingEndTime = new Date(nextWorkingDate);
+                inviteeBookingEndTime.setHours(2, 0);
+
+                const inviteeBookingBufferStartTime = new Date(inviteeBookingStartTime);
+                inviteeBookingBufferStartTime.setMinutes(inviteeBookingBufferStartTime.getMinutes() - 30);
+
+                const inviteeBookingBufferEndTime = new Date(inviteeBookingEndTime);
+                inviteeBookingBufferEndTime.setMinutes(inviteeBookingBufferEndTime.getMinutes() + 15);
+
+                await expect(testIntegrationUtil.createSchedule(
+                    fakeHostUser.workspace as string,
+                    fakeHostEvent as HostEvent,
+                    inviteeBookingStartTime,
+                    inviteeBookingEndTime,
+                    inviteeBookingBufferStartTime,
+                    inviteeBookingBufferEndTime
+                )).rejectedWith(CannotCreateByInvalidTimeRange);
+            });
+
+            it('should be booked an event when an invitee requests a second time slot of the day from 11:00 to 11:30 and host requires a 30min buffer time before the event with 15min buffer time after the event, starting their work time at 09:00, there is a first booked event on that day (09:30 ~ 10:00, last schedule end time + after buffer + before buffer for new one = 10:45. Therefore second time slot is 11:00)', async () => {
+                const nextWorkingDate = testIntegrationUtil.getNextWorkingDate();
+                nextWorkingDate.setHours(0, 30);
+
+                const someonesBookingStartTime = new Date(nextWorkingDate);
+                const someonesBookingEndTime = new Date(nextWorkingDate);
+                someonesBookingEndTime.setHours(1, 0);
+
+                const someonesBookingBufferStartTime = new Date(someonesBookingStartTime);
+                someonesBookingBufferStartTime.setMinutes(someonesBookingBufferStartTime.getMinutes() - 30);
+
+                const someonesBookingBufferEndTime = new Date(someonesBookingEndTime);
+                someonesBookingBufferEndTime.setMinutes(someonesBookingBufferEndTime.getMinutes() + 15);
+
+                await testIntegrationUtil.createSchedule(
+                    fakeHostUser.workspace as string,
+                    fakeHostEvent as HostEvent,
+                    someonesBookingStartTime,
+                    someonesBookingEndTime,
+                    someonesBookingBufferStartTime,
+                    someonesBookingBufferEndTime
+                );
+
+                const inviteeBookingStartTime = new Date(nextWorkingDate);
+                inviteeBookingStartTime.setHours(2, 0);
+                const inviteeBookingEndTime = new Date(nextWorkingDate);
+                inviteeBookingEndTime.setHours(2, 30);
+
+                const inviteeBookingBufferStartTime = new Date(inviteeBookingStartTime);
+                inviteeBookingBufferStartTime.setMinutes(inviteeBookingBufferStartTime.getMinutes() - 30);
+
+                const inviteeBookingBufferEndTime = new Date(inviteeBookingEndTime);
+                inviteeBookingBufferEndTime.setMinutes(inviteeBookingBufferEndTime.getMinutes() + 15);
+
+                const createdSecondScheduledEvent =await testIntegrationUtil.createSchedule(
+                    fakeHostUser.workspace as string,
+                    fakeHostEvent as HostEvent,
+                    inviteeBookingStartTime,
+                    inviteeBookingEndTime,
+                    inviteeBookingBufferStartTime,
+                    inviteeBookingBufferEndTime
+                );
+                expect(createdSecondScheduledEvent).ok;
             });
         });
 
