@@ -171,12 +171,16 @@ export class AppleIntegrationsService implements
                 userId
             })
         ).pipe(
+            map((loadedAppleIntegration) => {
+
+                loadedAppleIntegration.email = partialIntegration?.email ?? loadedAppleIntegration.email;
+                loadedAppleIntegration.appSpecificPassword = partialIntegration?.appSpecificPassword ?? loadedAppleIntegration.appSpecificPassword;
+
+                return loadedAppleIntegration;
+            }),
             mergeMap(
                 (loadedAppleIntegration) =>
-                    this.validate(
-                        partialIntegration as AppleCalDAVIntegration ||
-                        loadedAppleIntegration
-                    )
+                    this.validate(loadedAppleIntegration)
             ),
             catchError((errorOrException: Error) => {
 
