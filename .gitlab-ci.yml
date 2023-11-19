@@ -193,10 +193,10 @@ build-docs-with-coverage:
     - !reference [.resolve-submodule, before_script]
     - !reference [.resolve-variables-by-env, before_script]
   script: |
-    npm i -D @compodoc/compodoc
     npm i -D nyc
     npm run test:coverage
     if [ "$ENV" = "production" ]; then
+      npm i -D @compodoc/compodoc
       npm run build:docs
     fi
   artifacts:
