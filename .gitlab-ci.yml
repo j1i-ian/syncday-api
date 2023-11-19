@@ -183,7 +183,7 @@ integration-test:
     reports:
       junit: coverage/integration-junit-report.xml
 
-build-docs-with-coverage:
+coverage-then-documentations:
   <<: *resolve-submodule
   stage: deploy
   needs:
@@ -214,7 +214,7 @@ deploy-docs-to-s3:
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   needs:
     - integration-test
-    - build-docs-with-coverage
+    - coverage-then-documentations
   allow_failure: true
   script: |
     aws s3 sync ./docs s3://$S3_BUCKET --delete --acl public-read
