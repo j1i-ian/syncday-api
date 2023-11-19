@@ -1,13 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Observable, map, mergeMap } from 'rxjs';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
+import { BookingRequest } from '@core/interfaces/notifications/text-templates/booking-request.interface';
+import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
 import { AppConfigService } from '@config/app-config.service';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { UtilService } from '@services/util/util.service';
+import { EventsService } from '@services/events/events.service';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { Language } from '@app/enums/language.enum';
 
@@ -15,9 +20,47 @@ import { Language } from '@app/enums/language.enum';
 export class NotificationsService {
     constructor(
         private readonly utilService: UtilService,
+        private readonly eventsService: EventsService,
         private readonly configService: ConfigService,
         private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
     ) {}
+
+    sendBookingRequest(
+        userId: number,
+        eventId: number,
+        hostName: string,
+        inviteeName: string,
+        phoneNumber: string,
+        memo?: string
+    ): Observable<boolean> {
+
+        const reminderType = ReminderType.KAKAOTALK;
+        const conditionalSentence = memo ? ' 님의 메시지 :' : '';
+        const syncdayNotificationPublishKey = this.utilService.convertReminderTypeToSyncdayNotificationPublishKey(reminderType);
+
+        // load event by event id
+        return this.eventsService.findOne(eventId, userId)
+            .pipe(
+                map((loadedEvent) => ({
+                    hostName,
+                    userName: inviteeName,
+                    eventName: loadedEvent.name,
+                    eventUrl: loadedEvent.link,
+                    conditionalSentence,
+                    additionalMessage: memo
+                } as BookingRequest)),
+                mergeMap((bookingRequest) =>
+                    this.sendMessage(
+                        syncdayNotificationPublishKey,
+                        {
+                            template: TextTemplate.BOOKING_REQUEST,
+                            data: JSON.stringify(bookingRequest),
+                            phoneNumber
+                        }
+                    )
+                )
+            );
+    }
 
     async sendCancellationMessages(
         scheduledEventNotifications: ScheduledEventNotification[]

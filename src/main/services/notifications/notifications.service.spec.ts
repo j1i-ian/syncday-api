@@ -10,6 +10,7 @@ import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { FileUtilsService } from '@services/util/file-utils/file-utils.service';
 import { UtilService } from '@services/util/util.service';
+import { EventsService } from '@services/events/events.service';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { Language } from '@app/enums/language.enum';
@@ -28,12 +29,16 @@ describe('IntegrationsService', () => {
     let syncdayAwsSdkClientServiceStub: sinon.SinonStubbedInstance<SyncdayAwsSdkClientService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
+    let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
+
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         awsSnsClientStub = sinon.createStubInstance(SNSClient);
         fileUtilsServiceStub = sinon.createStubInstance(FileUtilsService);
         syncdayAwsSdkClientServiceStub = sinon.createStubInstance(SyncdayAwsSdkClientService);
         utilServiceStub = sinon.createStubInstance(UtilService);
+
+        eventsServiceStub = sinon.createStubInstance(EventsService);
 
         sinon.stub(AppConfigService, 'getAwsSnsTopicARNSyncdayNotification').returns(
             'fakeAwsSnsTopicARNSyncdayNotification'
@@ -61,6 +66,10 @@ describe('IntegrationsService', () => {
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
+                },
+                {
+                    provide: EventsService,
+                    useValue: eventsServiceStub
                 }
             ]
         }).compile();

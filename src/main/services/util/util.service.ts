@@ -106,7 +106,29 @@ export class UtilService {
         };
 
         return notificationDataAndPublishKey;
+    }
 
+    convertReminderTypeToSyncdayNotificationPublishKey(
+        reminderType: ReminderType
+    ): SyncdayNotificationPublishKey {
+
+        let syncdayNotificationPublishKey: SyncdayNotificationPublishKey;
+
+        switch (reminderType)  {
+            case ReminderType.SMS:
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.SMS_GLOBAL;
+                break;
+            case ReminderType.WAHTSAPP:
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.WHATSAPP;
+                break;
+            case ReminderType.KAKAOTALK:
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.KAKAOTALK;
+                break;
+            default:
+                throw new Error('Unsupported reminder type');
+        }
+
+        return syncdayNotificationPublishKey;
     }
 
     ensureIntegrationContext(

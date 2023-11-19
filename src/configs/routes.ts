@@ -9,6 +9,7 @@ import { BookingsModule } from '@services/bookings/bookings.module';
 import { GoogleCalendarIntegrationsModule } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.module';
 import { UtilModule } from '@services/util/util.module';
 import { ZoomIntegrationsModule } from '@services/integrations/zoom-integrations/zoom-integrations.module';
+import { NotificationsModule } from '@services/notifications/notifications.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
@@ -81,5 +82,9 @@ export const routes: Routes = [
     {
         path: 'utils',
         module: UtilModule
+    },
+    {
+        path: 'notifications',
+        module: NotificationsModule
     }
 ];
