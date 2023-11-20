@@ -107,7 +107,7 @@ describe('OAuth2AccountsService', () => {
         oauth2AccountRepositoryStub.save.resolves(newOauth2AccountMock);
 
         const actualCreatingResult = await service._create(
-            datasourceMock as EntityManager,
+            datasourceMock as any as EntityManager,
             userMock,
             newOauth2AccountMock
         );
