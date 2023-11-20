@@ -7,6 +7,7 @@ import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -16,7 +17,6 @@ import { NotificationsService } from '@services/notifications/notifications.serv
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { User } from '@entity/users/user.entity';
-import { OAuth2Type } from '@entity/users/oauth2-type.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';

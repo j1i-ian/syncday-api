@@ -4,6 +4,7 @@ import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { compare } from 'bcrypt';
 import { calendar_v3, oauth2_v2 } from 'googleapis';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -14,7 +15,6 @@ import { IntegrationsServiceLocator } from '@services/integrations/integrations.
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
-import { OAuth2Type } from '@entity/users/oauth2-type.enum';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
