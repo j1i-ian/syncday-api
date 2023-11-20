@@ -27,6 +27,7 @@ export class NotificationsService {
 
     sendBookingRequest(
         userId: number,
+        userWorkspace: string,
         eventId: number,
         hostName: string,
         inviteeName: string,
@@ -41,14 +42,19 @@ export class NotificationsService {
         // load event by event id
         return this.eventsService.findOne(eventId, userId)
             .pipe(
-                map((loadedEvent) => ({
-                    hostName,
-                    userName: inviteeName,
-                    eventName: loadedEvent.name,
-                    eventUrl: loadedEvent.link,
-                    conditionalSentence,
-                    additionalMessage: memo
-                } as BookingRequest)),
+                map((loadedEvent) => {
+
+                    const eventTypeFullLink = `https://sync.day/${userWorkspace}/${loadedEvent.link}`;
+
+                    return {
+                        hostName,
+                        userName: inviteeName,
+                        eventName: loadedEvent.name,
+                        eventUrl: eventTypeFullLink,
+                        conditionalSentence,
+                        additionalMessage: memo
+                    } as BookingRequest;
+                }),
                 mergeMap((bookingRequest) =>
                     this.sendMessage(
                         syncdayNotificationPublishKey,

@@ -76,6 +76,27 @@ export class AppConfigService {
         return host;
     }
 
+    static getFrontendHost(): string {
+
+        let frontendHost = '';
+        switch (process.env.ENV) {
+            case NodeEnv.PRODUCTION:
+                frontendHost = 'https://sync.day';
+                break;
+            case NodeEnv.STAGING:
+                frontendHost = 'https://stg.sync.day';
+                break;
+            case NodeEnv.DEVELOP:
+                frontendHost = 'https://dev.sync.day';
+                break;
+            default:
+                frontendHost = process.env.HOST as string;
+                break;
+        }
+
+        return frontendHost;
+    }
+
     static getJwtModuleOptions(): JwtModuleAsyncOptions {
         return {
             imports: [ConfigModule],

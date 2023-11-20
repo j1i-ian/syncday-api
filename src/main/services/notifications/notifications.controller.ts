@@ -28,6 +28,7 @@ export class NotificationsController {
 
         return from(this.notificationsService.sendBookingRequest(
             authUser.id,
+            authUser.workspace,
             eventId,
             authUser.name,
             inviteeName,
