@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
 import { SNSClient } from '@aws-sdk/client-sns';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
@@ -11,8 +12,12 @@ import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-clien
 import { FileUtilsService } from '@services/util/file-utils/file-utils.service';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
+import { UserSettingService } from '@services/users/user-setting/user-setting.service';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
+import { Event } from '@entity/events/event.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { User } from '@entity/users/user.entity';
 import { Language } from '@app/enums/language.enum';
 import { TestMockUtil } from '@test/test-mock-util';
 import { faker } from '@faker-js/faker';
@@ -29,6 +34,7 @@ describe('IntegrationsService', () => {
     let syncdayAwsSdkClientServiceStub: sinon.SinonStubbedInstance<SyncdayAwsSdkClientService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
+    let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
 
     before(async () => {
@@ -38,6 +44,7 @@ describe('IntegrationsService', () => {
         syncdayAwsSdkClientServiceStub = sinon.createStubInstance(SyncdayAwsSdkClientService);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
+        userSettingServiceStub = sinon.createStubInstance(UserSettingService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
 
         sinon.stub(AppConfigService, 'getAwsSnsTopicARNSyncdayNotification').returns(
@@ -70,6 +77,10 @@ describe('IntegrationsService', () => {
                 {
                     provide: EventsService,
                     useValue: eventsServiceStub
+                },
+                {
+                    provide: UserSettingService,
+                    useValue: userSettingServiceStub
                 }
             ]
         }).compile();
@@ -116,6 +127,83 @@ describe('IntegrationsService', () => {
 
             expect(awsSnsClientStub.send.called).ok;
             expect(result).true;
+        });
+
+        it('should be sent welcome email', async () => {
+            const userNameMock = 'harry';
+            const userEmailMock = faker.internet.email();
+            const preferredLanguageMock = Language.ENGLISH;
+
+            const publishCommandOutputStub = {
+                MessageId: 'a8b9c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d',
+                $metadata: {
+                    httpStatusCode: 200
+                }
+            };
+
+            syncdayAwsSdkClientServiceStub.getSNSClient.returns(awsSnsClientStub);
+            awsSnsClientStub.send.resolves(publishCommandOutputStub);
+
+            const result = await service.sendWelcomeEmailForNewUser(userNameMock, userEmailMock, preferredLanguageMock);
+
+            expect(awsSnsClientStub.send.called).ok;
+            expect(result).true;
+        });
+    });
+
+    describe('Test Booking Request Test', () => {
+
+        let eventTypeStub: Event;
+        let serviceSandbox: sinon.SinonSandbox;
+        let serviceSendMessageStub: sinon.SinonStub<[syncdayNotificationPublishKey: SyncdayNotificationPublishKey, notificationData: SyncdayAwsSnsRequest]>;
+
+        beforeEach(() => {
+            eventTypeStub = stubOne(Event);
+            utilServiceStub.convertReminderTypeToSyncdayNotificationPublishKey.returns(SyncdayNotificationPublishKey.KAKAOTALK);
+
+            eventsServiceStub.findOne.resolves(eventTypeStub);
+
+            const userSettingStub = stubOne(UserSetting);
+            userSettingServiceStub.fetchUserSettingByUserId.resolves(userSettingStub);
+
+            serviceSandbox = sinon.createSandbox();
+            serviceSendMessageStub = serviceSandbox.stub(service, 'sendMessage');
+            serviceSendMessageStub.resolves(true);
+        });
+
+        afterEach(() => {
+            utilServiceStub.convertReminderTypeToSyncdayNotificationPublishKey.reset();
+            eventsServiceStub.findOne.reset();
+            userSettingServiceStub.fetchUserSettingByUserId.reset();
+
+            serviceSandbox.restore();
+        });
+
+        it('should be sent booking request', async () => {
+
+            const userMock = stubOne(User);
+
+            const invitee = {
+                name: '홍길동',
+                phoneNumber: '+821012341234'
+            };
+
+            const bookingRequestResult = await firstValueFrom(service.sendBookingRequest(
+                userMock.id,
+                eventTypeStub.id,
+                userMock.name,
+                invitee.name,
+                invitee.phoneNumber,
+                'memo'
+            ));
+
+            expect(utilServiceStub.convertReminderTypeToSyncdayNotificationPublishKey.called).true;
+            expect(eventsServiceStub.findOne.called).true;
+            expect(userSettingServiceStub.fetchUserSettingByUserId.called).true;
+
+            expect(serviceSendMessageStub.called).true;
+
+            expect(bookingRequestResult).true;
         });
 
         it('should be sent welcome email', async () => {

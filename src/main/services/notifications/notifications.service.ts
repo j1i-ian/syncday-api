@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Observable, map, mergeMap } from 'rxjs';
+import { Observable, combineLatest, from, map, mergeMap } from 'rxjs';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
@@ -13,6 +13,7 @@ import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
+import { UserSettingService } from '@services/users/user-setting/user-setting.service';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { Language } from '@app/enums/language.enum';
 
@@ -21,13 +22,13 @@ export class NotificationsService {
     constructor(
         private readonly utilService: UtilService,
         private readonly eventsService: EventsService,
+        private readonly userSettingService: UserSettingService,
         private readonly configService: ConfigService,
         private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
     ) {}
 
     sendBookingRequest(
         userId: number,
-        userWorkspace: string,
         eventId: number,
         hostName: string,
         inviteeName: string,
@@ -40,10 +41,14 @@ export class NotificationsService {
         const syncdayNotificationPublishKey = this.utilService.convertReminderTypeToSyncdayNotificationPublishKey(reminderType);
 
         // load event by event id
-        return this.eventsService.findOne(eventId, userId)
+        return combineLatest([
+            this.eventsService.findOne(eventId, userId),
+            from(this.userSettingService.fetchUserSettingByUserId(userId))
+        ])
             .pipe(
-                map((loadedEvent) => {
+                map(([loadedEvent, userSetting]) => {
 
+                    const userWorkspace = userSetting.workspace;
                     const resourecLink = [ userWorkspace, loadedEvent.link ].join('/');
 
                     return {
