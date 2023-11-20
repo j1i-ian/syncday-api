@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { Observable, from } from 'rxjs';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { User } from '@entity/users/user.entity';
 
@@ -10,6 +11,12 @@ export class OAuth2AccountsService {
     constructor (
         @InjectRepository(OAuth2Account) private readonly oauth2accountsRepository: Repository<OAuth2Account>
     ) {
+    }
+
+    find(userId: number): Observable<OAuth2Account[]> {
+        return from(this.oauth2accountsRepository.findBy({
+            userId
+        }));
     }
 
     async findOneByEmail(email: string): Promise<OAuth2Account | null> {
