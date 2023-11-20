@@ -44,13 +44,13 @@ export class NotificationsService {
             .pipe(
                 map((loadedEvent) => {
 
-                    const eventTypeFullLink = `https://sync.day/${userWorkspace}/${loadedEvent.link}`;
+                    const resourecLink = [ userWorkspace, loadedEvent.link ].join('/');
 
                     return {
                         hostName,
                         userName: inviteeName,
                         eventName: loadedEvent.name,
-                        eventUrl: eventTypeFullLink,
+                        eventUrl: resourecLink,
                         conditionalSentence,
                         additionalMessage: memo
                     } as BookingRequest;
