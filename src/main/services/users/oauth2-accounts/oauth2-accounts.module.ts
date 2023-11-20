@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { OAuth2AccountsService } from './oauth2-accounts.service';
-import { Oauth2AccountsController } from './oauth2-accounts.controller';
+import { OAuth2AccountsController } from './oauth2-accounts.controller';
 
 @Module({
     imports: [
@@ -10,6 +10,6 @@ import { Oauth2AccountsController } from './oauth2-accounts.controller';
     ],
     providers: [OAuth2AccountsService],
     exports: [OAuth2AccountsService],
-    controllers: [Oauth2AccountsController]
+    controllers: [OAuth2AccountsController]
 })
 export class OAuth2AccountsModule {}

@@ -6,7 +6,7 @@ import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-ac
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 
 @Controller()
-export class Oauth2AccountsController {
+export class OAuth2AccountsController {
 
     constructor(
         private readonly oauth2AccountService: OAuth2AccountsService
