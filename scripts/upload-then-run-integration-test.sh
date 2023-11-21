@@ -6,7 +6,8 @@ rsync -a -e "ssh -i $PEM_PATH -o StrictHostKeyChecking=no" \
     --exclude ".git" \
     --exclude "node_modules" \
     --exclude "dist" \
-    $(pwd)/* \
+    $(pwd)/.[!.]* \
+    $(pwd)/[!.]* \
     $(pwd)/src \
     $(pwd)/scripts \
     $(pwd)/configs \
