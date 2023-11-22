@@ -201,6 +201,10 @@ export class UtilService {
         return hashedPassword;
     }
 
+    comparePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
+        return bcrypt.compare(plainPassword, hashedPassword);
+    }
+
     generateRandomNumberString(digit: number, prefix = '0'): string {
         return String(Math.floor(Math.random() * Math.pow(10, digit))).padStart(digit, prefix);
     }

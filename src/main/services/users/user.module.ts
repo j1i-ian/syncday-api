@@ -10,7 +10,6 @@ import { EventGroup } from '@entity/events/evnet-group.entity';
 import { Event } from '@entity/events/event.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { VerificationModule } from '../../auth/verification/verification.module';
-import { TokenModule } from '../../auth/token/token.module';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { UserSettingModule } from './user-setting/user-setting.module';
@@ -26,7 +25,6 @@ import { OAuth2AccountsModule } from './oauth2-accounts/oauth2-accounts.module';
     imports: [
         TypeOrmModule.forFeature([User,EventGroup, Event, EventDetail]),
         forwardRef(() => VerificationModule),
-        forwardRef(() => TokenModule),
         // FIXME: remove this coupling after splitting sendMessage from integration module
         forwardRef(() => IntegrationsModule),
         UserSettingModule,

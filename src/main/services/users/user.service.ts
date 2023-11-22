@@ -28,7 +28,6 @@ import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
-import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
 import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
@@ -47,8 +46,6 @@ interface CreateUserOptions {
 export class UserService {
     constructor(
         @InjectDataSource() private datasource: DataSource,
-        @Inject(forwardRef(() => TokenService))
-        private readonly tokenService: TokenService,
         @Inject(forwardRef(() => VerificationService))
         private readonly verificationService: VerificationService,
         private readonly userSettingService: UserSettingService,
@@ -120,7 +117,7 @@ export class UserService {
 
         let result = false;
         if (loadedUser) {
-            result = await this.tokenService.comparePassword(
+            result = await this.utilService.comparePassword(
                 requestPlainPassword,
                 loadedUser.hashedPassword
             );
@@ -378,7 +375,7 @@ export class UserService {
             }
         });
 
-        const result = await this.tokenService.comparePassword(
+        const result = await this.utilService.comparePassword(
             updateUserPasswords.password,
             loadedUser.hashedPassword
         );

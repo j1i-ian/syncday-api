@@ -1,7 +1,6 @@
 import { Inject, Injectable, InternalServerErrorException, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
-import { compare } from 'bcrypt';
 import { calendar_v3, oauth2_v2 } from 'googleapis';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
@@ -239,9 +238,5 @@ export class TokenService {
             accessToken: signedAccessToken,
             refreshToken: signedRefreshToken
         };
-    }
-
-    comparePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
-        return compare(plainPassword, hashedPassword);
     }
 }

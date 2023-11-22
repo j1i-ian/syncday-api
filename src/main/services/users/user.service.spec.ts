@@ -19,7 +19,6 @@ import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-
 import { Language } from '@app/enums/language.enum';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
-import { TokenService } from '../../auth/token/token.service';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { TestMockUtil } from '../../../test/test-mock-util';
 import { UserService } from './user.service';
@@ -33,7 +32,6 @@ describe('Test User Service', () => {
     let module: TestingModule;
 
     let service: UserService;
-    let tokenServiceStub: sinon.SinonStubbedInstance<TokenService>;
     let verificationServiceStub: sinon.SinonStubbedInstance<VerificationService>;
     let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
@@ -60,7 +58,6 @@ describe('Test User Service', () => {
     };
 
     before(async () => {
-        tokenServiceStub = sinon.createStubInstance(TokenService);
         verificationServiceStub = sinon.createStubInstance(VerificationService);
         userSettingServiceStub = sinon.createStubInstance(UserSettingService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
@@ -108,10 +105,6 @@ describe('Test User Service', () => {
                 {
                     provide: EventsRedisRepository,
                     useValue: eventsRedisRepositoryStub
-                },
-                {
-                    provide: TokenService,
-                    useValue: tokenServiceStub
                 },
                 {
                     provide: VerificationService,
@@ -398,7 +391,7 @@ describe('Test User Service', () => {
 
                 serviceSandbox.reset();
                 serviceSandbox.restore();
-                tokenServiceStub.comparePassword.reset();
+                utilServiceStub.comparePassword.reset();
 
                 notificationsServiceStub.sendWelcomeEmailForNewUser.reset();
             });
@@ -538,7 +531,7 @@ describe('Test User Service', () => {
         afterEach(() => {
             serviceSandbox.reset();
             serviceSandbox.restore();
-            tokenServiceStub.comparePassword.reset();
+            utilServiceStub.comparePassword.reset();
         });
 
         after(() => {
@@ -553,7 +546,7 @@ describe('Test User Service', () => {
             });
 
             serviceSandbox.stub(service, 'findUserByEmail').resolves(userStub);
-            tokenServiceStub.comparePassword.resolves(true);
+            utilServiceStub.comparePassword.resolves(true);
 
             const validatedUserOrNull = await service.validateEmailAndPassword(
                 userStub.email,
@@ -584,7 +577,7 @@ describe('Test User Service', () => {
             const userStub = stubOne(User);
 
             serviceSandbox.stub(service, 'findUserByEmail').resolves(userStub);
-            tokenServiceStub.comparePassword.resolves(false);
+            utilServiceStub.comparePassword.resolves(false);
 
             const validatedUserOrNull = await service.validateEmailAndPassword(
                 userStub.email,
