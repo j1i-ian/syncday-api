@@ -20,6 +20,7 @@
     "prestart": "npm run build",
     "start": "ENV=local nest start --watch",
     "start:local": "ENV=local nest start --watch",
+    "start:local:profiling": "ENV=local_development node --inspect node_modules/@nestjs/cli/bin/nest.js start --watch",
     "start:local:dev": "ENV=local_development nest start --watch",
     "prestart:local:staging": "npm run build",
     "start:local:staging": "ENV=local_staging nest start --watch",
