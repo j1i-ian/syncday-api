@@ -255,6 +255,7 @@ export class TestIntegrationUtil {
             integrationContext,
             timezone,
             accessToken,
+            IntegrationVendor.GOOGLE,
             googleOAuthUrlGenerationExpressResponseMock
         );
 
@@ -269,6 +270,7 @@ export class TestIntegrationUtil {
 
         await this.tokenController.oauth2Callback(
             expressRequestMock,
+            IntegrationVendor.GOOGLE,
             Language.ENGLISH,
             googleOAuthCallbackResponseMock
         );
@@ -387,7 +389,11 @@ export class TestIntegrationUtil {
     ): Promise<void> {
 
         await Promise.all(
-            Object.values(IntegrationVendor)
+            [
+                IntegrationVendor.GOOGLE,
+                IntegrationVendor.APPLE,
+                IntegrationVendor.ZOOM
+            ]
                 .map(async (_integrationVendor) => {
                     const allIntegrations = await this.vendorIntegrationsController.searchIntegrations(
                         userId,
@@ -666,7 +672,7 @@ export class TestIntegrationUtil {
 
         this.issueGoogleTokenByAuthorizationCodeStub = sinon.stub(
             GoogleOAuthTokenService.prototype,
-            'issueGoogleTokenByAuthorizationCode'
+            'issueOAuthTokenByAuthorizationCode'
         );
 
         this.issueGoogleTokenByAuthorizationCodeStub.resolves(googleOAuthTokenStub);
