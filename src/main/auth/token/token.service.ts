@@ -12,6 +12,8 @@ import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { Language } from '@app/enums/language.enum';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
+import { AlreadySignedUpEmailException } from '@app/exceptions/already-signed-up-email.exception';
+import { CannotFindMatchedUser } from '@app/exceptions/users/cannot-find-matched-user.exception';
 import { AppConfigService } from '../../../configs/app-config.service';
 
 export interface EnsuredGoogleTokenResponse {
@@ -98,6 +100,8 @@ export class TokenService {
 
         let user: User | null = await this.userService.findUserByEmail(ensuredRequesterEmail);
 
+        this.validateOAuth2Request(user, ensuredIntegrationContext);
+
         const insufficientPermission = oauth2UserProfile.insufficientPermission;
 
         switch (ensuredIntegrationContext) {
@@ -137,6 +141,18 @@ export class TokenService {
             isNewbie,
             insufficientPermission
         };
+    }
+
+    validateOAuth2Request(
+        user: User | null,
+        ensuredIntegrationContext: IntegrationContext
+    ): void {
+
+        if (user && ensuredIntegrationContext === IntegrationContext.SIGN_UP) {
+            throw new AlreadySignedUpEmailException();
+        } else if (user === null && ensuredIntegrationContext !== IntegrationContext.SIGN_UP) {
+            throw new CannotFindMatchedUser();
+        }
     }
 
     issueTokenByRefreshToken(refreshToken: string): CreateTokenResponseDto {
