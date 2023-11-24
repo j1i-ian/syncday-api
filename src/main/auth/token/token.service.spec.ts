@@ -435,9 +435,6 @@ describe('TokenService', () => {
 
             userServiceStub.findUserByEmail.resolves(userStub);
 
-            const integrationStub = stubOne(GoogleIntegration);
-            _oauth2TokenServiceStub.getIntegrationFromUser.resolves(integrationStub);
-
             utilServiceStub.ensureIntegrationContext.returns(IntegrationContext.SIGN_UP);
         });
 
@@ -467,7 +464,6 @@ describe('TokenService', () => {
 
             expect(_oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.called).true;
             expect(userServiceStub.findUserByEmail.called).true;
-            expect(_oauth2TokenServiceStub.getIntegrationFromUser.called).true;
             expect(utilServiceStub.ensureIntegrationContext.called).true;
 
             expect(googleOAuth2UserWithToken).ok;

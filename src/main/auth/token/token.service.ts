@@ -208,6 +208,7 @@ export class TokenService {
         ensuredUserEmail: string
     ): Promise<IntegrationContext> {
 
+        const oauth2Type = this.utilService.convertIntegrationVendorToOAuth2Type(integrationVendor);
         const oauth2TokenService = this.oauth2TokenServiceLocator.get(integrationVendor);
 
         const oauth2UserEmail = oauth2TokenService.getEmailFromOAuth2UserProfile(oauth2UserProfile);
@@ -215,19 +216,14 @@ export class TokenService {
         const loadedUserOrNull = await this.userService.findUserByEmail(ensuredUserEmail);
 
         const loadedOAuth2AccountOrNull = loadedUserOrNull?.oauth2Accounts.find(
-            (_oauthAccount) => _oauthAccount.email === oauth2UserEmail
+            (_oauthAccount) => _oauthAccount.email === oauth2UserEmail &&
+                _oauthAccount.oauth2Type === oauth2Type
         ) ?? null;
-
-        const loadedIntegrationOrNull = oauth2TokenService.getIntegrationFromUser(
-            loadedUserOrNull,
-            oauth2UserEmail
-        );
 
         const ensuredIntegrationContext = this.utilService.ensureIntegrationContext(
             requestIntegrationContext,
             loadedUserOrNull,
-            loadedOAuth2AccountOrNull,
-            loadedIntegrationOrNull
+            loadedOAuth2AccountOrNull
         );
 
         return ensuredIntegrationContext;

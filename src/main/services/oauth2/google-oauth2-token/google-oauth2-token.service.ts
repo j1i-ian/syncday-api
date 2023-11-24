@@ -14,7 +14,6 @@ import { IntegrationsServiceLocator } from '@services/integrations/integrations.
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
-import { Integration } from '@entity/integrations/integration.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
@@ -167,14 +166,5 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         oauth2UserProfile: GoogleOAuth2UserWithToken
     ): string {
         return oauth2UserProfile.googleUser.email;
-    }
-
-    getIntegrationFromUser(
-        loadedUserOrNull: User | null,
-        oauth2UserEmail: string
-    ): Integration | null {
-        return loadedUserOrNull?.googleIntergrations.find(
-            (_googleIntegration) => _googleIntegration.email === oauth2UserEmail
-        ) ?? null;
     }
 }

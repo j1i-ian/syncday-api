@@ -12,8 +12,9 @@ import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { OAuth2TokenService } from '@services/integrations/oauth2-token-service.interface';
 import { KakaotalkIntegrationsFacade } from '@services/integrations/kakaotalk-integrations/kakaotalk-integrations.facade';
 import { UserService } from '@services/users/user.service';
+import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { User } from '@entity/users/user.entity';
-import { Integration } from '@entity/integrations/integration.entity';
+import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
@@ -25,6 +26,7 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
     constructor(
         private readonly configService: ConfigService,
         private readonly userService: UserService,
+        private readonly oauth2AccountsService: OAuth2AccountsService,
         private readonly kakaotalkIntegrationFacade: KakaotalkIntegrationsFacade
     ) {
         this.oauth2Setting = AppConfigService.getOAuth2Setting(
@@ -114,11 +116,14 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
         return signedUpUser;
     }
 
-    multipleSocialSignIn(
+    async multipleSocialSignIn(
         user: User,
         ensuredRequesterEmail: string
     ): Promise<void> {
-        throw new Error('Method not implemented.');
+        await this.oauth2AccountsService.create(user, {
+            email: ensuredRequesterEmail,
+            oauth2Type: OAuth2Type.KAKAOTALK
+        } as OAuth2Account);
     }
 
     integrate(
@@ -132,21 +137,5 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
         oauth2UserProfile: KakaotalkUserProfileResponse
     ): string {
         return oauth2UserProfile.kakao_account.email;
-    }
-
-    /**
-     * Currently, Kakaotalk is not being used
-     * for any other service integration
-     * except for OAuth2
-     *
-     * @param loadedUserOrNull Cu
-     * @param oauth2UserEmail
-     * @returns {Integration | null}
-     */
-    getIntegrationFromUser(
-        loadedUserOrNull: User | null,
-        oauth2UserEmail: string
-    ): Integration | null {
-        return null;
     }
 }

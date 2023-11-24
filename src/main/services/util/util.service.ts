@@ -14,6 +14,8 @@ import { Notification } from '@interfaces/notifications/notification';
 import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
+import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -28,7 +30,6 @@ import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
-import { Integration } from '@entity/integrations/integration.entity';
 import { Host } from '@entity/schedules/host.entity';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
@@ -59,6 +60,28 @@ type EventDetailInit = Omit<EventDetail,
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
+
+    convertIntegrationVendorToOAuth2Type(
+        integrationVendor: IntegrationVendor
+    ): OAuth2Type {
+
+        let oauth2Type: OAuth2Type;
+        switch (integrationVendor) {
+            case IntegrationVendor.GOOGLE:
+                oauth2Type = OAuth2Type.GOOGLE;
+                break;
+            case IntegrationVendor.KAKAOTALK:
+                oauth2Type = OAuth2Type.KAKAOTALK;
+                break;
+            case IntegrationVendor.APPLE:
+            case IntegrationVendor.ZOOM:
+            default:
+                throw new BadRequestException('Unsupported oauth2 type');
+                break;
+        }
+
+        return oauth2Type;
+    }
 
     convertScheduleNotificationToNotificationDataAndPublishKey(
         scheduleNotification: ScheduledEventNotification
@@ -145,8 +168,7 @@ export class UtilService {
     ensureIntegrationContext(
         integrationContext: IntegrationContext,
         loadedUserOrNull: User | null,
-        loadedOAuth2AccountOrNull: OAuth2Account | null,
-        integrationOrNull: Integration | null
+        loadedOAuth2AccountOrNull: OAuth2Account | null
     ): IntegrationContext {
 
         const isNewbie = loadedUserOrNull === null;
@@ -164,7 +186,7 @@ export class UtilService {
          */
         const isSignIn = loadedUserOrNull &&
             loadedOAuth2AccountOrNull &&
-            integrationOrNull !== null;
+            integrationContext !== IntegrationContext.INTEGRATE;
 
         let ensureIntegrationContext = IntegrationContext.SIGN_IN;
 

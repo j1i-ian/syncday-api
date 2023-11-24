@@ -14,8 +14,6 @@ import { UserSetting } from '@entity/users/user-setting.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
-import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
-import { Integration } from '@entity/integrations/integration.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
@@ -53,7 +51,6 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
-                integrationStub: new OAuth2Account(),
                 expectedIntegrationContext: IntegrationContext.SIGN_IN
             },
             {
@@ -61,7 +58,6 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.SIGN_IN,
                 userStub: null,
                 oauth2AccountStub: null,
-                integrationStub: null,
                 expectedIntegrationContext: IntegrationContext.SIGN_UP
             },
             {
@@ -69,7 +65,6 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: null,
-                integrationStub: null,
                 expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
             },
             {
@@ -77,7 +72,6 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.SIGN_UP,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
-                integrationStub: new OAuth2Account(),
                 expectedIntegrationContext: IntegrationContext.SIGN_IN
             },
             {
@@ -85,7 +79,6 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.SIGN_UP,
                 userStub: new User(),
                 oauth2AccountStub: null,
-                integrationStub: null,
                 expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
             },
             {
@@ -93,7 +86,6 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.SIGN_UP,
                 userStub: null,
                 oauth2AccountStub: null,
-                integrationStub: null,
                 expectedIntegrationContext: IntegrationContext.SIGN_UP
             },
             {
@@ -101,7 +93,6 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.SIGN_UP,
                 userStub: null,
                 oauth2AccountStub: new OAuth2Account(),
-                integrationStub: new OAuth2Account(),
                 expectedIntegrationContext: IntegrationContext.SIGN_UP
             },
             {
@@ -109,7 +100,6 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.SIGN_UP,
                 userStub: new User(),
                 oauth2AccountStub: null,
-                integrationStub: null,
                 expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
             },
             {
@@ -117,31 +107,20 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: null,
-                integrationStub: null,
                 expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines multiple social sign with multiple social sign in requests when a user is signed up and has no OAuth integrated but has a google integration',
-                integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
-                userStub: new User(),
-                oauth2AccountStub: null,
-                integrationStub: new GoogleIntegration(),
-                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
-            },
-            {
-                description: 'should be ensured that the integration context combines multiple social sign with multiple social sign in requests when a user is signed up and has no OAuth integrated, no google integration',
+                description: 'should be ensured that the integration context combines multiple social sign with multiple social sign in requests when a user is signed up and has no OAuth integrated',
                 integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
-                integrationStub: null,
-                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
+                expectedIntegrationContext: IntegrationContext.SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines sign in with multiple social sign in requests when a user is signed up and has OAuth integrated and google integration',
+                description: 'should be ensured that the integration context combines sign in with multiple social sign in requests when a user is signed up and has OAuth integrated',
                 integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
-                integrationStub: new GoogleIntegration(),
                 expectedIntegrationContext: IntegrationContext.SIGN_IN
             },
             {
@@ -149,7 +128,6 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
                 userStub: null,
                 oauth2AccountStub: null,
-                integrationStub: null,
                 expectedIntegrationContext: IntegrationContext.SIGN_UP
             },
             {
@@ -157,23 +135,13 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.INTEGRATE,
                 userStub: null,
                 oauth2AccountStub: null,
-                integrationStub: null,
                 expectedIntegrationContext: IntegrationContext.SIGN_UP
             },
             {
-                description: 'should be ensured that the integration context combines sign in process with integrate requests when a user is already signed up and has OAuth integrated, google integration',
+                description: 'should be ensured that the integration context combines sign in process with integrate requests when a user is already signed up and has OAuth integrated',
                 integrationContext: IntegrationContext.INTEGRATE,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
-                integrationStub: new GoogleIntegration(),
-                expectedIntegrationContext: IntegrationContext.SIGN_IN
-            },
-            {
-                description: 'should be ensured that the integration context combines sign in process with integrate requests when a user is already signed up and has OAuth integrated, no google integration',
-                integrationContext: IntegrationContext.INTEGRATE,
-                userStub: new User(),
-                oauth2AccountStub: new OAuth2Account(),
-                integrationStub: null,
                 expectedIntegrationContext: IntegrationContext.INTEGRATE
             },
             {
@@ -181,7 +149,6 @@ describe('UtilService', () => {
                 integrationContext: IntegrationContext.INTEGRATE,
                 userStub: new User(),
                 oauth2AccountStub: null,
-                integrationStub: null,
                 expectedIntegrationContext: IntegrationContext.INTEGRATE
             }
         ].forEach(function({
@@ -189,7 +156,6 @@ describe('UtilService', () => {
             integrationContext,
             userStub,
             oauth2AccountStub,
-            integrationStub,
             expectedIntegrationContext
         }) {
             it(description, () => {
@@ -197,8 +163,7 @@ describe('UtilService', () => {
                 const actualIntegrationContext = service.ensureIntegrationContext(
                     integrationContext,
                     userStub,
-                    oauth2AccountStub,
-                    integrationStub as Integration | null
+                    oauth2AccountStub
                 );
                 expect(actualIntegrationContext).equals(expectedIntegrationContext);
             });

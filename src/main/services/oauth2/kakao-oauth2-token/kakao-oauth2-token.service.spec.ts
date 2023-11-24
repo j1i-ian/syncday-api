@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '@services/users/user.service';
 import { KakaotalkIntegrationsFacade } from '@services/integrations/kakaotalk-integrations/kakaotalk-integrations.facade';
+import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { KakaoOAuth2TokenService as KakaoOAuth2TokenService } from './kakao-oauth2-token.service';
 
 describe('KakaoOAuth2TokenService', () => {
@@ -9,6 +10,7 @@ describe('KakaoOAuth2TokenService', () => {
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
+    let oauth2AccountsServiceStub: sinon.SinonStubbedInstance<OAuth2AccountsService>;
     let kakaotalkIntegrationFacadeStub: sinon.SinonStubbedInstance<KakaotalkIntegrationsFacade>;
 
     before(async () => {
@@ -27,6 +29,10 @@ describe('KakaoOAuth2TokenService', () => {
                 {
                     provide: UserService,
                     useValue: userServiceStub
+                },
+                {
+                    provide: OAuth2AccountsService,
+                    useValue: oauth2AccountsServiceStub
                 },
                 {
                     provide: KakaotalkIntegrationsFacade,
