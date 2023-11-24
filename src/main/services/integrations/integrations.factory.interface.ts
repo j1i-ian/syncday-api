@@ -8,7 +8,7 @@ import { Integration } from '@entity/integrations/integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
+import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
 type GoogleIntegrationRequest =  [User, UserSetting, OAuthToken, GoogleCalendarIntegration[], GoogleIntegrationBody, CalendarCreateOption?];
@@ -20,8 +20,14 @@ type AppleIntegrationRequest = [User, UserSetting, AppleCalDAVCredential, string
  */
 export interface IntegrationsFactory {
 
+    /**
+     * This method redirects users to external services such as Zoom or Google Meet for
+     * integration purposes
+     *
+     * @param syncdayGoogleOAuthTokenResponseOrSyncdayAccessToken
+     */
     generateOAuth2RedirectURI(
-        syncdayGoogleOAuthTokenResponseOrSyncdayAccessToken?: string | SyncdayGoogleOAuthTokenResponse
+        syncdayGoogleOAuthTokenResponseOrSyncdayAccessToken?: string | SyncdayOAuth2TokenResponse
     ): string;
 
     search(userSearchOption: IntegrationSearchOption): Promise<Integration[]>;

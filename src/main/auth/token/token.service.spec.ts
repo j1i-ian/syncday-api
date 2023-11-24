@@ -2,20 +2,16 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { calendar_v3 } from 'googleapis';
-import { UserSetting } from '@core/entities/users/user-setting.entity';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
-import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
-import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
-import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { Language } from '@interfaces/users/language.enum';
 import { UtilService } from '@services/util/util.service';
-import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
-import { NotificationsService } from '@services/notifications/notifications.service';
-import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
-import { IntegrationsValidator } from '@services/integrations/integrations.validator';
+import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
+import { GoogleOAuth2TokenService } from '@services/oauth2/google-oauth2-token/google-oauth2-token.service';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
@@ -34,26 +30,19 @@ describe('TokenService', () => {
     let jwtServiceStub: sinon.SinonStubbedInstance<JwtService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
-    let oauth2AccountsServiceStub: sinon.SinonStubbedInstance<OAuth2AccountsService>;
-    let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
-    let integrationsValidatorStub: sinon.SinonStubbedInstance<IntegrationsValidator>;
-    let googleIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
-    let googleIntegrationFacadeStub: sinon.SinonStubbedInstance<GoogleIntegrationFacade>;
-    let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
-    let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
+    let oauth2TokenServiceLocatorStub: sinon.SinonStubbedInstance<OAuth2TokenServiceLocator>;
+
+    let oauth2TokenServiceStub: sinon.SinonStubbedInstance<GoogleOAuth2TokenService>;
 
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         jwtServiceStub = sinon.createStubInstance(JwtService);
         utilServiceStub = sinon.createStubInstance(UtilService);
         userServiceStub = sinon.createStubInstance(UserService);
-        oauth2AccountsServiceStub = sinon.createStubInstance(OAuth2AccountsService);
-        integrationsServiceLocatorStub = sinon.createStubInstance(IntegrationsServiceLocator);
-        integrationsValidatorStub = sinon.createStubInstance(IntegrationsValidator);
-        googleIntegrationsServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
-        googleIntegrationFacadeStub = sinon.createStubInstance(GoogleIntegrationFacade);
-        googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
-        notificationsServiceStub = sinon.createStubInstance(NotificationsService);
+        oauth2TokenServiceLocatorStub = sinon.createStubInstance(OAuth2TokenServiceLocator);
+
+        oauth2TokenServiceStub = sinon.createStubInstance(GoogleOAuth2TokenService);
+        oauth2TokenServiceLocatorStub.get.returns(oauth2TokenServiceStub);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -75,32 +64,8 @@ describe('TokenService', () => {
                     useValue: userServiceStub
                 },
                 {
-                    provide: OAuth2AccountsService,
-                    useValue: oauth2AccountsServiceStub
-                },
-                {
-                    provide: IntegrationsServiceLocator,
-                    useValue: integrationsServiceLocatorStub
-                },
-                {
-                    provide: IntegrationsValidator,
-                    useValue: integrationsValidatorStub
-                },
-                {
-                    provide: GoogleIntegrationsService,
-                    useValue: googleIntegrationsServiceStub
-                },
-                {
-                    provide: GoogleIntegrationFacade,
-                    useValue: googleIntegrationFacadeStub
-                },
-                {
-                    provide: GoogleConverterService,
-                    useValue: googleConverterServiceStub
-                },
-                {
-                    provide: NotificationsService,
-                    useValue: notificationsServiceStub
+                    provide: OAuth2TokenServiceLocator,
+                    useValue: oauth2TokenServiceLocatorStub
                 }
             ]
         }).compile();
@@ -112,18 +77,39 @@ describe('TokenService', () => {
         expect(service).ok;
     });
 
-    it('coverage fill: getSyncdayGoogleOAuthTokenResponseMock', () => {
+    it('coverage fill: generateOAuth2AuthoizationUrl', () => {
 
-        const OAuth2TokenResponseStub = testMockUtil.getSyncdayGoogleOAuthTokenResponseMock();
+        const timezoneMock = 'Asia/Seoul';
+        const accessTokenMock = 'accessTokenMock';
 
-        googleIntegrationsServiceStub.generateOAuth2RedirectURI.returns({
+        oauth2TokenServiceStub.generateOAuth2AuthoizationUrl.returns('fakeAuthorizationUrl');
+
+        const generatedURI = service.generateOAuth2AuthoizationUrl(
+            IntegrationVendor.GOOGLE,
+            IntegrationContext.INTEGRATE,
+            timezoneMock,
+            accessTokenMock
+        );
+
+        expect(generatedURI).ok;
+        expect(oauth2TokenServiceStub.generateOAuth2AuthoizationUrl.called).true;
+    });
+
+    it('coverage fill: generateOAuth2RedirectURI', () => {
+
+        const OAuth2TokenResponseStub = testMockUtil.getSyncdayOAuth2TokenResponseMock();
+
+        oauth2TokenServiceStub.generateOAuth2RedirectURI.returns({
             OAuth2TokenResponseStub
         } as any);
 
-        const generatedURI = service.generateOAuth2RedirectURI(OAuth2TokenResponseStub);
+        const generatedURI = service.generateOAuth2RedirectURI(
+            IntegrationVendor.GOOGLE,
+            OAuth2TokenResponseStub
+        );
 
         expect(generatedURI).ok;
-        expect(googleIntegrationsServiceStub.generateOAuth2RedirectURI.called).true;
+        expect(oauth2TokenServiceStub.generateOAuth2RedirectURI.called).true;
     });
 
     it('should be issued token', () => {
@@ -177,28 +163,41 @@ describe('TokenService', () => {
     });
 
 
-    describe('Test issueTokenByGoogleOAuth', () => {
+    describe('Test issueTokenByOAuth2', () => {
         let serviceSandbox: sinon.SinonSandbox;
+
+        let evaluateIntegrationContextStub: sinon.SinonStub;
+        let issueTokenStub: sinon.SinonStub;
+
+        let _oauth2TokenServiceStub: sinon.SinonStubbedInstance<GoogleOAuth2TokenService>;
 
         beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
+
+            _oauth2TokenServiceStub = serviceSandbox.createStubInstance(GoogleOAuth2TokenService);
+            oauth2TokenServiceLocatorStub.get.returns(_oauth2TokenServiceStub);
+
+            evaluateIntegrationContextStub = serviceSandbox.stub(service, 'evaluateIntegrationContext');
+            issueTokenStub = serviceSandbox.stub(service, 'issueToken');
         });
 
         afterEach(() => {
-            googleIntegrationFacadeStub.fetchGoogleUsersWithToken.reset();
+
+            oauth2TokenServiceLocatorStub.get.reset();
+
+            _oauth2TokenServiceStub.getOAuth2UserProfile.reset();
+            _oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.reset();
+
             userServiceStub.findUserByEmail.reset();
-            userServiceStub.createUserByGoogleOAuth2.reset();
 
-            oauth2AccountsServiceStub.create.reset();
-
-            googleIntegrationsServiceStub.create.reset();
-            googleConverterServiceStub.convertToGoogleCalendarIntegration.reset();
-
-            notificationsServiceStub.sendWelcomeEmailForNewUser.reset();
+            _oauth2TokenServiceStub.signUpWithOAuth.reset();
+            _oauth2TokenServiceStub.integrate.reset();
+            _oauth2TokenServiceStub.multipleSocialSignIn.reset();
 
             serviceSandbox.restore();
         });
 
+        // TODO: Write a spec for parameterized test for Kakaotalk
         [
             {
                 description: 'should be issued token for google oauth sign up user',
@@ -221,10 +220,9 @@ describe('TokenService', () => {
                 } as GoogleOAuth2UserWithToken,
                 getFindUserStub: () => null,
                 isExpectedNewbie: true,
-                createUserByGoogleOAuth2Call: true,
-                googleIntegrationServiceCreateCall: false,
-                oauth2AccountCreateCall: false,
-                sendWelcomeEmailForNewUserCall: true
+                signUpWithOAuthCall: true,
+                integrateCall: false,
+                multipleSocialSignInCall: false
             },
             {
                 description: 'should be issued token for google oauth sign in user',
@@ -250,10 +248,9 @@ describe('TokenService', () => {
                     googleIntergrations: []
                 }),
                 isExpectedNewbie: false,
-                createUserByGoogleOAuth2Call: false,
-                googleIntegrationServiceCreateCall: false,
-                oauth2AccountCreateCall: false,
-                sendWelcomeEmailForNewUserCall: false
+                signUpWithOAuthCall: false,
+                integrateCall: false,
+                multipleSocialSignInCall: false
             },
             {
                 description: 'should be issued token for google oauth sign in user without google integration creating',
@@ -279,10 +276,9 @@ describe('TokenService', () => {
                     googleIntergrations: []
                 }),
                 isExpectedNewbie: false,
-                createUserByGoogleOAuth2Call: false,
-                googleIntegrationServiceCreateCall: false,
-                oauth2AccountCreateCall: false,
-                sendWelcomeEmailForNewUserCall: false
+                signUpWithOAuthCall: false,
+                integrateCall: false,
+                multipleSocialSignInCall: false
             },
             {
                 description: 'should be issued token with google OAuth for already signed up user',
@@ -308,10 +304,9 @@ describe('TokenService', () => {
                     googleIntergrations: []
                 }),
                 isExpectedNewbie: false,
-                createUserByGoogleOAuth2Call: false,
-                googleIntegrationServiceCreateCall: true,
-                oauth2AccountCreateCall: false,
-                sendWelcomeEmailForNewUserCall: false
+                signUpWithOAuthCall: false,
+                integrateCall: true,
+                multipleSocialSignInCall: false
             },
             {
                 description: 'should be issued token if the user already has Google OAuth associated with the same email.',
@@ -349,10 +344,9 @@ describe('TokenService', () => {
                     ] as GoogleIntegration[]
                 }),
                 isExpectedNewbie: false,
-                createUserByGoogleOAuth2Call: false,
-                googleIntegrationServiceCreateCall: true,
-                oauth2AccountCreateCall: false,
-                sendWelcomeEmailForNewUserCall: false
+                signUpWithOAuthCall: false,
+                integrateCall: true,
+                multipleSocialSignInCall: false
             }
         ].forEach(function({
             description,
@@ -360,45 +354,41 @@ describe('TokenService', () => {
             googleOAuth2UserWithToken,
             getFindUserStub,
             isExpectedNewbie,
-            createUserByGoogleOAuth2Call,
-            googleIntegrationServiceCreateCall,
-            oauth2AccountCreateCall,
-            sendWelcomeEmailForNewUserCall
+            signUpWithOAuthCall,
+            integrateCall,
+            multipleSocialSignInCall
         }) {
 
             it(description, async () => {
-                const userSettingMock = stubOne(UserSetting);
-                const createUserStub = stubOne(User, {
-                    userSetting: userSettingMock
-                });
-                const languageDummy = userSettingMock.preferredLanguage;
                 const authorizationCodeMock = faker.datatype.uuid();
-                const findUserStub = getFindUserStub();
-
                 const timezoneDummy = 'faketimezone';
 
-                googleIntegrationFacadeStub.fetchGoogleUsersWithToken.resolves(googleOAuth2UserWithToken);
+                const userStub = getFindUserStub();
+                const requestUserEmailMock = userStub?.email ?? null;
+                const languageDummy = Language.KOREAN;
 
-                userServiceStub.findUserByEmail.resolves(findUserStub);
+                _oauth2TokenServiceStub.getOAuth2UserProfile.resolves(googleOAuth2UserWithToken);
+                _oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.resolves(googleOAuth2UserWithToken.googleUser.email);
 
-                utilServiceStub.ensureIntegrationContext.returns(integratinoContext);
+                evaluateIntegrationContextStub.resolves(integratinoContext);
 
-                userServiceStub.createUserByGoogleOAuth2.resolves(createUserStub);
+                userServiceStub.findUserByEmail.resolves(userStub);
 
-                notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(true);
+                const createdUserStub = stubOne(User);
+                _oauth2TokenServiceStub.signUpWithOAuth.resolves(createdUserStub);
 
                 const issuedTokenStub: CreateTokenResponseDto = {
                     accessToken: 'fakeJwtToken',
                     refreshToken: 'fakeRefreshToken'
                 };
+                issueTokenStub.returns(issuedTokenStub);
 
-                serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
-
-                const { issuedToken, isNewbie, insufficientPermission } = await service.issueTokenByGoogleOAuth(
+                const { issuedToken, isNewbie, insufficientPermission } = await service.issueTokenByOAuth2(
+                    IntegrationVendor.GOOGLE,
                     authorizationCodeMock,
                     timezoneDummy,
                     integratinoContext,
-                    createUserStub.email,
+                    requestUserEmailMock,
                     languageDummy
                 );
 
@@ -406,15 +396,81 @@ describe('TokenService', () => {
                 expect(isNewbie).equals(isExpectedNewbie);
                 expect(insufficientPermission).equals(googleOAuth2UserWithToken.insufficientPermission);
 
-                expect(googleIntegrationFacadeStub.fetchGoogleUsersWithToken.called).true;
+                expect(oauth2TokenServiceLocatorStub.get.called).true;
+                expect(_oauth2TokenServiceStub.getOAuth2UserProfile.called).true;
+                expect(_oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.called).true;
+
                 expect(userServiceStub.findUserByEmail.called).true;
-                expect(userServiceStub.createUserByGoogleOAuth2.called).equals(createUserByGoogleOAuth2Call);
-                expect(notificationsServiceStub.sendWelcomeEmailForNewUser.called).equals(sendWelcomeEmailForNewUserCall);
-                expect(googleIntegrationsServiceStub.create.called).equals(googleIntegrationServiceCreateCall);
-                expect(googleConverterServiceStub.convertToGoogleCalendarIntegration.called).true;
-                expect(oauth2AccountsServiceStub.create.called).equals(oauth2AccountCreateCall);
+
+                expect(_oauth2TokenServiceStub.signUpWithOAuth.called).equals(signUpWithOAuthCall);
+                expect(_oauth2TokenServiceStub.integrate.called).equals(integrateCall);
+                expect(_oauth2TokenServiceStub.multipleSocialSignIn.called).equals(multipleSocialSignInCall);
+
+                expect(issueTokenStub.called).true;
             });
         });
+    });
 
+    describe('Test evaluateIntegrationContext', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        let userStub: User;
+        let _oauth2TokenServiceStub: sinon.SinonStubbedInstance<GoogleOAuth2TokenService>;
+
+
+        beforeEach(() => {
+
+            serviceSandbox = sinon.createSandbox();
+
+            _oauth2TokenServiceStub = serviceSandbox.createStubInstance(GoogleOAuth2TokenService);
+            oauth2TokenServiceLocatorStub.get.returns(_oauth2TokenServiceStub);
+
+            const oauth2AccountStubs = stub(OAuth2Account);
+            const googleIntegrationStubs = stub(GoogleIntegration);
+
+            userStub = stubOne(User, {
+                oauth2Accounts: oauth2AccountStubs,
+                googleIntergrations: googleIntegrationStubs
+            });
+
+            userServiceStub.findUserByEmail.resolves(userStub);
+
+            const integrationStub = stubOne(GoogleIntegration);
+            _oauth2TokenServiceStub.getIntegrationFromUser.resolves(integrationStub);
+
+            utilServiceStub.ensureIntegrationContext.returns(IntegrationContext.SIGN_UP);
+        });
+
+        afterEach(() => {
+            userServiceStub.findUserByEmail.reset();
+
+            utilServiceStub.ensureIntegrationContext.reset();
+
+            _oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.reset();
+
+            oauth2TokenServiceLocatorStub.get.reset();
+
+            serviceSandbox.restore();
+        });
+
+        it('should be converted to oauth2 user profile from authorization code', async () => {
+
+            const oauth2UserProfileMock = testMockUtil.getGoogleOAuth2UserWithToken();
+            const emailMock = stubOne(User).email;
+
+            const googleOAuth2UserWithToken =  await service.evaluateIntegrationContext(
+                IntegrationVendor.GOOGLE,
+                oauth2UserProfileMock,
+                IntegrationContext.SIGN_IN,
+                emailMock
+            );
+
+            expect(_oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.called).true;
+            expect(userServiceStub.findUserByEmail.called).true;
+            expect(_oauth2TokenServiceStub.getIntegrationFromUser.called).true;
+            expect(utilServiceStub.ensureIntegrationContext.called).true;
+
+            expect(googleOAuth2UserWithToken).ok;
+        });
     });
 });

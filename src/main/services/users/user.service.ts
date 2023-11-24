@@ -36,6 +36,11 @@ import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
 
+interface OAuth2MetaInfo {
+    googleCalendarIntegrations: GoogleCalendarIntegration[];
+    googleIntegrationBody: GoogleIntegrationBody;
+    options: CalendarCreateOption;
+}
 
 interface CreateUserOptions {
     plainPassword?: string;
@@ -289,17 +294,25 @@ export class UserService {
         return plainToInstance(User, savedUser);
     }
 
-    async createUserByGoogleOAuth2(
+    async createUserByOAuth2(
+        oauth2Type: OAuth2Type,
         createUserRequestDto: CreateUserRequestDto,
-        googleAuthToken: OAuthToken,
-        googleCalendarIntegrations: GoogleCalendarIntegration[],
-        googleIntegrationBody: GoogleIntegrationBody,
+        oauth2Token: OAuthToken,
+        {
+            oauth2UserEmail,
+            oauth2UserProfileImageUrl
+        }: {
+            oauth2UserEmail: string;
+            oauth2UserProfileImageUrl?: string | null;
+        },
         language: Language,
-        options: CalendarCreateOption
+        integrationParams?: Partial<OAuth2MetaInfo>
     ): Promise<User> {
 
         const createdUser = await this.datasource.transaction(async (manager) => {
             const newUser = createUserRequestDto as unknown as User;
+            newUser.profileImage = oauth2UserProfileImageUrl ?? null;
+
             const timezone = createUserRequestDto.timezone;
 
             const userSetting = this.utilService.getUserDefaultSetting(newUser, language, {
@@ -315,19 +328,9 @@ export class UserService {
 
             _createdUser.patchPromotedPropertyFromUserSetting();
 
-            const _createdGoogleIntegration = await this.googleIntegrationService._create(
-                manager,
-                _createdUser,
-                userSetting,
-                googleAuthToken,
-                googleCalendarIntegrations,
-                googleIntegrationBody,
-                options
-            );
-
             const _newOAuth2Account: OAuth2Account = {
-                email: googleIntegrationBody.googleUserEmail,
-                oauth2Type: OAuth2Type.GOOGLE,
+                email: oauth2UserEmail,
+                oauth2Type,
                 user: _createdUser
             } as OAuth2Account;
 
@@ -338,7 +341,26 @@ export class UserService {
             );
 
             _createdUser.oauth2Accounts = [_createdOAuth2Account];
-            _createdUser.googleIntergrations = [_createdGoogleIntegration];
+
+            if (oauth2Type === OAuth2Type.GOOGLE) {
+
+                const {
+                    googleCalendarIntegrations,
+                    googleIntegrationBody,
+                    options
+                } = integrationParams as OAuth2MetaInfo;
+
+                const _createdGoogleIntegration = await this.googleIntegrationService._create(
+                    manager,
+                    _createdUser,
+                    userSetting,
+                    oauth2Token,
+                    googleCalendarIntegrations,
+                    googleIntegrationBody,
+                    options
+                );
+                _createdUser.googleIntergrations = [_createdGoogleIntegration];
+            }
 
             await this.userSettingService.createUserWorkspaceStatus(
                 manager,

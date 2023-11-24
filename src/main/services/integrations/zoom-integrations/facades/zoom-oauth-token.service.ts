@@ -3,10 +3,11 @@ import fetch from 'node-fetch';
 
 import { Injectable } from '@nestjs/common';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { IssueOAuth2Token } from '@services/integrations/facades/issue-oauth2-token.interface';
 import { ZoomTokenResponseDTO } from '@app/interfaces/integrations/zoom/zoom-token-response.interface';
 
 @Injectable()
-export class ZoomOauthTokenService {
+export class ZoomOauthTokenService implements IssueOAuth2Token {
 
     async issueOAuthTokenByAuthorizationCode(
         authorizationCode: string,

@@ -19,6 +19,7 @@ import { AvailabilityModule } from './main/services/availability/availability.mo
 import { EventsModule } from './main/services/events/events.module';
 import { BookingsModule } from './main/services/bookings/bookings.module';
 import { SchedulesModule } from './main/services/schedules/schedules.module';
+import { OAuth2Module } from './main/services/oauth2/oauth2.module';
 
 @Module({
     imports: [
@@ -46,7 +47,8 @@ import { SchedulesModule } from './main/services/schedules/schedules.module';
 
         SyncdayAwsSdkClientModule,
         BookingsModule,
-        SchedulesModule
+        SchedulesModule,
+        OAuth2Module
     ],
     controllers: [AppController],
     providers: [

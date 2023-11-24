@@ -1,25 +1,18 @@
-import { Inject, Injectable, InternalServerErrorException, forwardRef } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
-import { calendar_v3, oauth2_v2 } from 'googleapis';
+import { oauth2_v2 } from 'googleapis';
+import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
-import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
-import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
-import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
-import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { UserService } from '@services/users/user.service';
+import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { UtilService } from '@services/util/util.service';
-import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
-import { NotificationsService } from '@services/notifications/notifications.service';
-import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
-import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { User } from '@entity/users/user.entity';
-import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
-import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
-import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
+import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { AppConfigService } from '../../../configs/app-config.service';
-import { UserService } from '../../services/users/user.service';
 
 export interface EnsuredGoogleTokenResponse {
     accessToken: string;
@@ -39,15 +32,8 @@ export class TokenService {
         private readonly configService: ConfigService,
         private readonly jwtService: JwtService,
         private readonly utilService: UtilService,
-        @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
-        private readonly oauth2AccountsService: OAuth2AccountsService,
-        private readonly integrationsServiceLocator: IntegrationsServiceLocator,
-        private readonly integrationsValidator: IntegrationsValidator,
-        private readonly googleIntegrationFacade: GoogleIntegrationFacade,
-        private readonly googleIntegrationService: GoogleIntegrationsService,
-        private readonly googleConverterService: GoogleConverterService,
-        private readonly notificationsService: NotificationsService
+        private readonly oauth2TokenServiceLocator: OAuth2TokenServiceLocator
     ) {
         this.jwtOption = AppConfigService.getJwtOptions(this.configService);
         this.jwtRefreshTokenOption = AppConfigService.getJwtRefreshOptions(this.configService);
@@ -56,7 +42,8 @@ export class TokenService {
     jwtOption: JwtModuleOptions;
     jwtRefreshTokenOption: JwtModuleOptions;
 
-    generateGoogleOAuthAuthoizationUrl(
+    generateOAuth2AuthoizationUrl(
+        integrationVendor: IntegrationVendor,
         integrationContext: IntegrationContext,
         timezone: string | null,
         accessToken: string | null
@@ -66,132 +53,90 @@ export class TokenService {
             ? this.jwtService.decode(accessToken) as User
             : null;
 
-        return this.googleIntegrationFacade.generateGoogleOAuthAuthoizationUrl(
+        const oauth2TokenService = this.oauth2TokenServiceLocator.get(integrationVendor);
+
+        return oauth2TokenService.generateOAuth2AuthoizationUrl(
             integrationContext,
-            decodedUserOrNull,
-            timezone
+            timezone,
+            decodedUserOrNull
         );
     }
 
     generateOAuth2RedirectURI(
-        syncdayGoogleOAuthTokenResponse: SyncdayGoogleOAuthTokenResponse
+        integrationVendor: IntegrationVendor,
+        syncdayGoogleOAuthTokenResponse: SyncdayOAuth2TokenResponse
     ): string {
-        return this.googleIntegrationService.generateOAuth2RedirectURI(syncdayGoogleOAuthTokenResponse);
+        const oauth2TokenService = this.oauth2TokenServiceLocator.get(integrationVendor);
+
+        return oauth2TokenService.generateOAuth2RedirectURI(syncdayGoogleOAuthTokenResponse);
     }
 
-    async issueTokenByGoogleOAuth(
+    async issueTokenByOAuth2(
+        integrationVendor: IntegrationVendor,
         authorizationCode: string,
         timezone: string,
         integrationContext: IntegrationContext,
         requestUserEmail: string | null,
         language: Language
-    ): Promise<SyncdayGoogleOAuthTokenResponse> {
-        const { googleUser, calendars, schedules, tokens, insufficientPermission } =
-            await this.googleIntegrationFacade.fetchGoogleUsersWithToken(authorizationCode, {
-                onlyPrimaryCalendarSchedule: true
-            });
-        const googleUserEmail = googleUser.email;
+    ): Promise<SyncdayOAuth2TokenResponse> {
+        const oauth2TokenService = this.oauth2TokenServiceLocator.get(integrationVendor);
 
-        const ensuredRequesterEmail = requestUserEmail || googleUser.email;
+        const oauth2UserProfile = await oauth2TokenService.getOAuth2UserProfile(authorizationCode);
 
-        let loadedUserOrNull = await this.userService.findUserByEmail(ensuredRequesterEmail);
-        const loadedOAuth2AccountOrNull = loadedUserOrNull?.oauth2Accounts.find(
-            (_oauthAccount) => _oauthAccount.email === googleUser.email
-        ) ?? null;
-        const loadedIntegrationOrNull = loadedUserOrNull?.googleIntergrations.find(
-            (_googleIntegration) => _googleIntegration.email === googleUser.email
-        ) ?? null;
+        const oauth2UserEmail = oauth2TokenService.getEmailFromOAuth2UserProfile(oauth2UserProfile);
 
-        const ensuredIntegrationContext = this.utilService.ensureIntegrationContext(
+        const ensuredRequesterEmail = requestUserEmail || oauth2UserEmail;
+
+        const ensuredIntegrationContext = await this.evaluateIntegrationContext(
+            integrationVendor,
+            oauth2UserProfile,
             integrationContext,
-            loadedUserOrNull,
-            loadedOAuth2AccountOrNull,
-            loadedIntegrationOrNull
+            ensuredRequesterEmail
         );
 
-        const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
+        let isNewbie: boolean;
 
-        let isNewbie = false;
+        let user: User | null = await this.userService.findUserByEmail(ensuredRequesterEmail);
 
-        if (ensuredIntegrationContext === IntegrationContext.SIGN_UP) {
-            const primaryGoogleCalendar = calendars?.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
-            const ensuredTimezone = timezone || primaryGoogleCalendar?.timeZone as string;
+        const insufficientPermission = oauth2UserProfile.insufficientPermission;
 
-            const createUserRequestDto: CreateUserRequestDto = {
-                email: googleUser.email,
-                name: googleUser.name,
-                timezone: ensuredTimezone
-            };
-
-            loadedUserOrNull = await this.userService.createUserByGoogleOAuth2(
-                createUserRequestDto,
-                tokens,
-                newGoogleCalendarIntegrations,
-                {
-                    googleUserEmail,
-                    calendars,
-                    schedules
-                },
-                language,
-                {
-                    isFirstIntegration: true
-                }
-            );
-
-            isNewbie = true;
-
-            await this.notificationsService.sendWelcomeEmailForNewUser(loadedUserOrNull.name, loadedUserOrNull.email, loadedUserOrNull.userSetting.preferredLanguage);
-
-        } else if (ensuredIntegrationContext === IntegrationContext.SIGN_IN) {
-            isNewbie = false;
-        } else if (ensuredIntegrationContext === IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN) {
-            isNewbie = false;
-
-            const ensuredUser = loadedUserOrNull as User;
-
-            const newOAuth2Account = {
-                email: ensuredRequesterEmail,
-                oauth2Type: OAuth2Type.GOOGLE
-            } as OAuth2Account;
-
-            await this.oauth2AccountsService.create(ensuredUser, newOAuth2Account);
-        } else if (ensuredIntegrationContext === IntegrationContext.INTEGRATE) {
-            // when integrationContext is integrationContext.Integrate
-            const ensuredUser = loadedUserOrNull as User;
-
-            await this.integrationsValidator.validateMaxAddLimit(
-                this.integrationsServiceLocator,
-                ensuredUser.id
-            );
-
-            const hasOutboundCalendar = await this.integrationsValidator.hasOutboundCalendar(
-                this.integrationsServiceLocator,
-                ensuredUser.id
-            );
-            const isFirstIntegration = !hasOutboundCalendar;
-
-            await this.googleIntegrationService.create(
-                ensuredUser,
-                ensuredUser.userSetting,
-                tokens,
-                newGoogleCalendarIntegrations,
-                {
-                    googleUserEmail,
-                    calendars,
-                    schedules
-                },
-                {
-                    isFirstIntegration
-                }
-            );
-
-            isNewbie = false;
-        } else {
-            throw new InternalServerErrorException('Unknown integration context');
+        switch (ensuredIntegrationContext) {
+            case IntegrationContext.SIGN_UP:
+                user = await oauth2TokenService.signUpWithOAuth(
+                    timezone,
+                    oauth2UserProfile,
+                    language
+                );
+                isNewbie = true;
+                break;
+            case IntegrationContext.SIGN_IN:
+                isNewbie = false;
+                break;
+            case IntegrationContext.INTEGRATE:
+                await oauth2TokenService.integrate(
+                    oauth2UserProfile,
+                    user as User
+                );
+                isNewbie = false;
+                break;
+            case IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN:
+                await oauth2TokenService.multipleSocialSignIn(
+                    user as User,
+                    ensuredRequesterEmail
+                );
+                isNewbie = false;
+                break;
+            default:
+                throw new InternalServerErrorException('Unknown integration context');
         }
 
-        const issuedToken = this.issueToken(loadedUserOrNull as User);
-        return { issuedToken, isNewbie, insufficientPermission };
+        const issuedToken = this.issueToken(user as User);
+
+        return {
+            issuedToken,
+            isNewbie,
+            insufficientPermission
+        };
     }
 
     issueTokenByRefreshToken(refreshToken: string): CreateTokenResponseDto {
@@ -238,5 +183,37 @@ export class TokenService {
             accessToken: signedAccessToken,
             refreshToken: signedRefreshToken
         };
+    }
+
+    async evaluateIntegrationContext(
+        integrationVendor: IntegrationVendor,
+        oauth2UserProfile: OAuth2UserProfile,
+        requestIntegrationContext: IntegrationContext,
+        ensuredUserEmail: string
+    ): Promise<IntegrationContext> {
+
+        const oauth2TokenService = this.oauth2TokenServiceLocator.get(integrationVendor);
+
+        const oauth2UserEmail = oauth2TokenService.getEmailFromOAuth2UserProfile(oauth2UserProfile);
+
+        const loadedUserOrNull = await this.userService.findUserByEmail(ensuredUserEmail);
+
+        const loadedOAuth2AccountOrNull = loadedUserOrNull?.oauth2Accounts.find(
+            (_oauthAccount) => _oauthAccount.email === oauth2UserEmail
+        ) ?? null;
+
+        const loadedIntegrationOrNull = oauth2TokenService.getIntegrationFromUser(
+            loadedUserOrNull,
+            oauth2UserEmail
+        );
+
+        const ensuredIntegrationContext = this.utilService.ensureIntegrationContext(
+            requestIntegrationContext,
+            loadedUserOrNull,
+            loadedOAuth2AccountOrNull,
+            loadedIntegrationOrNull
+        );
+
+        return ensuredIntegrationContext;
     }
 }

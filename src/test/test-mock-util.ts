@@ -20,6 +20,7 @@ import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
+import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
@@ -39,7 +40,7 @@ import { ConferenceLink } from '@entity/schedules/conference-link.entity';
 import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
-import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
+import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
 import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
 import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
@@ -348,7 +349,7 @@ export class TestMockUtil {
         };
     }
 
-    getSyncdayGoogleOAuthTokenResponseMock(): SyncdayGoogleOAuthTokenResponse {
+    getSyncdayOAuth2TokenResponseMock(): SyncdayOAuth2TokenResponse {
         return {
             issuedToken: {
                 accessToken: 'access-token-mock',
@@ -544,6 +545,21 @@ export class TestMockUtil {
                 }
             ]
         };
+    }
+
+    getGoogleOAuth2UserWithToken(): GoogleOAuth2UserWithToken {
+
+        const email = 'private_google_email@sync.day';
+        const calendarsMock = this.getGoogleCalendarMock();
+        const googleCalendarScheduleBody = this.getGoogleCalendarScheduleBodyMock();
+
+        return {
+            googleUser: {
+                email
+            },
+            calendars: calendarsMock,
+            schedules: googleCalendarScheduleBody
+        } as GoogleOAuth2UserWithToken;
     }
 
     getGoogleIntegrationBodyMock(): GoogleIntegrationBody {
@@ -925,7 +941,8 @@ export class TestMockUtil {
             account_number: 5074040974,
             cluster: 'us05',
             user_created_at: '2023-02-20T05:04:23Z',
-            integrationUserUniqueId: 'vydvDS82ThyYCyeCY76l-w'
+            integrationUserUniqueId: 'vydvDS82ThyYCyeCY76l-w',
+            insufficientPermission: false
         };
     }
 

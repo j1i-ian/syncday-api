@@ -14,6 +14,7 @@ import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/
 import { AppConfigService } from '@config/app-config.service';
 import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
@@ -29,7 +30,7 @@ import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { Host } from '@entity/schedules/host.entity';
-import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
+import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
 @Injectable()
@@ -81,7 +82,7 @@ export class GoogleIntegrationsService implements
     }
 
     generateOAuth2RedirectURI(
-        syncdayGoogleOAuthTokenResponse: SyncdayGoogleOAuthTokenResponse
+        syncdayGoogleOAuthTokenResponse: SyncdayOAuth2TokenResponse
     ): string {
 
         const {
@@ -90,11 +91,12 @@ export class GoogleIntegrationsService implements
             insufficientPermission
         } = syncdayGoogleOAuthTokenResponse;
 
-        const { googleOAuth2SuccessRedirectURI } = AppConfigService.getGoogleOAuth2Setting(
+        const { oauth2SuccessRedirectURI } = AppConfigService.getOAuth2Setting(
+            IntegrationVendor.GOOGLE,
             this.configService
         );
 
-        const redirectURL = new URL(googleOAuth2SuccessRedirectURI);
+        const redirectURL = new URL(oauth2SuccessRedirectURI);
         redirectURL.searchParams.append('accessToken', issuedToken.accessToken);
         redirectURL.searchParams.append('refreshToken', issuedToken.refreshToken);
         redirectURL.searchParams.append('newbie', String(isNewbie));
@@ -194,7 +196,7 @@ export class GoogleIntegrationsService implements
                 }
 
                 calendar.setting = calendarSetting;
-                calendar.users = [user];
+                calendar.users = [{ id: user.id }] as User[];
                 return plainToInstance(GoogleCalendarIntegration, calendar);
             })
         } as GoogleIntegration;

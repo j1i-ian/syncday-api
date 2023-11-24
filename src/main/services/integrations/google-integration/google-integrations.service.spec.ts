@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EntityManager, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { GoogleOAuth2Setting } from '@core/interfaces/auth/google-oauth2-setting.interface';
+import { OAuth2Setting } from '@core/interfaces/auth/oauth2-setting.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
@@ -100,13 +100,13 @@ describe('GoogleIntegrationsService', () => {
     });
 
     it('should be got redirect URI for oauth 2', () => {
-        const OAuth2TokenResponseMock = testMockUtil.getSyncdayGoogleOAuthTokenResponseMock();
+        const OAuth2TokenResponseMock = testMockUtil.getSyncdayOAuth2TokenResponseMock();
 
         const serviceSandbox = sinon.createSandbox();
 
-        const getGoogleOAuth2SettingStub = serviceSandbox.stub(AppConfigService, 'getGoogleOAuth2Setting').returns({
-            googleOAuth2SuccessRedirectURI: 'https://fakeSignInOrUpRedirectURI.com'
-        } as GoogleOAuth2Setting);
+        const getGoogleOAuth2SettingStub = serviceSandbox.stub(AppConfigService, 'getOAuth2Setting').returns({
+            oauth2SuccessRedirectURI: 'https://fakeSignInOrUpRedirectURI.com'
+        } as OAuth2Setting);
 
         const generatedURI = service.generateOAuth2RedirectURI(
             OAuth2TokenResponseMock

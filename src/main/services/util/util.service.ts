@@ -131,6 +131,17 @@ export class UtilService {
         return syncdayNotificationPublishKey;
     }
 
+    /**
+     * In the correct integration context,
+     * if a user who is already signed in requests a 'sign up',
+     * it should automatically correct this to a 'sign in' request."
+     *
+     * @param integrationContext
+     * @param loadedUserOrNull
+     * @param loadedOAuth2AccountOrNull
+     * @param integrationOrNull
+     * @returns
+     */
     ensureIntegrationContext(
         integrationContext: IntegrationContext,
         loadedUserOrNull: User | null,
@@ -142,6 +153,15 @@ export class UtilService {
         const isMultipleSocialSignIn = loadedUserOrNull !== null &&
             loadedOAuth2AccountOrNull === null &&
             integrationContext !== IntegrationContext.INTEGRATE;
+
+        /**
+         * When the integration entity is null,
+         * we can handle it in two ways:
+         * either by providing options for multiple social sign-ins
+         * or, if not applicable,
+         * by patching the integration context to enable sign-in
+         * through an alternative (else) block.
+         */
         const isSignIn = loadedUserOrNull &&
             loadedOAuth2AccountOrNull &&
             integrationOrNull !== null;

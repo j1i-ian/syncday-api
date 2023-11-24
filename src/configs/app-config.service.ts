@@ -8,12 +8,14 @@ import { WinstonModuleAsyncOptions } from 'nest-winston';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
 
+import { BadRequestException } from '@nestjs/common';
 import { CloudWatchLogs, CloudWatchLogsClientConfig } from '@aws-sdk/client-cloudwatch-logs';
 import { S3ClientConfig } from '@aws-sdk/client-s3';
 import { SNSClientConfig } from '@aws-sdk/client-sns';
-import { GoogleOAuth2Setting } from '@core/interfaces/auth/google-oauth2-setting.interface';
 import { GoogleCredentials } from '@core/interfaces/integrations/google/google-credential.interface';
+import { OAuth2Setting } from '@core/interfaces/auth/oauth2-setting.interface';
 import * as ormConfig from '@config/ormconfig.json';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ClusterModuleAsyncOptions } from '@liaoliaots/nestjs-redis';
 
 // eslint-disable-next-line import/no-internal-modules
@@ -24,19 +26,46 @@ export class AppConfigService {
 
     static INTEGRATION_MAX_ADD_LIMIT = 6;
 
-    static getGoogleOAuth2Setting(configService: ConfigService): GoogleOAuth2Setting {
-        const redirectURI = configService.getOrThrow<string>('GOOGLE_REDIRECT_URI');
-        const clientId = configService.getOrThrow<string>('GOOGLE_CLIENT_ID');
-        const clientSecret = configService.getOrThrow<string>('GOOGLE_CLIENT_SECRET');
-        const googleOAuth2SuccessRedirectURI = configService.getOrThrow<string>(
-            'GOOGLE_OAUTH2_SUCCESS_REDIRECT_URI'
+    static getOAuth2Setting(
+        integrationVendor: IntegrationVendor,
+        configService: ConfigService
+    ): OAuth2Setting {
+
+        let oauth2SettingKeys: Record<keyof OAuth2Setting, string>;
+
+        switch (integrationVendor) {
+            case IntegrationVendor.GOOGLE:
+                oauth2SettingKeys = {
+                    redirectURI: 'GOOGLE_REDIRECT_URI',
+                    clientId: 'GOOGLE_CLIENT_ID',
+                    clientSecret: 'GOOGLE_CLIENT_SECRET',
+                    oauth2SuccessRedirectURI: 'GOOGLE_OAUTH2_SUCCESS_REDIRECT_URI'
+                };
+                break;
+            case IntegrationVendor.KAKAOTALK:
+                oauth2SettingKeys = {
+                    redirectURI: 'KAKAOTALK_REDIRECT_URI',
+                    clientId: 'KAKAOTALK_CLIENT_ID',
+                    clientSecret: '',
+                    oauth2SuccessRedirectURI: 'KAKAOTALK_OAUTH2_SUCCESS_REDIRECT_URI'
+                };
+                break;
+            default:
+                throw new BadRequestException('Unsupported integration vendor');
+        }
+
+        const redirectURI = configService.getOrThrow<string>(oauth2SettingKeys.redirectURI);
+        const clientId = configService.getOrThrow<string>(oauth2SettingKeys.clientId);
+        const clientSecret = configService.get<string>(oauth2SettingKeys.clientSecret);
+        const oauth2SuccessRedirectURI = configService.getOrThrow<string>(
+            oauth2SettingKeys.oauth2SuccessRedirectURI
         );
 
         return {
             redirectURI,
             clientId,
             clientSecret,
-            googleOAuth2SuccessRedirectURI
+            oauth2SuccessRedirectURI
         };
     }
 

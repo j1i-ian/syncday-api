@@ -1,12 +1,13 @@
 import { BadRequestException, Injectable, Scope } from '@nestjs/common';
 import { Auth } from 'googleapis';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { IssueOAuth2Token } from '@services/integrations/facades/issue-oauth2-token.interface';
 
 @Injectable({
     scope: Scope.REQUEST
 })
-export class GoogleOAuthTokenService {
-    async issueGoogleTokenByAuthorizationCode(
+export class GoogleOAuthTokenService implements IssueOAuth2Token {
+    async issueOAuthTokenByAuthorizationCode(
         oauthClient: Auth.OAuth2Client,
         authorizationCode: string
     ): Promise<OAuthToken> {
@@ -20,5 +21,9 @@ export class GoogleOAuthTokenService {
         }
 
         return { accessToken, refreshToken };
+    }
+
+    issueOAuthTokenByRefreshToken(): Promise<OAuthToken> {
+        throw new Error('Method not implemented.');
     }
 }

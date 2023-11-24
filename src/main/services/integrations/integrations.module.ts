@@ -14,6 +14,7 @@ import { GoogleIntegration } from '@entity/integrations/google/google-integratio
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { VendorIntegrationsController } from './vendor-integrations.controller';
 import { AppleIntegrationsModule } from './apple-integrations/apple-integrations.module';
+import { KakaotalkIntegrationsModule } from './kakaotalk-integrations/kakaotalk-integrations.module';
 
 @Module({
     imports: [
@@ -23,7 +24,8 @@ import { AppleIntegrationsModule } from './apple-integrations/apple-integrations
         ZoomIntegrationsModule,
         ConfigModule,
         forwardRef(() => UserModule),
-        AppleIntegrationsModule
+        AppleIntegrationsModule,
+        KakaotalkIntegrationsModule
     ],
     controllers: [
         IntegrationsController,

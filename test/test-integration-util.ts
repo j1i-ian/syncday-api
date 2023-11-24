@@ -267,7 +267,7 @@ export class TestIntegrationUtil {
 
         const expressRequestMock = testMockUtil.getGoogleOAuthCallbackRequestMock(integrationContext);
 
-        await this.tokenController.googleOAuthCallback(
+        await this.tokenController.oauth2Callback(
             expressRequestMock,
             Language.ENGLISH,
             googleOAuthCallbackResponseMock

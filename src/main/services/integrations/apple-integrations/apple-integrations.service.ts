@@ -21,7 +21,7 @@ import { User } from '@entity/users/user.entity';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { IntegrationStatus } from '@dto/integrations/integration-status.enum';
-import { SyncdayGoogleOAuthTokenResponse } from '@app/interfaces/auth/syncday-google-oauth-token-response.interface';
+import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
 
 @Injectable()
@@ -41,7 +41,7 @@ export class AppleIntegrationsService implements
         private readonly appleCalDAVIntegrationRepository: Repository<AppleCalDAVIntegration>
     ) {}
 
-    generateOAuth2RedirectURI(_syncdayGoogleOAuthTokenResponseOrSyncdayAccessToken?: string | SyncdayGoogleOAuthTokenResponse | undefined): string {
+    generateOAuth2RedirectURI(_syncdayGoogleOAuthTokenResponseOrSyncdayAccessToken?: string | SyncdayOAuth2TokenResponse | undefined): string {
         throw new Error('Method not implemented.');
     }
 

@@ -3,8 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from '@nestjs/common';
 import { Auth, calendar_v3 } from 'googleapis';
-import { GoogleOAuth2Setting } from '@core/interfaces/auth/google-oauth2-setting.interface';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { OAuth2Setting } from '@core/interfaces/auth/oauth2-setting.interface';
+import { GoogleCredentials } from '@core/interfaces/integrations/google/google-credential.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
@@ -24,7 +25,7 @@ describe('GoogleIntegrationFacade', () => {
     let loggerStub: sinon.SinonStubbedInstance<Logger>;
 
     let generateGoogleOAuthClientStub: sinon.SinonStub;
-    let issueGoogleTokenByAuthorizationCodeStub: sinon.SinonStub;
+    let issueOAuthTokenByAuthorizationCodeStub: sinon.SinonStub;
     let getGoogleUserInfoStub: sinon.SinonStub;
     let googleCalendarListServiceSearchStub: sinon.SinonStub;
     let googleCalendarEventListServiceSearchStub: sinon.SinonStub;
@@ -33,9 +34,9 @@ describe('GoogleIntegrationFacade', () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         loggerStub = sinon.createStubInstance(Logger);
 
-        sinon.stub(AppConfigService, 'getGoogleOAuth2Setting').returns({
+        sinon.stub(AppConfigService, 'getOAuth2Setting').returns({
             redirectURI: 'fakeSignInOrUpRedirectURI'
-        } as GoogleOAuth2Setting);
+        } as OAuth2Setting);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -65,9 +66,9 @@ describe('GoogleIntegrationFacade', () => {
             GoogleOAuthClientService.prototype,
             'generateGoogleOAuthClient'
         );
-        issueGoogleTokenByAuthorizationCodeStub = serviceSandbox.stub(
+        issueOAuthTokenByAuthorizationCodeStub = serviceSandbox.stub(
             GoogleOAuthTokenService.prototype,
-            'issueGoogleTokenByAuthorizationCode'
+            'issueOAuthTokenByAuthorizationCode'
         );
         getGoogleUserInfoStub = serviceSandbox.stub(
             GoogleOAuthUserService.prototype,
@@ -99,13 +100,14 @@ describe('GoogleIntegrationFacade', () => {
         });
 
         serviceSandbox.stub(AppConfigService, 'getGoogleCredentials').returns({
-            redirectURI: 'fakeSignInOrUpRedirectURI'
-        } as GoogleOAuth2Setting);
+            clientId: 'fakeClientId',
+            clientSecret: 'fakeClientSecret'
+        } as GoogleCredentials);
     });
 
     afterEach(() => {
         generateGoogleOAuthClientStub.reset();
-        issueGoogleTokenByAuthorizationCodeStub.reset();
+        issueOAuthTokenByAuthorizationCodeStub.reset();
         getGoogleUserInfoStub.reset();
         googleCalendarListServiceSearchStub.reset();
         googleCalendarEventListServiceSearchStub.reset();
@@ -128,13 +130,13 @@ describe('GoogleIntegrationFacade', () => {
             refreshToken: 'refreshToken'
         } as OAuthToken;
 
-        issueGoogleTokenByAuthorizationCodeStub.returns(oauthTokenStub);
+        issueOAuthTokenByAuthorizationCodeStub.returns(oauthTokenStub);
 
         const result = await service.fetchGoogleUsersWithToken(authorizationCodeMock);
 
         expect(result).ok;
         expect(generateGoogleOAuthClientStub.called).true;
-        expect(issueGoogleTokenByAuthorizationCodeStub.called).true;
+        expect(issueOAuthTokenByAuthorizationCodeStub.called).true;
         expect(oauth2ClientStub.setCredentials.called).true;
         expect(getGoogleUserInfoStub.called).true;
         expect(googleCalendarListServiceSearchStub.called).true;

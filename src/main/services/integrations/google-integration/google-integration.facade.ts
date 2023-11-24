@@ -5,12 +5,13 @@ import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/
 import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
-import { GoogleIntegrationState } from '@core/interfaces/integrations/google/google-integration-state.interface';
 import { GoogleAxiosErrorResponse } from '@core/interfaces/integrations/google/google-axios-error-response.interface';
 import { GoogleAxiosErrorReasons } from '@core/interfaces/integrations/google/google-axios-error-reasons.enum';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-oauth2-state-params.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
 import { GoogleOAuthTokenService } from '@services/integrations/google-integration/facades/google-oauth-token.service';
 import { GoogleOAuthUserService } from '@services/integrations/google-integration/facades/google-oauth-user.service';
@@ -23,7 +24,8 @@ import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user
 @Injectable()
 export class GoogleIntegrationFacade implements IntegrationsFacade {
     constructor(private readonly configService: ConfigService) {
-        const { redirectURI: signInOrUpRedirectURI } = AppConfigService.getGoogleOAuth2Setting(
+        const { redirectURI: signInOrUpRedirectURI } = AppConfigService.getOAuth2Setting(
+            IntegrationVendor.GOOGLE,
             this.configService
         );
         this.signInOrUpRedirectURI = signInOrUpRedirectURI;
@@ -70,7 +72,7 @@ export class GoogleIntegrationFacade implements IntegrationsFacade {
             redirectURI
         );
 
-        const tokens = await googleOAuthTokenService.issueGoogleTokenByAuthorizationCode(
+        const tokens = await googleOAuthTokenService.issueOAuthTokenByAuthorizationCode(
             oauthClient,
             authorizationCode
         );
@@ -157,12 +159,12 @@ export class GoogleIntegrationFacade implements IntegrationsFacade {
             integrationContext,
             requestUserEmail: decodedUserOrNull?.email,
             timezone
-        } as GoogleIntegrationState;
+        } as SyncdayOAuth2StateParams;
 
         const jsonStringifiedStateParams = JSON.stringify(stateParams);
 
         /**
-         * login_hint property is not passed on callback api.
+         * login_hint property is not working for callback api.
          * So data would serialized to state params.
          */
         const authorizationUrl = oauthClient.generateAuthUrl({
