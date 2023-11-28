@@ -77,7 +77,7 @@ describe('Availability Redis Repository Test', () => {
             expect(createdAvailabilityBody).ok;
         });
 
-        it('should be threw error when set returns 0 for availability body creation count', async () => {
+        it('should be thrown error when set returns 0 for availability body creation count', async () => {
             const setStub = serviceSandbox.stub(service, 'set').resolves(0);
 
             const uuidKey = '';
@@ -105,7 +105,7 @@ describe('Availability Redis Repository Test', () => {
             expect(setStub.called).true;
         });
 
-        it('should be threw error when set returns 1 or more for availability body creation count on update', async () => {
+        it('should be thrown error when set returns 1 or more for availability body creation count on update', async () => {
             const setStub = serviceSandbox.stub(service, 'set').resolves(1);
             const uuidKey = '';
 
@@ -269,7 +269,7 @@ describe('Availability Redis Repository Test', () => {
             ).greaterThan(new Date(parsedUpdateAvailabilityBody.overrides[1].targetDate).getTime());
         });
 
-        it('should be threw error when one or more availability body is created on update', async () => {
+        it('should be thrown error when one or more availability body is created on update', async () => {
             const userUUIDMock = stubOne(User).uuid;
             const availabilityUUIDStub = stubOne(Availability).uuid;
             const updateAvailabilityBodyStub = testMockUtil.getAvailabilityBodyMock();

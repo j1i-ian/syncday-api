@@ -209,7 +209,7 @@ describe('AppleIntegrationsService', () => {
             expect(appleIntegrationFacadeServiceStub.searchSchedules.called).true;
         });
 
-        it('should be threw a AlreadyIntegratedCalendar', async () => {
+        it('should be thrown a AlreadyIntegratedCalendar', async () => {
 
             const userSettingMock = stubOne(UserSetting);
             const userMock = stubOne(User, {

@@ -326,7 +326,7 @@ describe('AvailabilityService', () => {
                 expect(availabilityRedisRepositoryStub.update.called).false;
             });
 
-            it('should be threw error when default request value is false if that target availability is default', async () => {
+            it('should be thrown error when default request value is false if that target availability is default', async () => {
                 const userStub = stubOne(User);
                 const availabilityStub = stubOne(Availability, {
                     default: true

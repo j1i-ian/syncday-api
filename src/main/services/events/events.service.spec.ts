@@ -658,7 +658,7 @@ describe('EventsService', () => {
             serviceSandbox.restore();
         });
 
-        it('should be threw error if hasOwnEvents returns false: hasOwnEventsOrThrow', async () => {
+        it('should be thrown error if hasOwnEvents returns false: hasOwnEventsOrThrow', async () => {
             const userIdMock = stubOne(User).id;
             const eventIdMocks = stub(Event).map((event) => event.id);
 
@@ -669,7 +669,7 @@ describe('EventsService', () => {
             );
         });
 
-        it('should be not threw error if hasOwnEvents returns true: hasOwnEventsOrThrow', async () => {
+        it('should be not thrown error if hasOwnEvents returns true: hasOwnEventsOrThrow', async () => {
             const userIdMock = stubOne(User).id;
             const eventIdMocks = stub(Event).map((event) => event.id);
 

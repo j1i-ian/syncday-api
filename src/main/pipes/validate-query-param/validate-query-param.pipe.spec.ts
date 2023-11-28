@@ -16,15 +16,15 @@ describe('ValidateQueryParamPipe', () => {
         expect(result).ok;
     });
 
-    it('should be threw error when undefined string is given', () => {
+    it('should be thrown error when undefined string is given', () => {
         expect(() => pipe.transform('undefined')).throws(BadRequestException);
     });
 
-    it('should be threw error when undefined is given', () => {
+    it('should be thrown error when undefined is given', () => {
         expect(() => pipe.transform()).throws(BadRequestException);
     });
 
-    it('should be threw error when empty string is given', () => {
+    it('should be thrown error when empty string is given', () => {
         expect(() => pipe.transform()).throws(BadRequestException);
     });
 });

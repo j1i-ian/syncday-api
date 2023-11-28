@@ -360,7 +360,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                 expect(resubscriptionCalendarStub.called).true;
             });
 
-            it('should be threw error when there is calendar in request array that is not owned of user', async () => {
+            it('should be thrown error when there is calendar in request array that is not owned of user', async () => {
 
                 const userSettingStub = stubOne(UserSetting);
                 const userStub = stubOne(User, {

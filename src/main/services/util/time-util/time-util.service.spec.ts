@@ -175,7 +175,7 @@ describe('TimeUtilService', () => {
         expect(actualConvertedICSString).equals(expectedICSString);
     });
 
-    it('should be threw an error for ics converting error', () => {
+    it('should be thrown an error for ics converting error', () => {
         const uuidMock = 'AABBCCDDEEFF';
         const organizerEmailMock = TestMockUtil.faker.internet.email();
         const scheduleMock = stubOne(Schedule, {

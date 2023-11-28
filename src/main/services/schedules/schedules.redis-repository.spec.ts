@@ -74,7 +74,7 @@ describe('Schedules Redis Repository Test', () => {
             expect(clusterStub.get.called).true;
         });
 
-        it('should be threw error when schedule body is null', async () => {
+        it('should be thrown error when schedule body is null', async () => {
 
             const sceduleStub = stubOne(Schedule);
             const scheduleBodyStub = null;
