@@ -268,7 +268,7 @@ export class EventsService {
         eventId: number,
         updatedEvent: Omit<Event, 'id'>
     ): Promise<boolean> {
-        await this.validator.validate(userId, eventId, Event);
+        const validatedEvent = await this.validator.validate(userId, eventId, Event);
 
         const updatedEventDetail = updatedEvent.eventDetail;
 
@@ -276,7 +276,9 @@ export class EventsService {
         // check duplication
         const isLinkAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(userUUID, updatedEvent.link);
 
-        if (isLinkAlreadyUsedIn) {
+        const isLinkUpdateRequest = validatedEvent.link !== updatedEvent.link;
+
+        if (isLinkAlreadyUsedIn && isLinkUpdateRequest) {
             throw new AlreadyUsedInEventLinkException();
         }
 

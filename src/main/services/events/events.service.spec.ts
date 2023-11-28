@@ -485,16 +485,28 @@ describe('EventsService', () => {
                 const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
                 const userMock = stubOne(User);
+                const eventLinkMock = 'fake';
+                const newEventLinkMock = 'fake2';
                 const eventDetailMock = stubOne(EventDetail);
                 const eventMock = stubOne(Event, {
-                    eventDetail: eventDetailMock
+                    eventDetail: eventDetailMock,
+                    link: eventLinkMock
                 });
 
+                const validatedEventStub = stubOne(Event, {
+                    ...eventMock,
+                    eventDetail: eventDetailMock,
+                    link: eventLinkMock
+                });
+
+                validatorStub.validate.resolves(validatedEventStub);
                 eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
 
                 eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
 
                 eventRepositoryStub.update.resolves(updateResultStub);
+
+                eventMock.link = newEventLinkMock;
 
                 await expect(service.update(
                     userMock.uuid,
@@ -510,6 +522,42 @@ describe('EventsService', () => {
                 expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
             });
 
+            it('should be updated event for same link', async () => {
+                const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+                const userMock = stubOne(User);
+                const eventIdMock = 1;
+                const eventDetailMock = stubOne(EventDetail);
+                const eventMock = stubOne(Event, {
+                    id: eventIdMock,
+                    eventDetail: eventDetailMock
+                });
+
+                validatorStub.validate.resolves(eventMock);
+
+                eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
+
+                eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
+
+                eventRepositoryStub.update.resolves(updateResultStub);
+                eventDetailRepositoryStub.update.resolves(updateResultStub);
+
+                const updateResult = await service.update(
+                    userMock.uuid,
+                    userMock.id,
+                    eventMock.id,
+                    eventMock
+                );
+
+                expect(updateResult).true;
+                expect(validatorStub.validate.called).true;
+                expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
+                expect(eventRepositoryStub.update.called).true;
+                expect(eventDetailRepositoryStub.update.called).true;
+                expect(eventRedisRepositoryStub.save.called).true;
+                expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
+            });
+
             it('should be updated event', async () => {
                 const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
@@ -520,6 +568,8 @@ describe('EventsService', () => {
                     id: eventIdMock,
                     eventDetail: eventDetailMock
                 });
+
+                validatorStub.validate.resolves(eventMock);
 
                 eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
 
