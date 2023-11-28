@@ -12,7 +12,8 @@ import {
     All,
     Req,
     Res,
-    NotImplementedException
+    NotImplementedException,
+    Put
 } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
@@ -23,6 +24,7 @@ import { Matrix } from '@decorators/matrix.decorator';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
 import { PatchEventRequestDto } from '@dto/event-groups/events/patch-event-request.dto';
 import { FetchEventResponseDto } from '@dto/event-groups/events/fetch-event-response.dto';
+import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-request.dto';
 import { EventsService } from './events.service';
 
 @Controller()
@@ -74,6 +76,22 @@ export class EventsController {
             userId,
             eventId,
             patchEventRequestDto as Partial<Event>
+        );
+    }
+
+    @Put(':eventId')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async update(
+        @AuthUser('id') userId: number,
+        @AuthUser('uuid') userUUID: string,
+        @Param('eventId', ParseIntPipe) eventId: number,
+        @Body() updateEventRequestDto: UpdateEventRequestDto
+    ): Promise<void> {
+        await this.eventsService.update(
+            userUUID,
+            userId,
+            eventId,
+            updateEventRequestDto as unknown as Event
         );
     }
 

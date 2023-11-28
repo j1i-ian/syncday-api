@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { plainToInstance } from 'class-transformer';
 import { Event } from '@core/entities/events/event.entity';
 import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
@@ -252,6 +253,74 @@ export class EventsService {
         const updateSuccess = updateResult && updateResult.affected && updateResult.affected > 0;
 
         return updateSuccess === true;
+    }
+
+    /**
+     * The properties of passed event object are filtered by the class-transformer,
+     * according to the DTO decorators.
+     * However the event details are not yet trusted,
+     * so they are verified by TypeORM findOneByOrFail with
+     * condition for its id and uuid.
+     */
+    async update(
+        userUUID: string,
+        userId: number,
+        eventId: number,
+        updatedEvent: Omit<Event, 'id'>
+    ): Promise<boolean> {
+        await this.validator.validate(userId, eventId, Event);
+
+        const updatedEventDetail = updatedEvent.eventDetail;
+
+        // update event link
+        // check duplication
+        const isLinkAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(userUUID, updatedEvent.link);
+
+        if (isLinkAlreadyUsedIn) {
+            throw new AlreadyUsedInEventLinkException();
+        }
+
+        await this.datasource.transaction(async (transactionManager) => {
+            const _eventRepository = transactionManager.getRepository(Event);
+            const _eventDetailRepository = transactionManager.getRepository(EventDetail);
+
+            const loadedEventDetail = await _eventDetailRepository.findOneByOrFail({
+                eventId,
+                id: updatedEventDetail.id,
+                uuid: updatedEventDetail.uuid
+            });
+            const _updateEvent = plainToInstance(Event, updatedEvent, {
+                excludeExtraneousValues: true,
+                strategy: 'exposeAll'
+            });
+            const _updateEventDetail = plainToInstance(EventDetail, updatedEventDetail, {
+                excludeExtraneousValues: true,
+                strategy: 'exposeAll'
+            });
+
+            const _eventUpdateResult = await _eventRepository.update(eventId, _updateEvent);
+            const _isEventUpdateSuccess = _eventUpdateResult.affected && _eventUpdateResult.affected > 0;
+            const _eventDetailUpdateResult = await _eventDetailRepository.update(loadedEventDetail.id, _updateEventDetail);
+            const _isEventDetailUpdateSuccess = _eventDetailUpdateResult.affected && _eventDetailUpdateResult.affected > 0;
+
+            const _rdbUpdateSuccess = _isEventUpdateSuccess && _isEventDetailUpdateSuccess;
+            if (_rdbUpdateSuccess === false) {
+                throw new InternalServerErrorException('Evnet update is faield');
+            }
+
+            return _rdbUpdateSuccess;
+        });
+
+        // update event detail
+        await this.eventRedisRepository.save(
+            updatedEventDetail.uuid,
+            updatedEventDetail.inviteeQuestions,
+            updatedEventDetail.notificationInfo,
+            updatedEventDetail.eventSetting
+        );
+        await this.eventRedisRepository.setEventLinkSetStatus(userUUID, updatedEvent.link);
+
+        return true;
     }
 
     async remove(eventId: number, userId: number): Promise<boolean> {
