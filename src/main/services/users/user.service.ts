@@ -283,7 +283,7 @@ export class UserService {
         const intializedEvent = createdEventGroup.events.pop() as Event;
         const initializedEventDetail = intializedEvent.eventDetail;
 
-        await this.eventRedisRepository.setEventLinkSetStatus(savedUser.uuid, initialEvent.name);
+        await this.eventRedisRepository.setEventLinkSetStatus(savedUser.uuid, initialEvent.link);
         await this.eventRedisRepository.save(
             initializedEventDetail.uuid,
             initializedEventDetail.inviteeQuestions,
