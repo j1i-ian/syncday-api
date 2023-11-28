@@ -12,6 +12,7 @@ import { EventStatus } from '@entity/events/event-status.enum';
 import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
+import { AlreadyUsedInEventLinkException } from '@app/exceptions/events/already-used-in-event-link.exception';
 import { Validator } from '@criteria/validator';
 
 @Injectable()
@@ -225,8 +226,26 @@ export class EventsService {
         return savedEvent;
     }
 
-    async patch(eventId: number, userId: number, patchEvent: Partial<Event>): Promise<boolean> {
+    async patch(
+        userUUID: string,
+        userId: number,
+        eventId: number,
+        patchEvent: Partial<Event>
+    ): Promise<boolean> {
         await this.validator.validate(userId, eventId, Event);
+
+        if (patchEvent.link) {
+            const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(
+                userUUID,
+                patchEvent.link
+            );
+
+            if (isAlreadyUsedIn) {
+                throw new AlreadyUsedInEventLinkException();
+            } else {
+                await this.eventRedisRepository.setEventLinkSetStatus(userUUID, patchEvent.link);
+            }
+        }
 
         const updateResult = await this.eventRepository.update(eventId, patchEvent);
 
