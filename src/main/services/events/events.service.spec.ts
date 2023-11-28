@@ -45,7 +45,7 @@ describe('EventsService', () => {
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
-        (eventRepositoryStub as any).manager = datasourceMock as EntityManager;
+        (eventRepositoryStub as any).manager = datasourceMock as unknown as EntityManager;
 
         module = await Test.createTestingModule({
             providers: [
