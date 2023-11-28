@@ -221,7 +221,7 @@ export class EventsService {
         savedEvent.eventDetail.inviteeQuestions = savedEventDetailBody.inviteeQuestions;
         savedEvent.eventDetail.notificationInfo = savedEventDetailBody.notificationInfo;
 
-        await this.eventRedisRepository.setEventLinkSetStatus(userUUID, savedEvent.name);
+        await this.eventRedisRepository.setEventLinkSetStatus(userUUID, savedEvent.link);
 
         return savedEvent;
     }
