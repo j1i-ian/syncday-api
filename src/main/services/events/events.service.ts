@@ -233,7 +233,7 @@ export class EventsService {
         eventId: number,
         patchEvent: Partial<Event>
     ): Promise<boolean> {
-        await this.validator.validate(userId, eventId, Event);
+        const validatedEvent = await this.validator.validate(userId, eventId, Event);
 
         if (patchEvent.link) {
             const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(
@@ -244,6 +244,7 @@ export class EventsService {
             if (isAlreadyUsedIn) {
                 throw new AlreadyUsedInEventLinkException();
             } else {
+                await this.eventRedisRepository.deleteEventLinkSetStatus(userUUID, validatedEvent.link);
                 await this.eventRedisRepository.setEventLinkSetStatus(userUUID, patchEvent.link);
             }
         }
@@ -291,14 +292,19 @@ export class EventsService {
                 id: updatedEventDetail.id,
                 uuid: updatedEventDetail.uuid
             });
-            const _updateEvent = plainToInstance(Event, updatedEvent, {
-                excludeExtraneousValues: true,
+            const { eventDetail: _eventDetail, ..._updateEvent } = plainToInstance(Event, updatedEvent, {
                 strategy: 'exposeAll'
             });
-            const _updateEventDetail = plainToInstance(EventDetail, updatedEventDetail, {
-                excludeExtraneousValues: true,
+
+            /* eslint-disable @typescript-eslint/no-unused-vars */
+            const {
+                notificationInfo: _notificationInfo,
+                eventSetting: _eventSetting,
+                ..._updateEventDetail
+            } = plainToInstance(EventDetail, _eventDetail, {
                 strategy: 'exposeAll'
             });
+            /* eslint-enable @typescript-eslint/no-unused-vars */
 
             const _eventUpdateResult = await _eventRepository.update(eventId, _updateEvent);
             const _isEventUpdateSuccess = _eventUpdateResult.affected && _eventUpdateResult.affected > 0;
@@ -320,6 +326,7 @@ export class EventsService {
             updatedEventDetail.notificationInfo,
             updatedEventDetail.eventSetting
         );
+        await this.eventRedisRepository.deleteEventLinkSetStatus(userUUID, validatedEvent.link);
         await this.eventRedisRepository.setEventLinkSetStatus(userUUID, updatedEvent.link);
 
         return true;

@@ -112,6 +112,13 @@ export class EventsRedisRepository {
         return addedItemCount > 0;
     }
 
+    async deleteEventLinkSetStatus(userUUID: string, eventLink: string): Promise<boolean> {
+        const eventLinkSetStatusKey = this.syncdayRedisService.getEventLinkSetStatusKey(userUUID);
+        const deletedItemCount = await this.cluster.srem(eventLinkSetStatusKey, eventLink);
+
+        return deletedItemCount > 0;
+    }
+
     /**
      * This method overwrites invitee questions, notification info always.
      * Both elements have too small chunk sizes, so it has not been configured with hash map

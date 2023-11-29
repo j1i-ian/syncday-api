@@ -113,6 +113,7 @@ describe('EventsService', () => {
             eventRedisRepositoryStub.clone.reset();
             eventRedisRepositoryStub.getEventLinkSetStatus.reset();
             eventRedisRepositoryStub.setEventLinkSetStatus.reset();
+            eventRedisRepositoryStub.deleteEventLinkSetStatus.reset();
             eventRedisRepositoryStub.getEventDetailRecords.reset();
 
             eventDetailRepositoryStub.save.reset();
@@ -357,6 +358,7 @@ describe('EventsService', () => {
             afterEach(() => {
                 validatorStub.validate.reset();
                 eventRedisRepositoryStub.getEventLinkSetStatus.reset();
+                eventRedisRepositoryStub.deleteEventLinkSetStatus.reset();
                 eventRedisRepositoryStub.setEventLinkSetStatus.reset();
                 eventRepositoryStub.update.reset();
             });
@@ -381,6 +383,7 @@ describe('EventsService', () => {
 
                 expect(validatorStub.validate.called).true;
                 expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).false;
+                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
                 expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
                 expect(eventRepositoryStub.update.called).false;
             });
@@ -405,6 +408,7 @@ describe('EventsService', () => {
 
                 expect(validatorStub.validate.called).true;
                 expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
+                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
                 expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
                 expect(eventRepositoryStub.update.called).false;
             });
@@ -417,7 +421,10 @@ describe('EventsService', () => {
                     link: 'fakeEventLink'
                 });
 
+                validatorStub.validate.resolves(eventMock);
+
                 eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
+                eventRedisRepositoryStub.deleteEventLinkSetStatus.resolves(true);
                 eventRedisRepositoryStub.setEventLinkSetStatus.resolves(true);
 
                 eventRepositoryStub.update.resolves(updateResultStub);
@@ -432,6 +439,7 @@ describe('EventsService', () => {
                 expect(updateResult).true;
                 expect(validatorStub.validate.called).true;
                 expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
+                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).true;
                 expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
                 expect(eventRepositoryStub.update.called).true;
             });
@@ -446,6 +454,7 @@ describe('EventsService', () => {
                 eventDetailRepositoryStub.findOneByOrFail.reset();
                 eventRepositoryStub.update.reset();
                 eventDetailRepositoryStub.update.reset();
+                eventRedisRepositoryStub.deleteEventLinkSetStatus.reset();
                 eventRedisRepositoryStub.setEventLinkSetStatus.reset();
             });
 
@@ -476,6 +485,7 @@ describe('EventsService', () => {
 
                 expect(validatorStub.validate.called).true;
                 expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).false;
+                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
                 expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
                 expect(eventRepositoryStub.update.called).false;
             });
@@ -519,6 +529,7 @@ describe('EventsService', () => {
                 expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
                 expect(eventRepositoryStub.update.called).false;
                 expect(eventRedisRepositoryStub.save.called).false;
+                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
                 expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
             });
 
@@ -555,6 +566,7 @@ describe('EventsService', () => {
                 expect(eventRepositoryStub.update.called).true;
                 expect(eventDetailRepositoryStub.update.called).true;
                 expect(eventRedisRepositoryStub.save.called).true;
+                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).true;
                 expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
             });
 
@@ -591,6 +603,7 @@ describe('EventsService', () => {
                 expect(eventRepositoryStub.update.called).true;
                 expect(eventDetailRepositoryStub.update.called).true;
                 expect(eventRedisRepositoryStub.save.called).true;
+                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).true;
                 expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
             });
         });
