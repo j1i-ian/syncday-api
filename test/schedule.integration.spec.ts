@@ -137,9 +137,14 @@ describe('Schedule Integration Test', () => {
 
                 fakeHostEvent = await firstValueFrom(eventsService.findOne(fakeHostEvent.id, fakeHostUser.id));
 
-                await eventsService.patch(fakeHostEvent.id, fakeHostUser.id, {
-                    bufferTime
-                });
+                await eventsService.patch(
+                    fakeHostUser.uuid,
+                    fakeHostUser.id,
+                    fakeHostEvent.id,
+                    {
+                        bufferTime
+                    }
+                );
 
                 fakeHostEvent.bufferTime = bufferTime;
 
@@ -478,8 +483,9 @@ describe('Schedule Integration Test', () => {
                                 ];
 
                                 await eventsService.patch(
-                                    fakeHostEvent.id,
+                                    fakeHostUser.uuid,
                                     fakeHostUser.id,
+                                    fakeHostEvent.id,
                                     {
                                         contacts: newContacts
                                     }
@@ -515,8 +521,9 @@ describe('Schedule Integration Test', () => {
                                 ];
 
                                 await eventsService.patch(
-                                    fakeHostEvent.id,
+                                    fakeHostUser.uuid,
                                     fakeHostUser.id,
+                                    fakeHostEvent.id,
                                     {
                                         contacts: newContacts
                                     }
@@ -573,8 +580,9 @@ describe('Schedule Integration Test', () => {
                                 ];
 
                                 await eventsService.patch(
-                                    fakeHostEvent.id,
+                                    fakeHostUser.uuid,
                                     fakeHostUser.id,
+                                    fakeHostEvent.id,
                                     {
                                         contacts: newContacts
                                     }

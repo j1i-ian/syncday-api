@@ -23,7 +23,7 @@ stages:
       apk add bash
       apk add git
 
-.resolve-core:
+.resolve-core: &resolve-core
   before_script: |
     git config --system credential.helper store
     echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com" > ~/.git-credentials
@@ -153,10 +153,11 @@ integration-test:
     - lint
     - unit-test
   before_script:
-    - apt-get update -y && apt-get -y install openssh-server rsync
+    - apt-get update -y && apt-get -y install openssh-server rsync git
     - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
     - dpkg -i session-manager-plugin.deb
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash  #download secure files(https://docs.gitlab.com/ee/ci/secure_files/index.html)
+    - !reference [.resolve-core, before_script]
   script:
     - mkdir $HOME/.ssh
     - echo -e "host i-* mi-*\n
