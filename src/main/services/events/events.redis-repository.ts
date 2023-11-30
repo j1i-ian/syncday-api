@@ -47,10 +47,14 @@ export class EventsRedisRepository {
                     const [, _notificationInfo] = _results.shift() as [unknown, string];
                     const [, _eventSetting] = _results.shift() as [unknown, string];
 
+                    const _ensuredInviteeQuestions = JSON.parse(_inviteeQuestions || '[]');
+                    const _ensuredNotificationInfo = JSON.parse(_notificationInfo || 'null');
+                    const _ensuredEventSetting = JSON.parse(_eventSetting || 'null');
+
                     eventDetailsRecord[_eventDetailUUID] = {
-                        inviteeQuestions: JSON.parse(_inviteeQuestions),
-                        notificationInfo: JSON.parse(_notificationInfo),
-                        eventSetting: JSON.parse(_eventSetting)
+                        inviteeQuestions: _ensuredInviteeQuestions,
+                        notificationInfo: _ensuredNotificationInfo,
+                        eventSetting: _ensuredEventSetting
                     };
 
                     return eventDetailsRecord;
