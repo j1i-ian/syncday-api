@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, bufferCount, combineLatest, concatMap, defer, forkJoin, from, iif, last, map, mergeMap, of, throwError } from 'rxjs';
+import { Observable, bufferCount, combineLatest, concatMap, defer, forkJoin, from, last, map, mergeMap, of, tap } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -423,20 +423,22 @@ export class GlobalSchedulesService {
         }
 
         return forkJoin(scheduleObservables).pipe(
-            mergeMap(([loadedScheduleOrNull, loadedVendorIntegrationScheduleOrNull]) =>
-                iif(
-                    () => {
-                        this.logger.debug({
-                            message: 'a previous engagement is detected: !loadedScheduleOrNull && !loadedVendorIntegrationScheduleOrNull is true',
-                            loadedScheduleOrNull,
-                            loadedVendorIntegrationScheduleOrNull
-                        });
-                        return !loadedScheduleOrNull && !loadedVendorIntegrationScheduleOrNull;
-                    },
-                    of(schedule),
-                    throwError(() => new CannotCreateByInvalidTimeRange())
-                )
-            )
+            tap(([loadedScheduleOrNull, loadedVendorIntegrationScheduleOrNull]) => {
+                this.logger.debug({
+                    message: 'a previous engagement is detected: !loadedScheduleOrNull && !loadedVendorIntegrationScheduleOrNull is true',
+                    loadedScheduleOrNull,
+                    loadedVendorIntegrationScheduleOrNull
+                });
+            }),
+            map(([loadedScheduleOrNull, loadedVendorIntegrationScheduleOrNull]) => {
+                const _isValidSchedule = !loadedScheduleOrNull && !loadedVendorIntegrationScheduleOrNull;
+
+                if (_isValidSchedule) {
+                    return schedule;
+                } else {
+                    throw new CannotCreateByInvalidTimeRange();
+                }
+            })
         );
     }
 

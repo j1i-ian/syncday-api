@@ -1,4 +1,4 @@
-import { Observable, forkJoin, from, iif, map, mergeMap, of } from 'rxjs';
+import { Observable, forkJoin, from, map, mergeMap } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -62,9 +62,11 @@ export class EventsRedisRepository {
         const eventLinkStatusKey = this.syncdayRedisService.getEventLinkStatusKey(workspace, link);
 
         return from(this.cluster.get(eventLinkStatusKey)).pipe(
-            mergeMap((result: string | null) =>
-                iif(() => !!result, of(JSON.parse(result as string) as boolean), of(false))
-            )
+            map((result) => {
+                const isValidString = !!result && result !== '';
+                const _ensuredResult = isValidString ? JSON.parse(result) as boolean: false;
+                return _ensuredResult;
+            })
         );
     }
 
@@ -72,9 +74,11 @@ export class EventsRedisRepository {
         const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID);
 
         return from(this.cluster.get(inviteeQuestionKey)).pipe(
-            mergeMap((result: string | null) =>
-                iif(() => !!result, of(JSON.parse(result as string) as InviteeQuestion[]), of([]))
-            )
+            map((result) => {
+                const isValidString = !!result && result !== '';
+                const _ensuredInviteeQuestions = isValidString ? JSON.parse(result) as InviteeQuestion[] : [];
+                return _ensuredInviteeQuestions;
+            })
         );
     }
 
@@ -82,9 +86,11 @@ export class EventsRedisRepository {
         const notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID);
 
         return from(this.cluster.get(notificationInfoKey)).pipe(
-            mergeMap((result: string | null) =>
-                iif(() => !!result, of(JSON.parse(result as string) as NotificationInfo), of({}))
-            )
+            map((result) => {
+                const isValidString = !!result && result !== '';
+                const _ensuredNotificationInfo = isValidString ? JSON.parse(result) as NotificationInfo : {};
+                return _ensuredNotificationInfo;
+            })
         );
     }
 
@@ -92,9 +98,11 @@ export class EventsRedisRepository {
         const eventSettingKey = this.syncdayRedisService.getEventSettingKey(eventDetailUUID);
 
         return from(this.cluster.get(eventSettingKey)).pipe(
-            mergeMap((result: string | null) =>
-                iif(() => !!result, of(JSON.parse(result as string) as EventSetting), of({} as EventSetting))
-            )
+            map((result) => {
+                const isValidString = !!result && result !== '';
+                const _ensuredEventSetting = isValidString ? JSON.parse(result) : {};
+                return _ensuredEventSetting as EventSetting;
+            })
         );
     }
 

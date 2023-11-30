@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cluster } from 'ioredis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Observable, from, iif, map, mergeMap, of, throwError } from 'rxjs';
+import { Observable, from, map } from 'rxjs';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
@@ -53,13 +53,13 @@ export class SchedulesRedisRepository {
     save(scheduleUUID: string, scheduleBody: ScheduleBody): Observable<ScheduleBody> {
         return from(this.set(scheduleUUID, scheduleBody))
             .pipe(
-                mergeMap((createSuccess) =>
-                    iif(
-                        () => createSuccess,
-                        of(scheduleBody),
-                        throwError(() => { throw new CannotFindScheduleBody(); })
-                    )
-                )
+                map((createSuccess) => {
+                    if (!createSuccess) {
+                        throw new CannotFindScheduleBody();
+                    }
+
+                    return scheduleBody;
+                })
             );
     }
 

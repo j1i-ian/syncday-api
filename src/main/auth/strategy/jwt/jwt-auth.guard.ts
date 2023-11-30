@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
-import { Observable, catchError, defer, forkJoin, from, iif, mergeMap, of } from 'rxjs';
+import { Observable, catchError, defer, forkJoin, from, mergeMap, of } from 'rxjs';
 import { PublicDecoratorOptions } from './public-decorator-options.interface';
 import { PUBLIC_SETTING_KEY } from './public.decorator';
 
@@ -27,21 +27,21 @@ export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
             bearerToken: bearerToken$,
             publicSetting: publicSetting$
         }).pipe(
-            mergeMap(({ bearerToken, publicSetting }) =>
-                iif(
-                    () => Boolean(bearerToken),
-                    defer(() => from(super.canActivate(context) as Promise<boolean>)).pipe(
+            mergeMap(({ bearerToken, publicSetting }) => {
+
+                const canActive$ = defer(() => from(super.canActivate(context) as Promise<boolean>))
+                    .pipe(
                         catchError((error) => {
-                            if (Boolean(publicSetting?.ignoreInvalidJwtToken) === false) {
+                            if (!!publicSetting?.ignoreInvalidJwtToken === false) {
                                 throw error;
                             } else {
                                 return of(true);
                             }
                         })
-                    ),
-                    of(Boolean(publicSetting))
-                )
-            )
+                    );
+
+                return bearerToken ? canActive$ : of(!!publicSetting);
+            })
         );
     }
 }

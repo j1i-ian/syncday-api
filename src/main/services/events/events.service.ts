@@ -270,6 +270,7 @@ export class EventsService {
         updatedEvent: Omit<Event, 'id'>
     ): Promise<boolean> {
         const validatedEvent = await this.validator.validate(userId, eventId, Event);
+        const validatedEventDetail = validatedEvent.eventDetail;
 
         const updatedEventDetail = updatedEvent.eventDetail;
 
@@ -287,11 +288,6 @@ export class EventsService {
             const _eventRepository = transactionManager.getRepository(Event);
             const _eventDetailRepository = transactionManager.getRepository(EventDetail);
 
-            const loadedEventDetail = await _eventDetailRepository.findOneByOrFail({
-                eventId,
-                id: updatedEventDetail.id,
-                uuid: updatedEventDetail.uuid
-            });
             const { eventDetail: _eventDetail, ..._updateEvent } = plainToInstance(Event, updatedEvent, {
                 strategy: 'exposeAll'
             });
@@ -308,7 +304,7 @@ export class EventsService {
 
             const _eventUpdateResult = await _eventRepository.update(eventId, _updateEvent);
             const _isEventUpdateSuccess = _eventUpdateResult.affected && _eventUpdateResult.affected > 0;
-            const _eventDetailUpdateResult = await _eventDetailRepository.update(loadedEventDetail.id, _updateEventDetail);
+            const _eventDetailUpdateResult = await _eventDetailRepository.update(validatedEventDetail.id, _updateEventDetail);
             const _isEventDetailUpdateSuccess = _eventDetailUpdateResult.affected && _eventDetailUpdateResult.affected > 0;
 
             const _rdbUpdateSuccess = _isEventUpdateSuccess && _isEventDetailUpdateSuccess;
@@ -321,7 +317,7 @@ export class EventsService {
 
         // update event detail
         await this.eventRedisRepository.save(
-            updatedEventDetail.uuid,
+            validatedEventDetail.uuid,
             updatedEventDetail.inviteeQuestions,
             updatedEventDetail.notificationInfo,
             updatedEventDetail.eventSetting
