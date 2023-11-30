@@ -367,6 +367,9 @@ describe('EventsService', () => {
                 const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
                 const userMock = stubOne(User);
                 const eventMock = stubOne(Event);
+                const validatedEventStub = stubOne(Event, eventMock);
+
+                validatorStub.validate.resolves(validatedEventStub);
 
                 eventMock.link = null as any;
 
@@ -395,6 +398,11 @@ describe('EventsService', () => {
                 const eventMock = stubOne(Event, {
                     link: 'fakeEventLink'
                 });
+                const validatedEventStub = stubOne(Event, eventMock);
+
+                validatorStub.validate.resolves(validatedEventStub);
+
+                eventMock.link = 'fakeNewEventLink';
 
                 eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
                 eventRepositoryStub.update.resolves(updateResultStub);
@@ -418,10 +426,12 @@ describe('EventsService', () => {
 
                 const userMock = stubOne(User);
                 const eventMock = stubOne(Event, {
-                    link: 'fakeEventLink'
+                    link: 'fakeNewEventLink'
                 });
+                const validatedEventStub = stubOne(Event, eventMock);
+                validatedEventStub.link = 'fakeEventLink';
 
-                validatorStub.validate.resolves(eventMock);
+                validatorStub.validate.resolves(validatedEventStub);
 
                 eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
                 eventRedisRepositoryStub.deleteEventLinkSetStatus.resolves(true);
@@ -441,6 +451,38 @@ describe('EventsService', () => {
                 expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
                 expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).true;
                 expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
+                expect(eventRepositoryStub.update.called).true;
+            });
+
+            it('should be patched event with same link', async () => {
+                const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+                const userMock = stubOne(User);
+                const eventMock = stubOne(Event, {
+                    link: 'fakeEventLink'
+                });
+                const validatedEventStub = stubOne(Event, eventMock);
+
+                validatorStub.validate.resolves(validatedEventStub);
+
+                eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
+                eventRedisRepositoryStub.deleteEventLinkSetStatus.resolves(true);
+                eventRedisRepositoryStub.setEventLinkSetStatus.resolves(true);
+
+                eventRepositoryStub.update.resolves(updateResultStub);
+
+                const updateResult = await service.patch(
+                    userMock.uuid,
+                    userMock.id,
+                    eventMock.id,
+                    eventMock
+                );
+
+                expect(updateResult).true;
+                expect(validatorStub.validate.called).true;
+                expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).false;
+                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
+                expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
                 expect(eventRepositoryStub.update.called).true;
             });
         });

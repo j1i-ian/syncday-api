@@ -235,7 +235,7 @@ export class EventsService {
     ): Promise<boolean> {
         const validatedEvent = await this.validator.validate(userId, eventId, Event);
 
-        if (patchEvent.link) {
+        if (patchEvent.link && patchEvent.link !== validatedEvent.link) {
             const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(
                 userUUID,
                 patchEvent.link
