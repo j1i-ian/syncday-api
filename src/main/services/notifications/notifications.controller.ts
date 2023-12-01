@@ -21,15 +21,18 @@ export class NotificationsController {
 
         const {
             eventId,
+            hostName,
             inviteeName,
             inviteePhoneNumber,
             memo
         } = bookingAskRequestDto;
 
+        const ensuredHostName = hostName || authUser.name;
+
         return from(this.notificationsService.sendBookingRequest(
             authUser.id,
             eventId,
-            authUser.name,
+            ensuredHostName,
             inviteeName,
             inviteePhoneNumber,
             memo
