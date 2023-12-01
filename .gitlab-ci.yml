@@ -38,17 +38,17 @@ stages:
   before_script:
     - |
       if [[ $CI_COMMIT_BRANCH == "main" ]]; then
-        EMV=production
+        ENV=production
         CI_ENVIRONMENT_NAME=production
         APP_NAME=syncday-api
         DOCKER_FILE=Dockerfile
       elif [[ $CI_COMMIT_TAG != null ]]; then
-        EMV=staging
+        ENV=staging
         CI_ENVIRONMENT_NAME=staging
         APP_NAME=stg-syncday-api
         DOCKER_FILE=Dockerfile.stg
       else
-        EMV=development
+        ENV=development
         CI_ENVIRONMENT_NAME=development
         APP_NAME=dev-syncday-api
         DOCKER_FILE=Dockerfile.dev
