@@ -1,5 +1,5 @@
-import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
+import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 
-export interface SearchZoomIntegrationOptions extends SearchByUserOption {
+export interface SearchZoomIntegrationOptions extends SearchByProfileOption {
     integrationUserUniqueId?: string;
 }

@@ -1,8 +1,8 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Observable, firstValueFrom } from 'rxjs';
-import { UserOwnCriteria } from '@criteria/user-own.criteria';
+import { TeamOwnCriteria } from '@criteria/team-own.criteria';
 import { ValidationCriteria } from '@criteria/validation-criteria.interface';
-import { UserResourceEntity } from '@criteria/user-resource-entity.type';
+import { TeamResourceEntity } from '@criteria/team-resource-entity.type';
 
 /**
  * TODO: Should be written Test
@@ -11,22 +11,22 @@ import { UserResourceEntity } from '@criteria/user-resource-entity.type';
  */
 @Injectable()
 export class Validator {
-    constructor(private readonly userOwnCriteria: UserOwnCriteria) {
+    constructor(private readonly userOwnCriteria: TeamOwnCriteria) {
         this.validationCriteriaArray = [this.userOwnCriteria];
     }
 
-    validationCriteriaArray: Array<ValidationCriteria<UserResourceEntity>>;
+    validationCriteriaArray: Array<ValidationCriteria<TeamResourceEntity>>;
 
     async validate<T>(
-        userId: number,
+        teamId: number,
         resourceId: number,
-        ResourceEntityClass: new () => T extends UserResourceEntity ? T : never
+        ResourceEntityClass: new () => T extends TeamResourceEntity ? T : never
     ): Promise<T> {
         const filteredList = await Promise.all(
             this.validationCriteriaArray.map(async (validationCriteria) => {
                 const _filterPromiseOrObservable = validationCriteria.filter(
                     ResourceEntityClass,
-                    userId,
+                    teamId,
                     resourceId
                 );
                 const _filterPromise =

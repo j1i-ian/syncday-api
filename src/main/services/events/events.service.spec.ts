@@ -5,12 +5,12 @@ import { firstValueFrom, from, of } from 'rxjs';
 import { InternalServerErrorException } from '@nestjs/common';
 import { Event } from '@core/entities/events/event.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
-import { EventGroup } from '@core/entities/events/evnet-group.entity';
-import { User } from '@core/entities/users/user.entity';
+import { EventGroup } from '@core/entities/events/event-group.entity';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { UtilService } from '@services/util/util.service';
 import { Availability } from '@entity/availability/availability.entity';
+import { Team } from '@entity/teams/team.entity';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
@@ -143,7 +143,7 @@ describe('EventsService', () => {
 
         it('should be fetched event with detail', async () => {
             const eventDetailStub = stubOne(EventDetail);
-            const userStub = stubOne(User);
+            const teamStub = stubOne(Team);
             const eventStub = stubOne(Event, {
                 eventDetail: eventDetailStub
             });
@@ -159,7 +159,7 @@ describe('EventsService', () => {
             eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
             eventRedisRepositoryStub.getEventSetting.returns(of(eventSettingMock));
 
-            const loadedEventWithDetail = await firstValueFrom(service.findOne(eventStub.id, userStub.id));
+            const loadedEventWithDetail = await firstValueFrom(service.findOne(eventStub.id, teamStub.id));
 
             expect(loadedEventWithDetail).ok;
             expect(loadedEventWithDetail.eventDetail).ok;
@@ -169,9 +169,9 @@ describe('EventsService', () => {
             expect(eventRedisRepositoryStub.getEventSetting.called).true;
         });
 
-        it('should be fetched event by user workspace and event uuid with detail without redis body', async () => {
+        it('should be fetched event by team workspace and event uuid with detail without redis body', async () => {
             const eventDetailStub = stubOne(EventDetail);
-            const userStub = stubOne(User);
+            const teamStub = stubOne(Team);
             const eventStub = stubOne(Event, {
                 eventDetail: eventDetailStub
             });
@@ -182,8 +182,8 @@ describe('EventsService', () => {
             eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
 
             const loadedEventWithDetail = await firstValueFrom(
-                service.findOneByUserWorkspaceAndUUID(
-                    userStub.workspace as string,
+                service.findOneByTeamWorkspaceAndUUID(
+                    teamStub.workspace as string,
                     eventStub.uuid
                 )
             );
@@ -194,9 +194,9 @@ describe('EventsService', () => {
             expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
         });
 
-        it('should be fetched event by user workspace and event link with detail', async () => {
+        it('should be fetched event by team workspace and event link with detail', async () => {
             const eventDetailStub = stubOne(EventDetail);
-            const userStub = stubOne(User);
+            const teamStub = stubOne(Team);
             const eventStub = stubOne(Event, {
                 eventDetail: eventDetailStub
             });
@@ -213,8 +213,8 @@ describe('EventsService', () => {
             eventRedisRepositoryStub.getEventSetting.returns(of(eventSettingMock));
 
             const loadedEventWithDetail = await firstValueFrom(
-                service.findOneByUserWorkspaceAndLink(
-                    userStub.workspace as string,
+                service.findOneByTeamWorkspaceAndLink(
+                    teamStub.workspace as string,
                     eventStub.link
                 )
             );
@@ -229,7 +229,7 @@ describe('EventsService', () => {
 
         it('should be created event with passed name when event link is not used in', async () => {
             const defaultAvailability = stubOne(Availability);
-            const userMock = stubOne(User, {
+            const teamMock = stubOne(Team, {
                 availabilities: [defaultAvailability]
             });
 
@@ -249,9 +249,9 @@ describe('EventsService', () => {
                 eventDetail: eventDetailStub
             });
             const defaultEventGroupStub = stubOne(EventGroup, {
-                user: userMock,
+                team: teamMock,
                 events: [eventMock],
-                userId: userMock.id
+                teamId: teamMock.id
             });
 
             eventGroupRepositoryStub.findOneOrFail.resolves(defaultEventGroupStub);
@@ -260,7 +260,7 @@ describe('EventsService', () => {
             eventRepositoryStub.save.resolves(eventMock);
             eventRedisRepositoryStub.save.resolves(eventDetailBodyStub);
 
-            const createdEvent = await service.create(userMock.uuid, userMock.id, eventMock);
+            const createdEvent = await service.create(teamMock.uuid, teamMock.id, eventMock);
 
             expect(createdEvent).ok;
             expect(createdEvent.name).equals(eventMock.name);
@@ -277,7 +277,7 @@ describe('EventsService', () => {
 
         it('should be created event with combinded name and generated numbers when event link is used in', async () => {
             const defaultAvailability = stubOne(Availability);
-            const userMock = stubOne(User, {
+            const teamMock = stubOne(Team, {
                 availabilities: [defaultAvailability]
             });
 
@@ -297,9 +297,9 @@ describe('EventsService', () => {
                 eventDetail: eventDetailStub
             });
             const defaultEventGroupStub = stubOne(EventGroup, {
-                user: userMock,
+                team: teamMock,
                 events: [eventMock],
-                userId: userMock.id
+                teamId: teamMock.id
             });
 
             eventGroupRepositoryStub.findOneOrFail.resolves(defaultEventGroupStub);
@@ -308,7 +308,7 @@ describe('EventsService', () => {
             eventRepositoryStub.save.resolves(eventMock);
             eventRedisRepositoryStub.save.resolves(eventDetailBodyStub);
 
-            const createdEvent = await service.create(userMock.uuid, userMock.id, eventMock);
+            const createdEvent = await service.create(teamMock.uuid, teamMock.id, eventMock);
 
             expect(createdEvent).ok;
             expect(createdEvent.eventDetail).ok;
@@ -323,7 +323,7 @@ describe('EventsService', () => {
         });
 
         it('should throw an error when creating an event if the default availability does not exist', () => {
-            const userMock = stubOne(User, {
+            const teamMock = stubOne(Team, {
                 availabilities: []
             });
 
@@ -343,14 +343,14 @@ describe('EventsService', () => {
                 eventDetail: eventDetailStub
             });
             const defaultEventGroupStub = stubOne(EventGroup, {
-                user: userMock,
+                team: teamMock,
                 events: [eventMock],
-                userId: userMock.id
+                teamId: teamMock.id
             });
 
             eventGroupRepositoryStub.findOneOrFail.resolves(defaultEventGroupStub);
 
-            expect(service.create(userMock.uuid, userMock.id, eventMock)).rejectedWith(NoDefaultAvailabilityException, 'No default availability exception');
+            expect(service.create(teamMock.uuid, teamMock.id, eventMock)).rejectedWith(NoDefaultAvailabilityException, 'No default availability exception');
         });
 
         describe('Test Event Patching', () => {
@@ -363,9 +363,9 @@ describe('EventsService', () => {
                 eventRepositoryStub.update.reset();
             });
 
-            it('should be thrown an error for any event update request that does not belong to user', async () => {
+            it('should be thrown an error for any event update request that does not belong to team', async () => {
                 const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
-                const userMock = stubOne(User);
+                const teamMock = stubOne(Team);
                 const eventMock = stubOne(Event);
                 const validatedEventStub = stubOne(Event, eventMock);
 
@@ -378,8 +378,8 @@ describe('EventsService', () => {
                 eventRepositoryStub.update.resolves(updateResultStub);
 
                 await expect(service.patch(
-                    userMock.uuid,
-                    userMock.id,
+                    teamMock.uuid,
+                    teamMock.id,
                     eventMock.id,
                     eventMock
                 )).rejectedWith(NotAnOwnerException);
@@ -394,7 +394,7 @@ describe('EventsService', () => {
             it('should be thrown an error for already used in event link', async () => {
                 const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-                const userMock = stubOne(User);
+                const teamMock = stubOne(Team);
                 const eventMock = stubOne(Event, {
                     link: 'fakeEventLink'
                 });
@@ -408,8 +408,8 @@ describe('EventsService', () => {
                 eventRepositoryStub.update.resolves(updateResultStub);
 
                 await expect(service.patch(
-                    userMock.uuid,
-                    userMock.id,
+                    teamMock.uuid,
+                    teamMock.id,
                     eventMock.id,
                     eventMock
                 )).rejectedWith(AlreadyUsedInEventLinkException);
@@ -424,7 +424,7 @@ describe('EventsService', () => {
             it('should be patched event', async () => {
                 const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-                const userMock = stubOne(User);
+                const teamMock = stubOne(Team);
                 const eventMock = stubOne(Event, {
                     link: 'fakeNewEventLink'
                 });
@@ -440,8 +440,8 @@ describe('EventsService', () => {
                 eventRepositoryStub.update.resolves(updateResultStub);
 
                 const updateResult = await service.patch(
-                    userMock.uuid,
-                    userMock.id,
+                    teamMock.uuid,
+                    teamMock.id,
                     eventMock.id,
                     eventMock
                 );
@@ -457,7 +457,7 @@ describe('EventsService', () => {
             it('should be patched event with same link', async () => {
                 const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-                const userMock = stubOne(User);
+                const teamMock = stubOne(Team);
                 const eventMock = stubOne(Event, {
                     link: 'fakeEventLink'
                 });
@@ -472,8 +472,8 @@ describe('EventsService', () => {
                 eventRepositoryStub.update.resolves(updateResultStub);
 
                 const updateResult = await service.patch(
-                    userMock.uuid,
-                    userMock.id,
+                    teamMock.uuid,
+                    teamMock.id,
                     eventMock.id,
                     eventMock
                 );
@@ -506,7 +506,7 @@ describe('EventsService', () => {
 
                 validatorStub.validate.throws(new NotAnOwnerException());
 
-                const userMock = stubOne(User);
+                const teamMock = stubOne(Team);
                 const eventDetailMock = stubOne(EventDetail);
                 const eventMock = stubOne(Event, {
                     eventDetail: eventDetailMock
@@ -519,8 +519,8 @@ describe('EventsService', () => {
                 eventDetailRepositoryStub.update.resolves(updateResultStub);
 
                 await expect(service.update(
-                    userMock.uuid,
-                    userMock.id,
+                    teamMock.uuid,
+                    teamMock.id,
                     eventMock.id,
                     eventMock
                 )).rejectedWith(NotAnOwnerException);
@@ -532,11 +532,11 @@ describe('EventsService', () => {
                 expect(eventRepositoryStub.update.called).false;
             });
 
-            it('should be thrown an error if user requests the event which has a link which is already used in', async () => {
+            it('should be thrown an error if team requests the event which has a link which is already used in', async () => {
 
                 const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-                const userMock = stubOne(User);
+                const teamMock = stubOne(Team);
                 const eventLinkMock = 'fake';
                 const newEventLinkMock = 'fake2';
                 const eventDetailMock = stubOne(EventDetail);
@@ -561,8 +561,8 @@ describe('EventsService', () => {
                 eventMock.link = newEventLinkMock;
 
                 await expect(service.update(
-                    userMock.uuid,
-                    userMock.id,
+                    teamMock.uuid,
+                    teamMock.id,
                     eventMock.id,
                     eventMock
                 )).rejectedWith(AlreadyUsedInEventLinkException);
@@ -578,7 +578,7 @@ describe('EventsService', () => {
             it('should be updated event for same link', async () => {
                 const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-                const userMock = stubOne(User);
+                const teamMock = stubOne(Team);
                 const eventIdMock = 1;
                 const eventDetailMock = stubOne(EventDetail);
                 const eventMock = stubOne(Event, {
@@ -596,8 +596,8 @@ describe('EventsService', () => {
                 eventDetailRepositoryStub.update.resolves(updateResultStub);
 
                 const updateResult = await service.update(
-                    userMock.uuid,
-                    userMock.id,
+                    teamMock.uuid,
+                    teamMock.id,
                     eventMock.id,
                     eventMock
                 );
@@ -615,7 +615,7 @@ describe('EventsService', () => {
             it('should be updated event', async () => {
                 const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-                const userMock = stubOne(User);
+                const teamMock = stubOne(Team);
                 const eventIdMock = 1;
                 const eventDetailMock = stubOne(EventDetail);
                 const eventMock = stubOne(Event, {
@@ -633,8 +633,8 @@ describe('EventsService', () => {
                 eventDetailRepositoryStub.update.resolves(updateResultStub);
 
                 const updateResult = await service.update(
-                    userMock.uuid,
-                    userMock.id,
+                    teamMock.uuid,
+                    teamMock.id,
                     eventMock.id,
                     eventMock
                 );
@@ -651,7 +651,7 @@ describe('EventsService', () => {
         });
 
         it('should be removed event', async () => {
-            const userMock = stubOne(User);
+            const teamMock = stubOne(Team);
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
@@ -676,7 +676,7 @@ describe('EventsService', () => {
             eventRepositoryStub.delete.resolves(deleteResultStub);
             eventDetailRepositoryStub.delete.resolves(deleteResultStub);
 
-            const deleteResult = await service.remove(eventMock.id, userMock.id);
+            const deleteResult = await service.remove(eventMock.id, teamMock.id);
 
             expect(deleteResult).true;
             expect(validatorStub.validate.called).true;
@@ -686,7 +686,7 @@ describe('EventsService', () => {
         });
 
         it('should not be removed if either the event removal or the removal of event detail has failed', async () => {
-            const userMock = stubOne(User);
+            const teamMock = stubOne(Team);
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
@@ -710,7 +710,7 @@ describe('EventsService', () => {
             eventRepositoryStub.delete.resolves(deleteResultStub);
             eventDetailRepositoryStub.delete.resolves(deleteResultStub);
 
-            await expect(service.remove(eventMock.id, userMock.id)).rejectedWith(
+            await expect(service.remove(eventMock.id, teamMock.id)).rejectedWith(
                 InternalServerErrorException
             );
 
@@ -721,7 +721,7 @@ describe('EventsService', () => {
         });
 
         it('should be cloned event', async () => {
-            const userMock = stubOne(User);
+            const teamMock = stubOne(Team);
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
@@ -743,7 +743,7 @@ describe('EventsService', () => {
             eventRepositoryStub.save.resolves(clonedEventStub);
             eventRedisRepositoryStub.clone.returns(of(eventDetailBodyStub));
 
-            const clonedEvent = await service.clone(sourceEventDetailStub.id, userMock.id, userMock.uuid);
+            const clonedEvent = await service.clone(sourceEventDetailStub.id, teamMock.id, teamMock.uuid);
             expect(clonedEvent).ok;
 
             expect(validatorStub.validate.called).true;
@@ -752,11 +752,11 @@ describe('EventsService', () => {
         });
 
         it('should be linked to availability for event', async () => {
-            const userIdMock = stubOne(User).id;
+            const teamIdMock = stubOne(Team).id;
             const eventIdMock = stubOne(Event).id;
             const availabilityIdMock = stubOne(Availability).id;
 
-            await service.linkToAvailability(userIdMock, eventIdMock, availabilityIdMock);
+            await service.linkToAvailability(teamIdMock, eventIdMock, availabilityIdMock);
 
             expect(validatorStub.validate.calledTwice).true;
             expect(eventRepositoryStub.update.called).true;
@@ -815,7 +815,7 @@ describe('EventsService', () => {
             expectedEventRepositoryUpdateCallCount
         }) {
             it(message, async () => {
-                const userIdMock = stubOne(User).id;
+                const teamIdMock = stubOne(Team).id;
                 const searchStub = serviceSandbox.stub(service, 'search');
                 searchStub.returns(of(linkedEventsWithAvailabilityStubs));
 
@@ -831,7 +831,7 @@ describe('EventsService', () => {
                 eventRepositoryStub.update.resolves(eventsUpdateResultMock);
 
                 const result = await service.linksToAvailability(
-                    userIdMock,
+                    teamIdMock,
                     eventIdMocks,
                     availabilityIdMock,
                     defaultAvailabilityIdMock
@@ -869,8 +869,8 @@ describe('EventsService', () => {
             eventRepositoryStub.find.reset();
         });
 
-        it('should be return true if user has owned events correctly: hasOwnEvents', async () => {
-            const userIdMock = stubOne(User).id;
+        it('should be return true if team has owned events correctly: hasOwnEvents', async () => {
+            const teamIdMock = stubOne(Team).id;
             const eventStubs = stub(Event);
 
             const eventStubIds = eventStubs.map((event) => event.id);
@@ -879,14 +879,14 @@ describe('EventsService', () => {
                 eventStubs.sort((eventA, eventB) => eventA.id - eventB.id)
             );
 
-            const result = await service.hasOwnEvents(userIdMock, eventStubIds);
+            const result = await service.hasOwnEvents(teamIdMock, eventStubIds);
 
             expect(result).true;
             expect(eventRepositoryStub.find.called).true;
         });
 
-        it('should be return true if user has owned events correctly without sorting status: hasOwnEvents', async () => {
-            const userIdMock = stubOne(User).id;
+        it('should be return true if team has owned events correctly without sorting status: hasOwnEvents', async () => {
+            const teamIdMock = stubOne(Team).id;
             const eventStubs = stub(Event);
             eventStubs[0].id = 5;
             eventStubs[1].id = 1;
@@ -898,33 +898,33 @@ describe('EventsService', () => {
                 eventStubs.slice().sort((eventA, eventB) => eventA.id - eventB.id)
             );
 
-            const result = await service.hasOwnEvents(userIdMock, eventStubIds);
+            const result = await service.hasOwnEvents(teamIdMock, eventStubIds);
 
             expect(result).true;
             expect(eventRepositoryStub.find.called).true;
         });
 
-        it('should be return false user has owned events particially, not all: hasOwnEvents', async () => {
-            const userIdMock = stubOne(User).id;
+        it('should be return false team has owned events particially, not all: hasOwnEvents', async () => {
+            const teamIdMock = stubOne(Team).id;
             const eventStubs = stub(Event);
 
             const eventStubIds = eventStubs.map((event) => event.id);
 
             eventRepositoryStub.find.resolves(eventStubs);
 
-            const result = await service.hasOwnEvents(userIdMock, eventStubIds);
+            const result = await service.hasOwnEvents(teamIdMock, eventStubIds);
 
             expect(result).false;
             expect(eventRepositoryStub.find.called).true;
         });
 
-        it('should be return false user has not owned any events: hasOwnEvents', async () => {
-            const userIdMock = stubOne(User).id;
+        it('should be return false team has not owned any events: hasOwnEvents', async () => {
+            const teamIdMock = stubOne(Team).id;
             const eventIdMocks = stub(Event).map((event) => event.id);
 
             eventRepositoryStub.find.resolves([]);
 
-            const result = await service.hasOwnEvents(userIdMock, eventIdMocks);
+            const result = await service.hasOwnEvents(teamIdMock, eventIdMocks);
 
             expect(result).false;
             expect(eventRepositoryStub.find.called).true;
@@ -943,23 +943,23 @@ describe('EventsService', () => {
         });
 
         it('should be thrown error if hasOwnEvents returns false: hasOwnEventsOrThrow', async () => {
-            const userIdMock = stubOne(User).id;
+            const teamIdMock = stubOne(Team).id;
             const eventIdMocks = stub(Event).map((event) => event.id);
 
             serviceSandbox.stub(service, 'hasOwnEvents').resolves(false);
 
-            await expect(service.hasOwnEventsOrThrow(userIdMock, eventIdMocks)).rejectedWith(
+            await expect(service.hasOwnEventsOrThrow(teamIdMock, eventIdMocks)).rejectedWith(
                 NotAnOwnerException
             );
         });
 
         it('should be not thrown error if hasOwnEvents returns true: hasOwnEventsOrThrow', async () => {
-            const userIdMock = stubOne(User).id;
+            const teamIdMock = stubOne(Team).id;
             const eventIdMocks = stub(Event).map((event) => event.id);
 
             serviceSandbox.stub(service, 'hasOwnEvents').resolves(true);
 
-            await expect(service.hasOwnEventsOrThrow(userIdMock, eventIdMocks)).fulfilled;
+            await expect(service.hasOwnEventsOrThrow(teamIdMock, eventIdMocks)).fulfilled;
         });
     });
 });

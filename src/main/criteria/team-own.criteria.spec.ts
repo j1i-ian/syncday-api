@@ -2,13 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event } from '@entity/events/event.entity';
-import { User } from '@entity/users/user.entity';
-import { EventGroup } from '@entity/events/evnet-group.entity';
-import { UserOwnCriteria } from '@criteria/user-own.criteria';
+import { EventGroup } from '@entity/events/event-group.entity';
+import { Team } from '@entity/teams/team.entity';
+import { TeamOwnCriteria } from '@criteria/team-own.criteria';
 import { TestMockUtil } from '@test/test-mock-util';
 
-describe('UserOwnCriteria', () => {
-    let criteria: UserOwnCriteria;
+describe('TeamOwnCriteria', () => {
+    let criteria: TeamOwnCriteria;
 
     let module: TestingModule;
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
@@ -20,7 +20,7 @@ describe('UserOwnCriteria', () => {
 
         module = await Test.createTestingModule({
             providers: [
-                UserOwnCriteria,
+                TeamOwnCriteria,
                 {
                     provide: getDataSourceToken(),
                     useValue: datasourceMock
@@ -32,7 +32,7 @@ describe('UserOwnCriteria', () => {
             ]
         }).compile();
 
-        criteria = module.get<UserOwnCriteria>(UserOwnCriteria);
+        criteria = module.get<TeamOwnCriteria>(TeamOwnCriteria);
     });
 
     it('should be defined', () => {
@@ -52,15 +52,15 @@ describe('UserOwnCriteria', () => {
             serviceSandbox.restore();
         });
 
-        it('should be filtered by user id', async () => {
-            const userMock = stubOne(User);
+        it('should be filtered by team id', async () => {
+            const teamMock = stubOne(Team);
             const eventStub = stubOne(Event);
 
             const getFindOneOptionStub = serviceSandbox.stub(criteria, 'getFindOneOption');
 
             eventRepositoryStub.findOne.resolves(eventStub);
 
-            const filtered = await criteria.filter(Event, userMock.id, eventStub.id);
+            const filtered = await criteria.filter(Event, teamMock.id, eventStub.id);
 
             expect(filtered).ok;
             expect(eventRepositoryStub.findOne.called).true;
@@ -78,12 +78,12 @@ describe('UserOwnCriteria', () => {
             }
         ].forEach(({ ResourceEntityClass }) => {
             it('should be got findOption for ' + ResourceEntityClass.name, () => {
-                const userMock = stubOne(User);
+                const teamMock = stubOne(Team);
                 const eventStub = stubOne(Event);
 
                 const findOneOption = criteria.getFindOneOption(
                     ResourceEntityClass,
-                    userMock.id,
+                    teamMock.id,
                     eventStub.id
                 );
 

@@ -1,6 +1,9 @@
 import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { CreatedUserAndTeam } from '@services/users/created-user-and-team.interface';
 import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Language } from '@app/enums/language.enum';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 
@@ -24,7 +27,7 @@ export interface OAuth2TokenService {
         timezone: string,
         oauth2UserProfile: OAuth2UserProfile,
         language: Language
-    ): Promise<User>;
+    ): Promise<CreatedUserAndTeam>;
 
     multipleSocialSignIn(
         user: User,
@@ -33,7 +36,9 @@ export interface OAuth2TokenService {
 
     integrate(
         oauth2UserProfile: OAuth2UserProfile,
-        user: User
+        user: User,
+        profile: Profile,
+        teamSetting: TeamSetting
     ): Promise<void>;
 
     getEmailFromOAuth2UserProfile(

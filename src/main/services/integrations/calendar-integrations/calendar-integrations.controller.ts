@@ -2,7 +2,7 @@ import { Body, Controller, HttpCode, HttpStatus, Patch, Get, BadRequestException
 import { Observable, catchError, from, map, mergeAll, mergeMap, of, toArray } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { AuthUser } from '@decorators/auth-user.decorator';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
 import { CalendarIntegrationResponseDto } from '@dto/integrations/calendar-integration-response.dto';
@@ -16,7 +16,7 @@ export class CalendarIntegrationsController {
 
     @Get()
     searchAllCalendarIntegrations(
-        @AuthUser('id') userId: number
+        @AuthProfile('id') profileId: number
     ): Observable<CalendarIntegration[]> {
 
         const calendarIntegrationsServices = this.calendarIntegrationsServiceLocator.getAllCalendarIntegrationServices();
@@ -24,7 +24,7 @@ export class CalendarIntegrationsController {
         return from(calendarIntegrationsServices)
             .pipe(
                 mergeMap((calendarIntegrationsService) => calendarIntegrationsService.search({
-                    userId
+                    profileId
                 })),
                 mergeAll(),
                 toArray(),
@@ -46,7 +46,7 @@ export class CalendarIntegrationsController {
     @Patch()
     @HttpCode(HttpStatus.NO_CONTENT)
     patchAllCalendarIntegrations(
-        @AuthUser('id') userId: number,
+        @AuthProfile('id') userId: number,
         @Body() calendarIntegrations: CalendarIntegration[]
     ): Observable<boolean> {
 

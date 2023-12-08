@@ -2,19 +2,22 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, FindOneOptions, FindOptionsWhere, Repository } from 'typeorm';
-import { firstValueFrom } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
+import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { User } from '@entity/users/user.entity';
-import { EventGroup } from '@entity/events/evnet-group.entity';
+import { EventGroup } from '@entity/events/event-group.entity';
 import { Event } from '@entity/events/event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { Team } from '@entity/teams/team.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
 import { Language } from '@app/enums/language.enum';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
@@ -22,7 +25,6 @@ import { PhoneVertificationFailException } from '@app/exceptions/users/phone-ver
 import { VerificationService } from '../../auth/verification/verification.service';
 import { TestMockUtil } from '../../../test/test-mock-util';
 import { UserService } from './user.service';
-import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
 
@@ -33,7 +35,7 @@ describe('Test User Service', () => {
 
     let service: UserService;
     let verificationServiceStub: sinon.SinonStubbedInstance<VerificationService>;
-    let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
+    let teamSettingServiceStub: sinon.SinonStubbedInstance<TeamSettingService>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let eventsRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
@@ -42,6 +44,8 @@ describe('Test User Service', () => {
     let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
+    let profileRepositoryStub: sinon.SinonStubbedInstance<Repository<Profile>>;
+    let teamRepositoryStub: sinon.SinonStubbedInstance<Repository<Team>>;
 
     let userSettingRepositoryStub: sinon.SinonStubbedInstance<Repository<UserSetting>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
@@ -59,7 +63,7 @@ describe('Test User Service', () => {
 
     before(async () => {
         verificationServiceStub = sinon.createStubInstance(VerificationService);
-        userSettingServiceStub = sinon.createStubInstance(UserSettingService);
+        teamSettingServiceStub = sinon.createStubInstance(TeamSettingService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
         availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
         googleIntegrationsServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
@@ -69,6 +73,8 @@ describe('Test User Service', () => {
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
+        profileRepositoryStub = sinon.createStubInstance<Repository<Profile>>(Repository);
+        teamRepositoryStub = sinon.createStubInstance<Repository<Team>>(Repository);
         userSettingRepositoryStub = sinon.createStubInstance<Repository<UserSetting>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
@@ -83,8 +89,8 @@ describe('Test User Service', () => {
                     useValue: datasourceMock
                 },
                 {
-                    provide: UserSettingService,
-                    useValue: userSettingServiceStub
+                    provide: TeamSettingService,
+                    useValue: teamSettingServiceStub
                 },
                 {
                     provide: SyncdayRedisService,
@@ -121,6 +127,14 @@ describe('Test User Service', () => {
                 {
                     provide: getRepositoryToken(User),
                     useValue: userRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(Profile),
+                    useValue: profileRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(Team),
+                    useValue: teamRepositoryStub
                 },
                 {
                     provide: getRepositoryToken(UserSetting),
@@ -161,24 +175,6 @@ describe('Test User Service', () => {
         afterEach(() => {
             userRepositoryStub.findOneOrFail.reset();
             userRepositoryStub.findOneBy.reset();
-        });
-
-        it('should be found user by user workspace', async () => {
-            const userStub = stubOne(User);
-
-            userRepositoryStub.findOneOrFail.resolves(userStub);
-
-            const loadedUser = await firstValueFrom(service.findUserByWorkspace(userStub.workspace as string));
-
-            const actualPassedParam = userRepositoryStub.findOneOrFail.getCall(0).args[0];
-            expect(
-                (
-                    (actualPassedParam.where as FindOptionsWhere<User>)
-                        .userSetting as FindOptionsWhere<UserSetting>
-                ).workspace
-            ).equals(userStub.workspace);
-
-            expect(loadedUser).equal(userStub);
         });
 
         it('should be found user by user id', async () => {
@@ -235,7 +231,7 @@ describe('Test User Service', () => {
 
             userRepositoryStub.create.reset();
             userRepositoryStub.save.reset();
-            userSettingServiceStub.fetchUserWorkspaceStatus.reset();
+            teamSettingServiceStub.fetchTeamWorkspaceStatus.reset();
 
             verificationServiceStub.isVerifiedUser.reset();
             availabilityRepositoryStub.save.reset();
@@ -264,6 +260,13 @@ describe('Test User Service', () => {
                 email: emailMock,
                 hashedPassword: plainPassword
             });
+            const profileStub = stubOne(Profile);
+            const teamSettingStub = stubOne(TeamSetting, {
+                workspace: expectedWorkspace
+            });
+            const teamStub = stubOne(Team, {
+                teamSetting: teamSettingStub
+            });
             const languageDummy = Language.ENGLISH;
             const defaultUserSettingStub = stubOne(UserSetting);
             const eventDetailStub = stubOne(EventDetail);
@@ -282,11 +285,15 @@ describe('Test User Service', () => {
             findUserByEmailStub.resolves(null);
 
             userRepositoryStub.create.returns(userStub);
-            userSettingServiceStub.fetchUserWorkspaceStatus.resolves(true);
+            profileRepositoryStub.create.returns(profileStub);
+            teamRepositoryStub.create.returns(teamStub);
+            teamSettingServiceStub.fetchTeamWorkspaceStatus.resolves(true);
             utilServiceStub.getUserDefaultSetting.returns(defaultUserSettingStub);
             utilServiceStub.hash.returns(userStub.hashedPassword);
 
             userRepositoryStub.save.resolves(userStub);
+            profileRepositoryStub.save.resolves(profileStub);
+            teamRepositoryStub.save.resolves(teamStub);
             utilServiceStub.getDefaultEvent.returns(defaultEventStub);
             utilServiceStub.getDefaultAvailabilityName.returns(availabilityStub.name);
             availabilityRepositoryStub.save.resolves(availabilityStub);
@@ -295,9 +302,14 @@ describe('Test User Service', () => {
             eventsRedisRepositoryStub.setEventLinkSetStatus.resolves(true);
             eventsRedisRepositoryStub.save.resolves(eventDetailStub);
 
-            const createdUser = await service._createUser(
+            const {
+                createdUser,
+                createdProfile,
+                createdTeam
+            } = await service._createUser(
                 datasourceMock as EntityManager,
                 userStub,
+                profileStub,
                 languageDummy,
                 defaultUserSettingStub.preferredTimezone,
                 {
@@ -310,10 +322,14 @@ describe('Test User Service', () => {
             expect(verificationServiceStub.isVerifiedUser.called).true;
             expect(findUserByEmailStub.called).true;
             expect(userRepositoryStub.create.called).true;
-            expect(userSettingServiceStub.fetchUserWorkspaceStatus.called).true;
+            expect(profileRepositoryStub.create.called).true;
+            expect(teamRepositoryStub.create.called).true;
+            expect(teamSettingServiceStub.fetchTeamWorkspaceStatus.called).true;
             expect(utilServiceStub.getUserDefaultSetting.called).true;
             expect(utilServiceStub.hash.called).true;
             expect(userRepositoryStub.save.called).true;
+            expect(profileRepositoryStub.save.called).true;
+            expect(teamRepositoryStub.save.called).true;
             expect(utilServiceStub.getDefaultEvent.called).true;
             expect(utilServiceStub.getDefaultAvailabilityName.called).true;
             expect(availabilityRepositoryStub.save.called).true;
@@ -323,26 +339,36 @@ describe('Test User Service', () => {
             expect(eventsRedisRepositoryStub.save.called).true;
 
             expect(createdUser).ok;
+            expect(createdProfile).ok;
             expect(createdUser.email).ok;
             expect(createdUser.email).equals(emailMock);
-            expect(createdUser.userSetting.workspace).contains(expectedWorkspace);
+            expect(createdTeam.teamSetting.workspace).contains(expectedWorkspace);
         });
 
         it('should be not created user with email when user is already exist', async () => {
             const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const alreadySignedUpUserProfile = stubOne(Profile, {
+                name: 'foo',
+                default: true
+            });
             const alreadySignedUpUser = stubOne(User, {
-                name: 'foo'
+                profiles: [alreadySignedUpUserProfile]
             });
             const plainPasswordDummy = 'test';
             const languageDummy = Language.ENGLISH;
             serviceSandbox.stub(service, 'findUserByEmail').resolves(alreadySignedUpUser);
 
-            const userStub = stubOne(User, {
+            const userStub = stubOne(User);
+            const profileStub = stubOne(Profile, {
                 name: 'bar'
             });
 
             await expect(
-                service._createUser(datasourceMock as EntityManager, userStub, languageDummy,
+                service._createUser(
+                    datasourceMock as EntityManager,
+                    userStub,
+                    profileStub,
+                    languageDummy,
                     timezoneMock,
                     {
                         plainPassword: plainPasswordDummy,
@@ -362,6 +388,7 @@ describe('Test User Service', () => {
             const userStub = stubOne(User, {
                 hashedPassword: plainPassword
             });
+            const profileStub = stubOne(Profile);
             const plainPasswordDummy = 'test';
             const languageDummy = Language.ENGLISH;
 
@@ -371,10 +398,17 @@ describe('Test User Service', () => {
             userRepositoryStub.save.resolves(userStub);
 
             await expect(
-                service._createUser(datasourceMock as EntityManager, userStub, languageDummy, timezoneMock, {
-                    plainPassword: plainPasswordDummy,
-                    emailVerification: true
-                })
+                service._createUser(
+                    datasourceMock as EntityManager,
+                    userStub,
+                    profileStub,
+                    languageDummy,
+                    timezoneMock,
+                    {
+                        plainPassword: plainPasswordDummy,
+                        emailVerification: true
+                    }
+                )
             ).rejectedWith(BadRequestException, 'Verification is not completed');
         });
 
@@ -405,8 +439,13 @@ describe('Test User Service', () => {
 
                 const tempUserStub = testMockUtil.getTemporaryUser();
                 const userSettingStub = stubOne(UserSetting);
+                const teamSettingStub = stubOne(TeamSetting);
                 const userStub = stubOne(User, {
                     userSetting: userSettingStub
+                });
+                const profileStub = stubOne(Profile);
+                const teamStub = stubOne(Team, {
+                    teamSetting: teamSettingStub
                 });
 
                 const verificationStub = testMockUtil.getVerificationMock();
@@ -416,7 +455,11 @@ describe('Test User Service', () => {
                 userRepositoryStub.create.returns(userStub);
                 userRepositoryStub.save.resolves(userStub);
 
-                serviceSandbox.stub(service, '_createUser').resolves(userStub);
+                serviceSandbox.stub(service, '_createUser').resolves({
+                    createdUser: userStub,
+                    createdProfile: profileStub,
+                    createdTeam: teamStub
+                });
 
                 notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(true);
 
@@ -476,12 +519,21 @@ describe('Test User Service', () => {
 
             const availabilities = stub(Availability);
             const googleIntergrations = stub(GoogleIntegration);
-            const userSetting = stubOne(UserSetting);
-            const userStub = stubOne(User, {
-                eventGroup: [eventGroup],
-                userSetting,
+            const teamSettingStub = stubOne(TeamSetting);
+            const team = stubOne(Team, {
                 availabilities,
+                eventGroup: [eventGroup],
+                teamSetting: teamSettingStub
+            });
+            const profile = stubOne(Profile, {
+                team,
                 googleIntergrations
+            });
+            const userSetting = stubOne(UserSetting);
+
+            const userStub = stubOne(User, {
+                profiles: [profile],
+                userSetting
             });
 
             const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();

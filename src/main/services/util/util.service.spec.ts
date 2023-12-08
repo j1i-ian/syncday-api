@@ -10,11 +10,13 @@ import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
-import { UserSetting } from '@entity/users/user-setting.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { Team } from '@entity/teams/team.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { UtilService } from './util.service';
@@ -284,8 +286,9 @@ describe('UtilService', () => {
 
         it('should be got patched schedule with source event', () => {
             const userMock = stubOne(User);
+            const profileMock = stubOne(Profile);
             const eventDetailMock = stubOne(EventDetail);
-            const userSetting = stubOne(UserSetting);
+            const teamSetting = stubOne(TeamSetting);
             const availability = stubOne(Availability);
             const eventMock = stubOne(Event, {
                 name: faker.name.fullName(),
@@ -302,9 +305,10 @@ describe('UtilService', () => {
 
             const patchedSchedule = service.getPatchedScheduledEvent(
                 userMock,
+                profileMock,
                 eventMock,
                 newScheduleMock,
-                userSetting.workspace,
+                teamSetting.workspace,
                 availability.timezone
             );
 
@@ -316,80 +320,19 @@ describe('UtilService', () => {
 
     describe('Test Getting default user setting', () => {
         it('should be got default user setting which has email as workspace when there is user email', () => {
-            const emailPrefix = 'foobar';
-            const userMock = stubOne(User, {
-                email: faker.internet.email(emailPrefix)
-            });
             const languageMock = Language.ENGLISH;
 
-            const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock);
+            const defaultUserSetting = service.getUserDefaultSetting(languageMock);
 
             expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.workspace).contains(emailPrefix);
-            expect(defaultUserSetting.preferredLanguage).equals(languageMock);
-        });
-
-        it('should be got default user setting which has email as workspace when there is no email id but has name', () => {
-            const nameStub = faker.name.fullName();
-
-            const userMock = stubOne(User, {
-                name: nameStub,
-                email: undefined
-            });
-            const languageMock = Language.ENGLISH;
-
-            const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock, {
-                randomSuffix: false
-            });
-
-            expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.workspace).equals(nameStub);
-            expect(defaultUserSetting.preferredLanguage).equals(languageMock);
-        });
-
-        it('should be got default user setting which has workspace name with generated uuid when there is no name or email', () => {
-            const userMock = stubOne(User, {
-                email: undefined,
-                name: undefined
-            });
-            const languageMock = Language.ENGLISH;
-
-            const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock, {
-                randomSuffix: true
-            });
-
-            expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.workspace).ok;
-            expect(defaultUserSetting.preferredLanguage).equals(languageMock);
-        });
-
-        it('should be got default user setting which has email as workspace with generated number when option random suffix is enabled', () => {
-            const emailPrefix = 'foobar';
-            const userMock = stubOne(User, {
-                email: faker.internet.email(emailPrefix)
-            });
-            const languageMock = Language.ENGLISH;
-
-            const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock, {
-                randomSuffix: true
-            });
-
-            expect(defaultUserSetting).ok;
-            expect(defaultUserSetting.workspace).contains(emailPrefix);
-            expect(defaultUserSetting.workspace).not.equals(emailPrefix);
-            expect(defaultUserSetting.workspace).not.equals(userMock.email);
             expect(defaultUserSetting.preferredLanguage).equals(languageMock);
         });
 
         it('should be got default user setting which has timezone', () => {
-            const userMock = stubOne(User, {
-                name: faker.name.fullName()
-            });
             const timezoneMock = 'America/New_York';
             const languageMock = Language.ENGLISH;
 
-            const defaultUserSetting = service.getUserDefaultSetting(userMock, languageMock, {
-                randomSuffix: true,
+            const defaultUserSetting = service.getUserDefaultSetting(languageMock, {
                 timezone: timezoneMock
             });
 
@@ -414,6 +357,88 @@ describe('UtilService', () => {
             const actual = service.toYYYYMMDD(sample);
 
             expect(actual).equal(expected);
+        });
+    });
+
+    describe('Test Getting default team workspace', () => {
+
+        it('should be got default team workspace which has email as workspace when there is no email id but has name', () => {
+            const nameStub = faker.name.fullName();
+
+            const teamMock = stubOne(Team, {
+                name: nameStub
+            });
+
+            const profileMock = stubOne(Profile, {
+                name: nameStub
+            });
+            const userMock = stubOne(User, {
+                email: undefined
+            });
+
+            const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
+                teamMock,
+                userMock,
+                profileMock,
+                {
+                    randomSuffix: false
+                }
+            );
+
+            expect(defaultTeamWorkspace).ok;
+            expect(defaultTeamWorkspace).equals(nameStub);
+        });
+
+        it('should be got default team workspace which has workspace name with generated uuid when there is no name or email', () => {
+
+            const teamMock = stubOne(Team, {
+                name: undefined
+            });
+            const profileMock = stubOne(Profile, {
+                name: undefined
+            });
+            const userMock = stubOne(User, {
+                email: undefined
+            });
+
+            const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
+                teamMock,
+                userMock,
+                profileMock,
+                {
+                    randomSuffix: true
+                }
+            );
+
+            expect(defaultTeamWorkspace).ok;
+        });
+
+        it('should be got default team workspace which has email as workspace with generated number when option random suffix is enabled', () => {
+            const emailPrefix = 'foobar';
+
+            const teamMock = stubOne(Team, {
+                name: undefined
+            });
+            const profileMock = stubOne(Profile, {
+                name: undefined
+            });
+            const userMock = stubOne(User, {
+                email: faker.internet.email(emailPrefix)
+            });
+
+            const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
+                teamMock,
+                userMock,
+                profileMock,
+                {
+                    randomSuffix: true
+                }
+            );
+
+            expect(defaultTeamWorkspace).ok;
+            expect(defaultTeamWorkspace).contains(emailPrefix);
+            expect(defaultTeamWorkspace).not.equals(emailPrefix);
+            expect(defaultTeamWorkspace).not.equals(userMock.email);
         });
     });
 

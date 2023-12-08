@@ -1,6 +1,6 @@
 import { Body, Controller, Header, Post } from '@nestjs/common';
 import { Observable, from } from 'rxjs';
-import { AuthUser } from '@decorators/auth-user.decorator';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { BookingAskRequestDto } from '@dto/notifications/booking-ask-request.dto';
@@ -15,7 +15,7 @@ export class NotificationsController {
     @Post()
     @Header('Content-type', 'application/json')
     createNotification(
-        @AuthUser() authUser: AppJwtPayload,
+        @AuthProfile() authProfile: AppJwtPayload,
         @Body() bookingAskRequestDto: BookingAskRequestDto
     ): Observable<boolean> {
 
@@ -27,10 +27,10 @@ export class NotificationsController {
             memo
         } = bookingAskRequestDto;
 
-        const ensuredHostName = hostName || authUser.name;
+        const ensuredHostName = hostName || authProfile.name;
 
         return from(this.notificationsService.sendBookingRequest(
-            authUser.id,
+            authProfile.teamId,
             eventId,
             ensuredHostName,
             inviteeName,

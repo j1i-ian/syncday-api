@@ -4,12 +4,12 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { Event } from '@core/entities/events/event.entity';
-import { EventGroup } from '@core/entities/events/evnet-group.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { UtilService } from '@services/util/util.service';
 import { Availability } from '@entity/availability/availability.entity';
 import { EventStatus } from '@entity/events/event-status.enum';
+import { EventGroup } from '@entity/events/event-group.entity';
 import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
@@ -35,13 +35,13 @@ export class EventsService {
                     status: searchOption.status,
                     public: searchOption.public,
                     eventGroup: {
-                        userId: searchOption.userId
+                        teamId: searchOption.teamId
                     },
                     availability: {
                         id: searchOption.availabilityId,
-                        user: {
-                            userSetting: {
-                                workspace: searchOption.userWorkspace
+                        team: {
+                            teamSetting: {
+                                workspace: searchOption.teamWorkspace
                             }
                         }
                     }
@@ -71,9 +71,9 @@ export class EventsService {
         );
     }
 
-    findOne(eventId: number, userId: number): Observable<Event> {
+    findOne(eventId: number, teamId: number): Observable<Event> {
         return from(
-            this.validator.validate(userId, eventId, Event)
+            this.validator.validate(teamId, eventId, Event)
         ).pipe(
             mergeMap(() =>
                 this.eventRepository.findOneOrFail({
@@ -103,7 +103,7 @@ export class EventsService {
         );
     }
 
-    findOneByUserWorkspaceAndUUID(userWorkspace: string, eventUUID: string): Observable<Event> {
+    findOneByTeamWorkspaceAndUUID(teamWorkspace: string, eventUUID: string): Observable<Event> {
         return from(
             this.eventRepository.findOneOrFail({
                 relations: ['eventDetail', 'availability'],
@@ -111,9 +111,9 @@ export class EventsService {
                     uuid: eventUUID,
                     status: EventStatus.OPENED,
                     availability: {
-                        user: {
-                            userSetting: {
-                                workspace: userWorkspace
+                        team: {
+                            teamSetting: {
+                                workspace: teamWorkspace
                             }
                         }
                     }
@@ -135,7 +135,7 @@ export class EventsService {
         );
     }
 
-    findOneByUserWorkspaceAndLink(userWorkspace: string, eventLink: string): Observable<Event> {
+    findOneByTeamWorkspaceAndLink(teamWorkspace: string, eventLink: string): Observable<Event> {
 
         return from(this.eventRepository.findOneOrFail({
             relations: ['eventDetail'],
@@ -143,9 +143,9 @@ export class EventsService {
                 status: EventStatus.OPENED,
                 link: eventLink,
                 availability: {
-                    user: {
-                        userSetting: {
-                            workspace: userWorkspace
+                    team: {
+                        teamSetting: {
+                            workspace: teamWorkspace
                         }
                     }
                 }
@@ -172,12 +172,12 @@ export class EventsService {
         );
     }
 
-    async create(userUUID: string, userId: number, newEvent: Event): Promise<Event> {
+    async create(teamUUID: string, teamId: number, newEvent: Event): Promise<Event> {
         const defaultEventGroup = await this.eventGroupRepository.findOneOrFail({
-            relations: ['user', 'user.availabilities'],
+            relations: ['team', 'team.availabilities'],
             where: {
-                userId,
-                user: {
+                teamId,
+                team: {
                     availabilities: {
                         default: true
                     }
@@ -185,7 +185,7 @@ export class EventsService {
             }
         });
 
-        const defaultAvailability = defaultEventGroup.user.availabilities.pop();
+        const defaultAvailability = defaultEventGroup.team.availabilities.pop();
 
         if (defaultAvailability) {
             newEvent.availabilityId = defaultAvailability.id;
@@ -195,7 +195,7 @@ export class EventsService {
 
         newEvent.eventGroupId = defaultEventGroup.id;
 
-        const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(userUUID, newEvent.name);
+        const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(teamUUID, newEvent.name);
 
         const newEventLink = newEvent.name.replace(/\s/g, '-');
 
@@ -222,30 +222,30 @@ export class EventsService {
         savedEvent.eventDetail.inviteeQuestions = savedEventDetailBody.inviteeQuestions;
         savedEvent.eventDetail.notificationInfo = savedEventDetailBody.notificationInfo;
 
-        await this.eventRedisRepository.setEventLinkSetStatus(userUUID, savedEvent.link);
+        await this.eventRedisRepository.setEventLinkSetStatus(teamUUID, savedEvent.link);
 
         return savedEvent;
     }
 
     async patch(
-        userUUID: string,
-        userId: number,
+        teamUUID: string,
+        teamId: number,
         eventId: number,
         patchEvent: Partial<Event>
     ): Promise<boolean> {
-        const validatedEvent = await this.validator.validate(userId, eventId, Event);
+        const validatedEvent = await this.validator.validate(teamId, eventId, Event);
 
         if (patchEvent.link && patchEvent.link !== validatedEvent.link) {
             const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(
-                userUUID,
+                teamUUID,
                 patchEvent.link
             );
 
             if (isAlreadyUsedIn) {
                 throw new AlreadyUsedInEventLinkException();
             } else {
-                await this.eventRedisRepository.deleteEventLinkSetStatus(userUUID, validatedEvent.link);
-                await this.eventRedisRepository.setEventLinkSetStatus(userUUID, patchEvent.link);
+                await this.eventRedisRepository.deleteEventLinkSetStatus(teamUUID, validatedEvent.link);
+                await this.eventRedisRepository.setEventLinkSetStatus(teamUUID, patchEvent.link);
             }
         }
 
@@ -264,19 +264,19 @@ export class EventsService {
      * condition for its id and uuid.
      */
     async update(
-        userUUID: string,
-        userId: number,
+        teamUUID: string,
+        teamId: number,
         eventId: number,
         updatedEvent: Omit<Event, 'id'>
     ): Promise<boolean> {
-        const validatedEvent = await this.validator.validate(userId, eventId, Event);
+        const validatedEvent = await this.validator.validate(teamId, eventId, Event);
         const validatedEventDetail = validatedEvent.eventDetail;
 
         const updatedEventDetail = updatedEvent.eventDetail;
 
         // update event link
         // check duplication
-        const isLinkAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(userUUID, updatedEvent.link);
+        const isLinkAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(teamUUID, updatedEvent.link);
 
         const isLinkUpdateRequest = validatedEvent.link !== updatedEvent.link;
 
@@ -322,14 +322,14 @@ export class EventsService {
             updatedEventDetail.notificationInfo,
             updatedEventDetail.eventSetting
         );
-        await this.eventRedisRepository.deleteEventLinkSetStatus(userUUID, validatedEvent.link);
-        await this.eventRedisRepository.setEventLinkSetStatus(userUUID, updatedEvent.link);
+        await this.eventRedisRepository.deleteEventLinkSetStatus(teamUUID, validatedEvent.link);
+        await this.eventRedisRepository.setEventLinkSetStatus(teamUUID, updatedEvent.link);
 
         return true;
     }
 
-    async remove(eventId: number, userId: number): Promise<boolean> {
-        const validatedEvent = await this.validator.validate(userId, eventId, Event);
+    async remove(eventId: number, teamId: number): Promise<boolean> {
+        const validatedEvent = await this.validator.validate(teamId, eventId, Event);
 
         const eventDetail = validatedEvent.eventDetail;
 
@@ -358,8 +358,8 @@ export class EventsService {
         return deleteSuccess;
     }
 
-    async clone(eventId: number, userId: number, uesrUUID: string): Promise<Event> {
-        const validatedEvent = await this.validator.validate(userId, eventId, Event);
+    async clone(eventId: number, teamId: number, teamUUID: string): Promise<Event> {
+        const validatedEvent = await this.validator.validate(teamId, eventId, Event);
 
         /* eslint-disable @typescript-eslint/no-unused-vars */
         const {
@@ -387,7 +387,7 @@ export class EventsService {
             this.eventRedisRepository.clone(eventDetailUUID, clonedEvent.eventDetail.uuid)
         );
 
-        await this.eventRedisRepository.setEventLinkSetStatus(uesrUUID, clonedEvent.link);
+        await this.eventRedisRepository.setEventLinkSetStatus(teamUUID, clonedEvent.link);
 
         clonedEvent.eventDetail.inviteeQuestions = clonedEventDetailBody.inviteeQuestions;
         clonedEvent.eventDetail.notificationInfo = clonedEventDetailBody.notificationInfo;
@@ -397,12 +397,12 @@ export class EventsService {
     }
 
     async linkToAvailability(
-        userId: number,
+        teamId: number,
         eventId: number,
         availabilityId: number
     ): Promise<boolean> {
-        await this.validator.validate(userId, eventId, Event);
-        await this.validator.validate(userId, availabilityId, Availability);
+        await this.validator.validate(teamId, eventId, Event);
+        await this.validator.validate(teamId, availabilityId, Availability);
 
         await this.eventRepository.update(eventId, {
             availabilityId
@@ -412,7 +412,7 @@ export class EventsService {
     }
 
     async linksToAvailability(
-        userId: number,
+        teamId: number,
         eventIds: number[],
         availabilityId: number,
         defaultAvailabilityId: number
@@ -421,7 +421,7 @@ export class EventsService {
 
         const linkedEventsWithAvailability = await firstValueFrom(
             this.search({
-                userId,
+                teamId,
                 availabilityId
             })
         );
@@ -496,7 +496,7 @@ export class EventsService {
         return updateResult.affected ? updateResult.affected > 0 : false;
     }
 
-    async hasOwnEvents(userId: number, eventIds: number[]): Promise<boolean> {
+    async hasOwnEvents(teamId: number, eventIds: number[]): Promise<boolean> {
         const loadedEvents = await this.eventRepository.find({
             select: {
                 id: true
@@ -505,7 +505,7 @@ export class EventsService {
             where: {
                 id: In(eventIds),
                 eventGroup: {
-                    userId
+                    teamId
                 }
             },
             order: {
@@ -530,8 +530,8 @@ export class EventsService {
         return areAllOwnEvents;
     }
 
-    async hasOwnEventsOrThrow(userId: number, eventIds: number[]): Promise<void> {
-        const hasAllOwnedEvents = await this.hasOwnEvents(userId, eventIds);
+    async hasOwnEventsOrThrow(teamId: number, eventIds: number[]): Promise<void> {
+        const hasAllOwnedEvents = await this.hasOwnEvents(teamId, eventIds);
 
         if (hasAllOwnedEvents === false) {
             throw new NotAnOwnerException('Some event id in requested list is not owned');

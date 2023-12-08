@@ -5,9 +5,10 @@ import { DAVCalendar, DAVObject } from 'tsdav';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
-import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { ParsedICSBody } from '@app/interfaces/integrations/parsed-ics-body.interface';
 
 interface ParsedICS { [iCalUID: string]: ParsedICSBody }
@@ -56,8 +57,9 @@ export class AppleConverterService {
     }
 
     convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
-        user: User,
+        profile: Profile,
         userSetting: UserSetting,
+        teamSetting: TeamSetting,
         calDAVObject: DAVObject
     ): AppleCalDAVIntegrationSchedule[] {
 
@@ -76,10 +78,10 @@ export class AppleConverterService {
             return plainToInstance(AppleCalDAVIntegrationSchedule, {
                 name: _parsedSchedule.summary,
                 host: {
-                    uuid: user.uuid,
-                    name: user.name,
+                    uuid: profile.uuid,
+                    name: profile.name,
                     timezone,
-                    workspace: userSetting.workspace
+                    workspace: teamSetting.workspace
                 },
                 scheduledTime: {
                     startTimestamp: startDate,

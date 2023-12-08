@@ -89,7 +89,7 @@ describe('NativeSchedulesService', () => {
         });
 
         afterEach(() => {
-            eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
+            eventsServiceStub.findOneByTeamWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
             timeUtilServiceStub.localizeDateTime.reset();
             integrationsServiceLocatorStub.getIntegrationFactory.reset();

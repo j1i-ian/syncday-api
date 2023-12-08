@@ -1,7 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { AuthUser } from '@decorators/auth-user.decorator';
-import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 
@@ -14,8 +13,8 @@ export class OAuth2AccountsController {
 
     @Get()
     fetchOAuth2Accounts(
-        @AuthUser() user: AppJwtPayload
+        @AuthProfile('userId') userId: number
     ): Observable<OAuth2Account[]> {
-        return this.oauth2AccountService.find(user.id);
+        return this.oauth2AccountService.find(userId);
     }
 }

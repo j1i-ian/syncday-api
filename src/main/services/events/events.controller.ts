@@ -19,7 +19,7 @@ import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { Request, Response } from 'express';
 import { Event } from '@core/entities/events/event.entity';
-import { AuthUser } from '@decorators/auth-user.decorator';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
 import { PatchEventRequestDto } from '@dto/event-groups/events/patch-event-request.dto';
@@ -32,10 +32,10 @@ export class EventsController {
     constructor(private readonly eventsService: EventsService) {}
 
     @Get()
-    findAll(@AuthUser('id') userId: number): Observable<FetchEventResponseDto[]> {
+    findAll(@AuthProfile('teamId') teamId: number): Observable<FetchEventResponseDto[]> {
         return this.eventsService
             .search({
-                userId
+                teamId
             })
             .pipe(
                 map((list) =>
@@ -48,32 +48,32 @@ export class EventsController {
 
     @Get(':eventId')
     findOne(
-        @AuthUser('id') userId: number,
+        @AuthProfile('teamId') teamId: number,
         @Param('eventId', ParseIntPipe) eventId: number
     ): Observable<Event> {
-        return this.eventsService.findOne(eventId, userId);
+        return this.eventsService.findOne(eventId, teamId);
     }
 
     @Post()
     create(
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string,
+        @AuthProfile('teamUUID') teamUUID: string,
+        @AuthProfile('teamId') teamId: number,
         @Body() createEventDto: CreateEventRequestDto
     ): Promise<Event> {
-        return this.eventsService.create(userUUID, userId, createEventDto as Event);
+        return this.eventsService.create(teamUUID, teamId, createEventDto as Event);
     }
 
     @Patch(':eventId')
     @HttpCode(HttpStatus.NO_CONTENT)
     async patch(
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string,
+        @AuthProfile('teamUUID') teamUUID: string,
+        @AuthProfile('teamId') teamId: number,
         @Param('eventId', ParseIntPipe) eventId: number,
         @Body() patchEventRequestDto: PatchEventRequestDto
     ): Promise<void> {
         await this.eventsService.patch(
-            userUUID,
-            userId,
+            teamUUID,
+            teamId,
             eventId,
             patchEventRequestDto as Partial<Event>
         );
@@ -82,14 +82,14 @@ export class EventsController {
     @Put(':eventId')
     @HttpCode(HttpStatus.NO_CONTENT)
     async update(
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string,
+        @AuthProfile('teamUUID') teamUUID: string,
+        @AuthProfile('teamId') teamId: number,
         @Param('eventId', ParseIntPipe) eventId: number,
         @Body() updateEventRequestDto: UpdateEventRequestDto
     ): Promise<void> {
         await this.eventsService.update(
-            userUUID,
-            userId,
+            teamUUID,
+            teamId,
             eventId,
             updateEventRequestDto as unknown as Event
         );
@@ -98,22 +98,22 @@ export class EventsController {
     @Delete(':eventId')
     @HttpCode(HttpStatus.NO_CONTENT)
     async remove(
-        @AuthUser('id') userId: number,
+        @AuthProfile('teamId') teamId: number,
         @Param('eventId', ParseIntPipe) eventId: number
     ): Promise<void> {
-        await this.eventsService.remove(eventId, userId);
+        await this.eventsService.remove(eventId, teamId);
     }
 
-    clone(eventId: number, userId: number, userUUID: string): Promise<Event> {
-        return this.eventsService.clone(eventId, userId, userUUID);
+    clone(eventId: number, teamId: number, teamUUID: string): Promise<Event> {
+        return this.eventsService.clone(eventId, teamId, teamUUID);
     }
 
     connectToAvailability(
-        userId: number,
+        teamId: number,
         eventId: number,
         availabilityId: number
     ): Promise<boolean> {
-        return this.eventsService.linkToAvailability(userId, eventId, availabilityId);
+        return this.eventsService.linkToAvailability(teamId, eventId, availabilityId);
     }
 
     /**
@@ -125,8 +125,8 @@ export class EventsController {
     async others(
         @Req() req: Request,
         @Res() response: Response,
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string,
+        @AuthProfile('teamUUID') teamUUID: string,
+        @AuthProfile('teamId') teamId: number,
         @Matrix({
             key: 'availabilityId',
             parseInt: true,
@@ -143,11 +143,11 @@ export class EventsController {
 
         switch (req.method) {
             case 'COPY':
-                responseBody = await this.clone(parsedEventId, userId, userUUID);
+                responseBody = await this.clone(parsedEventId, teamId, teamUUID);
                 statusCode = HttpStatus.CREATED;
                 break;
             case 'LINK':
-                await this.connectToAvailability(userId, parsedEventId, availabilityId);
+                await this.connectToAvailability(teamId, parsedEventId, availabilityId);
                 statusCode = HttpStatus.NO_CONTENT;
                 break;
             default:

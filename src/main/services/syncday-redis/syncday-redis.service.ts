@@ -113,7 +113,7 @@ export class SyncdayRedisService {
     }
 
     getEventLinkSetStatusKey(userUUID: string): RedisKey {
-        return this.getRedisKey(RedisStores.USERS, [userUUID, RedisStores.EVENT_LINK]);
+        return this.getRedisKey(RedisStores.TEAMS, [userUUID, RedisStores.EVENT_LINK]);
     }
 
     getWorkspaceAssignStatusKey(workspace: string): RedisKey {
@@ -155,8 +155,8 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.EVENT_SETTING]);
     }
 
-    _getAvailabilityHashMapKey(userUUID: string): RedisKey {
-        return this.getRedisKey(RedisStores.USERS, [userUUID, RedisStores.AVAILABILITY]);
+    _getAvailabilityHashMapKey(teamUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.TEAMS, [teamUUID, RedisStores.AVAILABILITY]);
     }
 
     _getScheduleBodyKey(scheduleUUID: string): RedisKey {

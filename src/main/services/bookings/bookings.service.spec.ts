@@ -1,24 +1,24 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
-import { UserService } from '@services/users/user.service';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { GlobalSchedulesService } from '@services/schedules/global-schedules.service';
-import { User } from '@entity/users/user.entity';
+import { TeamService } from '@services/team/team.service';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
+import { Team } from '@entity/teams/team.entity';
 import { BookingsService } from './bookings.service';
 
 describe('BookingsService', () => {
     let service: BookingsService;
-    let userServiceStub: sinon.SinonStubbedInstance<UserService>;
+    let teamServiceStub: sinon.SinonStubbedInstance<TeamService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
     let availabilityServiceStub: sinon.SinonStubbedInstance<AvailabilityService>;
     let schedulesServiceStub: sinon.SinonStubbedInstance<GlobalSchedulesService>;
 
     before(async () => {
 
-        userServiceStub = sinon.createStubInstance(UserService);
+        teamServiceStub = sinon.createStubInstance(TeamService);
         availabilityServiceStub = sinon.createStubInstance(AvailabilityService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
         schedulesServiceStub = sinon.createStubInstance(GlobalSchedulesService);
@@ -27,8 +27,8 @@ describe('BookingsService', () => {
             providers: [
                 BookingsService,
                 {
-                    provide: UserService,
-                    useValue: userServiceStub
+                    provide: TeamService,
+                    useValue: teamServiceStub
                 },
                 {
                     provide: EventsService,
@@ -54,25 +54,25 @@ describe('BookingsService', () => {
 
     it('should be fetched user', async () => {
 
-        const userStub = stubOne(User);
+        const teamStub = stubOne(Team);
 
-        userServiceStub.findUserByWorkspace.returns(of(userStub));
+        teamServiceStub.findTeamByWorkspace.returns(of(teamStub));
 
-        await firstValueFrom(service.fetchHost(userStub.workspace as string));
+        await firstValueFrom(service.fetchHost(teamStub.workspace as string));
 
-        expect(userServiceStub.findUserByWorkspace.called).true;
+        expect(teamServiceStub.findTeamByWorkspace.called).true;
 
-        userServiceStub.findUserByWorkspace.reset();
+        teamServiceStub.findTeamByWorkspace.reset();
     });
 
     it('should be fetched host events', async () => {
 
-        const userStub = stubOne(User);
+        const teamStub = stubOne(Team);
         const eventStubs = stub(Event, 5);
 
         eventsServiceStub.search.returns(of(eventStubs));
 
-        await firstValueFrom(service.searchHostEvents(userStub.workspace as string));
+        await firstValueFrom(service.searchHostEvents(teamStub.workspace as string));
 
         expect(eventsServiceStub.search.called).true;
 
@@ -81,30 +81,30 @@ describe('BookingsService', () => {
 
     it('should be fetched host event detail', async () => {
 
-        const userStub = stubOne(User);
+        const teamStub = stubOne(Team);
         const eventStub = stubOne(Event);
 
-        eventsServiceStub.findOneByUserWorkspaceAndLink.returns(of(eventStub));
+        eventsServiceStub.findOneByTeamWorkspaceAndLink.returns(of(eventStub));
 
-        await firstValueFrom(service.fetchHostEventDetail(userStub.workspace as string, eventStub.link));
+        await firstValueFrom(service.fetchHostEventDetail(teamStub.workspace as string, eventStub.link));
 
-        expect(eventsServiceStub.findOneByUserWorkspaceAndLink.called).true;
+        expect(eventsServiceStub.findOneByTeamWorkspaceAndLink.called).true;
 
-        eventsServiceStub.findOneByUserWorkspaceAndLink.reset();
+        eventsServiceStub.findOneByTeamWorkspaceAndLink.reset();
     });
 
     it('should be fetched host availability', async () => {
 
-        const userWorkspaceMock = stubOne(User).workspace;
+        const teamWorkspaceMock = stubOne(Team).workspace;
         const eventLinkMock = stubOne(Event).link;
         const availabilityStub = stubOne(Availability);
 
-        availabilityServiceStub.fetchDetailByUserWorkspaceAndLink.returns(of(availabilityStub));
+        availabilityServiceStub.fetchDetailByTeamWorkspaceAndLink.returns(of(availabilityStub));
 
-        await firstValueFrom(service.fetchHostAvailabilityDetail(userWorkspaceMock as string, eventLinkMock));
+        await firstValueFrom(service.fetchHostAvailabilityDetail(teamWorkspaceMock as string, eventLinkMock));
 
-        expect(availabilityServiceStub.fetchDetailByUserWorkspaceAndLink.called).true;
+        expect(availabilityServiceStub.fetchDetailByTeamWorkspaceAndLink.called).true;
 
-        availabilityServiceStub.fetchDetailByUserWorkspaceAndLink.reset();
+        availabilityServiceStub.fetchDetailByTeamWorkspaceAndLink.reset();
     });
 });

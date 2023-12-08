@@ -13,13 +13,13 @@ import {
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { User } from '@core/entities/users/user.entity';
+import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
 import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
 import { PatchUserRequestDto } from '@dto/users/patch-user-request.dto';
 import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
-import { AuthUser } from '../../decorators/auth-user.decorator';
-import { AppJwtPayload } from '../../auth/strategy/jwt/app-jwt-payload.interface';
+import { AuthProfile } from '../../decorators/auth-profile.decorator';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
 import { UserService } from './user.service';
 
@@ -28,8 +28,8 @@ export class UserController {
     constructor(private readonly userService: UserService) {}
 
     @Get(':userId(\\d+)')
-    async fetchUser(@AuthUser() authUser: AppJwtPayload): Promise<User> {
-        const loadedUser = await this.userService.findUserById(authUser.id);
+    async fetchUser(@AuthProfile('userId') userId: number): Promise<User> {
+        const loadedUser = await this.userService.findUserById(userId);
 
         return loadedUser;
     }
@@ -65,7 +65,7 @@ export class UserController {
     @Patch(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     async patchUser(
-        @AuthUser() authUser: AppJwtPayload,
+        @AuthProfile() authUser: AppJwtPayload,
         @Body() patchUserBody: PatchUserRequestDto
     ): Promise<void> {
         const result = await this.userService.patch(authUser.id, patchUserBody);
@@ -78,10 +78,10 @@ export class UserController {
     @Put(':userId(\\d+)/passwords')
     @HttpCode(HttpStatus.NO_CONTENT)
     async updateUserPassword(
-        @AuthUser() authUser: AppJwtPayload,
+        @AuthProfile('userId') userId: number,
         @Body() patchUserBody: UpdateUserPasswordsVO
     ): Promise<void> {
-        const result = await this.userService.updateUserPassword(authUser.id, patchUserBody);
+        const result = await this.userService.updateUserPassword(userId, patchUserBody);
 
         if (result === false) {
             throw new BadRequestException('Cannot update user data');
@@ -91,10 +91,10 @@ export class UserController {
     @Put(':userId(\\d+)/phone')
     @HttpCode(HttpStatus.NO_CONTENT)
     async updateUserPhone(
-        @AuthUser() authUser: AppJwtPayload,
+        @AuthProfile('userId') userId: number,
         @Body() patchUserBody: UpdatePhoneWithVerificationDto
     ): Promise<void> {
-        const result = await this.userService.updateUserPhone(authUser.id, patchUserBody);
+        const result = await this.userService.updateUserPhone(userId, patchUserBody);
 
         if (result === false) {
             throw new BadRequestException('Cannot update user data');
@@ -104,7 +104,7 @@ export class UserController {
     @Delete(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     async deleteUser(
-        @AuthUser('id') userId: number
+        @AuthProfile('userId') userId: number
     ): Promise<void> {
         await this.userService.deleteUser(userId);
     }

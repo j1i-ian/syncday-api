@@ -23,6 +23,7 @@ import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-in
 import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
 import { Contact } from '@entity/events/contact.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
@@ -87,28 +88,36 @@ export class GlobalSchedulesService {
         );
     }
 
-    create(userWorkspace: string, eventUUID: string, newSchedule: Schedule, host: User): Observable<Schedule> {
+    create(
+        teamWorkspace: string,
+        eventUUID: string,
+        newSchedule: Schedule,
+        host: User,
+        hostProfile: Profile
+    ): Observable<Schedule> {
         return this._create(
             this.scheduleRepository.manager,
-            userWorkspace,
+            teamWorkspace,
             eventUUID,
             newSchedule,
-            host
+            host,
+            hostProfile
         );
     }
 
     _create(
         entityManager: EntityManager,
-        userWorkspace: string,
+        teamWorkspace: string,
         eventUUID: string,
         newSchedule: Schedule,
-        host: User
+        host: User,
+        hostProfile: Profile
     ): Observable<Schedule> {
 
         const _scheduleRepository = entityManager.getRepository(Schedule);
 
-        const loadedEventByUserWorkspace$ = from(
-            this.eventsService.findOneByUserWorkspaceAndUUID(userWorkspace, eventUUID)
+        const loadedEventByTeamWorkspace$ = from(
+            this.eventsService.findOneByTeamWorkspaceAndUUID(teamWorkspace, eventUUID)
         );
 
         const calendarIntegrationServices = this.calendarIntegrationsServiceLocator.getAllCalendarIntegrationServices();
@@ -119,20 +128,21 @@ export class GlobalSchedulesService {
                 concatMap(
                     (calendarIntegrationService) => calendarIntegrationService.findOne({
                         outboundWriteSync: true,
-                        userId: host.id
+                        profileId: hostProfile.id
                     })
                 )
             );
 
-        return loadedEventByUserWorkspace$.pipe(
+        return loadedEventByTeamWorkspace$.pipe(
             concatMap(
                 (event) => combineLatest([
                     this.availabilityRedisRepository.getAvailabilityBody(host.uuid, event.availability.uuid),
                     of(this.utilService.getPatchedScheduledEvent(
                         host,
+                        hostProfile,
                         event,
                         newSchedule,
-                        userWorkspace,
+                        teamWorkspace,
                         event.availability.timezone
                     )),
                     loadedOutboundCalendarIntegration$,
@@ -208,7 +218,7 @@ export class GlobalSchedulesService {
                                             const integrationFactory = this.integrationsServiceLocator.getIntegrationFactory(integrationVendor);
 
                                             const loadedIntegration$ = from(integrationFactory.findOne({
-                                                userId: host.id
+                                                profileId: hostProfile.id
                                             }));
 
                                             return loadedIntegration$.pipe(

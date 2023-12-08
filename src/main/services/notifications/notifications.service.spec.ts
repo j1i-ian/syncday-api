@@ -12,12 +12,12 @@ import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-clien
 import { FileUtilsService } from '@services/util/file-utils/file-utils.service';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
-import { UserSettingService } from '@services/users/user-setting/user-setting.service';
+import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { Event } from '@entity/events/event.entity';
-import { UserSetting } from '@entity/users/user-setting.entity';
-import { User } from '@entity/users/user.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { Team } from '@entity/teams/team.entity';
 import { Language } from '@app/enums/language.enum';
 import { TestMockUtil } from '@test/test-mock-util';
 import { faker } from '@faker-js/faker';
@@ -34,7 +34,7 @@ describe('IntegrationsService', () => {
     let syncdayAwsSdkClientServiceStub: sinon.SinonStubbedInstance<SyncdayAwsSdkClientService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
-    let userSettingServiceStub: sinon.SinonStubbedInstance<UserSettingService>;
+    let teamSettingServiceStub: sinon.SinonStubbedInstance<TeamSettingService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
 
     before(async () => {
@@ -44,7 +44,7 @@ describe('IntegrationsService', () => {
         syncdayAwsSdkClientServiceStub = sinon.createStubInstance(SyncdayAwsSdkClientService);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
-        userSettingServiceStub = sinon.createStubInstance(UserSettingService);
+        teamSettingServiceStub = sinon.createStubInstance(TeamSettingService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
 
         sinon.stub(AppConfigService, 'getAwsSnsTopicARNSyncdayNotification').returns(
@@ -79,8 +79,8 @@ describe('IntegrationsService', () => {
                     useValue: eventsServiceStub
                 },
                 {
-                    provide: UserSettingService,
-                    useValue: userSettingServiceStub
+                    provide: TeamSettingService,
+                    useValue: teamSettingServiceStub
                 }
             ]
         }).compile();
@@ -163,8 +163,8 @@ describe('IntegrationsService', () => {
 
             eventsServiceStub.findOne.resolves(eventTypeStub);
 
-            const userSettingStub = stubOne(UserSetting);
-            userSettingServiceStub.fetchUserSettingByUserId.resolves(userSettingStub);
+            const teamSettingStub = stubOne(TeamSetting);
+            teamSettingServiceStub.fetchTeamSettingByTeamId.resolves(teamSettingStub);
 
             serviceSandbox = sinon.createSandbox();
             serviceSendMessageStub = serviceSandbox.stub(service, 'sendMessage');
@@ -174,14 +174,14 @@ describe('IntegrationsService', () => {
         afterEach(() => {
             utilServiceStub.convertReminderTypeToSyncdayNotificationPublishKey.reset();
             eventsServiceStub.findOne.reset();
-            userSettingServiceStub.fetchUserSettingByUserId.reset();
+            teamSettingServiceStub.fetchTeamSettingByTeamId.reset();
 
             serviceSandbox.restore();
         });
 
         it('should be sent booking request', async () => {
 
-            const userMock = stubOne(User);
+            const teamMock = stubOne(Team);
 
             const invitee = {
                 name: '홍길동',
@@ -189,9 +189,9 @@ describe('IntegrationsService', () => {
             };
 
             const bookingRequestResult = await firstValueFrom(service.sendBookingRequest(
-                userMock.id,
+                teamMock.id,
                 eventTypeStub.id,
-                userMock.name,
+                teamMock.name,
                 invitee.name,
                 invitee.phoneNumber,
                 'memo'
@@ -199,7 +199,7 @@ describe('IntegrationsService', () => {
 
             expect(utilServiceStub.convertReminderTypeToSyncdayNotificationPublishKey.called).true;
             expect(eventsServiceStub.findOne.called).true;
-            expect(userSettingServiceStub.fetchUserSettingByUserId.called).true;
+            expect(teamSettingServiceStub.fetchTeamSettingByTeamId.called).true;
 
             expect(serviceSendMessageStub.called).true;
 

@@ -8,17 +8,17 @@ import { Observable } from 'rxjs';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
 import { AppConfigService } from '@config/app-config.service';
-import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
+import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/conference-link-integration-wrapper-service.interface';
 import { ZoomConferenceLinkIntegrationsService } from '@services/integrations/zoom-integrations/zoom-conference-link-integrations/zoom-conference-link-integrations.service';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Integration } from '@entity/integrations/integration.entity';
-import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { EventStatus } from '@entity/events/event-status.enum';
+import { Profile } from '@entity/profiles/profile.entity';
 import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
 import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
 import { SearchZoomIntegrationOptions } from '@app/interfaces/integrations/zoom/search-zoom-integration-options.interface';
@@ -49,14 +49,14 @@ export class ZoomIntegrationsService implements
         throw new Error('Method not implemented.');
     }
 
-    async search(userSearchOption: SearchByUserOption): Promise<Integration[]> {
+    async search(profileSearchOption: SearchByProfileOption): Promise<Integration[]> {
 
-        const { userId } = userSearchOption;
+        const { profileId } = profileSearchOption;
 
         const loadedZoomInterations = await this.zoomIntegrationRepository.find({
             where: {
-                users: {
-                    id: userId
+                profiles: {
+                    id: profileId
                 }
             }
         });
@@ -73,38 +73,38 @@ export class ZoomIntegrationsService implements
     }
 
     count({
-        userId
+        profileId
     }: IntegrationSearchOption): Promise<number> {
         return this.zoomIntegrationRepository.countBy({
-            users: {
-                id: userId
+            profiles: {
+                id: profileId
             }
         });
     }
 
     findOne(searchZoomIntegrationOptions: SearchZoomIntegrationOptions): Promise<ZoomIntegration | null> {
 
-        const { userId } = searchZoomIntegrationOptions;
+        const { profileId } = searchZoomIntegrationOptions;
 
         return this.zoomIntegrationRepository.findOne({
             relations: ['users'],
             where: {
-                users: {
-                    id: userId
+                profiles: {
+                    id: profileId
                 }
             }
         });
     }
 
     async create(
-        appUser: User,
+        profile: Profile,
         oauth2Token: OAuthToken,
         zoomOAuth2UserProfile: ZoomUserResponseDTO
     ): Promise<Integration> {
 
         const zoomEmail = zoomOAuth2UserProfile.email;
 
-        const alreadyExistZoomIntegarion = appUser.zoomIntegrations.find((_zoomIntegration) => _zoomIntegration.email === zoomEmail);
+        const alreadyExistZoomIntegarion = profile.zoomIntegrations.find((_zoomIntegration) => _zoomIntegration.email === zoomEmail);
 
         if (alreadyExistZoomIntegarion) {
             throw new BadRequestException('Target Zoom Integration is already integrated.');
@@ -115,7 +115,7 @@ export class ZoomIntegrationsService implements
             accessToken: oauth2Token.accessToken,
             refreshToken: oauth2Token.refreshToken,
             integrationUserUniqueId: zoomOAuth2UserProfile.integrationUserUniqueId,
-            users: [{ id: appUser.id }]
+            profiles: [{ id: profile.id }]
         } as ZoomIntegration;
 
         return await this.zoomIntegrationRepository.save(newIntegration);
@@ -135,11 +135,11 @@ export class ZoomIntegrationsService implements
         return zoomOAuthRedirectURI.toString();
     }
 
-    async fetchDetail(userId: number): Promise<ZoomIntegration> {
+    async fetchDetail(profileId: number): Promise<ZoomIntegration> {
         const zoomIntegration = await this.zoomIntegrationRepository.findOneOrFail({
             where: {
-                users: {
-                    id: userId
+                profiles: {
+                    id: profileId
                 }
             }
         });
@@ -158,7 +158,11 @@ export class ZoomIntegrationsService implements
         throw new Error('Method not implemented.');
     }
 
-    async remove(zoomIntegrationId: number, userId: number): Promise<boolean> {
+    async remove(
+        zoomIntegrationId: number,
+        profileId: number,
+        teamId: number
+    ): Promise<boolean> {
 
         // load events that linked with zoom integration
         // then update events to off
@@ -170,8 +174,8 @@ export class ZoomIntegrationsService implements
             const zoomIntegration = await zoomIntegrationRepository.findOneOrFail({
                 where: {
                     id: zoomIntegrationId,
-                    users: {
-                        id: userId
+                    profiles: {
+                        id: profileId
                     }
                 }
             });
@@ -179,10 +183,13 @@ export class ZoomIntegrationsService implements
             const disableEventTargets = await eventRepository.find({
                 where: {
                     eventGroup: {
-                        user: {
-                            id: userId,
-                            zoomIntegrations: {
-                                id: zoomIntegrationId
+                        team: {
+                            id: teamId,
+                            profiles: {
+                                id: profileId,
+                                zoomIntegrations: {
+                                    id: zoomIntegrationId
+                                }
                             }
                         }
                     },

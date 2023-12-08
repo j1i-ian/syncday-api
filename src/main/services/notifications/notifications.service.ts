@@ -13,7 +13,7 @@ import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
-import { UserSettingService } from '@services/users/user-setting/user-setting.service';
+import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { Language } from '@app/enums/language.enum';
 
@@ -22,13 +22,13 @@ export class NotificationsService {
     constructor(
         private readonly utilService: UtilService,
         private readonly eventsService: EventsService,
-        private readonly userSettingService: UserSettingService,
+        private readonly teamSettingService: TeamSettingService,
         private readonly configService: ConfigService,
         private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
     ) {}
 
     sendBookingRequest(
-        userId: number,
+        teamId: number,
         eventId: number,
         hostName: string,
         inviteeName: string,
@@ -42,14 +42,14 @@ export class NotificationsService {
 
         // load event by event id
         return combineLatest([
-            this.eventsService.findOne(eventId, userId),
-            from(this.userSettingService.fetchUserSettingByUserId(userId))
+            this.eventsService.findOne(eventId, teamId),
+            from(this.teamSettingService.fetchTeamSettingByTeamId(teamId))
         ])
             .pipe(
-                map(([loadedEvent, userSetting]) => {
+                map(([loadedEvent, teamSetting]) => {
 
-                    const userWorkspace = userSetting.workspace;
-                    const resourecLink = [ userWorkspace, loadedEvent.link ].join('/');
+                    const teamWorkspace = teamSetting.workspace;
+                    const resourecLink = [ teamWorkspace, loadedEvent.link ].join('/');
 
                     return {
                         hostName,

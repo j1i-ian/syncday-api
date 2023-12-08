@@ -12,9 +12,10 @@ import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
-import { User } from '@entity/users/user.entity';
 import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 
 @Injectable()
@@ -34,7 +35,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         return this.appleCalDAVCalendarIntegrationRepository;
     }
 
-    getUserRelationConditions(
+    getProfileRelationConditions(
         userId: number,
         options: FindOptionsWhere<CalendarIntegration>
     ): FindOptionsWhere<CalendarIntegration> {
@@ -50,8 +51,9 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         manager: EntityManager,
         integration: AppleCalDAVIntegration,
         calendarIntegration: AppleCalDAVCalendarIntegration,
-        user: User,
-        userSetting: UserSetting
+        profile: Profile,
+        userSetting: UserSetting,
+        teamSetting: TeamSetting
     ): Promise<void> {
 
         const client = await this.appleIntegrationFacade.generateCalDAVClient({
@@ -66,8 +68,9 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
 
         const schedules = calDAVSchedules.flatMap((_calDAVSchedule) =>
             this.appleConverter.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
-                user,
+                profile,
                 userSetting,
+                teamSetting,
                 _calDAVSchedule
             )
         );
@@ -122,7 +125,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
     }
 
     async patchAll(
-        userId: number,
+        profileId: number,
         calendarIntegrations: Array<Partial<CalendarIntegration> & Pick<CalendarIntegration, 'id' | 'setting'>>
     ): Promise<boolean> {
 
@@ -135,12 +138,15 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         const loadedCalendarIntegrations = await calendarIntegrationRepository.find({
             relations: [
                 'appleCalDAVIntegration',
-                'appleCalDAVIntegration.user',
-                'appleCalDAVIntegration.user.userSetting'
+                'appleCalDAVIntegration.profile',
+                'appleCalDAVIntegration.profile.user',
+                'appleCalDAVIntegration.profile.user.userSetting',
+                'appleCalDAVIntegration.profile.team',
+                'appleCalDAVIntegration.profile.team.teamSetting'
             ],
             where: {
                 appleCalDAVIntegration: {
-                    userId
+                    profileId
                 }
             }
         });
@@ -166,7 +172,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
 
             const _outboundResetSuccess = await firstValueFrom(this._resetOutboundSetting(
                 _transactionManager,
-                userId
+                profileId
             ));
 
             const _resultToDeleteSchedules = await _integrationScheduleRepository.delete({
@@ -199,15 +205,18 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
                             async (__inboundCalendarIntegration) => {
 
                                 const appleCalDAVIntegration = __inboundCalendarIntegration.appleCalDAVIntegration;
-                                const user = appleCalDAVIntegration.user;
-                                const userSetting = user.userSetting;
+                                const profile = appleCalDAVIntegration.profile;
+                                const { user, team } = profile;
+                                const { userSetting } = user;
+                                const { teamSetting } = team;
 
                                 await this._synchronizeWithCalDAVCalendars(
                                     _transactionManager,
                                     appleCalDAVIntegration,
                                     __inboundCalendarIntegration,
-                                    user,
-                                    userSetting
+                                    profile,
+                                    userSetting,
+                                    teamSetting
                                 );
 
                                 return;
@@ -275,9 +284,9 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
     }
 
     __patchSearchOption({
-        userId,
-        userUUID,
-        userWorkspace,
+        profileId,
+        profileUUID,
+        teamWorkspace,
         calendarIntegrationUUID,
         conflictCheck,
         outboundWriteSync
@@ -291,12 +300,14 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
                 outboundWriteSync
             },
             appleCalDAVIntegration: {
-                user: {
-                    userSetting: {
-                        workspace: userWorkspace
+                profile: {
+                    team: {
+                        teamSetting: {
+                            workspace: teamWorkspace
+                        }
                     },
-                    id: userId,
-                    uuid: userUUID
+                    id: profileId,
+                    uuid: profileUUID
                 }
             }
         };
@@ -304,7 +315,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         return options;
     }
 
-    getIntegrationUserRelationPath(integrationAlias = 'integration'): string {
+    getIntegrationProfileRelationPath(integrationAlias = 'integration'): string {
         return `${integrationAlias}.user`;
     }
 

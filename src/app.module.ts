@@ -20,6 +20,8 @@ import { EventsModule } from './main/services/events/events.module';
 import { BookingsModule } from './main/services/bookings/bookings.module';
 import { SchedulesModule } from './main/services/schedules/schedules.module';
 import { OAuth2Module } from './main/services/oauth2/oauth2.module';
+import { TeamModule } from './main/services/team/team.module';
+import { ProfilesModule } from './main/services/profiles/profiles.module';
 
 @Module({
     imports: [
@@ -32,6 +34,7 @@ import { OAuth2Module } from './main/services/oauth2/oauth2.module';
         ClusterModule.forRootAsync(AppConfigService.getRedisModuleOptions()),
 
         UserModule,
+        TeamModule,
 
         AuthModule,
 
@@ -48,7 +51,8 @@ import { OAuth2Module } from './main/services/oauth2/oauth2.module';
         SyncdayAwsSdkClientModule,
         BookingsModule,
         SchedulesModule,
-        OAuth2Module
+        OAuth2Module,
+        ProfilesModule
     ],
     controllers: [AppController],
     providers: [

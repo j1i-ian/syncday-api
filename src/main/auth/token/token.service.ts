@@ -5,10 +5,13 @@ import { oauth2_v2 } from 'googleapis';
 import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
 import { UserService } from '@services/users/user.service';
 import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { UtilService } from '@services/util/util.service';
 import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { Team } from '@entity/teams/team.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { Language } from '@app/enums/language.enum';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
@@ -100,17 +103,27 @@ export class TokenService {
 
         let user: User | null = await this.userService.findUserByEmail(ensuredRequesterEmail);
 
+        let profile = user?.profiles[0] as Profile | null;
+        let team = user?.profiles[0].team as Team | null;
+
         this.validateOAuth2Request(user, ensuredIntegrationContext);
 
         const insufficientPermission = oauth2UserProfile.insufficientPermission;
 
         switch (ensuredIntegrationContext) {
             case IntegrationContext.SIGN_UP:
-                user = await oauth2TokenService.signUpWithOAuth(
+                const {
+                    createdProfile,
+                    createdTeam,
+                    createdUser
+                } = await oauth2TokenService.signUpWithOAuth(
                     timezone,
                     oauth2UserProfile,
                     language
                 );
+                profile = createdProfile;
+                user = createdUser;
+                team = createdTeam;
                 isNewbie = true;
                 break;
             case IntegrationContext.SIGN_IN:
@@ -119,7 +132,9 @@ export class TokenService {
             case IntegrationContext.INTEGRATE:
                 await oauth2TokenService.integrate(
                     oauth2UserProfile,
-                    user as User
+                    user as User,
+                    profile as Profile,
+                    (team as Team).teamSetting
                 );
                 isNewbie = false;
                 break;
@@ -134,7 +149,11 @@ export class TokenService {
                 throw new InternalServerErrorException('Unknown integration context');
         }
 
-        const issuedToken = this.issueToken(user as User);
+        const issuedToken = this.issueToken(
+            profile as Profile,
+            user as User,
+            team as Team
+        );
 
         return {
             issuedToken,
@@ -157,23 +176,42 @@ export class TokenService {
 
     issueTokenByRefreshToken(refreshToken: string): CreateTokenResponseDto {
 
-        const decoedUserByRefreshToken: User = this.jwtService.verify(refreshToken, {
+        const decoedProfileByRefreshToken: AppJwtPayload = this.jwtService.verify(refreshToken, {
             secret: this.jwtRefreshTokenOption.secret
         });
+        const extractedProfile = decoedProfileByRefreshToken as Partial<Profile>;
+        const extractedUser = {
+            id: decoedProfileByRefreshToken.userId,
+            email: decoedProfileByRefreshToken.email
+        } as Pick<User, 'id' | 'email'>;
+        const extractedTeam = {
+            id: decoedProfileByRefreshToken.teamId
+        } as Pick<Team, 'id'>;
 
-        return this.issueToken(decoedUserByRefreshToken);
+        return this.issueToken(
+            extractedProfile as Profile,
+            extractedUser as User,
+            extractedTeam as Team
+        );
     }
 
-    issueToken(user: User): CreateTokenResponseDto {
+    issueToken(
+        profile: Profile,
+        user: Pick<User, 'id' | 'email'>,
+        team: Pick<Team, 'id' | 'uuid'>
+    ): CreateTokenResponseDto {
         const signedAccessToken = this.jwtService.sign(
             {
-                id: user.id,
-                uuid: user.uuid,
+                id: profile.id,
+                uuid: profile.uuid,
+                name: profile.name,
+                userId: user.id,
                 email: user.email,
-                profileImage: user.profileImage,
-                name: user.name,
-                userSettingId: user.userSettingId
-            } as Partial<User>,
+                image: profile.image,
+                roles: profile.roles,
+                teamId: team.id,
+                teamUUID: team.uuid
+            } as Partial<Profile>,
             {
                 secret: this.jwtOption.secret,
                 expiresIn: this.jwtOption.signOptions?.expiresIn
@@ -182,13 +220,16 @@ export class TokenService {
 
         const signedRefreshToken =  this.jwtService.sign(
             {
-                id: user.id,
-                uuid: user.uuid,
+                id: profile.id,
+                uuid: profile.uuid,
+                name: profile.name,
+                userId: user.id,
                 email: user.email,
-                profileImage: user.profileImage,
-                name: user.name,
-                userSettingId: user.userSettingId
-            } as Partial<User>,
+                image: profile.image,
+                roles: profile.roles,
+                teamId: team.id,
+                teamUUID: team.uuid
+            } as Partial<Profile>,
             {
                 secret: this.jwtRefreshTokenOption.secret,
                 expiresIn: this.jwtRefreshTokenOption.signOptions?.expiresIn

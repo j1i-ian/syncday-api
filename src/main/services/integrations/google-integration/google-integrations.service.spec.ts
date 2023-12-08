@@ -11,10 +11,11 @@ import { GoogleCalendarIntegrationsService } from '@services/integrations/google
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
 import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
-import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 import { TestMockUtil } from '@test/test-mock-util';
 
@@ -130,10 +131,10 @@ describe('GoogleIntegrationsService', () => {
 
         it('should be counted integration length by condition', async () => {
 
-            const userIdMock = stubOne(User).id;
+            const profileIdMock = stubOne(Profile).id;
 
             const counted = await service.count({
-                userId: userIdMock
+                profileId: profileIdMock
             });
 
             expect(counted).greaterThan(0);
@@ -153,7 +154,8 @@ describe('GoogleIntegrationsService', () => {
         [
             {
                 description: 'should be created google integration where email is patched from google user',
-                userMock: stubOne(User, { email: 'alan@sync.day' }),
+                profileMock: stubOne(Profile),
+                teamSettingMock: stubOne(TeamSetting),
                 userSettingMock: stubOne(UserSetting),
                 googleCalendarIntegrationsMocks: [
                     stubOne(GoogleCalendarIntegration, {
@@ -171,7 +173,8 @@ describe('GoogleIntegrationsService', () => {
             },
             {
                 description: 'should be created first google integration with outbound setting',
-                userMock: stubOne(User, { email: 'alan@sync.day' }),
+                profileMock: stubOne(Profile),
+                teamSettingMock: stubOne(TeamSetting),
                 userSettingMock: stubOne(UserSetting),
                 googleCalendarIntegrationsMocks: stub(GoogleCalendarIntegration, 3, {
                     setting: {
@@ -191,7 +194,8 @@ describe('GoogleIntegrationsService', () => {
             },
             {
                 description: 'should be created second google integration without outbound setting',
-                userMock: stubOne(User, { email: 'alan@sync.day' }),
+                profileMock: stubOne(Profile),
+                teamSettingMock: stubOne(TeamSetting),
                 userSettingMock: stubOne(UserSetting),
                 googleCalendarIntegrationsMocks: stub(GoogleCalendarIntegration, 3, {
                     setting: {
@@ -211,7 +215,8 @@ describe('GoogleIntegrationsService', () => {
             }
         ].forEach(function({
             description,
-            userMock,
+            profileMock,
+            teamSettingMock,
             userSettingMock,
             googleCalendarIntegrationsMocks,
             googleIntegrationBodyMock,
@@ -231,7 +236,8 @@ describe('GoogleIntegrationsService', () => {
 
                 const createdGoogleIntegration = await service._create(
                     datasourceMock as EntityManager,
-                    userMock,
+                    profileMock,
+                    teamSettingMock,
                     userSettingMock,
                     googleOAuthTokenMock,
                     googleCalendarIntegrationsMocks,
@@ -240,8 +246,6 @@ describe('GoogleIntegrationsService', () => {
                 );
 
                 expect(createdGoogleIntegration).ok;
-                expect(createdGoogleIntegration.email).not.equals(userMock.email);
-                expect(createdGoogleIntegration.email).equals(googleIntegrationBodyMock.googleUserEmail);
 
                 expect(googleIntegrationRepositoryStub.save.called).true;
                 expect(integrationsRedisRepositoryStub.setGoogleCalendarSubscriptionStatus.called).true;

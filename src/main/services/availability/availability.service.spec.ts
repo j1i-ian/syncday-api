@@ -8,6 +8,7 @@ import { User } from '@core/entities/users/user.entity';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsService } from '@services/events/events.service';
 import { Event } from '@entity/events/event.entity';
+import { Team } from '@entity/teams/team.entity';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { CannotDeleteDefaultAvailabilityException } from '@app/exceptions/availability/cannot-delete-default-availability.exception';
@@ -88,7 +89,7 @@ describe('AvailabilityService', () => {
         });
 
         it('should be fetched availability list', async () => {
-            const userStub = stubOne(User);
+            const teamStub = stubOne(Team);
             const availabilities = stub(Availability);
             const availabilityBodyStubs =
                 testMockUtil.getAvailabilityBodyRecordMocks(availabilities);
@@ -100,8 +101,8 @@ describe('AvailabilityService', () => {
 
             const list = await firstValueFrom(
                 service.search({
-                    userId: userStub.id,
-                    userUUID: userStub.uuid
+                    teamId: teamStub.id,
+                    teamUUID: teamStub.uuid
                 })
             );
 
@@ -110,7 +111,7 @@ describe('AvailabilityService', () => {
         });
 
         it('should be fetched availability detail', async () => {
-            const userStub = stubOne(User);
+            const teamStub = stubOne(Team);
             const availabilityStub = stubOne(Availability);
             const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock(availabilityStub);
 
@@ -118,17 +119,17 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyStub);
 
             const loadedAvailability = await firstValueFrom(
-                service.fetchDetail(userStub.id, userStub.uuid, availabilityStub.id)
+                service.fetchDetail(teamStub.id, teamStub.uuid, availabilityStub.id)
             );
 
             expect(loadedAvailability).ok;
         });
 
         it('should be fetched availability detail by user workspace and event link', async () => {
-            const userStub = stubOne(User);
+            const teamStub = stubOne(Team);
             const eventStub = stubOne(Event);
             const availabilityStub = stubOne(Availability, {
-                user: userStub
+                team: teamStub
             });
             const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock(availabilityStub);
 
@@ -136,8 +137,8 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyStub);
 
             const loadedAvailability = await firstValueFrom(
-                service.fetchDetailByUserWorkspaceAndLink(
-                    userStub.workspace as string,
+                service.fetchDetailByTeamWorkspaceAndLink(
+                    teamStub.workspace as string,
                     eventStub.link
                 )
             );
@@ -146,7 +147,7 @@ describe('AvailabilityService', () => {
         });
 
         it('should be created availability', async () => {
-            const userStub = stubOne(User);
+            const teamStub = stubOne(Team);
             const availabilityStub = stubOne(Availability);
             const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock(availabilityStub);
             availabilityStub.availableTimes = availabilityBodyStub.availableTimes;
@@ -156,8 +157,8 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.save.resolves(availabilityBodyStub);
 
             const loadedAvailability = await service.create(
-                userStub.id,
-                userStub.uuid,
+                teamStub.id,
+                teamStub.uuid,
                 availabilityBodyStub as CreateAvailabilityRequestDto
             );
 
@@ -167,7 +168,7 @@ describe('AvailabilityService', () => {
         });
 
         it('should be updated availability when availability entity would be updated', async () => {
-            const userStub = stubOne(User);
+            const teamStub = stubOne(Team);
             const availabilityStub = stubOne(Availability);
 
             const updateAvailabilityName = 'updateupdate';
@@ -187,8 +188,8 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.set.resolves(0);
 
             const loadedAvailability = await service.update(
-                userStub.id,
-                userStub.uuid,
+                teamStub.id,
+                teamStub.uuid,
                 availabilityStub.id,
                 updateAvailabilityStub
             );
@@ -200,7 +201,7 @@ describe('AvailabilityService', () => {
         });
 
         it('should be not updated availability when availability entity would be not updated', async () => {
-            const userStub = stubOne(User);
+            const teamStub = stubOne(Team);
             const availabilityStub = stubOne(Availability);
 
             const updateAvailabilityName = 'updateupdate';
@@ -221,8 +222,8 @@ describe('AvailabilityService', () => {
 
             await expect(
                 service.update(
-                    userStub.id,
-                    userStub.uuid,
+                    teamStub.id,
+                    teamStub.uuid,
                     availabilityStub.id,
                     updateAvailabilityStub
                 )
@@ -245,14 +246,13 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched all', async () => {
-                const userStub = stubOne(User);
+                const teamStub = stubOne(Team);
                 const availabilityBody = testMockUtil.getAvailabilityBodyMock();
 
                 availabilityRedisRepositoryStub.updateAll.resolves(true);
 
                 const patchAllResult = await service.patchAll(
-                    userStub.id,
-                    userStub.uuid,
+                    teamStub.uuid,
                     availabilityBody
                 );
 
@@ -261,12 +261,12 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched without available times nor overrides', async () => {
-                const userStub = stubOne(User);
+                const teamStub = stubOne(Team);
                 const availabilityBody = testMockUtil.getAvailabilityBodyMock();
 
                 availabilityRedisRepositoryStub.updateAll.resolves(true);
 
-                const patchAllResult = await service.patchAll(userStub.id, userStub.uuid, {
+                const patchAllResult = await service.patchAll(teamStub.uuid, {
                     availableTimes: availabilityBody.availableTimes
                 });
 
@@ -275,7 +275,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched default as true and previous default availability should be patched default as false ', async () => {
-                const userStub = stubOne(User);
+                const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: false
                 });
@@ -283,8 +283,8 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    userStub.id,
-                    userStub.uuid,
+                    teamStub.id,
+                    teamStub.uuid,
                     availabilityStub.id,
                     {
                         ...availabilityStub,
@@ -299,7 +299,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched default as true with name, timezone and previous default availability should be patched default as false ', async () => {
-                const userStub = stubOne(User);
+                const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: false
                 });
@@ -311,8 +311,8 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    userStub.id,
-                    userStub.uuid,
+                    teamStub.id,
+                    teamStub.uuid,
                     availabilityStub.id,
                     {
                         ...availabilityStub,
@@ -327,7 +327,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be thrown error when default request value is false if that target availability is default', async () => {
-                const userStub = stubOne(User);
+                const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: true
                 });
@@ -339,7 +339,7 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 await expect(
-                    service.patch(userStub.id, userStub.uuid, availabilityStub.id, {
+                    service.patch(teamStub.id, teamStub.uuid, availabilityStub.id, {
                         ...availabilityStub,
                         default: false
                     })
@@ -352,7 +352,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched name, timezone when patching default request value is false', async () => {
-                const userStub = stubOne(User);
+                const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: false
                 });
@@ -364,8 +364,8 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    userStub.id,
-                    userStub.uuid,
+                    teamStub.id,
+                    teamStub.uuid,
                     availabilityStub.id,
                     availabilityStub
                 );
@@ -378,7 +378,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched availableTimes with overrides', async () => {
-                const userStub = stubOne(User);
+                const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: false
                 });
@@ -388,8 +388,8 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    userStub.id,
-                    userStub.uuid,
+                    teamStub.id,
+                    teamStub.uuid,
                     availabilityStub.id,
                     patchAvailabilityRequestDtoMock
                 );
@@ -402,7 +402,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be not patched when dto has only availableTimes, not include overrides', async () => {
-                const userStub = stubOne(User);
+                const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: false
                 });
@@ -412,8 +412,8 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    userStub.id,
-                    userStub.uuid,
+                    teamStub.id,
+                    teamStub.uuid,
                     availabilityStub.id,
                     patchAvailabilityRequestDtoMock
                 );
@@ -434,7 +434,7 @@ describe('AvailabilityService', () => {
                 const defaultAvailabilityStub = stubOne(Availability, {
                     default: true
                 });
-                const userStub = stubOne(User);
+                const teamStub = stubOne(Team);
                 const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
                 availabilityRepositoryStub.findOne.resolves(availabilityStub);
@@ -444,8 +444,8 @@ describe('AvailabilityService', () => {
 
                 const result = await service.remove(
                     availabilityStub.id,
-                    userStub.id,
-                    userStub.uuid
+                    teamStub.id,
+                    teamStub.uuid
                 );
 
                 expect(result).true;

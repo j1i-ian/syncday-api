@@ -6,14 +6,15 @@ import { IntegrationSearchOption } from '@interfaces/integrations/integration-se
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
 import { Integration } from '@entity/integrations/integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { User } from '@entity/users/user.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
-type GoogleIntegrationRequest =  [User, UserSetting, OAuthToken, GoogleCalendarIntegration[], GoogleIntegrationBody, CalendarCreateOption?];
-type ZoomIntegrationRequest = [User, OAuthToken, OAuth2UserProfile];
-type AppleIntegrationRequest = [User, UserSetting, AppleCalDAVCredential, string];
+type GoogleIntegrationRequest =  [Profile, TeamSetting, UserSetting, OAuthToken, GoogleCalendarIntegration[], GoogleIntegrationBody, CalendarCreateOption?];
+type ZoomIntegrationRequest = [Profile, OAuthToken, OAuth2UserProfile];
+type AppleIntegrationRequest = [Profile, UserSetting, TeamSetting, AppleCalDAVCredential, string];
 
 /**
  * Abstract Factory pattern for integration services.
@@ -30,17 +31,17 @@ export interface IntegrationsFactory {
         syncdayGoogleOAuthTokenResponseOrSyncdayAccessToken?: string | SyncdayOAuth2TokenResponse
     ): string;
 
-    search(userSearchOption: IntegrationSearchOption): Promise<Integration[]>;
+    search(profileSearchOption: IntegrationSearchOption): Promise<Integration[]>;
 
     validate(loadedIntegration: Integration): Observable<boolean>;
 
-    count(userSearchOption: IntegrationSearchOption): Promise<number>;
+    count(profileSearchOption: IntegrationSearchOption): Promise<number>;
 
-    findOne(userSearchOption: IntegrationSearchOption): Promise<(Integration) | null>;
+    findOne(profileSearchOption: IntegrationSearchOption): Promise<(Integration) | null>;
 
     create(...argument: (ZoomIntegrationRequest | GoogleIntegrationRequest | AppleIntegrationRequest)): Promise<Integration>;
 
-    patch(vendorIntegrationId: number, userId: number, paritalIntegration?: Partial<Integration>): Observable<boolean>;
+    patch(vendorIntegrationId: number, profileId: number, paritalIntegration?: Partial<Integration>): Observable<boolean>;
 
-    remove(vendorIntegrationId: number, userId: number): Promise<boolean>;
+    remove(vendorIntegrationId: number, profileId: number, teamId?: number): Promise<boolean>;
 }

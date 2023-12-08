@@ -29,7 +29,8 @@ import { GoogleIntegration } from '@entity/integrations/google/google-integratio
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
-import { User } from '@entity/users/user.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
 
@@ -67,15 +68,17 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         const loadedGoogleIntegration = loadedGoogleCalendarIntegration.googleIntegration;
 
         // As of now, User can have only one Google Integration
-        const loadedUser = loadedGoogleIntegration.users[0];
-        const loadedUserSetting = loadedUser.userSetting;
+        const loadedProfile = loadedGoogleIntegration.profiles[0];
+        const loadedTeamSetting = loadedProfile.team.teamSetting;
+        const loadedUserSetting = loadedProfile.user.userSetting;
 
         const googleOAuthClient = this.integrationUtilService.getGoogleOAuthClient(loadedGoogleIntegration.refreshToken);
 
         await this.datasource.transaction(async (transactionManager) => await this._synchronizeWithGoogleCalendarEvents(
             transactionManager,
             loadedGoogleCalendarIntegration,
-            loadedUser,
+            loadedProfile,
+            loadedTeamSetting,
             loadedUserSetting,
             {
                 googleOAuthClient
@@ -86,7 +89,8 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
     async _synchronizeWithGoogleCalendarEvents(
         manager: EntityManager,
         googleCalendarIntegration: GoogleCalendarIntegration,
-        user: User,
+        profile: Profile,
+        teamSetting: TeamSetting,
         userSetting: UserSetting,
         {
             userRefreshToken,
@@ -136,9 +140,9 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             _newSchedule.originatedCalendarId = googleCalendarIntegration.name;
             _newSchedule.googleCalendarIntegrationId = googleCalendarIntegration.id;
             _newSchedule.host = {
-                uuid: user.uuid,
-                name: user.name,
-                workspace: userSetting.workspace,
+                uuid: profile.uuid,
+                name: profile.name,
+                workspace: teamSetting.workspace,
                 timezone: userSetting.preferredTimezone
             };
             return _newSchedule;
@@ -205,8 +209,11 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             this.googleCalendarIntegrationRepository.findOne({
                 relations: [
                     'googleIntegration',
-                    'googleIntegration.users',
-                    'googleIntegration.users.userSetting'
+                    'googleIntegration.profiles',
+                    'googleIntegration.profiles.user',
+                    'googleIntegration.profiles.user.userSetting',
+                    'googleIntegration.profiles.team',
+                    'googleIntegration.profiles.teamSetting'
                 ],
                 where: options
             })
@@ -223,7 +230,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
     }
 
     async patchAll(
-        userId: number,
+        profileId: number,
         calendarIntegrations:
         Array<Partial<GoogleCalendarIntegration> & Pick<GoogleCalendarIntegration, 'id' | 'setting'>>
     ): Promise<boolean> {
@@ -237,12 +244,17 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         const loadedCalendars = await calendarIntegrationRepository.find({
             relations: [
                 'googleIntegration',
-                'googleIntegration.users',
-                'googleIntegration.users.userSetting'
+                'googleIntegration.profiles',
+                'googleIntegration.profiles.team',
+                'googleIntegration.profiles.team.teamSetting',
+                'googleIntegration.profiles.user',
+                'googleIntegration.profiles.userSetting'
             ],
             where: {
-                users: {
-                    id: userId
+                googleIntegration: {
+                    profiles: {
+                        id: profileId
+                    }
                 }
             }
         });
@@ -267,7 +279,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
 
             const _resetSuccess = await firstValueFrom(this._resetOutboundSetting(
                 _transactionManager,
-                userId
+                profileId
             ));
 
             const _resultToDeleteSchedules = await _googleIntegrationScheduleRepo.delete({
@@ -312,8 +324,9 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
 
             if (_inboundGoogleCalendarIntegrations.length > 0) {
 
-                const loadedUser = loadedCalendars[0].googleIntegration.users[0];
-                const loadedUserSetting = loadedUser.userSetting;
+                const loadedProfile = loadedCalendars[0].googleIntegration.profiles[0];
+                const loadedTeamSetting = loadedProfile.team.teamSetting;
+                const loadedUserSetting = loadedProfile.user.userSetting;
 
                 await Promise.all(
                     _inboundGoogleCalendarIntegrations
@@ -324,7 +337,8 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                             await this._synchronizeWithGoogleCalendarEvents(
                                 _transactionManager,
                                 __googleCalendarIntegration,
-                                loadedUser,
+                                loadedProfile,
+                                loadedTeamSetting,
                                 loadedUserSetting,
                                 {
                                     googleOAuthClient: __googleOAuthClient
@@ -563,9 +577,9 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
     }
 
     __patchSearchOption({
-        userId,
-        userUUID,
-        userWorkspace,
+        profileId,
+        profileUUID,
+        teamWorkspace,
         googleCalendarIntegrationUUID,
         conflictCheck,
         outboundWriteSync,
@@ -579,12 +593,16 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                 conflictCheck,
                 outboundWriteSync
             },
-            users: {
-                userSetting: {
-                    workspace: userWorkspace
-                },
-                id: userId,
-                uuid: userUUID
+            googleIntegration: {
+                profiles: {
+                    team: {
+                        teamSetting: {
+                            workspace: teamWorkspace
+                        }
+                    },
+                    id: profileId,
+                    uuid: profileUUID
+                }
             }
         };
 
@@ -612,7 +630,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         return options;
     }
 
-    getIntegrationUserRelationPath(integrationAlias = 'integration'): string {
+    getIntegrationProfileRelationPath(integrationAlias = 'integration'): string {
         return `${integrationAlias}.users`;
     }
 
@@ -632,11 +650,13 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         return this.googleCalendarIntegrationRepository;
     }
 
-    getUserRelationConditions(userId: number, options: FindOptionsWhere<CalendarIntegration>): FindOptionsWhere<CalendarIntegration> {
+    getProfileRelationConditions(profileId: number, options: FindOptionsWhere<CalendarIntegration>): FindOptionsWhere<CalendarIntegration> {
         return {
             ...options,
-            users: {
-                id: userId
+            googleIntegration: {
+                profiles: {
+                    id: profileId
+                }
             }
         } as FindOptionsWhere<GoogleCalendarIntegration> as FindOptionsWhere<CalendarIntegration>;
     }

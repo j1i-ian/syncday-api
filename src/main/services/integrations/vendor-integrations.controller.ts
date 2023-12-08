@@ -5,14 +5,16 @@ import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { Observable } from 'rxjs';
 import { AppConfigService } from '@config/app-config.service';
-import { AuthUser } from '@decorators/auth-user.decorator';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { UserService } from '@services/users/user.service';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { Integration } from '@entity/integrations/integration.entity';
 import { User } from '@entity/users/user.entity';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
 import { CreateAppleCalDAVRequestDto } from '@dto/integrations/apple/create-apple-cal-dav-request.dto';
 import { CreateIntegrationResponseDto } from '@dto/integrations/create-integration-response.dto';
@@ -85,8 +87,10 @@ export class VendorIntegrationsController {
             throw new BadRequestException('Invalid user request - email: ' + decodedUser.email);
         }
 
+        const profile = loadedAppUserByEmail.profiles[0];
+
         await integrationService.create(
-            loadedAppUserByEmail,
+            profile,
             issuedToken,
             loadedOAuth2User
         );
@@ -100,7 +104,7 @@ export class VendorIntegrationsController {
 
     @Get()
     async searchIntegrations(
-        @AuthUser('id') userId: number,
+        @AuthProfile('id') profileId: number,
         @Param('vendor') vendor: IntegrationVendor,
         @Query('withCalendarIntegrations') withCalendarIntegrations: string | boolean
     ): Promise<Array<Integration | IntegrationResponseDto>> {
@@ -110,7 +114,7 @@ export class VendorIntegrationsController {
         const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
 
         const integrations = await integrationService.search({
-            userId,
+            profileId,
             withCalendarIntegrations
         });
 
@@ -124,26 +128,29 @@ export class VendorIntegrationsController {
     @Post()
     @UseFilters(new AppleCalendarIntegrationsExceptionFilter())
     async createIntegration(
-        @AuthUser() user: User,
+        @AuthProfile() authProfile: AppJwtPayload,
         @Param('vendor') vendor: IntegrationVendor,
         @Body() newIntegration: CreateAppleCalDAVRequestDto
     ): Promise<Integration> {
         const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
 
-        const loadedAppUserByEmail = await this.userService.findUserByEmail(user.email);
+        const loadedAppUserByEmail = await this.userService.findUserByEmail(authProfile.email);
 
         if (!loadedAppUserByEmail) {
-            throw new BadRequestException('Invalid user request - email: ' + user.email);
+            throw new BadRequestException('Invalid user request - email: ' + authProfile.email);
         }
 
         await this.integrationsValidator.validateMaxAddLimit(
             this.integrationsServiceLocator,
-            user.id
+            authProfile.id
         );
 
+        const profile = loadedAppUserByEmail.profiles[0];
+
         const createdIntegration = await integrationService.create(
-            loadedAppUserByEmail,
-            loadedAppUserByEmail.userSetting,
+            profile,
+            profile.user.userSetting,
+            profile.team.teamSetting,
             newIntegration,
             newIntegration.timezone
         );
@@ -156,7 +163,7 @@ export class VendorIntegrationsController {
     @Patch(':vendorIntegrationId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     patchVendorIntegration(
-        @AuthUser() user: User,
+        @AuthProfile() profile: Profile,
         @Param('vendor') vendor: IntegrationVendor,
         @Param('vendorIntegrationId', ParseIntPipe) vendorIntegrationId: number,
         @Body() partialAppleCalDavIntegration: Partial<AppleCalDAVIntegration>
@@ -164,17 +171,17 @@ export class VendorIntegrationsController {
 
         const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
 
-        return integrationService.patch(vendorIntegrationId, user.id, partialAppleCalDavIntegration);
+        return integrationService.patch(vendorIntegrationId, profile.id, partialAppleCalDavIntegration);
     }
 
     @Delete(':vendorIntegrationId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     async remove(
-        @AuthUser('id') userId: number,
+        @AuthProfile('id') profileId: number,
         @Param('vendor') vendor: IntegrationVendor,
         @Param('vendorIntegrationId', ParseIntPipe) vendorIntegrationId: number
     ): Promise<void> {
         const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
-        await integrationService.remove(vendorIntegrationId, userId);
+        await integrationService.remove(vendorIntegrationId, profileId);
     }
 }

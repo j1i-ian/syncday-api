@@ -31,9 +31,9 @@ export class ZoomIntegrationsController {
                 integrationUserUniqueId: zoomAccountId
             }) as ZoomIntegration;
 
-            const user = removeTargetZoomIntegration.users[0];
+            const profile = removeTargetZoomIntegration.profiles[0];
 
-            await this.zoomIntegrationService.remove(removeTargetZoomIntegration.id, user.id);
+            await this.zoomIntegrationService.remove(removeTargetZoomIntegration.id, profile.id, profile.teamId);
 
             webhookResponse = true;
         } else if (zoomWebhookNotificationRequestDto.event === 'endpoint.url_validation') {

@@ -17,9 +17,10 @@ import { CalendarIntegrationWrapperService } from '@services/integrations/calend
 import { AppleIntegrationFacadeService } from '@services/integrations/apple-integrations/apple-integration-facade.service';
 import { AppleCalendarIntegrationsService } from '@services/integrations/apple-integrations/apple-calendar-integrations/apple-calendar-integrations.service';
 import { Integration } from '@entity/integrations/integration.entity';
-import { User } from '@entity/users/user.entity';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { IntegrationStatus } from '@dto/integrations/integration-status.enum';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
@@ -65,7 +66,7 @@ export class AppleIntegrationsService implements
     }
 
     async search({
-        userId,
+        profileId,
         withCalendarIntegrations
     }: IntegrationSearchOption): Promise<Integration[]> {
 
@@ -74,7 +75,7 @@ export class AppleIntegrationsService implements
         const loadedAppleIntegrations = await this.appleCalDAVIntegrationRepository.find({
             relations,
             where: {
-                userId
+                profileId
             }
         });
 
@@ -86,19 +87,20 @@ export class AppleIntegrationsService implements
     }
 
     async count({
-        userId
+        profileId
     }: IntegrationSearchOption): Promise<number> {
 
         const appleIntegrationLength = await this.appleCalDAVIntegrationRepository.countBy({
-            userId
+            profileId
         });
 
         return appleIntegrationLength;
     }
 
     async create(
-        user: User,
+        profile: Profile,
         userSetting: UserSetting,
+        teamSetting: TeamSetting,
         appleCalDAVCredential: AppleCalDAVCredential,
         timezone: string
     ): Promise<Integration> {
@@ -110,7 +112,7 @@ export class AppleIntegrationsService implements
 
         const loadedAppleIntegration = await this.appleCalDAVIntegrationRepository.findOneBy({
             email: appleId,
-            userId: user.id
+            profileId: profile.id
         });
 
         if (loadedAppleIntegration) {
@@ -140,8 +142,9 @@ export class AppleIntegrationsService implements
 
                     const convertedSchedules = calDAVSchedules.flatMap((calDAVSchedule) =>
                         this.appleConverter.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
-                            user,
+                            profile,
                             userSetting,
+                            teamSetting,
                             calDAVSchedule
                         )
                     );
@@ -155,7 +158,7 @@ export class AppleIntegrationsService implements
         const appleCalDAVIntegration = new AppleCalDAVIntegration();
         appleCalDAVIntegration.email = appleId;
         appleCalDAVIntegration.appSpecificPassword = appSpecificPassword;
-        appleCalDAVIntegration.user = user;
+        appleCalDAVIntegration.profileId = profile.id;
         appleCalDAVIntegration.appleCalDAVCalendarIntegrations = convertedCalendars;
 
         const creatdIntegration = await this.appleCalDAVIntegrationRepository.save(appleCalDAVIntegration);
@@ -163,12 +166,12 @@ export class AppleIntegrationsService implements
         return creatdIntegration.toIntegration();
     }
 
-    patch(vendorIntegrationId: number, userId: number, partialIntegration?: Partial<AppleCalDAVIntegration> | undefined): Observable<boolean> {
+    patch(vendorIntegrationId: number, profileId: number, partialIntegration?: Partial<AppleCalDAVIntegration> | undefined): Observable<boolean> {
 
         return from(
             this.appleCalDAVIntegrationRepository.findOneByOrFail({
                 id: vendorIntegrationId,
-                userId
+                profileId
             })
         ).pipe(
             map((loadedAppleIntegration) => {
@@ -223,11 +226,11 @@ export class AppleIntegrationsService implements
         );
     }
 
-    async remove(vendorIntegrationId: number, userId: number): Promise<boolean> {
+    async remove(vendorIntegrationId: number, profileId: number): Promise<boolean> {
 
         const deleteResult = await this.appleCalDAVIntegrationRepository.delete({
             id: vendorIntegrationId,
-            userId
+            profileId
         });
 
         const isSuccess =

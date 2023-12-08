@@ -1,9 +1,9 @@
 import { EventStatus } from '@entity/events/event-status.enum';
 
 export interface EventsSearchOption {
-    userId?: number;
-    userUUID?: string;
-    userWorkspace?: string;
+    teamId?: number;
+    teamUUID?: string;
+    teamWorkspace?: string;
     availabilityId?: number;
     status?: EventStatus;
     public?: boolean;

@@ -3,7 +3,8 @@ import * as icalModule from 'ical';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { UtilService } from '@services/util/util.service';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { AppleConverterService } from './apple-converter.service';
 
@@ -66,15 +67,17 @@ describe('AppleConverterService', () => {
 
         it('should be converted to apple calendar integration schedules from cal dav calendar objects', () => {
 
-            const userStub = stubOne(User);
+            const profileStub = stubOne(Profile);
+            const teamSettingStub = stubOne(TeamSetting);
             const userSettingStub = stubOne(UserSetting);
             const calDAVCalendarObjectMock = testMockUtil.getCalDAVCalendarObjectMock();
 
             icalModuleParseICSStub.returns(calDAVCalendarObjectMock);
 
             const convertedAppleCalendarIntegrationSchedules = service.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
-                userStub,
+                profileStub,
                 userSettingStub,
+                teamSettingStub,
                 calDAVCalendarObjectMock
             );
 
@@ -92,7 +95,8 @@ describe('AppleConverterService', () => {
 
         it('should be converted to apple calendar integration schedules that have no cerated timezone data', () => {
 
-            const userStub = stubOne(User);
+            const profileStub = stubOne(Profile);
+            const teamSettingStub = stubOne(TeamSetting);
             const userSettingStub = stubOne(UserSetting);
             const calDAVCalendarObjectMock = testMockUtil.getCalDAVCalendarObjectMock();
 
@@ -101,8 +105,9 @@ describe('AppleConverterService', () => {
             icalModuleParseICSStub.returns(calDAVCalendarObjectMock);
 
             const convertedAppleCalendarIntegrationSchedules = service.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
-                userStub,
+                profileStub,
                 userSettingStub,
+                teamSettingStub,
                 calDAVCalendarObjectMock
             );
 

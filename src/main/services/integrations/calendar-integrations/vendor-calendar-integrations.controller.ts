@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Logger, Param, Pat
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
-import { AuthUser } from '@decorators/auth-user.decorator';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
@@ -18,14 +18,14 @@ export class VendorCalendarIntegrationsController {
 
     @Get()
     searchCalendarIntegrations(
-        @AuthUser('id') userId: number,
+        @AuthProfile('id') profileId: number,
         @Param('vendor') vendor: IntegrationVendor
     ): Observable<CalendarIntegration[]> {
 
         const calendarIntegrationsService = this.calendarIntegrationsServiceLocator.getCalendarIntegrationService(vendor);
 
         return calendarIntegrationsService.search({
-            userId
+            profileId
         }).pipe(
             map((_calendarIntegrations) => _calendarIntegrations.map(
                 (__calendarIntegration) =>
@@ -40,13 +40,13 @@ export class VendorCalendarIntegrationsController {
     @HttpCode(HttpStatus.NO_CONTENT)
     patchCalendarIntegrations(
         @Param('vendor') vendor: IntegrationVendor,
-        @AuthUser('id') userId: number,
+        @AuthProfile('id') profileId: number,
         @Body() calendarIntegrations: CalendarIntegration[]
     ): Promise<boolean> {
 
         const calendarIntegrationsService = this.calendarIntegrationsServiceLocator.getCalendarIntegrationService(vendor);
 
-        return calendarIntegrationsService.patchAll(userId, calendarIntegrations);
+        return calendarIntegrationsService.patchAll(profileId, calendarIntegrations);
     }
 
 }

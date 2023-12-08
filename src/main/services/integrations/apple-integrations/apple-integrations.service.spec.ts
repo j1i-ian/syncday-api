@@ -14,6 +14,8 @@ import { User } from '@entity/users/user.entity';
 import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { AppleIntegrationsService } from './apple-integrations.service';
@@ -148,10 +150,10 @@ describe('AppleIntegrationsService', () => {
 
         it('should be counted integration length by condition', async () => {
 
-            const userIdMock = stubOne(User).id;
+            const profileIdMock = stubOne(Profile).id;
 
             const counted = await service.count({
-                userId: userIdMock
+                profileId: profileIdMock
             });
 
             expect(counted).greaterThan(0);
@@ -172,9 +174,8 @@ describe('AppleIntegrationsService', () => {
         it('should be created a Apple cal dav integration', async () => {
 
             const userSettingMock = stubOne(UserSetting);
-            const userMock = stubOne(User, {
-                userSetting: userSettingMock
-            });
+            const teamSettingMock = stubOne(TeamSetting);
+            const profileMock = stubOne(Profile);
             const appleCalDAVCredentialMock = testMockUtil.getAppleCalDAVCredentialMock();
             const timezoneMock = 'Asia/Seoul';
 
@@ -196,8 +197,9 @@ describe('AppleIntegrationsService', () => {
             appleIntegrationFacadeServiceStub.searchSchedules.resolves(calDAVCalendarObjectStubs);
 
             await service.create(
-                userMock,
+                profileMock,
                 userSettingMock,
+                teamSettingMock,
                 appleCalDAVCredentialMock,
                 timezoneMock
             );
@@ -212,9 +214,8 @@ describe('AppleIntegrationsService', () => {
         it('should be thrown a AlreadyIntegratedCalendar', async () => {
 
             const userSettingMock = stubOne(UserSetting);
-            const userMock = stubOne(User, {
-                userSetting: userSettingMock
-            });
+            const teamSettingMock = stubOne(TeamSetting);
+            const profileMock = stubOne(Profile);
             const appleCalDAVCredentialMock = testMockUtil.getAppleCalDAVCredentialMock();
             const timezoneMock = 'Asia/Seoul';
 
@@ -227,8 +228,9 @@ describe('AppleIntegrationsService', () => {
             appleCalDAVIntegrationRepositoryStub.findOneBy.resolves(appleCalDavIntegrationStub);
 
             await expect(service.create(
-                userMock,
+                profileMock,
                 userSettingMock,
+                teamSettingMock,
                 appleCalDAVCredentialMock,
                 timezoneMock
             )).rejectedWith(AlreadyIntegratedCalendarException);

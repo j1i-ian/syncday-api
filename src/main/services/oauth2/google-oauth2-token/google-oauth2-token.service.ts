@@ -12,8 +12,11 @@ import { NotificationsService } from '@services/notifications/notifications.serv
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { CreatedUserAndTeam } from '@services/users/created-user-and-team.interface';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
@@ -65,7 +68,7 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         timezone: string,
         oauth2UserProfile: GoogleOAuth2UserWithToken,
         language: Language
-    ): Promise<User> {
+    ): Promise<CreatedUserAndTeam> {
 
         const { googleUser, calendars, tokens, schedules } = oauth2UserProfile;
 
@@ -81,7 +84,7 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
             timezone: ensuredTimezone
         };
 
-        const signedUpUser = await this.userService.createUserByOAuth2(
+        const createdUserAndTeam = await this.userService.createUserByOAuth2(
             OAuth2Type.GOOGLE,
             createUserRequestDto,
             tokens,
@@ -103,14 +106,18 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
                 }
             }
         );
+        const {
+            createdUser: signedUpUser,
+            createdProfile: signedUpProfile
+        } = createdUserAndTeam;
 
         await this.notificationsService.sendWelcomeEmailForNewUser(
-            signedUpUser.name,
+            signedUpProfile.name,
             signedUpUser.email,
             signedUpUser.userSetting.preferredLanguage
         );
 
-        return signedUpUser;
+        return createdUserAndTeam;
     }
 
     async multipleSocialSignIn(
@@ -125,7 +132,9 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
 
     async integrate(
         oauth2UserProfile: GoogleOAuth2UserWithToken,
-        user: User
+        user: User,
+        profile: Profile,
+        teamSetting: TeamSetting
     ): Promise<void> {
 
         const { calendars, tokens, schedules } = oauth2UserProfile;
@@ -146,7 +155,8 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         const isFirstIntegration = !hasOutboundCalendar;
 
         await this.googleIntegrationService.create(
-            user,
+            profile,
+            teamSetting,
             user.userSetting,
             tokens,
             newGoogleCalendarIntegrations,

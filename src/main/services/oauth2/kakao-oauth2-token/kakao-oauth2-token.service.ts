@@ -13,6 +13,7 @@ import { OAuth2TokenService } from '@services/integrations/oauth2-token-service.
 import { KakaotalkIntegrationsFacade } from '@services/integrations/kakaotalk-integrations/kakaotalk-integrations.facade';
 import { UserService } from '@services/users/user.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
+import { CreatedUserAndTeam } from '@services/users/created-user-and-team.interface';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
@@ -86,7 +87,7 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
         timezone: string,
         oauth2UserProfile: KakaotalkUserProfileResponse,
         language: Language
-    ): Promise<User> {
+    ): Promise<CreatedUserAndTeam> {
 
         const { kakao_account, oauth2Token } = oauth2UserProfile;
         const { email, profile } = kakao_account;
@@ -100,7 +101,7 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
         };
         const oauth2UserEmail = email;
 
-        const signedUpUser = await this.userService.createUserByOAuth2(
+        const signedUpUserAndTeam = await this.userService.createUserByOAuth2(
             OAuth2Type.KAKAOTALK,
             createUserRequestDto,
             oauth2Token,
@@ -113,7 +114,7 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
 
         // TODO: send notification for user with Kakao Alimtalk ..
 
-        return signedUpUser;
+        return signedUpUserAndTeam;
     }
 
     async multipleSocialSignIn(

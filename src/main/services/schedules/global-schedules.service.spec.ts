@@ -30,6 +30,8 @@ import { ScheduledBufferTime } from '@entity/schedules/scheduled-buffer-time.ent
 import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GlobalSchedulesService } from './global-schedules.service';
@@ -171,7 +173,7 @@ describe('SchedulesService', () => {
         });
 
         afterEach(() => {
-            eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
+            eventsServiceStub.findOneByTeamWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
             timeUtilServiceStub.localizeDateTime.reset();
             nativeSchedulesServiceStub.search.reset();
@@ -337,17 +339,19 @@ describe('SchedulesService', () => {
 
                     const googleIntegrationServiceStub = serviceSandbox.createStubInstance(GoogleIntegrationsService);
 
+                    const teamSettingMock = stubOne(TeamSetting);
                     const userSettingStub = stubOne(UserSetting);
                     const userMock = stubOne(User, {
                         userSetting: userSettingStub
                     });
+                    const profileMock = stubOne(Profile);
                     const eventStub = getEventStub();
                     const scheduleStub = getScheduleStub();
 
                     const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
                     const createdCalendarEventMock = testMockUtil.getCreatedCalendarEventMock();
 
-                    eventsServiceStub.findOneByUserWorkspaceAndUUID.resolves(eventStub);
+                    eventsServiceStub.findOneByTeamWorkspaceAndUUID.resolves(eventStub);
 
                     calendarIntegrationsServiceLocatorStub.getAllCalendarIntegrationServices.returns([
                         googleCalendarIntegrationsServiceStub
@@ -391,15 +395,16 @@ describe('SchedulesService', () => {
                             {
                                 getRepository: () => scheduleRepositoryStub
                             } as unknown as any,
-                            userMock.workspace as string,
+                            teamSettingMock.workspace,
                             eventStub.uuid,
                             scheduleStub,
-                            userMock
+                            userMock,
+                            profileMock
                         )
                     );
 
                     expect(createdSchedule).ok;
-                    expect(eventsServiceStub.findOneByUserWorkspaceAndUUID.called).true;
+                    expect(eventsServiceStub.findOneByTeamWorkspaceAndUUID.called).true;
                     expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
                     expect(integrationsServiceLocatorStub.getIntegrationFactory.called).true;
                     expect(integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.called).true;
@@ -450,7 +455,7 @@ describe('SchedulesService', () => {
         });
 
         afterEach(() => {
-            eventsServiceStub.findOneByUserWorkspaceAndUUID.reset();
+            eventsServiceStub.findOneByTeamWorkspaceAndUUID.reset();
             utilServiceStub.getPatchedScheduledEvent.reset();
             timeUtilServiceStub.localizeDateTime.reset();
             timeUtilServiceStub.isPastTimestamp.reset();

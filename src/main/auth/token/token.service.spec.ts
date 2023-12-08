@@ -15,6 +15,8 @@ import { GoogleOAuth2TokenService } from '@services/oauth2/google-oauth2-token/g
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { Team } from '@entity/teams/team.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { UserService } from '../../services/users/user.service';
 import { faker } from '@faker-js/faker';
@@ -114,11 +116,17 @@ describe('TokenService', () => {
 
     it('should be issued token', () => {
         const userMock = stubOne(User);
+        const profileMock = stubOne(Profile);
+        const teamMock = stubOne(Team);
         const fakeTokenStub = 'iamfaketoken';
 
         jwtServiceStub.sign.returns(fakeTokenStub);
 
-        const signed = service.issueToken(userMock);
+        const signed = service.issueToken(
+            profileMock,
+            userMock,
+            teamMock
+        );
 
         expect(signed).ok;
         expect(signed.accessToken).equal(fakeTokenStub);
@@ -245,7 +253,12 @@ describe('TokenService', () => {
                 } as GoogleOAuth2UserWithToken,
                 getFindUserStub: () => stubOne(User, {
                     oauth2Accounts: [],
-                    googleIntergrations: []
+                    profiles: [
+                        stubOne(Profile, {
+                            googleIntergrations: [],
+                            team: stubOne(Team)
+                        })
+                    ]
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
@@ -273,7 +286,12 @@ describe('TokenService', () => {
                 } as GoogleOAuth2UserWithToken,
                 getFindUserStub: () => stubOne(User, {
                     oauth2Accounts: [],
-                    googleIntergrations: []
+                    profiles: [
+                        stubOne(Profile, {
+                            googleIntergrations: [],
+                            team: stubOne(Team)
+                        })
+                    ]
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
@@ -301,7 +319,12 @@ describe('TokenService', () => {
                 } as GoogleOAuth2UserWithToken,
                 getFindUserStub: () => stubOne(User, {
                     oauth2Accounts: [],
-                    googleIntergrations: []
+                    profiles: [
+                        stubOne(Profile, {
+                            googleIntergrations: [],
+                            team: stubOne(Team)
+                        })
+                    ]
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
@@ -336,12 +359,17 @@ describe('TokenService', () => {
                             oauth2Type: OAuth2Type.GOOGLE
                         }
                     ] as OAuth2Account[],
-                    googleIntergrations: [
-                        {
-                            id: 1,
-                            email: 'fakeEmail'
-                        }
-                    ] as GoogleIntegration[]
+                    profiles: [
+                        stubOne(Profile, {
+                            googleIntergrations: [
+                                {
+                                    id: 1,
+                                    email: 'fakeEmail'
+                                }
+                            ] as GoogleIntegration[],
+                            team: stubOne(Team)
+                        })
+                    ]
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
@@ -374,7 +402,13 @@ describe('TokenService', () => {
 
                 userServiceStub.findUserByEmail.resolves(userStub);
 
-                const createdUserStub = stubOne(User);
+                const createdUserStub = stubOne(User, {
+                    profiles: [
+                        stubOne(Profile, {
+                            team: stubOne(Team)
+                        })
+                    ]
+                });
                 _oauth2TokenServiceStub.signUpWithOAuth.resolves(createdUserStub);
 
                 const issuedTokenStub: CreateTokenResponseDto = {
@@ -427,10 +461,15 @@ describe('TokenService', () => {
 
             const oauth2AccountStubs = stub(OAuth2Account);
             const googleIntegrationStubs = stub(GoogleIntegration);
+            const profileStub = stubOne(Profile, {
+                googleIntergrations: googleIntegrationStubs
+            });
 
             userStub = stubOne(User, {
                 oauth2Accounts: oauth2AccountStubs,
-                googleIntergrations: googleIntegrationStubs
+                profiles: [
+                    profileStub
+                ]
             });
 
             userServiceStub.findUserByEmail.resolves(userStub);

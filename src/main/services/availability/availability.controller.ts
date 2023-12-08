@@ -19,7 +19,7 @@ import {
 import { Observable, from, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { Request, Response } from 'express';
-import { AuthUser } from '@decorators/auth-user.decorator';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
 import { Availability } from '@entity/availability/availability.entity';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
@@ -38,14 +38,14 @@ export class AvailabilityController {
     @Get()
     searchAvailabilities(
         @Query() availabilitySearchOption: AvailabilitySearchOption,
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string
+        @AuthProfile('teamId') teamId: number,
+        @AuthProfile('teamUUID') teamUUID: string
     ): Observable<GetAvailabilityResponseDto[]> {
         return this.availabilityService
             .search({
                 ...availabilitySearchOption,
-                userId,
-                userUUID
+                teamId,
+                teamUUID
             })
             .pipe(
                 map((loadedAvailabilities) =>
@@ -59,10 +59,10 @@ export class AvailabilityController {
     @Get(':availabilityId')
     fetchAvailabilityDetail(
         @Param('availabilityId', ParseIntPipe) availabilityId: number,
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string
+        @AuthProfile('teamId') teamId: number,
+        @AuthProfile('teamUUID') teamUUID: string
     ): Observable<GetAvailabilityResponseDto> {
-        return this.availabilityService.fetchDetail(userId, userUUID, availabilityId).pipe(
+        return this.availabilityService.fetchDetail(teamId, teamUUID, availabilityId).pipe(
             map((loadedAvailability) =>
                 plainToInstance(GetAvailabilityResponseDto, loadedAvailability, {
                     excludeExtraneousValues: true
@@ -73,11 +73,11 @@ export class AvailabilityController {
 
     @Post()
     create(
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string,
+        @AuthProfile('teamId') teamId: number,
+        @AuthProfile('teamUUID') teamUUID: string,
         @Body() createAvailabilityDto: CreateAvailabilityRequestDto
     ): Observable<CreateAvailabilityResponseDto> {
-        return from(this.availabilityService.create(userId, userUUID, createAvailabilityDto)).pipe(
+        return from(this.availabilityService.create(teamId, teamUUID, createAvailabilityDto)).pipe(
             map((loadedAvailability) =>
                 plainToInstance(CreateAvailabilityResponseDto, loadedAvailability, {
                     excludeExtraneousValues: true
@@ -89,71 +89,70 @@ export class AvailabilityController {
     @Put(':availabilityId')
     @HttpCode(HttpStatus.NO_CONTENT)
     update(
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string,
+        @AuthProfile('teamId') teamId: number,
+        @AuthProfile('teamUUID') teamUUID: string,
         @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @Body() updateAvailabilityDto: UpdateAvailabilityRequestDto
     ): Observable<boolean> {
         return from(
-            this.availabilityService.update(userId, userUUID, availabilityId, updateAvailabilityDto)
+            this.availabilityService.update(teamId, teamUUID, availabilityId, updateAvailabilityDto)
         );
     }
 
     @Patch()
     @HttpCode(HttpStatus.NO_CONTENT)
     patchAll(
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string,
+        @AuthProfile('uuid') teamUUID: string,
         @Body() patchAvailabilityDto: PatchAvailabilityRequestDto
     ): Observable<boolean> {
-        return from(this.availabilityService.patchAll(userId, userUUID, patchAvailabilityDto));
+        return from(this.availabilityService.patchAll(teamUUID, patchAvailabilityDto));
     }
 
     @Patch(':availabilityId')
     @HttpCode(HttpStatus.NO_CONTENT)
     patch(
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string,
+        @AuthProfile('teamId') teamId: number,
+        @AuthProfile('teamUUID') teamUUID: string,
         @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @Body() patchAvailabilityDto: PatchAvailabilityRequestDto
     ): Observable<boolean> {
         return from(
-            this.availabilityService.patch(userId, userUUID, availabilityId, patchAvailabilityDto)
+            this.availabilityService.patch(teamId, teamUUID, availabilityId, patchAvailabilityDto)
         );
     }
 
     @Delete(':availabilityId')
     @HttpCode(HttpStatus.NO_CONTENT)
     delete(
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string,
+        @AuthProfile('teamId') teamId: number,
+        @AuthProfile('teamUUID') teamUUID: string,
         @Param('availabilityId', ParseIntPipe) availabilityId: number
     ): Observable<boolean> {
-        return from(this.availabilityService.remove(availabilityId, userId, userUUID));
+        return from(this.availabilityService.remove(availabilityId, teamId, teamUUID));
     }
 
     clone(
         availabilityId: number,
-        userId: number,
-        userUUID: string,
+        teamId: number,
+        teamUUID: string,
         cloneAvailabilityOption: CloneAvailabilityRequestDto = {
             cloneSuffix: ' (cloned)'
         }
     ): Promise<Availability> {
         return this.availabilityService.clone(
             availabilityId,
-            userId,
-            userUUID,
+            teamId,
+            teamUUID,
             cloneAvailabilityOption
         );
     }
 
-    linkToEvents(userId: number, availabilityId: number, eventIds: number[]): Promise<boolean> {
-        return this.availabilityService.linkToEvents(userId, availabilityId, eventIds);
+    linkToEvents(teamId: number, availabilityId: number, eventIds: number[]): Promise<boolean> {
+        return this.availabilityService.linkToEvents(teamId, availabilityId, eventIds);
     }
 
-    unlinkToEvents(userId: number, availabilityId: number): Promise<boolean> {
-        return this.availabilityService.unlinkToEvents(userId, availabilityId);
+    unlinkToEvents(teamId: number, availabilityId: number): Promise<boolean> {
+        return this.availabilityService.unlinkToEvents(teamId, availabilityId);
     }
 
     /**
@@ -165,8 +164,8 @@ export class AvailabilityController {
     async others(
         @Req() req: Request,
         @Res() response: Response,
-        @AuthUser('id') userId: number,
-        @AuthUser('uuid') userUUID: string,
+        @AuthProfile('teamId') teamId: number,
+        @AuthProfile('teamUUID') teamUUID: string,
         @Body() requestBody?: CloneAvailabilityRequestDto,
         @Matrix({
             key: 'eventId',
@@ -189,22 +188,22 @@ export class AvailabilityController {
             case 'COPY':
                 responseBody = await this.clone(
                     parsedAvailabilityId,
-                    userId,
-                    userUUID,
+                    teamId,
+                    teamUUID,
                     requestBody
                 );
                 statusCode = HttpStatus.CREATED;
                 break;
             case 'LINK':
                 responseBody = await this.linkToEvents(
-                    userId,
+                    teamId,
                     parsedAvailabilityId,
                     eventIds as number[]
                 );
                 statusCode = HttpStatus.NO_CONTENT;
                 break;
             case 'UNLINK':
-                await this.unlinkToEvents(userId, parsedAvailabilityId);
+                await this.unlinkToEvents(teamId, parsedAvailabilityId);
                 statusCode = HttpStatus.NO_CONTENT;
                 break;
             default:

@@ -2,7 +2,6 @@ import { BadRequestException, Inject, Injectable, InternalServerErrorException, 
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { Observable, from } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
@@ -13,15 +12,20 @@ import { EventsRedisRepository } from '@services/events/events.redis-repository'
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
+import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
+import { CreatedUserAndTeam } from '@services/users/created-user-and-team.interface';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { EventGroup } from '@entity/events/evnet-group.entity';
+import { EventGroup } from '@entity/events/event-group.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
+import { Team } from '@entity/teams/team.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
@@ -32,7 +36,6 @@ import { VerificationService } from '../../auth/verification/verification.servic
 import { Language } from '../../enums/language.enum';
 import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
 import { PasswordMismatchException } from '@exceptions/auth/password-mismatch.exception';
-import { UserSettingService } from './user-setting/user-setting.service';
 import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
 
@@ -47,13 +50,14 @@ interface CreateUserOptions {
     emailVerification?: boolean;
     alreadySignedUpUserCheck?: boolean;
 }
+
 @Injectable()
 export class UserService {
     constructor(
         @InjectDataSource() private datasource: DataSource,
         @Inject(forwardRef(() => VerificationService))
         private readonly verificationService: VerificationService,
-        private readonly userSettingService: UserSettingService,
+        private readonly teamSettingService: TeamSettingService,
         private readonly syncdayRedisService: SyncdayRedisService,
         private readonly utilService: UtilService,
         private readonly notificationsService: NotificationsService,
@@ -61,21 +65,10 @@ export class UserService {
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly oauth2AccountService: OAuth2AccountsService,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
-        @InjectRepository(User) private readonly userRepository: Repository<User>
+        @InjectRepository(User) private readonly userRepository: Repository<User>,
+        @InjectRepository(Profile) private readonly profileRepository: Repository<Profile>,
+        @InjectRepository(Team) private readonly teamRepository: Repository<Team>
     ) {}
-
-    findUserByWorkspace(userWorkspace: string): Observable<User> {
-        return from(
-            this.userRepository.findOneOrFail({
-                where: {
-                    userSetting: {
-                        workspace: userWorkspace
-                    }
-                },
-                relations: ['userSetting']
-            })
-        );
-    }
 
     async findUserById(userId: number): Promise<User> {
         const loadedUser = await this.userRepository.findOneOrFail({
@@ -93,21 +86,34 @@ export class UserService {
     async findUserByEmail(email: string): Promise<User | null> {
         const loadedUser = await this.userRepository.findOne({
             relations: {
+                profiles: {
+                    googleIntergrations: true,
+                    zoomIntegrations: true,
+                    team: {
+                        teamSetting: true
+                    }
+                },
                 userSetting: true,
-                oauth2Accounts: true,
-                googleIntergrations: true,
-                zoomIntegrations: true
+                oauth2Accounts: true
             },
             select: {
                 id: true,
-                name: true,
                 uuid: true,
                 email: true,
-                profileImage: true,
-                hashedPassword: true
+                hashedPassword: true,
+                profiles: {
+                    id: true,
+                    name: true,
+                    team: {
+                        id: true
+                    }
+                }
             },
             where: {
-                email
+                email,
+                profiles: {
+                    default: true
+                }
             }
         });
 
@@ -143,34 +149,37 @@ export class UserService {
         const isCodeMatched =
             verificationOrNull !== null && verificationOrNull.verificationCode === verificationCode;
 
-        let createdUser = null;
-
-        if (isCodeMatched) {
-            await this.syncdayRedisService.setEmailVerificationStatus(
-                email,
-                verificationOrNull.uuid
-            );
-
-            const temporaryUser = await this.syncdayRedisService.getTemporaryUser(email);
-            const newUser = this.userRepository.create(temporaryUser);
-
-            const manager = this.userRepository.manager;
-
-            createdUser = await this._createUser(manager, newUser, temporaryUser.language, timezone, {
-                plainPassword: temporaryUser.plainPassword,
-                emailVerification: true
-            });
-
-            await this.userSettingService.createUserWorkspaceStatus(
-                manager,
-                createdUser.id,
-                createdUser.userSetting.workspace
-            );
-        } else {
+        if (!isCodeMatched) {
             throw new EmailVertificationFailException();
         }
 
-        await this.notificationsService.sendWelcomeEmailForNewUser(createdUser.name, createdUser.email, createdUser.userSetting.preferredLanguage);
+        await this.syncdayRedisService.setEmailVerificationStatus(
+            email,
+            verificationOrNull.uuid
+        );
+
+        const temporaryUser = await this.syncdayRedisService.getTemporaryUser(email);
+        const newUser = this.userRepository.create(temporaryUser);
+        const newProfile = this.profileRepository.create(temporaryUser);
+
+        const manager = this.userRepository.manager;
+
+        const {
+            createdUser,
+            createdProfile,
+            createdTeam
+        } = await this._createUser(manager, newUser, newProfile, temporaryUser.language, timezone, {
+            plainPassword: temporaryUser.plainPassword,
+            emailVerification: true
+        });
+
+        await this.teamSettingService.createTeamWorkspaceStatus(
+            manager,
+            createdUser.id,
+            createdTeam.teamSetting.workspace
+        );
+
+        await this.notificationsService.sendWelcomeEmailForNewUser(createdProfile.name, createdUser.email, createdUser.userSetting.preferredLanguage);
 
         return createdUser;
     }
@@ -178,6 +187,7 @@ export class UserService {
     async _createUser(
         manager: EntityManager,
         newUser: User,
+        newProfile: Profile,
         language: Language,
         timezone: string,
         { plainPassword, emailVerification, alreadySignedUpUserCheck }: CreateUserOptions = {
@@ -185,7 +195,7 @@ export class UserService {
             emailVerification: false,
             alreadySignedUpUserCheck: true
         }
-    ): Promise<User> {
+    ): Promise<CreatedUserAndTeam> {
         /**
          * TODO: it should be applied Criteria Pattern.
          */
@@ -205,23 +215,13 @@ export class UserService {
             }
         }
 
-        const createdUser = this.userRepository.create(newUser);
+        const _createdUser = this.userRepository.create(newUser);
+        const _createdProfile = this.profileRepository.create(newProfile);
+        const _createdTeam = this.teamRepository.create({
+            name: newProfile.name
+        });
 
-        const emailId = createdUser.email.replaceAll('.', '').split('@').shift();
-        const workspace = emailId || newUser.name;
-
-        const alreadyUsedIn = await this.userSettingService.fetchUserWorkspaceStatus(
-            workspace
-        );
-        const shouldAddRandomSuffix = alreadyUsedIn;
-
-        createdUser.userSetting = {
-            ...createdUser.userSetting,
-            workspace
-        } as UserSetting;
-
-        const defaultUserSetting = this.utilService.getUserDefaultSetting(createdUser, language, {
-            randomSuffix: shouldAddRandomSuffix,
+        const defaultUserSetting = this.utilService.getUserDefaultSetting(language, {
             timezone
         }) as UserSetting;
 
@@ -230,13 +230,45 @@ export class UserService {
         const hashedPassword = plainPassword && this.utilService.hash(plainPassword);
 
         const _userRepository = manager.getRepository(User);
+        const _profileRepository = manager.getRepository(Profile);
+        const _teamRepository = manager.getRepository(Team);
         const _availabilityRepository = manager.getRepository(Availability);
 
         const savedUser = await _userRepository.save<User>({
-            ...createdUser,
+            ..._createdUser,
             hashedPassword,
             userSetting
         } as User);
+
+        const savedProfile = await _profileRepository.save<Profile>({
+            ...newProfile,
+            userId: savedUser.id
+        } as Profile);
+
+        const savedTeam = await _teamRepository.save<Team>({
+            name: _createdProfile.name,
+            profiles: [_createdProfile]
+        } as Team);
+
+        const emailId = _createdUser.email.replaceAll('.', '').split('@').shift();
+        const workspace = emailId || newProfile.name;
+
+        const alreadyUsedIn = await this.teamSettingService.fetchTeamWorkspaceStatus(
+            workspace
+        );
+        const shouldAddRandomSuffix = alreadyUsedIn;
+
+        const defaultTeamWorkspace = this.utilService.getDefaultTeamWorkspace(
+            _createdTeam,
+            _createdUser,
+            _createdProfile,
+            {
+                randomSuffix: shouldAddRandomSuffix
+            }
+        );
+
+        const initialTeamSetting = new TeamSetting();
+        initialTeamSetting.workspace = defaultTeamWorkspace;
 
         const initialEventGroup = new EventGroup();
         const initialEvent = this.utilService.getDefaultEvent({
@@ -262,7 +294,7 @@ export class UserService {
         const initialAvailability = new Availability();
         initialAvailability.default = true;
         initialAvailability.name = this.utilService.getDefaultAvailabilityName(language);
-        initialAvailability.user = savedUser;
+        initialAvailability.team = savedTeam;
         initialAvailability.timezone = userSetting.preferredTimezone;
 
         const savedAvailability = await _availabilityRepository.save(initialAvailability);
@@ -274,7 +306,7 @@ export class UserService {
         initialEvent.availabilityId = savedAvailability.id;
 
         initialEventGroup.events = [initialEvent];
-        initialEventGroup.user = savedUser;
+        initialEventGroup.teamId = savedTeam.id;
 
         const eventGroupRepository = manager.getRepository(EventGroup);
 
@@ -291,7 +323,15 @@ export class UserService {
             initializedEventDetail.eventSetting
         );
 
-        return plainToInstance(User, savedUser);
+        const createdUser = plainToInstance(User, savedUser);
+        const createdProfile = plainToInstance(Profile, savedProfile);
+        const createdTeam = plainToInstance(Team, savedTeam);
+
+        return {
+            createdUser,
+            createdProfile,
+            createdTeam
+        };
     }
 
     async createUserByOAuth2(
@@ -307,26 +347,52 @@ export class UserService {
         },
         language: Language,
         integrationParams?: Partial<OAuth2MetaInfo>
-    ): Promise<User> {
+    ): Promise<CreatedUserAndTeam> {
 
-        const createdUser = await this.datasource.transaction(async (manager) => {
-            const newUser = createUserRequestDto as unknown as User;
-            newUser.profileImage = oauth2UserProfileImageUrl ?? null;
+        const createdUserAndTeam = await this.datasource.transaction(async (manager) => {
+            const newUser = {
+                email: createUserRequestDto.email,
+                timezone: createUserRequestDto.timezone
+            } as unknown as User;
+
+            const newProfile = {
+                name: createUserRequestDto.name,
+                image: oauth2UserProfileImageUrl ?? null
+            } as Profile;
+
+            const newTeam = {
+                name: createUserRequestDto.name
+            } as Team;
+
+            newUser.profiles = [newProfile];
 
             const timezone = createUserRequestDto.timezone;
 
-            const userSetting = this.utilService.getUserDefaultSetting(newUser, language, {
-                randomSuffix: false,
+            const userSetting = this.utilService.getUserDefaultSetting(language, {
                 timezone
             }) as UserSetting;
 
-            const _createdUser = await this._createUser(manager, newUser, language, timezone, {
+            const teamWorkspace = this.utilService.getDefaultTeamWorkspace(
+                newTeam,
+                newUser,
+                newProfile,
+                {
+                    randomSuffix: false
+                }
+            );
+            const newTeamSetting = {
+                workspace: teamWorkspace
+            } as TeamSetting;
+
+            const {
+                createdUser: _createdUser,
+                createdProfile: _createdProfile,
+                createdTeam: _createdTeam
+            } = await this._createUser(manager, newUser, newProfile, language, timezone, {
                 plainPassword: undefined,
                 alreadySignedUpUserCheck: false,
                 emailVerification: false
             });
-
-            _createdUser.patchPromotedPropertyFromUserSetting();
 
             const _newOAuth2Account: OAuth2Account = {
                 email: oauth2UserEmail,
@@ -352,26 +418,31 @@ export class UserService {
 
                 const _createdGoogleIntegration = await this.googleIntegrationService._create(
                     manager,
-                    _createdUser,
+                    _createdProfile,
+                    newTeamSetting,
                     userSetting,
                     oauth2Token,
                     googleCalendarIntegrations,
                     googleIntegrationBody,
                     options
                 );
-                _createdUser.googleIntergrations = [_createdGoogleIntegration];
+                _createdProfile.googleIntergrations = [_createdGoogleIntegration];
             }
 
-            await this.userSettingService.createUserWorkspaceStatus(
+            await this.teamSettingService.createTeamWorkspaceStatus(
                 manager,
                 _createdUser.id,
-                _createdUser.userSetting.workspace
+                _createdTeam.teamSetting.workspace
             );
 
-            return _createdUser;
+            return {
+                createdUser: _createdUser,
+                createdProfile: _createdProfile,
+                createdTeam: _createdTeam
+            } as CreatedUserAndTeam;
         });
 
-        return createdUser;
+        return createdUserAndTeam;
     }
 
     async patch(userId: number, partialUser: Partial<User>): Promise<boolean> {
@@ -389,7 +460,7 @@ export class UserService {
                 id: true,
                 uuid: true,
                 email: true,
-                profileImage: true,
+                // profileImage: true,
                 hashedPassword: true
             },
             where: {
@@ -449,23 +520,41 @@ export class UserService {
 
         const user = await this.userRepository.findOneOrFail({
             where: {
-                id: userId
+                id: userId,
+                profiles: {
+                    default: true
+                }
             },
             relations: {
                 userSetting: true,
-                eventGroup: {
-                    events: {
-                        eventDetail: {
-                            schedules: true
-                        }
-                    }
-                },
-                availabilities: true,
-                googleIntergrations: true
+                profiles: {
+                    team: {
+                        availabilities: true,
+                        eventGroup: {
+                            events: {
+                                eventDetail: {
+                                    schedules: true
+                                }
+                            }
+                        },
+                        teamSetting: true
+                    },
+                    googleIntergrations: true
+                }
             }
         });
 
-        const { eventGroup: eventGroups, userSetting, availabilities, googleIntergrations } = user;
+        const {
+            profiles,
+            userSetting
+        } = user;
+        const defaultProfile = profiles[0];
+        const { googleIntergrations, team } = defaultProfile;
+        const {
+            eventGroup: eventGroups,
+            availabilities,
+            teamSetting
+        } = team;
 
         const eventGroup = eventGroups.pop() as EventGroup ;
 
@@ -516,7 +605,7 @@ export class UserService {
         // TODO: Transaction processing is required for event processing.
         await this.availabilityRedisRepository.deleteAll(user.uuid, availabilityUUIDs);
         await this.eventRedisRepository.removeEventDetails(eventDetailUUIDs);
-        await this.syncdayRedisService.deleteWorkspaceStatus(userSetting.workspace);
+        await this.syncdayRedisService.deleteWorkspaceStatus(teamSetting.workspace);
 
         return deleteSuccess;
     }

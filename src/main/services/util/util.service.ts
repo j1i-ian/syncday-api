@@ -31,11 +31,12 @@ import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-no
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { Host } from '@entity/schedules/host.entity';
+import { Team } from '@entity/teams/team.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 
 interface UserDefaultSettingOption {
-    randomSuffix: boolean;
     timezone?: string;
 }
 
@@ -319,6 +320,7 @@ export class UtilService {
 
     getPatchedScheduledEvent(
         host: User,
+        hostProfile: Profile,
         sourceEvent: Event,
         newSchedule: Schedule,
         workspace: string,
@@ -338,8 +340,8 @@ export class UtilService {
         newSchedule.conferenceLinks = [];
 
         newSchedule.host = {
-            uuid: host.uuid,
-            name: host.name,
+            uuid: hostProfile.uuid,
+            name: hostProfile.name,
             workspace,
             timezone
         } as Host;
@@ -470,22 +472,44 @@ export class UtilService {
     }
 
     getUserDefaultSetting(
-        user: Partial<User>,
         language: Language,
-        { randomSuffix, timezone }: UserDefaultSettingOption = {
-            randomSuffix: false,
+        { timezone }: UserDefaultSettingOption = {
             timezone: undefined
         }
     ): Partial<UserSetting> {
-        let workspaceName: string | undefined = user.userSetting?.workspace;
+
+        const { dateTimeFormatOption, dateTimeOrderFormat } = this.getDefaultDateTimeFormat(
+            language,
+            timezone as string
+        );
+
+        return {
+            preferredLanguage: language,
+            preferredTimezone: timezone,
+            preferredDateTimeOrderFormat: dateTimeOrderFormat,
+            preferredDateTimeFormat: dateTimeFormatOption
+        };
+    }
+
+    getDefaultTeamWorkspace(
+        team: Partial<Team>,
+        user: Partial<User>,
+        profile: Partial<Profile>,
+        {
+            randomSuffix
+        } = {
+            randomSuffix: false
+        }
+    ): string {
+        let workspaceName: string | undefined = team.teamSetting?.workspace;
 
         if (!workspaceName) {
             if (user.email) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 const extractedWorkspaceNameFromEmail = user.email.split('@')[0];
                 workspaceName = extractedWorkspaceNameFromEmail;
-            } else if (user.name) {
-                workspaceName = user.name;
+            } else if (profile.name) {
+                workspaceName = profile.name;
             } else {
                 workspaceName = this.generateUUID();
             }
@@ -496,18 +520,7 @@ export class UtilService {
             workspaceName += randomNumberString;
         }
 
-        const { dateTimeFormatOption, dateTimeOrderFormat } = this.getDefaultDateTimeFormat(
-            language,
-            timezone as string
-        );
-
-        return {
-            workspace: workspaceName,
-            preferredLanguage: language,
-            preferredTimezone: timezone,
-            preferredDateTimeOrderFormat: dateTimeOrderFormat,
-            preferredDateTimeFormat: dateTimeFormatOption
-        };
+        return workspaceName;
     }
 
     getDefaultDateTimeFormat(language: Language, timezone: string): DefaultDateTimeFormat {

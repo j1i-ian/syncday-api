@@ -6,7 +6,7 @@ import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-pro
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { Integration } from '@entity/integrations/integration.entity';
-import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 
 @Injectable()
@@ -34,7 +34,7 @@ export class KakaotalkIntegrationsService implements IntegrationsFactory {
         throw new Error('Method not implemented.');
     }
 
-    create(user: User, oauthToken: OAuthToken, oauth2UserProfile: OAuth2UserProfile): Promise<Integration> {
+    create(profile: Profile, oauthToken: OAuthToken, oauth2UserProfile: OAuth2UserProfile): Promise<Integration> {
         throw new Error('Method not implemented.');
     }
 

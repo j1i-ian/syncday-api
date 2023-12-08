@@ -1,10 +1,10 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { Observable, from, map, mergeAll, mergeMap, toArray } from 'rxjs';
-import { AuthUser } from '@decorators/auth-user.decorator';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { IntegrationSubject } from '@interfaces/integrations/integration-subject.enum';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { Integration } from '@entity/integrations/integration.entity';
-import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { ValidateQueryParamPipe } from '@app/pipes/validate-query-param/validate-query-param.pipe';
 
 @Controller()
@@ -16,7 +16,7 @@ export class IntegrationsController {
 
     @Get()
     fetchAllIntegrations(
-        @AuthUser() user: User,
+        @AuthProfile() authProfile: Profile,
         @Query('subject', ValidateQueryParamPipe) integrationSubject: IntegrationSubject,
         @Query('withCalendarIntegrations') withCalendarIntegrations: string | boolean
     ): Observable<Integration[]> {
@@ -30,8 +30,8 @@ export class IntegrationsController {
                 .pipe(
                     mergeMap(
                         (calendarSubjectIntegrationFactory) => calendarSubjectIntegrationFactory.search({
-                            userId: user.id,
-                            userUUID: user.uuid,
+                            profileId: authProfile.id,
+                            profileUUID: authProfile.uuid,
                             withCalendarIntegrations: ensuredWithCalendarIntegrations
                         })
                     ),

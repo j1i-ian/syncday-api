@@ -12,9 +12,9 @@ import { IntegrationSchedulesService } from '@core/interfaces/integrations/integ
 import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
 import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
 import { AppConfigService } from '@config/app-config.service';
-import { SearchByUserOption } from '@interfaces/search-by-user-option.interface';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
@@ -26,10 +26,11 @@ import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/
 import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { Host } from '@entity/schedules/host.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
@@ -62,20 +63,20 @@ export class GoogleIntegrationsService implements
     }
 
     count({
-        userId
+        profileId
     }: IntegrationSearchOption): Promise<number> {
         return this.googleIntegrationRepository.countBy({
-            users: {
-                id: userId
+            profiles: {
+                id: profileId
             }
         });
     }
 
-    findOne(userSearchOption: SearchByUserOption): Promise<Integration | null> {
+    findOne(profileSearchOption: SearchByProfileOption): Promise<Integration | null> {
         return this.googleIntegrationRepository.findOne({
             where: {
-                users: {
-                    id: userSearchOption.userId
+                profiles: {
+                    id: profileSearchOption.profileId
                 }
             }
         });
@@ -106,7 +107,7 @@ export class GoogleIntegrationsService implements
     }
 
     async search({
-        userId,
+        profileId,
         withCalendarIntegrations
     }: IntegrationSearchOption): Promise<Integration[]> {
 
@@ -115,8 +116,8 @@ export class GoogleIntegrationsService implements
         const googleIntegrations = await this.googleIntegrationRepository.find({
             relations,
             where: {
-                users: {
-                    id: userId
+                profiles: {
+                    id: profileId
                 }
             }
         });
@@ -133,7 +134,8 @@ export class GoogleIntegrationsService implements
      * @returns
      */
     async create(
-        user: User,
+        profile: Profile,
+        teamSetting: TeamSetting,
         userSetting: UserSetting,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
@@ -144,7 +146,8 @@ export class GoogleIntegrationsService implements
     ): Promise<GoogleIntegration> {
         return this._create(
             this.googleIntegrationRepository.manager,
-            user,
+            profile,
+            teamSetting,
             userSetting,
             googleAuthToken,
             googleCalendarIntegrations,
@@ -155,7 +158,8 @@ export class GoogleIntegrationsService implements
 
     async _create(
         manager: EntityManager,
-        user: User,
+        profile: Profile,
+        teamSetting: TeamSetting,
         userSetting: UserSetting,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
@@ -166,7 +170,8 @@ export class GoogleIntegrationsService implements
             isFirstIntegration: true
         } as CalendarCreateOption
     ): Promise<GoogleIntegration> {
-        const { workspace, preferredTimezone: timezone } = userSetting;
+        const { workspace } = teamSetting;
+        const { preferredTimezone: timezone } = userSetting;
 
         const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
 
@@ -176,7 +181,6 @@ export class GoogleIntegrationsService implements
             accessToken: googleAuthToken.accessToken,
             refreshToken: googleAuthToken.refreshToken,
             email: googleIntegrationBody.googleUserEmail,
-            users: [user],
             googleCalendarIntegrations: googleCalendarIntegrations.map((calendar) => {
 
                 let calendarSetting = {
@@ -196,9 +200,10 @@ export class GoogleIntegrationsService implements
                 }
 
                 calendar.setting = calendarSetting;
-                calendar.users = [{ id: user.id }] as User[];
+                // calendar.users = [{ id: user.id }] as User[];
                 return plainToInstance(GoogleCalendarIntegration, calendar);
-            })
+            }),
+            profiles: [{ id: profile.id }]
         } as GoogleIntegration;
         const createdGoogleIntegration = await _googleIntegrationRepository.save(newGoogleIngration);
 
@@ -226,8 +231,8 @@ export class GoogleIntegrationsService implements
                 );
 
                 _googleIntegrationSchedule.host = {
-                    uuid: user.uuid,
-                    name: user.name,
+                    uuid: profile.uuid,
+                    name: profile.name,
                     workspace,
                     timezone
                 } as Host;
@@ -278,7 +283,7 @@ export class GoogleIntegrationsService implements
     async _remove(
         manager: EntityManager,
         googleIntegrationId: number,
-        userId: number
+        profileId: number
     ): Promise<boolean> {
 
         const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
@@ -289,8 +294,8 @@ export class GoogleIntegrationsService implements
             },
             where: {
                 id: googleIntegrationId,
-                users: {
-                    id: userId
+                profiles: {
+                    id: profileId
                 }
             }
         });

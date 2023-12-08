@@ -14,7 +14,7 @@ export class EventDetailsService {
 
     async patch(
         eventDetailId: number,
-        userId: number,
+        teamId: number,
         updateEventDetail: Partial<EventDetail>
     ): Promise<boolean> {
 
@@ -26,7 +26,7 @@ export class EventDetailsService {
                     id: eventDetailId,
                     event: {
                         availability: {
-                            userId
+                            teamId
                         }
                     }
                 }

@@ -11,6 +11,9 @@ import { NotificationsService } from '@services/notifications/notifications.serv
 import { User } from '@entity/users/user.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { Team } from '@entity/teams/team.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Language } from '@app/enums/language.enum';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleOAuth2TokenService } from './google-oauth2-token.service';
@@ -121,6 +124,8 @@ describe('GoogleOAuth2TokenService', () => {
         const oauth2UserProfileMock = testMockUtil.getGoogleOAuth2UserWithToken();
 
         let signedUpUserStub: User;
+        let signedUpProfileStub: Profile;
+        let signedUpTeamStub: Team;
 
         beforeEach(() => {
 
@@ -128,12 +133,18 @@ describe('GoogleOAuth2TokenService', () => {
             signedUpUserStub = stubOne(User, {
                 userSetting: userSettingStub
             });
+            signedUpProfileStub = stubOne(Profile);
+            signedUpTeamStub = stubOne(Team);
 
             const googleCalendarIntegrationStubs = stub(GoogleCalendarIntegration);
 
             googleConverterServiceStub.convertToGoogleCalendarIntegration.returns(googleCalendarIntegrationStubs);
 
-            userServiceStub.createUserByOAuth2.resolves(signedUpUserStub);
+            userServiceStub.createUserByOAuth2.resolves({
+                createdUser: signedUpUserStub,
+                createdProfile: signedUpProfileStub,
+                createdTeam: signedUpTeamStub
+            });
         });
 
         afterEach(() => {
@@ -194,10 +205,14 @@ describe('GoogleOAuth2TokenService', () => {
 
             const oauth2UserProfileMock = testMockUtil.getGoogleOAuth2UserWithToken();
             const userMock = stubOne(User);
+            const profileMock = stubOne(Profile);
+            const teamSettingMock = stubOne(TeamSetting);
 
             await service.integrate(
                 oauth2UserProfileMock,
-                userMock
+                userMock,
+                profileMock,
+                teamSettingMock
             );
 
             expect(integrationsValidatorStub.validateMaxAddLimit.called).true;

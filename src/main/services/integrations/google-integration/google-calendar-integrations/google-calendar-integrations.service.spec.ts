@@ -18,6 +18,9 @@ import { GoogleIntegration } from '@entity/integrations/google/google-integratio
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { Team } from '@entity/teams/team.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleCalendarIntegrationsService } from './google-calendar-integrations.service';
@@ -163,11 +166,19 @@ describe('GoogleCalendarIntegrationsService', () => {
 
         it('should be searched for calendar items', async () => {
             const userSettingStub = stubOne(UserSetting);
+            const teamSettingStub = stubOne(TeamSetting);
             const userStub = stubOne(User, {
                 userSetting: userSettingStub
             });
+            const teamStub = stubOne(Team, {
+                teamSetting: teamSettingStub
+            });
+            const profileStub = stubOne(Profile, {
+                user: userStub,
+                team: teamStub
+            });
             const googleIntegrationStub = stubOne(GoogleIntegration, {
-                users: [userStub]
+                profiles: [profileStub]
             });
 
             const googleCalendarIntegrationStub = stubOne(GoogleCalendarIntegration, {
@@ -207,7 +218,8 @@ describe('GoogleCalendarIntegrationsService', () => {
                 description: 'should be synchronized for calendar items searching',
                 managerDummy: datasourceMock as EntityManager,
                 googleCalendarIntegrationDummy: stubOne(GoogleCalendarIntegration),
-                userDummy: stubOne(User),
+                profileDummy: stubOne(Profile),
+                teamSettingDummy: stubOne(TeamSetting),
                 userSettingDummy: stubOne(UserSetting),
                 refrashTokenAndGoogleOAuthClientDummy: {
                     userRefreshToken: 'dummyToken',
@@ -223,7 +235,8 @@ describe('GoogleCalendarIntegrationsService', () => {
                 description: 'synchronization should occur for searching calendar items, but scheduled event notifications should not be deleted and cancel messages sent when there is no target schedule to delete',
                 managerDummy: datasourceMock as EntityManager,
                 googleCalendarIntegrationDummy: stubOne(GoogleCalendarIntegration),
-                userDummy: stubOne(User),
+                profileDummy: stubOne(Profile),
+                teamSettingDummy: stubOne(TeamSetting),
                 userSettingDummy: stubOne(UserSetting),
                 refrashTokenAndGoogleOAuthClientDummy: {
                     userRefreshToken: 'dummyToken',
@@ -237,7 +250,8 @@ describe('GoogleCalendarIntegrationsService', () => {
             description,
             managerDummy,
             googleCalendarIntegrationDummy,
-            userDummy,
+            profileDummy,
+            teamSettingDummy,
             userSettingDummy,
             refrashTokenAndGoogleOAuthClientDummy,
             googleScheduleStubValue,
@@ -263,7 +277,8 @@ describe('GoogleCalendarIntegrationsService', () => {
                 await service._synchronizeWithGoogleCalendarEvents(
                     managerDummy,
                     googleCalendarIntegrationDummy,
-                    userDummy,
+                    profileDummy,
+                    teamSettingDummy,
                     userSettingDummy,
                     refrashTokenAndGoogleOAuthClientDummy
                 );
@@ -285,14 +300,14 @@ describe('GoogleCalendarIntegrationsService', () => {
         });
 
         it('should be searched for calendar items', async () => {
-            const userStub = stubOne(User);
+            const profileStub = stubOne(Profile);
             const calendarStubs = stub(GoogleCalendarIntegration);
 
             googleCalendarIntegrationRepositoryStub.find.resolves(calendarStubs as any);
 
             const calendars = await firstValueFrom(
                 service.search({
-                    userId: userStub.id
+                    profileId: profileStub.id
                 })
             );
 
@@ -318,8 +333,16 @@ describe('GoogleCalendarIntegrationsService', () => {
                 const userStub = stubOne(User, {
                     userSetting: userSettingStub
                 });
+                const teamSettingStub = stubOne(TeamSetting);
+                const teamStub = stubOne(Team, {
+                    teamSetting: teamSettingStub
+                });
+                const profileStub = stubOne(Profile, {
+                    team: teamStub,
+                    user: userStub
+                });
                 const googleIntegrationStub = stubOne(GoogleIntegration, {
-                    users: [userStub]
+                    profiles: [profileStub]
                 });
 
                 const calendarStubs = stub(GoogleCalendarIntegration, 5, {
@@ -349,7 +372,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                 const synchronizeWithGoogleCalendarEventsStub = serviceSandbox.stub(service, '_synchronizeWithGoogleCalendarEvents');
                 const resubscriptionCalendarStub = serviceSandbox.stub(service, 'resubscriptionCalendar');
 
-                const patchSuccess = await service.patchAll(userStub.id, [googleCalendarIntegrationsMock]);
+                const patchSuccess = await service.patchAll(profileStub.id, [googleCalendarIntegrationsMock]);
 
                 expect(patchSuccess).true;
                 expect(googleCalendarIntegrationRepositoryStub.find.called).true;
@@ -366,8 +389,16 @@ describe('GoogleCalendarIntegrationsService', () => {
                 const userStub = stubOne(User, {
                     userSetting: userSettingStub
                 });
+                const teamSettingStub = stubOne(TeamSetting);
+                const teamStub = stubOne(Team, {
+                    teamSetting: teamSettingStub
+                });
+                const profileStub = stubOne(Profile, {
+                    user: userStub,
+                    team: teamStub
+                });
                 const googleIntegrationStub = stubOne(GoogleIntegration, {
-                    users: [userStub]
+                    profiles: [profileStub]
                 });
                 const calendarStubs = stub(GoogleCalendarIntegration, 1, {
                     setting: {

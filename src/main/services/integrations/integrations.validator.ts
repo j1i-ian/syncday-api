@@ -9,7 +9,7 @@ export class IntegrationsValidator {
 
     async validateMaxAddLimit(
         integrationsServiceLocator: IntegrationsServiceLocator,
-        userId: number
+        profileId: number
     ): Promise<void> {
 
         const calendarSubjectIntegrationFactories = integrationsServiceLocator.getAllCalendarSubjectIntegrationFactories();
@@ -17,7 +17,7 @@ export class IntegrationsValidator {
         const allCountedCalendarSubjectIntegrations = await firstValueFrom(
             from(calendarSubjectIntegrationFactories)
                 .pipe(
-                    mergeMap((integration) => from(integration.count({ userId }))),
+                    mergeMap((integration) => from(integration.count({ profileId }))),
                     reduce(
                         (acc, curr) => acc + curr,
                         0
@@ -38,7 +38,7 @@ export class IntegrationsValidator {
 
     async hasOutboundCalendar(
         integrationsServiceLocator: IntegrationsServiceLocator,
-        userId: number
+        profileId: number
     ): Promise<boolean> {
 
         const calendarSubjectIntegrationFactories = integrationsServiceLocator.getAllCalendarSubjectIntegrationFactories();
@@ -48,7 +48,7 @@ export class IntegrationsValidator {
                 .pipe(
                     map((integrationFactory) => integrationFactory.getCalendarIntegrationsService()),
                     mergeMap((calendarIntegrationService) => from(calendarIntegrationService.findOne({
-                        userId,
+                        profileId,
                         outboundWriteSync: true
                     }))),
                     map((outboundCalendarIntegration) => !!outboundCalendarIntegration),

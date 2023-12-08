@@ -1,9 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
-import { firstValueFrom } from 'rxjs';
+import { Repository } from 'typeorm';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { TestMockUtil } from '@test/test-mock-util';
 import { UserSettingService } from './user-setting.service';
@@ -58,33 +56,6 @@ describe('UserSettingService', () => {
             userSettingRepositoryStub.update.reset();
         });
 
-        [
-            {
-                description: 'should be searched workspace when workspace is actually exist',
-                expectedLength: 1
-            },
-            {
-                description: 'should be searched workspace when workspace is actually exist',
-                expectedLength: 0
-            }
-        ].forEach(({ description, expectedLength }) => {
-            it(description, async () => {
-                const userSettingListStub = stub(UserSetting, expectedLength);
-                const workspaceMock = 'fakeWorkspace';
-
-                userSettingRepositoryStub.findBy.resolves(userSettingListStub);
-
-                const searchedUserSettings = await firstValueFrom(
-                    service.searchUserSettings({
-                        workspace: workspaceMock
-                    })
-                );
-
-                expect(searchedUserSettings).ok;
-                expect(searchedUserSettings.length).equals(expectedLength);
-            });
-        });
-
         it('should be fetched user setting by user id', async () => {
             const userSettingStub = stubOne(UserSetting);
 
@@ -104,53 +75,6 @@ describe('UserSettingService', () => {
             await service.patchUserSettingByUserId(userSettingMock.userId, userSettingMock);
 
             expect(userSettingRepositoryStub.update.called).true;
-        });
-    });
-
-    describe('Test getting user workspace status', () => {
-        afterEach(() => {
-            syncdayRedisServiceStub.getWorkspaceStatus.reset();
-            syncdayRedisServiceStub.setWorkspaceStatus.reset();
-        });
-
-        it('should be got status of user workspace', async () => {
-            const workspaceMock = 'mysyncdayworkspace';
-            syncdayRedisServiceStub.getWorkspaceStatus.resolves(true);
-            const result = await service.fetchUserWorkspaceStatus(workspaceMock);
-
-            expect(syncdayRedisServiceStub.getWorkspaceStatus.called).true;
-
-            expect(result).true;
-        });
-
-        it('should be not set status when user workspace is already assigned', async () => {
-            const userIdMock = 123;
-            const workspaceMock = 'mysyncdayworkspace';
-
-            syncdayRedisServiceStub.getWorkspaceStatus.resolves(true);
-
-            await expect(service.createUserWorkspaceStatus(datasourceMock as EntityManager, userIdMock, workspaceMock)).rejectedWith(AlreadyUsedInWorkspace);
-        });
-
-        it('should be set status of user workspace', async () => {
-            const userIdMock = 123;
-            const workspaceMock = 'mysyncdayworkspace';
-            const userSettingStub = stubOne(UserSetting);
-
-            syncdayRedisServiceStub.getWorkspaceStatus.resolves(false);
-
-            userSettingRepositoryStub.findOneByOrFail.resolves(userSettingStub);
-
-            syncdayRedisServiceStub.setWorkspaceStatus.resolves(true);
-
-            const result = await service.createUserWorkspaceStatus(datasourceMock as EntityManager, userIdMock, workspaceMock);
-
-            expect(syncdayRedisServiceStub.deleteWorkspaceStatus.called).true;
-            expect(userSettingRepositoryStub.update.called).true;
-
-            expect(syncdayRedisServiceStub.setWorkspaceStatus.called).true;
-
-            expect(result).true;
         });
     });
 });

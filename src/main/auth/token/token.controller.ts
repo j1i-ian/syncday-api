@@ -3,11 +3,12 @@ import { Body, Controller, Get, Param, ParseEnumPipe, Post, Put, Query, Req, Res
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AppConfigService } from '@config/app-config.service';
-import { AuthUser } from '@decorators/auth-user.decorator';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { User } from '@entity/users/user.entity';
+import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
+import { Profile } from '@entity/profiles/profile.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { Language } from '@app/enums/language.enum';
 import { Public } from '../strategy/jwt/public.decorator';
@@ -56,8 +57,18 @@ export class TokenController {
     @Post()
     @Public()
     @UseGuards(LocalAuthGuard)
-    issueTokenByEmail(@AuthUser() user: User): CreateTokenResponseDto {
-        return this.tokenService.issueToken(user);
+    issueTokenByEmail(@AuthProfile() appJwtPayload: AppJwtPayload): CreateTokenResponseDto {
+        return this.tokenService.issueToken(
+            appJwtPayload as unknown as Profile,
+            {
+                id: appJwtPayload.userId,
+                email: appJwtPayload.email
+            },
+            {
+                id: appJwtPayload.teamId,
+                uuid: appJwtPayload.teamUUID
+            }
+        );
     }
 
     @Put()

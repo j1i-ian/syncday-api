@@ -5,9 +5,10 @@ import { JwtService } from '@nestjs/jwt';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ZoomIntegrationsService } from '@services/integrations/zoom-integrations/zoom-integrations.service';
 import { ZoomConferenceLinkIntegrationsService } from '@services/integrations/zoom-integrations/zoom-conference-link-integrations/zoom-conference-link-integrations.service';
-import { User } from '@entity/users/user.entity';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Event } from '@entity/events/event.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { Team } from '@entity/teams/team.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 
 describe('ZoomIntegrationsService', () => {
@@ -79,13 +80,13 @@ describe('ZoomIntegrationsService', () => {
 
     it('should be searched for zoom integrations', async () => {
 
-        const userIdMock = stubOne(User).id;
+        const profileIdMock = stubOne(Profile).id;
         const zoomIntegrations = stub(ZoomIntegration);
 
         zoomIntegrationRepositoryStub.find.resolves(zoomIntegrations);
 
         const searchedZoomIntegrations = await service.search({
-            userId: userIdMock
+            profileId: profileIdMock
         });
 
         expect(searchedZoomIntegrations).ok;
@@ -111,10 +112,10 @@ describe('ZoomIntegrationsService', () => {
 
         it('should be counted integration length by condition', async () => {
 
-            const userIdMock = stubOne(User).id;
+            const profileIdMock = stubOne(Profile).id;
 
             const counted = await service.count({
-                userId: userIdMock
+                profileId: profileIdMock
             });
 
             expect(counted).greaterThan(0);
@@ -124,13 +125,13 @@ describe('ZoomIntegrationsService', () => {
 
     it('should be got zoom integration with findOne', async () => {
 
-        const userMock = stubOne(User);
+        const profileIdMock = stubOne(Profile).id;
         const zoomIntegrationStub = stubOne(ZoomIntegration);
 
         zoomIntegrationRepositoryStub.findOne.resolves(zoomIntegrationStub);
 
         const loadedZoomIntegration: ZoomIntegration = await service.findOne({
-            userId: userMock.id
+            profileId: profileIdMock
         }) as ZoomIntegration;
 
         expect(loadedZoomIntegration).ok;
@@ -140,7 +141,8 @@ describe('ZoomIntegrationsService', () => {
 
     it('should be removed zoom integration with disabling related events', async () => {
 
-        const userMock = stubOne(User);
+        const profileMock = stubOne(Profile);
+        const teamMock = stubOne(Team);
         const zoomIntegrationStub = stubOne(ZoomIntegration);
         const zoomIntegrationDeleteResultStub = TestMockUtil.getTypeormDeleteResultMock();
         const eventUpdateResultStub = TestMockUtil.getTypeormUpdateResultMock();
@@ -153,7 +155,8 @@ describe('ZoomIntegrationsService', () => {
 
         const deleteSuccess: boolean = await service.remove(
             zoomIntegrationStub.id,
-            userMock.id
+            profileMock.id,
+            teamMock.id
         );
 
         expect(zoomIntegrationRepositoryStub.findOneOrFail.called).true;

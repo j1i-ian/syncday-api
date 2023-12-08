@@ -70,7 +70,7 @@ describe('Schedule Integration Test', () => {
 
             fakeHostUser = await userService.findUserByEmail(newFakeHostUser.email) as User;
 
-            hostWorkspace = fakeHostUser.workspace as string;
+            hostWorkspace = fakeHostUser.profiles[0].team.workspace as string;
 
             // fetch host events
             const hostEventDtoArray = await firstValueFrom(bookingsController.fetchHostEvents(hostWorkspace));
@@ -107,8 +107,9 @@ describe('Schedule Integration Test', () => {
                 const _bookingEndTime = new Date(nextWorkingDate);
                 _bookingEndTime.setMinutes(10, 0, 0);
 
+                const workspace = fakeHostUser.profiles[0].team.workspace;
                 const scheduledEventResponseDto = await testIntegrationUtil.createSchedule(
-                    fakeHostUser.workspace as string,
+                    workspace as string,
                     fakeHostEvent as HostEvent,
                     _bookingStartTime,
                     _bookingEndTime
@@ -130,7 +131,7 @@ describe('Schedule Integration Test', () => {
 
                 // set up event location to Zoom
                 const events = await firstValueFrom(eventsService.search({
-                    userId: fakeHostUser.id
+                    teamId: fakeHostUser.profiles[0].teamId
                 }));
 
                 fakeHostEvent = events[0];
@@ -176,8 +177,9 @@ describe('Schedule Integration Test', () => {
                 const afterBufferTime = new Date(bookingEndTime);
                 afterBufferTime.setMinutes(afterBufferTime.getMinutes() + 15);
 
+                const workspace = fakeHostUser.profiles[0].team.workspace;
                 await expect(testIntegrationUtil.createSchedule(
-                    fakeHostUser.workspace as string,
+                    workspace as string,
                     fakeHostEvent as HostEvent,
                     bookingStartTime,
                     bookingEndTime,
@@ -194,8 +196,9 @@ describe('Schedule Integration Test', () => {
                 const bookingEndTime = new Date(nextWorkingDate);
                 bookingEndTime.setHours(1, 0);
 
+                const workspace = fakeHostUser.profiles[0].team.workspace;
                 const scheduledEventResponseDto = await testIntegrationUtil.createSchedule(
-                    fakeHostUser.workspace as string,
+                    workspace as string,
                     fakeHostEvent as HostEvent,
                     bookingStartTime,
                     bookingEndTime
@@ -219,8 +222,9 @@ describe('Schedule Integration Test', () => {
                 const someonesBookingBufferEndTime = new Date(someonesBookingEndTime);
                 someonesBookingBufferEndTime.setMinutes(someonesBookingBufferEndTime.getMinutes() + 15);
 
+                const workspace = fakeHostUser.profiles[0].team.workspace;
                 await testIntegrationUtil.createSchedule(
-                    fakeHostUser.workspace as string,
+                    workspace as string,
                     fakeHostEvent as HostEvent,
                     someonesBookingStartTime,
                     someonesBookingEndTime,
@@ -240,7 +244,7 @@ describe('Schedule Integration Test', () => {
                 inviteeBookingBufferEndTime.setMinutes(inviteeBookingBufferEndTime.getMinutes() + 15);
 
                 await expect(testIntegrationUtil.createSchedule(
-                    fakeHostUser.workspace as string,
+                    workspace as string,
                     fakeHostEvent as HostEvent,
                     inviteeBookingStartTime,
                     inviteeBookingEndTime,
@@ -263,8 +267,9 @@ describe('Schedule Integration Test', () => {
                 const someonesBookingBufferEndTime = new Date(someonesBookingEndTime);
                 someonesBookingBufferEndTime.setMinutes(someonesBookingBufferEndTime.getMinutes() + 15);
 
+                const workspace = fakeHostUser.profiles[0].team.workspace;
                 await testIntegrationUtil.createSchedule(
-                    fakeHostUser.workspace as string,
+                    workspace as string,
                     fakeHostEvent as HostEvent,
                     someonesBookingStartTime,
                     someonesBookingEndTime,
@@ -284,7 +289,7 @@ describe('Schedule Integration Test', () => {
                 inviteeBookingBufferEndTime.setMinutes(inviteeBookingBufferEndTime.getMinutes() + 15);
 
                 const createdSecondScheduledEvent =await testIntegrationUtil.createSchedule(
-                    fakeHostUser.workspace as string,
+                    workspace as string,
                     fakeHostEvent as HostEvent,
                     inviteeBookingStartTime,
                     inviteeBookingEndTime,
@@ -384,12 +389,14 @@ describe('Schedule Integration Test', () => {
 
                         await integrateVendor(fakeHostUser);
 
-                        hostWorkspace = fakeHostUser.workspace as string;
+                        const profile = fakeHostUser.profiles[0];
+                        const workspace = profile.team.workspace;
+                        hostWorkspace = workspace as string;
 
                         // set up Calendar Outbound setting
                         const _withCalendarIntegrations = true;
                         const loadedIntegrations = await firstValueFrom(integrationsController.fetchAllIntegrations(
-                            fakeHostUser,
+                            profile,
                             IntegrationSubject.CALENDAR,
                             _withCalendarIntegrations
                         )) as Array<Integration & { calendarIntegrations: CalendarIntegration[] }>;
@@ -471,9 +478,10 @@ describe('Schedule Integration Test', () => {
 
                                 testIntegrationUtil.setZoomMeeting();
 
+                                const team = fakeHostUser.profiles[0].team;
                                 // set up event location to Zoom
                                 const events = await firstValueFrom(eventsService.search({
-                                    userId: fakeHostUser.id
+                                    teamId: team.id
                                 }));
 
                                 fakeHostEvent = events[0];
@@ -513,16 +521,18 @@ describe('Schedule Integration Test', () => {
 
                                 // set up event location to Zoom
                                 const events = await firstValueFrom(eventsService.search({
-                                    userId: fakeHostUser.id
+                                    teamId: fakeHostUser.id
                                 }));
                                 fakeHostEvent = events[0];
                                 const newContacts = [
                                     { type: ContactType.GOOGLE_MEET, value: null as unknown as string }
                                 ];
 
+                                const team = fakeHostUser.profiles[0].team;
+
                                 await eventsService.patch(
-                                    fakeHostUser.uuid,
-                                    fakeHostUser.id,
+                                    team.uuid,
+                                    team.id,
                                     fakeHostEvent.id,
                                     {
                                         contacts: newContacts
@@ -557,9 +567,11 @@ describe('Schedule Integration Test', () => {
                                     serviceSandbox
                                 );
 
+                                const profile = fakeHostUser.profiles[0];
+
                                 // setting for multiple outbound
                                 const loadedIntegrations = await firstValueFrom(integrationsController.fetchAllIntegrations(
-                                    fakeHostUser,
+                                    profile,
                                     IntegrationSubject.CALENDAR,
                                     true
                                 )) as Array<Integration & { calendarIntegrations: CalendarIntegration[] }>;
@@ -571,7 +583,7 @@ describe('Schedule Integration Test', () => {
 
                                 // set up event location to Zoom and Google Meet
                                 const events = await firstValueFrom(eventsService.search({
-                                    userId: fakeHostUser.id
+                                    teamId: fakeHostUser.id
                                 }));
                                 fakeHostEvent = events[0];
                                 const newContacts = [
@@ -601,8 +613,10 @@ describe('Schedule Integration Test', () => {
 
                             await initializeOutboundSetting();
 
+                            const profile = fakeHostUser.profiles[0];
+                            const workspace = profile.team.workspace;
                             const scheduledEventResponseDto = await testIntegrationUtil.createSchedule(
-                                fakeHostUser.workspace as string,
+                                workspace as string,
                                 fakeHostEvent as HostEvent,
                                 bookingStartTime,
                                 bookingEndTime
