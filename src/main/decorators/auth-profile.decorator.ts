@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { Profile } from '@entity/profiles/profile.entity';
 
 export const AuthProfile = createParamDecorator(

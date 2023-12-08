@@ -1,7 +1,7 @@
 import { Body, Controller, Header, Post } from '@nestjs/common';
 import { Observable, from } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
-import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { BookingAskRequestDto } from '@dto/notifications/booking-ask-request.dto';
 

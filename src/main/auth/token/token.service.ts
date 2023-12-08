@@ -5,7 +5,7 @@ import { oauth2_v2 } from 'googleapis';
 import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { UserService } from '@services/users/user.service';
 import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { UtilService } from '@services/util/util.service';

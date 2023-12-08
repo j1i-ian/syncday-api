@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 import { AppConfigService } from '@config/app-config.service';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { UserService } from '@services/users/user.service';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';

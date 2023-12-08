@@ -162,24 +162,32 @@ export class UserService {
         const newUser = this.userRepository.create(temporaryUser);
         const newProfile = this.profileRepository.create(temporaryUser);
 
-        const manager = this.userRepository.manager;
-
         const {
-            createdUser,
             createdProfile,
-            createdTeam
-        } = await this._createUser(manager, newUser, newProfile, temporaryUser.language, timezone, {
-            plainPassword: temporaryUser.plainPassword,
-            emailVerification: true
+            createdUser
+        } = await this.datasource.transaction(async (transactionManager) => {
+
+            const _createdUserAndTeam = await this._createUser(transactionManager, newUser, newProfile, temporaryUser.language, timezone, {
+                plainPassword: temporaryUser.plainPassword,
+                emailVerification: true
+            });
+
+            const { createdTeam } = _createdUserAndTeam;
+
+            await this.teamSettingService.createTeamWorkspaceStatus(
+                transactionManager,
+                createdTeam.id,
+                createdTeam.teamSetting.workspace
+            );
+
+            return _createdUserAndTeam;
         });
 
-        await this.teamSettingService.createTeamWorkspaceStatus(
-            manager,
-            createdUser.id,
-            createdTeam.teamSetting.workspace
+        await this.notificationsService.sendWelcomeEmailForNewUser(
+            createdProfile.name,
+            createdUser.email,
+            createdUser.userSetting.preferredLanguage
         );
-
-        await this.notificationsService.sendWelcomeEmailForNewUser(createdProfile.name, createdUser.email, createdUser.userSetting.preferredLanguage);
 
         return createdUser;
     }
@@ -234,22 +242,6 @@ export class UserService {
         const _teamRepository = manager.getRepository(Team);
         const _availabilityRepository = manager.getRepository(Availability);
 
-        const savedUser = await _userRepository.save<User>({
-            ..._createdUser,
-            hashedPassword,
-            userSetting
-        } as User);
-
-        const savedProfile = await _profileRepository.save<Profile>({
-            ...newProfile,
-            userId: savedUser.id
-        } as Profile);
-
-        const savedTeam = await _teamRepository.save<Team>({
-            name: _createdProfile.name,
-            profiles: [_createdProfile]
-        } as Team);
-
         const emailId = _createdUser.email.replaceAll('.', '').split('@').shift();
         const workspace = emailId || newProfile.name;
 
@@ -269,6 +261,23 @@ export class UserService {
 
         const initialTeamSetting = new TeamSetting();
         initialTeamSetting.workspace = defaultTeamWorkspace;
+
+        const savedUser = await _userRepository.save<User>({
+            ..._createdUser,
+            hashedPassword,
+            userSetting
+        } as User);
+
+        const savedTeam = await _teamRepository.save<Team>({
+            name: _createdProfile.name,
+            teamSetting: initialTeamSetting
+        } as Team);
+
+        const savedProfile = await _profileRepository.save<Profile>({
+            ...newProfile,
+            userId: savedUser.id,
+            teamId: savedTeam.id
+        } as Profile);
 
         const initialEventGroup = new EventGroup();
         const initialEvent = this.utilService.getDefaultEvent({
@@ -431,7 +440,7 @@ export class UserService {
 
             await this.teamSettingService.createTeamWorkspaceStatus(
                 manager,
-                _createdUser.id,
+                _createdTeam.id,
                 _createdTeam.teamSetting.workspace
             );
 

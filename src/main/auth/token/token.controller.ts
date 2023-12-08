@@ -7,7 +7,7 @@ import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { Profile } from '@entity/profiles/profile.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { Language } from '@app/enums/language.enum';

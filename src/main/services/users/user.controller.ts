@@ -13,7 +13,6 @@ import {
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { User } from '@core/entities/users/user.entity';
-import { AppJwtPayload } from '@interfaces/users/app-jwt-payload';
 import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
 import { PatchUserRequestDto } from '@dto/users/patch-user-request.dto';
 import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
@@ -65,10 +64,10 @@ export class UserController {
     @Patch(':userId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     async patchUser(
-        @AuthProfile() authUser: AppJwtPayload,
+        @AuthProfile('userId') userId: number,
         @Body() patchUserBody: PatchUserRequestDto
     ): Promise<void> {
-        const result = await this.userService.patch(authUser.id, patchUserBody);
+        const result = await this.userService.patch(userId, patchUserBody);
 
         if (result === false) {
             throw new BadRequestException('Cannot update user data');
