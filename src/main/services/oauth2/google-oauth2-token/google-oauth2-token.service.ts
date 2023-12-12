@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { calendar_v3 } from 'googleapis';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
@@ -32,7 +34,8 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         private readonly googleIntegrationFacade: GoogleIntegrationFacade,
         private readonly googleConverterService: GoogleConverterService,
         private readonly googleIntegrationService: GoogleIntegrationsService,
-        private readonly notificationsService: NotificationsService
+        private readonly notificationsService: NotificationsService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
     generateOAuth2AuthoizationUrl(
@@ -137,6 +140,12 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         teamSetting: TeamSetting
     ): Promise<void> {
 
+        this.logger.info({
+            message: 'Start to Integrate with Google',
+            userId: user.id,
+            profileId: profile.id
+        });
+
         const { calendars, tokens, schedules } = oauth2UserProfile;
 
         const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
@@ -148,11 +157,23 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
             user.id
         );
 
+        this.logger.info({
+            message: 'Passed validateMaxAddLimit',
+            userId: user.id,
+            profileId: profile.id
+        });
+
         const hasOutboundCalendar = await this.integrationsValidator.hasOutboundCalendar(
             this.integrationsServiceLocator,
             user.id
         );
         const isFirstIntegration = !hasOutboundCalendar;
+
+        this.logger.info({
+            message: 'Passed hasOutboundCalendar',
+            userId: user.id,
+            profileId: profile.id
+        });
 
         await this.googleIntegrationService.create(
             profile,
@@ -170,6 +191,11 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
             }
         );
 
+        this.logger.info({
+            message: 'Google Integration is created sucessfully',
+            userId: user.id,
+            profileId: profile.id
+        });
     }
 
     getEmailFromOAuth2UserProfile(

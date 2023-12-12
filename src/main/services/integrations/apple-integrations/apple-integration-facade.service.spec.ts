@@ -16,7 +16,7 @@ const testMockUtil = new TestMockUtil();
 describe('AppleIntegrationFacadeService', () => {
     let service: AppleIntegrationFacadeService;
 
-    let logggerStub: sinon.SinonStubbedInstance<Logger>;
+    let loggerStub: sinon.SinonStubbedInstance<Logger>;
 
     let appleConverterServiceStub: sinon.SinonStubbedInstance<AppleConverterService>;
     let appleCaldavClientServiceStub: sinon.SinonStubbedInstance<AppleCaldavClientService>;
@@ -26,7 +26,7 @@ describe('AppleIntegrationFacadeService', () => {
     let appleCalendarEventPatchServiceStub: sinon.SinonStubbedInstance<AppleCalendarEventPatchService>;
 
     before(async () => {
-        logggerStub = sinon.createStubInstance(Logger);
+        loggerStub = sinon.createStubInstance(Logger);
 
         appleConverterServiceStub = sinon.createStubInstance<AppleConverterService>(AppleConverterService);
         appleCaldavClientServiceStub = sinon.createStubInstance<AppleCaldavClientService>(AppleCaldavClientService);
@@ -40,7 +40,7 @@ describe('AppleIntegrationFacadeService', () => {
                 AppleIntegrationFacadeService,
                 {
                     provide: WINSTON_MODULE_PROVIDER,
-                    useValue: logggerStub
+                    useValue: loggerStub
                 },
                 {
                     provide: AppleConverterService,

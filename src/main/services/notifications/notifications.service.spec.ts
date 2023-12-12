@@ -164,7 +164,7 @@ describe('IntegrationsService', () => {
             eventsServiceStub.findOne.resolves(eventTypeStub);
 
             const teamSettingStub = stubOne(TeamSetting);
-            teamSettingServiceStub.fetchTeamSettingByTeamId.resolves(teamSettingStub);
+            teamSettingServiceStub.fetchByTeamId.resolves(teamSettingStub);
 
             serviceSandbox = sinon.createSandbox();
             serviceSendMessageStub = serviceSandbox.stub(service, 'sendMessage');
@@ -174,7 +174,7 @@ describe('IntegrationsService', () => {
         afterEach(() => {
             utilServiceStub.convertReminderTypeToSyncdayNotificationPublishKey.reset();
             eventsServiceStub.findOne.reset();
-            teamSettingServiceStub.fetchTeamSettingByTeamId.reset();
+            teamSettingServiceStub.fetchByTeamId.reset();
 
             serviceSandbox.restore();
         });
@@ -199,7 +199,7 @@ describe('IntegrationsService', () => {
 
             expect(utilServiceStub.convertReminderTypeToSyncdayNotificationPublishKey.called).true;
             expect(eventsServiceStub.findOne.called).true;
-            expect(teamSettingServiceStub.fetchTeamSettingByTeamId.called).true;
+            expect(teamSettingServiceStub.fetchByTeamId.called).true;
 
             expect(serviceSendMessageStub.called).true;
 

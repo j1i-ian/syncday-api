@@ -102,11 +102,17 @@ export class UserService {
                 email: true,
                 hashedPassword: true,
                 profiles: {
+                    uuid: true,
                     id: true,
                     name: true,
                     team: {
-                        id: true
+                        id: true,
+                        uuid: true
                     }
+                },
+                userSetting: {
+                    id: true,
+                    preferredTimezone: true
                 }
             },
             where: {
@@ -174,7 +180,7 @@ export class UserService {
 
             const { createdTeam } = _createdUserAndTeam;
 
-            await this.teamSettingService.createTeamWorkspaceStatus(
+            await this.teamSettingService._updateTeamWorkspace(
                 transactionManager,
                 createdTeam.id,
                 createdTeam.teamSetting.workspace
@@ -225,8 +231,10 @@ export class UserService {
 
         const _createdUser = this.userRepository.create(newUser);
         const _createdProfile = this.profileRepository.create(newProfile);
+        _createdProfile.default = true;
+
         const _createdTeam = this.teamRepository.create({
-            name: newProfile.name
+            name: _createdProfile.name
         });
 
         const defaultUserSetting = this.utilService.getUserDefaultSetting(language, {
@@ -243,7 +251,7 @@ export class UserService {
         const _availabilityRepository = manager.getRepository(Availability);
 
         const emailId = _createdUser.email.replaceAll('.', '').split('@').shift();
-        const workspace = emailId || newProfile.name;
+        const workspace = emailId || _createdProfile.name;
 
         const alreadyUsedIn = await this.teamSettingService.fetchTeamWorkspaceStatus(
             workspace
@@ -274,7 +282,7 @@ export class UserService {
         } as Team);
 
         const savedProfile = await _profileRepository.save<Profile>({
-            ...newProfile,
+            ..._createdProfile,
             userId: savedUser.id,
             teamId: savedTeam.id
         } as Profile);
@@ -307,7 +315,7 @@ export class UserService {
         initialAvailability.timezone = userSetting.preferredTimezone;
 
         const savedAvailability = await _availabilityRepository.save(initialAvailability);
-        await this.availabilityRedisRepository.save(savedUser.uuid, savedAvailability.uuid, {
+        await this.availabilityRedisRepository.save(savedTeam.uuid, savedAvailability.uuid, {
             availableTimes,
             overrides: []
         });
@@ -438,7 +446,7 @@ export class UserService {
                 _createdProfile.googleIntergrations = [_createdGoogleIntegration];
             }
 
-            await this.teamSettingService.createTeamWorkspaceStatus(
+            await this.teamSettingService._updateTeamWorkspace(
                 manager,
                 _createdTeam.id,
                 _createdTeam.teamSetting.workspace

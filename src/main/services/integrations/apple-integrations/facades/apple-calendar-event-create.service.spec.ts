@@ -6,18 +6,18 @@ import { AppleCalendarEventCreateService } from './apple-calendar-event-create.s
 describe('AppleCalendarEventCreateService', () => {
     let service: AppleCalendarEventCreateService;
 
-    let logggerStub: sinon.SinonStubbedInstance<Logger>;
+    let loggerStub: sinon.SinonStubbedInstance<Logger>;
 
 
     beforeEach(async () => {
-        logggerStub = sinon.createStubInstance(Logger);
+        loggerStub = sinon.createStubInstance(Logger);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 AppleCalendarEventCreateService,
                 {
                     provide: WINSTON_MODULE_PROVIDER,
-                    useValue: logggerStub
+                    useValue: loggerStub
                 }
             ]
         }).compile();

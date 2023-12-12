@@ -1,7 +1,9 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { oauth2_v2 } from 'googleapis';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
@@ -38,7 +40,8 @@ export class TokenService {
         private readonly jwtService: JwtService,
         private readonly utilService: UtilService,
         private readonly userService: UserService,
-        private readonly oauth2TokenServiceLocator: OAuth2TokenServiceLocator
+        private readonly oauth2TokenServiceLocator: OAuth2TokenServiceLocator,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
         this.jwtOption = AppConfigService.getJwtOptions(this.configService);
         this.jwtRefreshTokenOption = AppConfigService.getJwtRefreshOptions(this.configService);
@@ -84,20 +87,43 @@ export class TokenService {
         requestUserEmail: string | null,
         language: Language
     ): Promise<SyncdayOAuth2TokenResponse> {
+
+        this.logger.info({
+            message: 'Start issue token by oauth2',
+            requestUserEmail,
+            integrationContext
+        });
         const oauth2TokenService = this.oauth2TokenServiceLocator.get(integrationVendor);
 
+        this.logger.info({
+            message: 'Attempt to retrieve the OAuth2 user profile',
+            requestUserEmail,
+            integrationContext
+        });
         const oauth2UserProfile = await oauth2TokenService.getOAuth2UserProfile(authorizationCode);
 
         const oauth2UserEmail = oauth2TokenService.getEmailFromOAuth2UserProfile(oauth2UserProfile);
 
         const ensuredRequesterEmail = requestUserEmail || oauth2UserEmail;
 
+        this.logger.info({
+            message: 'Evaluate integration context',
+            requestUserEmail,
+            integrationContext
+        });
         const ensuredIntegrationContext = await this.evaluateIntegrationContext(
             integrationVendor,
             oauth2UserProfile,
             integrationContext,
             ensuredRequesterEmail
         );
+
+        this.logger.info({
+            message: 'integration context evaluation is done',
+            requestUserEmail,
+            integrationContext,
+            ensuredIntegrationContext
+        });
 
         let isNewbie: boolean;
 
@@ -149,10 +175,12 @@ export class TokenService {
                 throw new InternalServerErrorException('Unknown integration context');
         }
 
+        const ensuredUserSettingId = user?.userSetting.id as number;
         const issuedToken = this.issueToken(
             profile as Profile,
             user as User,
-            team as Team
+            team as Team,
+            ensuredUserSettingId
         );
 
         return {
@@ -187,31 +215,38 @@ export class TokenService {
         const extractedTeam = {
             id: decoedProfileByRefreshToken.teamId
         } as Pick<Team, 'id'>;
+        const extractedUserSettingId = decoedProfileByRefreshToken.userSettingId;
 
         return this.issueToken(
             extractedProfile as Profile,
             extractedUser as User,
-            extractedTeam as Team
+            extractedTeam as Team,
+            extractedUserSettingId
         );
     }
 
     issueToken(
         profile: Profile,
         user: Pick<User, 'id' | 'email'>,
-        team: Pick<Team, 'id' | 'uuid'>
+        team: Pick<Team, 'id' | 'uuid'>,
+        userSettingId: number
     ): CreateTokenResponseDto {
+
+        const appJwtPayload: AppJwtPayload = {
+            id: profile.id,
+            uuid: profile.uuid,
+            name: profile.name,
+            userId: user.id,
+            email: user.email,
+            userSettingId,
+            image: profile.image,
+            roles: profile.roles,
+            teamId: team.id,
+            teamUUID: team.uuid
+        } as AppJwtPayload & Partial<Profile>;
+
         const signedAccessToken = this.jwtService.sign(
-            {
-                id: profile.id,
-                uuid: profile.uuid,
-                name: profile.name,
-                userId: user.id,
-                email: user.email,
-                image: profile.image,
-                roles: profile.roles,
-                teamId: team.id,
-                teamUUID: team.uuid
-            } as Partial<Profile>,
+            appJwtPayload,
             {
                 secret: this.jwtOption.secret,
                 expiresIn: this.jwtOption.signOptions?.expiresIn
@@ -219,17 +254,7 @@ export class TokenService {
         );
 
         const signedRefreshToken =  this.jwtService.sign(
-            {
-                id: profile.id,
-                uuid: profile.uuid,
-                name: profile.name,
-                userId: user.id,
-                email: user.email,
-                image: profile.image,
-                roles: profile.roles,
-                teamId: team.id,
-                teamUUID: team.uuid
-            } as Partial<Profile>,
+            appJwtPayload,
             {
                 secret: this.jwtRefreshTokenOption.secret,
                 expiresIn: this.jwtRefreshTokenOption.signOptions?.expiresIn

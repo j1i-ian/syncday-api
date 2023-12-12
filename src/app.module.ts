@@ -7,6 +7,7 @@ import { routes } from '@config/routes';
 import { AppConfigService } from '@config/app-config.service';
 import { UserModule } from '@services/users/user.module';
 import { SyncdayAwsSdkClientModule } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.module';
+import { TeamSettingModule } from '@services/team/team-setting/team-setting.module';
 import { GlobalExceptionFilter } from '@app/filters/global-exception.filter';
 import { ClusterModule } from '@liaoliaots/nestjs-redis';
 import { AppController } from './app.controller';
@@ -35,6 +36,7 @@ import { ProfilesModule } from './main/services/profiles/profiles.module';
 
         UserModule,
         TeamModule,
+        TeamSettingModule,
 
         AuthModule,
 

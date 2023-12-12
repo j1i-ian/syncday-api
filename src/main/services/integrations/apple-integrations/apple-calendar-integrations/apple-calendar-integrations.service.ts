@@ -36,13 +36,13 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
     }
 
     getProfileRelationConditions(
-        userId: number,
+        profileId: number,
         options: FindOptionsWhere<CalendarIntegration>
     ): FindOptionsWhere<CalendarIntegration> {
         return {
             ...options,
             appleCalDAVIntegration: {
-                userId
+                profileId
             }
         } as FindOptionsWhere<AppleCalDAVCalendarIntegration> as FindOptionsWhere<CalendarIntegration>;
     }
@@ -107,8 +107,9 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
             this.appleCalDAVCalendarIntegrationRepository.findOne({
                 relations: [
                     'appleCalDAVIntegration',
-                    'appleCalDAVIntegration.user',
-                    'appleCalDAVIntegration.user.userSetting'
+                    'appleCalDAVIntegration.profile',
+                    'appleCalDAVIntegration.profile.team',
+                    'appleCalDAVIntegration.profile.team.teamSetting'
                 ],
                 where: options
             })

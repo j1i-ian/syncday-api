@@ -21,12 +21,12 @@ describe('Availability Redis Repository Test', () => {
     let clusterStub: sinon.SinonStubbedInstance<Cluster>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
 
-    let logggerStub: sinon.SinonStubbedInstance<Logger>;
+    let loggerStub: sinon.SinonStubbedInstance<Logger>;
 
     beforeEach(async () => {
         clusterStub = sinon.createStubInstance(Cluster);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
-        logggerStub = sinon.createStubInstance(Logger);
+        loggerStub = sinon.createStubInstance(Logger);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -40,7 +40,7 @@ describe('Availability Redis Repository Test', () => {
                 },
                 {
                     provide: WINSTON_MODULE_PROVIDER,
-                    useValue: logggerStub
+                    useValue: loggerStub
                 },
                 AvailabilityRedisRepository
             ]

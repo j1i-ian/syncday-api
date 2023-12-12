@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, from } from 'rxjs';
+import { Observable, from, map } from 'rxjs';
 import { EntityManager, Repository } from 'typeorm';
 import { TeamSettingSearchOption } from '@interfaces/teams/team-settings/team-setting-search-option.interface';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
@@ -15,21 +15,14 @@ export class TeamSettingService {
         private readonly teamSettingRepository: Repository<TeamSetting>
     ) {}
 
-    searchTeamSettings(
+    search(
         teamSettingSearchOption: TeamSettingSearchOption
     ): Observable<TeamSetting[]> {
         return from(this.teamSettingRepository.findBy(teamSettingSearchOption));
     }
 
-    async fetchTeamSettingByTeamId(teamId: number): Promise<TeamSetting> {
+    async fetchByTeamId(teamId: number): Promise<TeamSetting> {
         const loadedTeamSetting = await this.teamSettingRepository.findOneOrFail({
-            relations: [
-                'team',
-                // 'team.oauth2Accounts',
-                'team.googleIntergrations',
-                'team.appleCalDAVIntegrations',
-                'team.zoomIntegrations'
-            ],
             where: {
                 teamId
             }
@@ -47,7 +40,31 @@ export class TeamSettingService {
         return workspaceStatus;
     }
 
-    async createTeamWorkspaceStatus(
+    patch(teamId: number, teamSetting: Partial<TeamSetting>): Observable<boolean> {
+        return from(
+            this.teamSettingRepository.update(
+                { teamId },
+                teamSetting
+            )
+        ).pipe(
+            map((updateResult) => !!(updateResult &&
+                updateResult.affected &&
+                updateResult.affected > 0))
+        );
+    }
+
+    async updateTeamWorkspace(
+        teamId: number,
+        newWorkspace: string
+    ): Promise<boolean> {
+        return this._updateTeamWorkspace(
+            this.teamSettingRepository.manager,
+            teamId,
+            newWorkspace
+        );
+    }
+
+    async _updateTeamWorkspace(
         manager: EntityManager,
         teamId: number,
         newWorkspace: string

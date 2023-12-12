@@ -102,7 +102,7 @@ export class AvailabilityController {
     @Patch()
     @HttpCode(HttpStatus.NO_CONTENT)
     patchAll(
-        @AuthProfile('uuid') teamUUID: string,
+        @AuthProfile('teamUUID') teamUUID: string,
         @Body() patchAvailabilityDto: PatchAvailabilityRequestDto
     ): Observable<boolean> {
         return from(this.availabilityService.patchAll(teamUUID, patchAvailabilityDto));

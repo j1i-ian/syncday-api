@@ -1,14 +1,15 @@
 import { URL } from 'url';
-import { Body, Controller, Get, Param, ParseEnumPipe, Post, Put, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, ParseEnumPipe, Post, Put, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { AppConfigService } from '@config/app-config.service';
-import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
+import { AuthUser } from '@decorators/auth-user.decorator';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
-import { Profile } from '@entity/profiles/profile.entity';
+import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { Language } from '@app/enums/language.enum';
 import { Public } from '../strategy/jwt/public.decorator';
@@ -19,7 +20,8 @@ import { TokenService } from './token.service';
 export class TokenController {
     constructor(
         private readonly tokenService: TokenService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
     /**
@@ -57,17 +59,21 @@ export class TokenController {
     @Post()
     @Public()
     @UseGuards(LocalAuthGuard)
-    issueTokenByEmail(@AuthProfile() appJwtPayload: AppJwtPayload): CreateTokenResponseDto {
+    issueTokenByEmail(@AuthUser() authUser: User & { userSettingId: number }): CreateTokenResponseDto {
+        const profile = authUser.profiles[0];
+        const team = profile.team;
+
         return this.tokenService.issueToken(
-            appJwtPayload as unknown as Profile,
+            profile,
             {
-                id: appJwtPayload.userId,
-                email: appJwtPayload.email
+                id: authUser.id,
+                email: authUser.email
             },
             {
-                id: appJwtPayload.teamId,
-                uuid: appJwtPayload.teamUUID
-            }
+                id: team.id,
+                uuid: team.uuid
+            },
+            authUser.userSettingId
         );
     }
 
@@ -98,6 +104,11 @@ export class TokenController {
             integrationContext: IntegrationContext;
         };
 
+        this.logger.debug({
+            message: 'Start OAuth2 Callback: Start issueTokenByOAuth2',
+            requestUserEmail: stateParams.requestUserEmail
+        });
+
         const { issuedToken, isNewbie, insufficientPermission } = await this.tokenService.issueTokenByOAuth2(
             integrationVendor,
             authorizationCode,
@@ -106,6 +117,11 @@ export class TokenController {
             stateParams.requestUserEmail,
             language
         );
+
+        this.logger.debug({
+            message: 'issueTokenByOAuth2 done',
+            requestUserEmail: stateParams.requestUserEmail
+        });
 
         const { oauth2SuccessRedirectURI } = AppConfigService.getOAuth2Setting(
             integrationVendor,

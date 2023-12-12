@@ -2,13 +2,11 @@ import { Repository } from 'typeorm';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
-import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { PatchUserSettingRequestDto } from '@share/@dto/users/user-settings/patch-user-setting-request.dto';
 
 @Injectable()
 export class UserSettingService {
     constructor(
-        private readonly syncdayRedisService: SyncdayRedisService,
         @InjectRepository(UserSetting)
         private readonly userSettingRepository: Repository<UserSetting>
     ) {}

@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { UtilService } from '@services/util/util.service';
 import { UserService } from '@services/users/user.service';
@@ -33,6 +35,8 @@ describe('GoogleOAuth2TokenService', () => {
     let googleIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
     let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
 
+    let loggerStub: sinon.SinonStub;
+
     before(async () => {
 
         utilServiceStub = sinon.createStubInstance(UtilService);
@@ -44,6 +48,12 @@ describe('GoogleOAuth2TokenService', () => {
         googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
         googleIntegrationServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
         notificationsServiceStub = sinon.createStubInstance(NotificationsService);
+
+        loggerStub = sinon.stub({
+            debug: () => {},
+            info: () => {},
+            error: () => {}
+        } as unknown as Logger) as unknown as sinon.SinonStub;
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -83,8 +93,11 @@ describe('GoogleOAuth2TokenService', () => {
                 {
                     provide: NotificationsService,
                     useValue: notificationsServiceStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: loggerStub
                 }
-
             ]
         }).compile();
 

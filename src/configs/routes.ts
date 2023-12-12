@@ -13,6 +13,7 @@ import { NotificationsModule } from '@services/notifications/notifications.modul
 import { OAuth2AccountsModule } from '@services/users/oauth2-accounts/oauth2-accounts.module';
 import { TeamModule } from '@services/team/team.module';
 import { TeamSettingModule } from '@services/team/team-setting/team-setting.module';
+import { ProfilesModule } from '@services/profiles/profiles.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
@@ -33,6 +34,10 @@ export const routes: Routes = [
     {
         path: 'user-settings',
         module: UserSettingModule
+    },
+    {
+        path: 'profiles',
+        module: ProfilesModule
     },
     {
         path: 'teams',

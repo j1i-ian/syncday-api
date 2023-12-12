@@ -43,7 +43,7 @@ export class NotificationsService {
         // load event by event id
         return combineLatest([
             this.eventsService.findOne(eventId, teamId),
-            from(this.teamSettingService.fetchTeamSettingByTeamId(teamId))
+            from(this.teamSettingService.fetchByTeamId(teamId))
         ])
             .pipe(
                 map(([loadedEvent, teamSetting]) => {

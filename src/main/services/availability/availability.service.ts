@@ -98,7 +98,7 @@ export class AvailabilityService {
     ): Observable<Availability> {
         return from(
             this.availabilityRepository.findOneOrFail({
-                relations: ['user'],
+                relations: ['events', 'team', 'team.teamSetting'],
                 where: {
                     team: {
                         teamSetting: {
@@ -129,8 +129,8 @@ export class AvailabilityService {
     }
 
     async create(
-        userId: number,
-        userUUID: string,
+        teamId: number,
+        teamUUID: string,
         { name, availableTimes, overrides, timezone }: CreateAvailabilityRequestDto
     ): Promise<Availability> {
         const newAvailabilityBody = {
@@ -139,13 +139,13 @@ export class AvailabilityService {
         } as AvailabilityBody;
 
         const savedAvailability = await this.availabilityRepository.save({
-            userId,
+            userId: teamId,
             name,
             timezone
         });
 
         await this.availabilityRedisRepository.save(
-            userUUID,
+            teamUUID,
             savedAvailability.uuid,
             newAvailabilityBody
         );
@@ -157,8 +157,8 @@ export class AvailabilityService {
     }
 
     async update(
-        userId: number,
-        userUUID: string,
+        teamId: number,
+        teamUUID: string,
         availabilityId: number,
         updateAvailabilityDto: UpdateAvailabilityRequestDto
     ): Promise<boolean> {
@@ -170,7 +170,7 @@ export class AvailabilityService {
             default: availabilityDefault
         } = updateAvailabilityDto;
 
-        await this.validator.validate(userId, availabilityId, Availability);
+        await this.validator.validate(teamId, availabilityId, Availability);
 
         const availability = await this.availabilityRepository.findOneByOrFail({
             id: availabilityId
@@ -183,7 +183,7 @@ export class AvailabilityService {
         });
 
         if (updateResult.affected && updateResult.affected > 0) {
-            await this.availabilityRedisRepository.set(userUUID, availability.uuid, {
+            await this.availabilityRedisRepository.set(teamUUID, availability.uuid, {
                 availableTimes,
                 overrides
             });

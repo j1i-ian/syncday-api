@@ -11,6 +11,27 @@ export class TeamService {
         @InjectRepository(Team) private readonly teamRepository: Repository<Team>
     ) {}
 
+    searchByProfileId(profileId: number): Observable<Team[]> {
+        return from(
+            this.teamRepository.find({
+                where: {
+                    profiles: {
+                        id: profileId
+                    }
+                },
+                relations: ['teamSetting']
+            })
+        );
+    }
+
+    get(teamId: number): Observable<Team> {
+        return from(
+            this.teamRepository.findOneByOrFail({
+                id: teamId
+            })
+        );
+    }
+
     findTeamByWorkspace(teamWorkspace: string): Observable<Team> {
         return from(
             this.teamRepository.findOneOrFail({

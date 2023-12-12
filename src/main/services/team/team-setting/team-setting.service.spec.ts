@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
+import { TestMockUtil } from '@test/test-mock-util';
 import { TeamSettingService } from './team-setting.service';
 
 describe('TeamSettingService', () => {
@@ -22,7 +23,7 @@ describe('TeamSettingService', () => {
         transaction: (callback: any) => Promise.resolve(callback({ getRepository: _getRepository }))
     };
 
-    beforeEach(async () => {
+    before(async () => {
         teamSettingRepositoryStub = sinon.createStubInstance<Repository<TeamSetting>>(Repository);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
 
@@ -74,7 +75,7 @@ describe('TeamSettingService', () => {
                 teamSettingRepositoryStub.findBy.resolves(teamSettingListStub);
 
                 const searchedTeamSettings = await firstValueFrom(
-                    service.searchTeamSettings({
+                    service.search({
                         workspace: workspaceMock
                     })
                 );
@@ -86,9 +87,18 @@ describe('TeamSettingService', () => {
     });
 
     describe('Test getting team workspace status', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
         afterEach(() => {
+            teamSettingRepositoryStub.update.reset();
             syncdayRedisServiceStub.getWorkspaceStatus.reset();
             syncdayRedisServiceStub.setWorkspaceStatus.reset();
+
+            serviceSandbox.restore();
         });
 
         it('should be got status of team workspace', async () => {
@@ -101,16 +111,40 @@ describe('TeamSettingService', () => {
             expect(result).true;
         });
 
-        it('should be not set status when team workspace is already assigned', async () => {
+        it('coverage fill', async () => {
+            const teamIdMock = 123;
+            const workspaceMock = 'mysyncdayworkspace';
+
+            serviceSandbox.stub(service, '_updateTeamWorkspace').resolves(true);
+
+            const result = await service.updateTeamWorkspace(teamIdMock, workspaceMock);
+            expect(result).ok;
+        });
+
+        it('should be patched for team setting', async () => {
+            const teamIdMock = 123;
+
+            const teamSettingMock = stubOne(TeamSetting);
+
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            teamSettingRepositoryStub.update.resolves(updateResultStub);
+
+            const updateResult = await firstValueFrom(service.patch(teamIdMock, teamSettingMock));
+            expect(updateResult).ok;
+            expect(teamSettingRepositoryStub.update.called).true;
+        });
+
+        it('should be not updated when team workspace is already assigned', async () => {
             const teamIdMock = 123;
             const workspaceMock = 'mysyncdayworkspace';
 
             syncdayRedisServiceStub.getWorkspaceStatus.resolves(true);
 
-            await expect(service.createTeamWorkspaceStatus(datasourceMock as EntityManager, teamIdMock, workspaceMock)).rejectedWith(AlreadyUsedInWorkspace);
+            await expect(service._updateTeamWorkspace(datasourceMock as EntityManager, teamIdMock, workspaceMock)).rejectedWith(AlreadyUsedInWorkspace);
         });
 
-        it('should be set status of team workspace', async () => {
+        it('should be updated team workspace', async () => {
             const userIdMock = 123;
             const workspaceMock = 'mysyncdayworkspace';
             const teamSettingStub = stubOne(TeamSetting);
@@ -121,7 +155,7 @@ describe('TeamSettingService', () => {
 
             syncdayRedisServiceStub.setWorkspaceStatus.resolves(true);
 
-            const result = await service.createTeamWorkspaceStatus(datasourceMock as EntityManager, userIdMock, workspaceMock);
+            const result = await service._updateTeamWorkspace(datasourceMock as EntityManager, userIdMock, workspaceMock);
 
             expect(syncdayRedisServiceStub.deleteWorkspaceStatus.called).true;
             expect(teamSettingRepositoryStub.update.called).true;

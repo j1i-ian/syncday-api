@@ -1,7 +1,7 @@
 import { URL } from 'url';
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { plainToInstance } from 'class-transformer';
@@ -48,6 +48,7 @@ export class GoogleIntegrationsService implements
         private readonly googleConferenceLinkIntegrationService: GoogleConferenceLinkIntegrationService,
         private readonly googleIntegrationSchedulesService: GoogleIntegrationSchedulesService,
         private readonly integrationsRedisRepository: IntegrationsRedisRepository,
+        @InjectDataSource() private datasource: DataSource,
         @InjectRepository(GoogleIntegration)
         private readonly googleIntegrationRepository: Repository<GoogleIntegration>
     ) {}
@@ -133,7 +134,7 @@ export class GoogleIntegrationsService implements
      * @param googleCalendarIntegrations
      * @returns
      */
-    async create(
+    create(
         profile: Profile,
         teamSetting: TeamSetting,
         userSetting: UserSetting,
@@ -144,15 +145,17 @@ export class GoogleIntegrationsService implements
             isFirstIntegration: true
         }
     ): Promise<GoogleIntegration> {
-        return this._create(
-            this.googleIntegrationRepository.manager,
-            profile,
-            teamSetting,
-            userSetting,
-            googleAuthToken,
-            googleCalendarIntegrations,
-            googleIntegrationBody,
-            options
+        return this.datasource.transaction((transactionManager) =>
+            this._create(
+                transactionManager,
+                profile,
+                teamSetting,
+                userSetting,
+                googleAuthToken,
+                googleCalendarIntegrations,
+                googleIntegrationBody,
+                options
+            )
         );
     }
 

@@ -11,8 +11,8 @@ import { TeamResourceEntity } from '@criteria/team-resource-entity.type';
  */
 @Injectable()
 export class Validator {
-    constructor(private readonly userOwnCriteria: TeamOwnCriteria) {
-        this.validationCriteriaArray = [this.userOwnCriteria];
+    constructor(private readonly teamOwnCriteria: TeamOwnCriteria) {
+        this.validationCriteriaArray = [this.teamOwnCriteria];
     }
 
     validationCriteriaArray: Array<ValidationCriteria<TeamResourceEntity>>;

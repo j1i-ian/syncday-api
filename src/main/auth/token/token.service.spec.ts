@@ -2,6 +2,8 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { calendar_v3 } from 'googleapis';
+import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
@@ -17,6 +19,7 @@ import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { UserService } from '../../services/users/user.service';
 import { faker } from '@faker-js/faker';
@@ -36,6 +39,8 @@ describe('TokenService', () => {
 
     let oauth2TokenServiceStub: sinon.SinonStubbedInstance<GoogleOAuth2TokenService>;
 
+    let loggerStub: sinon.SinonStub;
+
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         jwtServiceStub = sinon.createStubInstance(JwtService);
@@ -45,6 +50,12 @@ describe('TokenService', () => {
 
         oauth2TokenServiceStub = sinon.createStubInstance(GoogleOAuth2TokenService);
         oauth2TokenServiceLocatorStub.get.returns(oauth2TokenServiceStub);
+
+        loggerStub = sinon.stub({
+            debug: () => {},
+            info: () => {},
+            error: () => {}
+        } as unknown as Logger) as unknown as sinon.SinonStub;
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -68,6 +79,10 @@ describe('TokenService', () => {
                 {
                     provide: OAuth2TokenServiceLocator,
                     useValue: oauth2TokenServiceLocatorStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: loggerStub
                 }
             ]
         }).compile();
@@ -118,6 +133,7 @@ describe('TokenService', () => {
         const userMock = stubOne(User);
         const profileMock = stubOne(Profile);
         const teamMock = stubOne(Team);
+        const userSettingIdMock = stubOne(UserSetting).id;
         const fakeTokenStub = 'iamfaketoken';
 
         jwtServiceStub.sign.returns(fakeTokenStub);
@@ -125,7 +141,8 @@ describe('TokenService', () => {
         const signed = service.issueToken(
             profileMock,
             userMock,
-            teamMock
+            teamMock,
+            userSettingIdMock
         );
 
         expect(signed).ok;
@@ -258,7 +275,8 @@ describe('TokenService', () => {
                             googleIntergrations: [],
                             team: stubOne(Team)
                         })
-                    ]
+                    ],
+                    userSetting: stubOne(UserSetting)
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
@@ -291,7 +309,8 @@ describe('TokenService', () => {
                             googleIntergrations: [],
                             team: stubOne(Team)
                         })
-                    ]
+                    ],
+                    userSetting: stubOne(UserSetting)
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
@@ -324,7 +343,8 @@ describe('TokenService', () => {
                             googleIntergrations: [],
                             team: stubOne(Team)
                         })
-                    ]
+                    ],
+                    userSetting: stubOne(UserSetting)
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
@@ -369,7 +389,8 @@ describe('TokenService', () => {
                             ] as GoogleIntegration[],
                             team: stubOne(Team)
                         })
-                    ]
+                    ],
+                    userSetting: stubOne(UserSetting)
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
@@ -402,14 +423,17 @@ describe('TokenService', () => {
 
                 userServiceStub.findUserByEmail.resolves(userStub);
 
+                const createdTeamStub = stubOne(Team);
+                const createdProfileStub = stubOne(Profile);
+                const createdUserSettingStub = stubOne(UserSetting);
                 const createdUserStub = stubOne(User, {
-                    profiles: [
-                        stubOne(Profile, {
-                            team: stubOne(Team)
-                        })
-                    ]
+                    userSetting: createdUserSettingStub
                 });
-                _oauth2TokenServiceStub.signUpWithOAuth.resolves(createdUserStub);
+                _oauth2TokenServiceStub.signUpWithOAuth.resolves({
+                    createdUser: createdUserStub,
+                    createdProfile: createdProfileStub,
+                    createdTeam: createdTeamStub
+                });
 
                 const issuedTokenStub: CreateTokenResponseDto = {
                     accessToken: 'fakeJwtToken',

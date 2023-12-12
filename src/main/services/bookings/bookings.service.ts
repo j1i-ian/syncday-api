@@ -27,11 +27,11 @@ export class BookingsService {
         return this.teamService.findTeamByWorkspace(teamWorkspace);
     }
 
-    searchHostEvents(userWorkspace: string): Observable<Event[]> {
+    searchHostEvents(teamWorkspace: string): Observable<Event[]> {
         return this.eventService.search({
             status: EventStatus.OPENED,
             public: true,
-            teamWorkspace: userWorkspace
+            teamWorkspace
         });
     }
 

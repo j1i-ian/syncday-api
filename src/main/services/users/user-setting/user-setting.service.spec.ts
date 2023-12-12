@@ -1,8 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { TestMockUtil } from '@test/test-mock-util';
 import { UserSettingService } from './user-setting.service';
 
@@ -11,34 +10,16 @@ describe('UserSettingService', () => {
 
     let service: UserSettingService;
     let userSettingRepositoryStub: sinon.SinonStubbedInstance<Repository<UserSetting>>;
-    let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
-
-    const _getRepository = (EntityClass: new () => any) =>
-        module.get(getRepositoryToken(EntityClass));
-
-    const datasourceMock = {
-        getRepository: _getRepository,
-        transaction: (callback: any) => Promise.resolve(callback({ getRepository: _getRepository }))
-    };
 
     beforeEach(async () => {
         userSettingRepositoryStub = sinon.createStubInstance<Repository<UserSetting>>(Repository);
-        syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
 
         module = await Test.createTestingModule({
             providers: [
                 UserSettingService,
                 {
-                    provide: getDataSourceToken(),
-                    useValue: datasourceMock
-                },
-                {
                     provide: getRepositoryToken(UserSetting),
                     useValue: userSettingRepositoryStub
-                },
-                {
-                    provide: SyncdayRedisService,
-                    useValue: syncdayRedisServiceStub
                 }
             ]
         }).compile();

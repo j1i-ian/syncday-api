@@ -25,10 +25,10 @@ export class BookingsController {
 
     @Get('host')
     fetchHost(
-        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) userWorkspace: string
+        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string
     ): Observable<FetchHostResponseDto> {
 
-        return this.bookingsService.fetchHost(userWorkspace)
+        return this.bookingsService.fetchHost(teamWorkspace)
             .pipe(map((user) => plainToInstance(FetchHostResponseDto, user, {
                 excludeExtraneousValues: true
             })));

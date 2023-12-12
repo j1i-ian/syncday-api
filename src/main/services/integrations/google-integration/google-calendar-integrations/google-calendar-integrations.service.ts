@@ -205,6 +205,10 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
 
         const options = this.__patchSearchOption(searchOptions);
 
+        this.logger.debug({
+            message: 'find one google calendar integration'
+        });
+
         return from(
             this.googleCalendarIntegrationRepository.findOne({
                 relations: [
@@ -213,7 +217,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                     'googleIntegration.profiles.user',
                     'googleIntegration.profiles.user.userSetting',
                     'googleIntegration.profiles.team',
-                    'googleIntegration.profiles.teamSetting'
+                    'googleIntegration.profiles.team.teamSetting'
                 ],
                 where: options
             })
