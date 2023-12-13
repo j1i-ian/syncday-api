@@ -140,7 +140,11 @@ export class GlobalSchedulesService {
         return loadedEventByTeamWorkspace$.pipe(
             concatMap(
                 (event) => combineLatest([
-                    this.availabilityRedisRepository.getAvailabilityBody(team.uuid, event.availability.uuid),
+                    this.availabilityRedisRepository.getAvailabilityBody(
+                        team.uuid,
+                        event.availability.profileId,
+                        event.availability.uuid
+                    ),
                     of(this.utilService.getPatchedScheduledEvent(
                         host,
                         hostProfile,

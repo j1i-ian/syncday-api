@@ -39,9 +39,11 @@ export class EventsService {
                     },
                     availability: {
                         id: searchOption.availabilityId,
-                        team: {
-                            teamSetting: {
-                                workspace: searchOption.teamWorkspace
+                        profile: {
+                            team: {
+                                teamSetting: {
+                                    workspace: searchOption.teamWorkspace
+                                }
                             }
                         }
                     }
@@ -111,9 +113,11 @@ export class EventsService {
                     uuid: eventUUID,
                     status: EventStatus.OPENED,
                     availability: {
-                        team: {
-                            teamSetting: {
-                                workspace: teamWorkspace
+                        profile: {
+                            team: {
+                                teamSetting: {
+                                    workspace: teamWorkspace
+                                }
                             }
                         }
                     }
@@ -143,9 +147,11 @@ export class EventsService {
                 status: EventStatus.OPENED,
                 link: eventLink,
                 availability: {
-                    team: {
-                        teamSetting: {
-                            workspace: teamWorkspace
+                    profile: {
+                        team: {
+                            teamSetting: {
+                                workspace: teamWorkspace
+                            }
                         }
                     }
                 }
@@ -174,18 +180,20 @@ export class EventsService {
 
     async create(teamUUID: string, teamId: number, newEvent: Event): Promise<Event> {
         const defaultEventGroup = await this.eventGroupRepository.findOneOrFail({
-            relations: ['team', 'team.availabilities'],
+            relations: ['team', 'team.profiles', 'team.profiles.availabilities'],
             where: {
                 teamId,
                 team: {
-                    availabilities: {
-                        default: true
+                    profiles: {
+                        availabilities: {
+                            default: true
+                        }
                     }
                 }
             }
         });
 
-        const defaultAvailability = defaultEventGroup.team.availabilities.pop();
+        const defaultAvailability = defaultEventGroup.team.profiles[0].availabilities.pop();
 
         if (defaultAvailability) {
             newEvent.availabilityId = defaultAvailability.id;

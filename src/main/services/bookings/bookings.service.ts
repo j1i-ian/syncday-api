@@ -24,7 +24,7 @@ export class BookingsService {
     ) {}
 
     fetchHost(teamWorkspace: string): Observable<Team> {
-        return this.teamService.findTeamByWorkspace(teamWorkspace);
+        return this.teamService.findByWorkspace(teamWorkspace);
     }
 
     searchHostEvents(teamWorkspace: string): Observable<Event[]> {
@@ -57,7 +57,7 @@ export class BookingsService {
 
     createScheduledEvent(teamWorkspace: string, eventUUID: string, newSchedule: Schedule): Observable<Schedule> {
 
-        return from(this.teamService.findTeamByWorkspace(teamWorkspace))
+        return from(this.teamService.findByWorkspace(teamWorkspace))
             .pipe(
                 mergeMap(
                     (loadedTeam) => this.scheduleService.create(

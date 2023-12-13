@@ -8,6 +8,7 @@ import { AvailabilityRedisRepository } from '@services/availability/availability
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { AvailabilityBodySaveFail } from '@app/exceptions/availability/availability-body-save-fail.exception';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
@@ -66,9 +67,10 @@ describe('Availability Redis Repository Test', () => {
         it('should be returned 1 for availability body creation', async () => {
             const setStub = serviceSandbox.stub(service, 'set').resolves(1);
 
+            const profileIdMock = stubOne(Profile).id;
             const uuidKey = '';
 
-            const createdAvailabilityBody = await service.save(uuidKey, uuidKey, {
+            const createdAvailabilityBody = await service.save(uuidKey, profileIdMock, uuidKey, {
                 availableTimes: [],
                 overrides: []
             } as AvailabilityBody);
@@ -80,10 +82,11 @@ describe('Availability Redis Repository Test', () => {
         it('should be thrown error when set returns 0 for availability body creation count', async () => {
             const setStub = serviceSandbox.stub(service, 'set').resolves(0);
 
+            const profileIdMock = stubOne(Profile).id;
             const uuidKey = '';
 
             await expect(
-                service.save(uuidKey, uuidKey, {
+                service.save(uuidKey, profileIdMock, uuidKey, {
                     availableTimes: [],
                     overrides: []
                 } as AvailabilityBody)
@@ -94,9 +97,10 @@ describe('Availability Redis Repository Test', () => {
 
         it('should be updated availability body with 0 creation', async () => {
             const setStub = serviceSandbox.stub(service, 'set').resolves(0);
+            const profileIdMock = stubOne(Profile).id;
             const uuidKey = '';
 
-            const updateSuccess = await service.update(uuidKey, uuidKey, {
+            const updateSuccess = await service.update(uuidKey, profileIdMock, uuidKey, {
                 availableTimes: [],
                 overrides: []
             } as AvailabilityBody);
@@ -107,10 +111,11 @@ describe('Availability Redis Repository Test', () => {
 
         it('should be thrown error when set returns 1 or more for availability body creation count on update', async () => {
             const setStub = serviceSandbox.stub(service, 'set').resolves(1);
+            const profileIdMock = stubOne(Profile).id;
             const uuidKey = '';
 
             await expect(
-                service.update(uuidKey, uuidKey, {
+                service.update(uuidKey, profileIdMock, uuidKey, {
                     availableTimes: [],
                     overrides: []
                 } as AvailabilityBody)
@@ -122,12 +127,13 @@ describe('Availability Redis Repository Test', () => {
         it('should be returned 1 for availability body creation', async () => {
             const uuidKey = '';
             const createdHashFieldStub = 1;
+            const profileIdMock = stubOne(Profile).id;
 
             syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(uuidKey);
 
             clusterStub.hset.resolves(createdHashFieldStub);
 
-            const setResult = await service.set(uuidKey, uuidKey, {
+            const setResult = await service.set(uuidKey, profileIdMock, uuidKey, {
                 availableTimes: [],
                 overrides: []
             } as AvailabilityBody);
@@ -136,6 +142,7 @@ describe('Availability Redis Repository Test', () => {
         });
 
         it('should be saved all for availability bodies with sorting', async () => {
+            const profileIdMock = stubOne(Profile).id;
             const teamUUIDMock = stubOne(Team).uuid;
             const availabilityUUIDStub = stubOne(Availability).uuid;
             const updateAvailabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
@@ -164,7 +171,7 @@ describe('Availability Redis Repository Test', () => {
                 }
             ];
             const availabilityRecordStub =
-                testMockUtil.getAvailabilityBodyRecordMocks(availabilityBodyMocks);
+                testMockUtil.getAvailabilityBodyRecordMocks(profileIdMock, availabilityBodyMocks);
             const createdItemCountStub = 0;
 
             const getAvailabilityBodyRecordStub = serviceSandbox
@@ -173,7 +180,7 @@ describe('Availability Redis Repository Test', () => {
             syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(teamUUIDMock);
             clusterStub.hset.resolves(createdItemCountStub);
 
-            const result = await service.updateAll(teamUUIDMock, updateAvailabilityBodyStub);
+            const result = await service.updateAll(teamUUIDMock, profileIdMock, updateAvailabilityBodyStub);
 
             expect(result).true;
             expect(getAvailabilityBodyRecordStub.called).true;
@@ -186,8 +193,9 @@ describe('Availability Redis Repository Test', () => {
             >;
             expect(availabilityBodyMapStub).ok;
 
+            const bodyKey = [profileIdMock, availabilityUUIDStub].join(':');
             const parsedUpdateAvailabilityBodyJsonString = availabilityBodyMapStub.get(
-                availabilityUUIDStub
+                bodyKey
             ) as string;
             const parsedUpdateAvailabilityBody: AvailabilityBody = JSON.parse(
                 parsedUpdateAvailabilityBodyJsonString
@@ -203,6 +211,7 @@ describe('Availability Redis Repository Test', () => {
         });
 
         it('should be saved only overrides without available time changes ', async () => {
+            const profileIdMock = stubOne(Profile).id;
             const teamUUIDMock = stubOne(Team).uuid;
             const availabilityUUIDStub = stubOne(Availability).uuid;
             const updateAvailabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
@@ -233,7 +242,7 @@ describe('Availability Redis Repository Test', () => {
                 }
             ];
             const availabilityRecordStub =
-                testMockUtil.getAvailabilityBodyRecordMocks(availabilityBodyMocks);
+                testMockUtil.getAvailabilityBodyRecordMocks(profileIdMock, availabilityBodyMocks);
             const createdItemCountStub = 0;
 
             const getAvailabilityBodyRecordStub = serviceSandbox
@@ -242,7 +251,7 @@ describe('Availability Redis Repository Test', () => {
             syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(teamUUIDMock);
             clusterStub.hset.resolves(createdItemCountStub);
 
-            const result = await service.updateAll(teamUUIDMock, updateAvailabilityBodyStub);
+            const result = await service.updateAll(teamUUIDMock, profileIdMock, updateAvailabilityBodyStub);
 
             expect(result).true;
             expect(getAvailabilityBodyRecordStub.called).true;
@@ -255,8 +264,9 @@ describe('Availability Redis Repository Test', () => {
             >;
             expect(availabilityBodyMapStub).ok;
 
+            const bodyKey = [profileIdMock, availabilityUUIDStub].join(':');
             const parsedUpdateAvailabilityBodyJsonString = availabilityBodyMapStub.get(
-                availabilityUUIDStub
+                bodyKey
             ) as string;
             const parsedUpdateAvailabilityBody: AvailabilityBody = JSON.parse(
                 parsedUpdateAvailabilityBodyJsonString
@@ -270,6 +280,7 @@ describe('Availability Redis Repository Test', () => {
         });
 
         it('should be thrown error when one or more availability body is created on update', async () => {
+            const profileIdMock = stubOne(Profile).id;
             const teamUUIDMock = stubOne(Team).uuid;
             const availabilityUUIDStub = stubOne(Availability).uuid;
             const updateAvailabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
@@ -298,7 +309,7 @@ describe('Availability Redis Repository Test', () => {
                 }
             ];
             const availabilityRecordStub =
-                testMockUtil.getAvailabilityBodyRecordMocks(availabilityBodyMocks);
+                testMockUtil.getAvailabilityBodyRecordMocks(profileIdMock, availabilityBodyMocks);
             const createdItemCountStub = 5;
 
             const getAvailabilityBodyRecordStub = serviceSandbox
@@ -307,7 +318,7 @@ describe('Availability Redis Repository Test', () => {
             syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(teamUUIDMock);
             clusterStub.hset.resolves(createdItemCountStub);
 
-            await expect(service.updateAll(teamUUIDMock, updateAvailabilityBodyStub)).rejectedWith(
+            await expect(service.updateAll(teamUUIDMock, profileIdMock, updateAvailabilityBodyStub)).rejectedWith(
                 AvailabilityBodySaveFail
             );
 
@@ -318,24 +329,26 @@ describe('Availability Redis Repository Test', () => {
 
         it('should be got parsed availability body: getAvailability', async () => {
             const uuidKey = '';
+            const profileIdMock = stubOne(Profile).id;
 
             syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(uuidKey);
 
             clusterStub.hget.resolves('{}');
 
-            const verification = await service.getAvailabilityBody(uuidKey, uuidKey);
+            const verification = await service.getAvailabilityBody(uuidKey, profileIdMock, uuidKey);
             expect(verification).ok;
         });
 
         it('should be removed availability body by hash field: deleteAvailability', async () => {
             const uuidKey = 'ABCDFF';
             const deleteCountStub = 1;
+            const profileIdMock = stubOne(Profile).id;
 
             syncdayRedisServiceStub._getAvailabilityHashMapKey.returns(uuidKey);
 
             clusterStub.hdel.resolves(deleteCountStub);
 
-            const deleteSuccess = await service.deleteAvailabilityBody(uuidKey, uuidKey);
+            const deleteSuccess = await service.deleteAvailabilityBody(uuidKey, profileIdMock, uuidKey);
             expect(deleteSuccess).true;
         });
 
@@ -356,6 +369,7 @@ describe('Availability Redis Repository Test', () => {
 
         it('should be cloned availability body', async () => {
             const teamUUIDMock = stubOne(Team).uuid;
+            const profileId = stubOne(Profile).id;
             const [{ uuid: sourceAvailabilityUUIDMock }, { uuid: newAvailabilityUUIDMock }] = stub(
                 Availability,
                 2
@@ -369,7 +383,7 @@ describe('Availability Redis Repository Test', () => {
             saveAvailabilityBodyStub.resolves(bodyStub);
 
             const clonedAvailabilityBody = await firstValueFrom(
-                service.clone(teamUUIDMock, sourceAvailabilityUUIDMock, newAvailabilityUUIDMock)
+                service.clone(teamUUIDMock, profileId, sourceAvailabilityUUIDMock, newAvailabilityUUIDMock)
             );
 
             expect(clonedAvailabilityBody).ok;

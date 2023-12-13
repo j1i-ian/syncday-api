@@ -32,7 +32,7 @@ export class TeamService {
         );
     }
 
-    findTeamByWorkspace(teamWorkspace: string): Observable<Team> {
+    findByWorkspace(teamWorkspace: string): Observable<Team> {
         return from(
             this.teamRepository.findOneOrFail({
                 where: {

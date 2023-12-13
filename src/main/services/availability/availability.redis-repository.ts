@@ -18,8 +18,8 @@ export class AvailabilityRedisRepository {
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
 
     async getAvailabilityBodyRecord(teamUUID: string): Promise<Record<string, AvailabilityBody>> {
-        const availabilityListKey = this.syncdayRedisService._getAvailabilityHashMapKey(teamUUID);
-        const availabilityUUIDRecords = await this.cluster.hgetall(availabilityListKey);
+        const availabilityHashmapKey = this.syncdayRedisService._getAvailabilityHashMapKey(teamUUID);
+        const availabilityUUIDRecords = await this.cluster.hgetall(availabilityHashmapKey);
 
         const parsedAvailabilityBodies =
             this.syncdayRedisService.__parseHashmapRecords<AvailabilityBody>(
@@ -31,17 +31,29 @@ export class AvailabilityRedisRepository {
 
     async getAvailabilityBody(
         teamUUID: string,
+        profileId: number,
         availabilityUUID: string
     ): Promise<AvailabilityBody> {
         const availabilityTeamKey = this.syncdayRedisService._getAvailabilityHashMapKey(teamUUID);
 
+        const availabilityBodyKey = [
+            profileId,
+            availabilityUUID
+        ].join(':');
+
         const availabilityBodyJsonString = await this.cluster.hget(
             availabilityTeamKey,
-            availabilityUUID
+            availabilityBodyKey
         );
 
         if (!availabilityBodyJsonString) {
-            this.logger.error(`CannotFindAvailabilityBody: availabilityUUID is ${availabilityUUID}, user uuid: ${teamUUID}, availabilityUserKey: ${availabilityTeamKey as string}`);
+            this.logger.error({
+                message: 'CannotFindAvailabilityBody',
+                availabilityUUID,
+                teamUUID,
+                availabilityBodyKey
+            });
+
             throw new CannotFindAvailabilityBody();
         }
 
@@ -54,10 +66,17 @@ export class AvailabilityRedisRepository {
 
     async save(
         teamUUID: string,
+        profileId: number,
         availabilityUUID: string,
         availabilityBody: AvailabilityBody
     ): Promise<AvailabilityBody> {
-        const createdHashFieldCount = await this.set(teamUUID, availabilityUUID, availabilityBody);
+
+        const createdHashFieldCount = await this.set(
+            teamUUID,
+            profileId,
+            availabilityUUID,
+            availabilityBody
+        );
 
         if (createdHashFieldCount !== 1) {
             throw new AvailabilityBodySaveFail();
@@ -68,10 +87,17 @@ export class AvailabilityRedisRepository {
 
     async update(
         teamUUID: string,
+        profileId: number,
         availabilityUUID: string,
         availabilityBody: AvailabilityBody
     ): Promise<boolean> {
-        const createdHashFieldCount = await this.set(teamUUID, availabilityUUID, availabilityBody);
+
+        const createdHashFieldCount = await this.set(
+            teamUUID,
+            profileId,
+            availabilityUUID,
+            availabilityBody
+        );
 
         if (createdHashFieldCount !== 0) {
             throw new AvailabilityBodySaveFail();
@@ -82,6 +108,7 @@ export class AvailabilityRedisRepository {
 
     async set(
         teamUUID: string,
+        profileId: number,
         availabilityUUID: string,
         availabilityBody: AvailabilityBody
     ): Promise<number> {
@@ -102,18 +129,27 @@ export class AvailabilityRedisRepository {
                     new Date(overrideA.targetDate).getTime()
             );
 
+        const availabilityBodyKey = [
+            profileId,
+            availabilityUUID
+        ].join(':');
+
         const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(teamUUID);
         const createdHashFields = await this.cluster.hset(
             availabilityUserKey,
-            availabilityUUID,
+            availabilityBodyKey,
             JSON.stringify(availabilityBody)
         );
 
         return createdHashFields;
     }
 
-    async updateAll(teamUUID: string, updateAvailabilityBody: Partial<AvailabilityBody>): Promise<boolean> {
-        const allAvailabilityRecordOfUser = await this.getAvailabilityBodyRecord(teamUUID);
+    async updateAll(
+        teamUUID: string,
+        profileId: number,
+        updateAvailabilityBody: Partial<AvailabilityBody>
+    ): Promise<boolean> {
+        const allAvailabilityRecordOfTeam = await this.getAvailabilityBodyRecord(teamUUID);
 
         let {
             availableTimes: updatedAvailableTimes,
@@ -137,19 +173,20 @@ export class AvailabilityRedisRepository {
         }
 
         const updatedAvailabilityMap: Map<string, string> = Object.keys(
-            allAvailabilityRecordOfUser
-        ).reduce((_availabilityBodyMap, availabilityUUIDKey) => {
+            allAvailabilityRecordOfTeam
+        ).filter((_availabilityUUIDKey) => _availabilityUUIDKey.includes(String(profileId)))
+            .reduce((_availabilityBodyMap, availabilityUUIDKey) => {
 
-            const previousAvailabilityBody = allAvailabilityRecordOfUser[availabilityUUIDKey];
-            const updatedAvailabilityBody = {
-                availableTimes: updatedAvailableTimes || previousAvailabilityBody.availableTimes,
-                overrides: updatedOverrides || previousAvailabilityBody.availableTimes
-            } as AvailabilityBody;
+                const previousAvailabilityBody = allAvailabilityRecordOfTeam[availabilityUUIDKey];
+                const updatedAvailabilityBody = {
+                    availableTimes: updatedAvailableTimes || previousAvailabilityBody.availableTimes,
+                    overrides: updatedOverrides || previousAvailabilityBody.availableTimes
+                } as AvailabilityBody;
 
-            _availabilityBodyMap.set(availabilityUUIDKey, JSON.stringify(updatedAvailabilityBody));
+                _availabilityBodyMap.set(availabilityUUIDKey, JSON.stringify(updatedAvailabilityBody));
 
-            return _availabilityBodyMap;
-        }, new Map());
+                return _availabilityBodyMap;
+            }, new Map());
 
         const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(teamUUID);
 
@@ -168,16 +205,32 @@ export class AvailabilityRedisRepository {
         }
     }
 
-    async deleteAvailabilityBody(teamUUID: string, availabilityUUID: string): Promise<boolean> {
-        const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(teamUUID);
-        const deleteCount = await this.cluster.hdel(availabilityUserKey, availabilityUUID);
+    async deleteAvailabilityBody(
+        teamUUID: string,
+        profileId: number,
+        availabilityUUID: string
+    ): Promise<boolean> {
+        const availabilityBodyKey = [
+            profileId,
+            availabilityUUID
+        ].join(':');
+
+        const availabilityTeamKey = this.syncdayRedisService._getAvailabilityHashMapKey(teamUUID);
+        const deleteCount = await this.cluster.hdel(availabilityTeamKey, availabilityBodyKey);
 
         return deleteCount === 1;
     }
 
-    async deleteAll(teamUUID: string, availabilityUUIDs: string[]): Promise<boolean>{
-        const availabilityUserKey = this.syncdayRedisService._getAvailabilityHashMapKey(teamUUID);
-        const deleteCount = await this.cluster.hdel(availabilityUserKey, ...availabilityUUIDs);
+    async deleteAll(teamUUID: string, availabilityUUIDs?: string[]): Promise<boolean>{
+        const availabilityHashmapKey = this.syncdayRedisService._getAvailabilityHashMapKey(teamUUID);
+
+        let deleteCount: number;
+        if (availabilityUUIDs) {
+            deleteCount = await this.cluster.hdel(availabilityHashmapKey, ...availabilityUUIDs);
+
+        } else {
+            deleteCount = await this.cluster.del(availabilityHashmapKey);
+        }
 
         const deleteSuccess = deleteCount >= 1;
         return deleteSuccess;
@@ -185,12 +238,13 @@ export class AvailabilityRedisRepository {
 
     clone(
         teamUUID: string,
+        profileId: number,
         sourceAvailabilityUUID: string,
         newAvailabilityUUID: string
     ): Observable<AvailabilityBody> {
-        return from(this.getAvailabilityBody(teamUUID, sourceAvailabilityUUID)).pipe(
+        return from(this.getAvailabilityBody(teamUUID, profileId, sourceAvailabilityUUID)).pipe(
             mergeMap((availabilityBody) =>
-                this.save(teamUUID, newAvailabilityUUID, availabilityBody)
+                this.save(teamUUID, profileId, newAvailabilityUUID, availabilityBody)
             )
         );
     }

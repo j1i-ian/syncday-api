@@ -395,6 +395,7 @@ export class TestMockUtil {
     }
 
     getAvailabilityBodyRecordMocks(
+        profileId: number,
         availabilityStubs?: Array<Pick<Availability, 'uuid' | 'availableTimes' | 'overrides'>>
     ): Record<string, AvailabilityBody> {
         if (!availabilityStubs) {
@@ -417,8 +418,9 @@ export class TestMockUtil {
                                 overrides: []
                             } as AvailabilityBody);
 
+                    const bodyKey = [profileId, availabilityStub.uuid].join(':');
                     return [
-                        availabilityStub.uuid,
+                        bodyKey,
                         {
                             availableTimes: _availabilityBody.availableTimes,
                             overrides: _availabilityBody.overrides

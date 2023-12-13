@@ -64,7 +64,7 @@ describe('TeamService', () => {
 
             teamRepositoryStub.findOneOrFail.resolves(teamStub);
 
-            const loadedTeam = await firstValueFrom(service.findTeamByWorkspace(teamStub.workspace as string));
+            const loadedTeam = await firstValueFrom(service.findByWorkspace(teamStub.workspace as string));
 
             const actualPassedParam = teamRepositoryStub.findOneOrFail.getCall(0).args[0];
             expect(

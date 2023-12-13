@@ -5,9 +5,11 @@ import { firstValueFrom, of } from 'rxjs';
 import { InternalServerErrorException } from '@nestjs/common';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { User } from '@core/entities/users/user.entity';
+import { Role } from '@interfaces/profiles/role.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsService } from '@services/events/events.service';
 import { Event } from '@entity/events/event.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
@@ -88,11 +90,15 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.deleteAvailabilityBody.reset();
         });
 
-        it('should be fetched availability list', async () => {
-            const teamStub = stubOne(Team);
-            const availabilities = stub(Availability);
+        it('should be fetched availability list for owner, manager', async () => {
+            const profileStub = stubOne(Profile);
+            const availabilities = stub(Availability, 10, {
+                profileId: profileStub.id
+            });
             const availabilityBodyStubs =
-                testMockUtil.getAvailabilityBodyRecordMocks(availabilities);
+                testMockUtil.getAvailabilityBodyRecordMocks(profileStub.id, availabilities);
+
+            const roles = [Role.OWNER];
 
             availabilityRepositoryStub.find.resolves(availabilities);
             availabilityRedisRepositoryStub.getAvailabilityBodyRecord.resolves(
@@ -101,16 +107,46 @@ describe('AvailabilityService', () => {
 
             const list = await firstValueFrom(
                 service.search({
-                    teamId: teamStub.id,
-                    teamUUID: teamStub.uuid
-                })
+                    profileId: profileStub.id,
+                    profileUUID: profileStub.uuid
+                }, roles)
             );
 
             expect(list).ok;
             expect(list.length).greaterThan(0);
+            expect(availabilityRepositoryStub.find.called).true;
+            expect(availabilityRedisRepositoryStub.getAvailabilityBodyRecord.called).true;
+        });
+
+        it('should be fetched availability list', async () => {
+            const profileStub = stubOne(Profile);
+            const availabilities = stub(Availability, 10, {
+                profileId: profileStub.id
+            });
+            const availabilityBodyStubs =
+                testMockUtil.getAvailabilityBodyRecordMocks(profileStub.id, availabilities);
+
+            availabilityRepositoryStub.find.resolves(availabilities);
+            availabilityRedisRepositoryStub.getAvailabilityBodyRecord.resolves(
+                availabilityBodyStubs
+            );
+            const roles = [Role.MEMBER];
+
+            const list = await firstValueFrom(
+                service.search({
+                    profileId: profileStub.id,
+                    profileUUID: profileStub.uuid
+                }, roles)
+            );
+
+            expect(list).ok;
+            expect(list.length).greaterThan(0);
+            expect(availabilityRepositoryStub.find.called).true;
+            expect(availabilityRedisRepositoryStub.getAvailabilityBodyRecord.called).true;
         });
 
         it('should be fetched availability detail', async () => {
+            const profileStub = stubOne(Profile);
             const teamStub = stubOne(Team);
             const availabilityStub = stubOne(Availability);
             const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock(availabilityStub);
@@ -119,7 +155,7 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyStub);
 
             const loadedAvailability = await firstValueFrom(
-                service.fetchDetail(teamStub.id, teamStub.uuid, availabilityStub.id)
+                service.fetchDetail(teamStub.uuid, profileStub.id, availabilityStub.id)
             );
 
             expect(loadedAvailability).ok;
@@ -127,9 +163,12 @@ describe('AvailabilityService', () => {
 
         it('should be fetched availability detail by user workspace and event link', async () => {
             const teamStub = stubOne(Team);
+            const profileStub = stubOne(Profile, {
+                team: teamStub
+            });
             const eventStub = stubOne(Event);
             const availabilityStub = stubOne(Availability, {
-                team: teamStub
+                profile: profileStub
             });
             const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock(availabilityStub);
 
@@ -148,6 +187,7 @@ describe('AvailabilityService', () => {
 
         it('should be created availability', async () => {
             const teamStub = stubOne(Team);
+            const profileStub = stubOne(Profile);
             const availabilityStub = stubOne(Availability);
             const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock(availabilityStub);
             availabilityStub.availableTimes = availabilityBodyStub.availableTimes;
@@ -157,8 +197,8 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.save.resolves(availabilityBodyStub);
 
             const loadedAvailability = await service.create(
-                teamStub.id,
                 teamStub.uuid,
+                profileStub.id,
                 availabilityBodyStub as CreateAvailabilityRequestDto
             );
 
@@ -169,6 +209,7 @@ describe('AvailabilityService', () => {
 
         it('should be updated availability when availability entity would be updated', async () => {
             const teamStub = stubOne(Team);
+            const profileStub = stubOne(Profile);
             const availabilityStub = stubOne(Availability);
 
             const updateAvailabilityName = 'updateupdate';
@@ -188,8 +229,8 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.set.resolves(0);
 
             const loadedAvailability = await service.update(
-                teamStub.id,
                 teamStub.uuid,
+                profileStub.id,
                 availabilityStub.id,
                 updateAvailabilityStub
             );
@@ -201,6 +242,7 @@ describe('AvailabilityService', () => {
         });
 
         it('should be not updated availability when availability entity would be not updated', async () => {
+            const profileStub = stubOne(Profile);
             const teamStub = stubOne(Team);
             const availabilityStub = stubOne(Availability);
 
@@ -222,8 +264,8 @@ describe('AvailabilityService', () => {
 
             await expect(
                 service.update(
-                    teamStub.id,
                     teamStub.uuid,
+                    profileStub.id,
                     availabilityStub.id,
                     updateAvailabilityStub
                 )
@@ -246,6 +288,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched all', async () => {
+                const profileStub = stubOne(Profile);
                 const teamStub = stubOne(Team);
                 const availabilityBody = testMockUtil.getAvailabilityBodyMock();
 
@@ -253,6 +296,7 @@ describe('AvailabilityService', () => {
 
                 const patchAllResult = await service.patchAll(
                     teamStub.uuid,
+                    profileStub.id,
                     availabilityBody
                 );
 
@@ -261,20 +305,26 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched without available times nor overrides', async () => {
+                const profileStub = stubOne(Profile);
                 const teamStub = stubOne(Team);
                 const availabilityBody = testMockUtil.getAvailabilityBodyMock();
 
                 availabilityRedisRepositoryStub.updateAll.resolves(true);
 
-                const patchAllResult = await service.patchAll(teamStub.uuid, {
-                    availableTimes: availabilityBody.availableTimes
-                });
+                const patchAllResult = await service.patchAll(
+                    teamStub.uuid,
+                    profileStub.id,
+                    {
+                        availableTimes: availabilityBody.availableTimes
+                    }
+                );
 
                 expect(patchAllResult).true;
                 expect(availabilityRedisRepositoryStub.updateAll.called).true;
             });
 
             it('should be patched default as true and previous default availability should be patched default as false ', async () => {
+                const profileStub = stubOne(Profile);
                 const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: false
@@ -283,8 +333,8 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    teamStub.id,
                     teamStub.uuid,
+                    profileStub.id,
                     availabilityStub.id,
                     {
                         ...availabilityStub,
@@ -299,6 +349,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched default as true with name, timezone and previous default availability should be patched default as false ', async () => {
+                const profileStub = stubOne(Profile);
                 const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: false
@@ -311,8 +362,8 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    teamStub.id,
                     teamStub.uuid,
+                    profileStub.id,
                     availabilityStub.id,
                     {
                         ...availabilityStub,
@@ -327,6 +378,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be thrown error when default request value is false if that target availability is default', async () => {
+                const profileStub = stubOne(Profile);
                 const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: true
@@ -339,10 +391,13 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 await expect(
-                    service.patch(teamStub.id, teamStub.uuid, availabilityStub.id, {
-                        ...availabilityStub,
-                        default: false
-                    })
+                    service.patch(
+                        teamStub.uuid,
+                        profileStub.id,
+                        availabilityStub.id, {
+                            ...availabilityStub,
+                            default: false
+                        })
                 ).rejectedWith(NoDefaultAvailabilityException);
 
                 expect(availabilityRepositoryStub.findOneByOrFail.called).true;
@@ -352,6 +407,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched name, timezone when patching default request value is false', async () => {
+                const profileStub = stubOne(Profile);
                 const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: false
@@ -364,8 +420,8 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    teamStub.id,
                     teamStub.uuid,
+                    profileStub.id,
                     availabilityStub.id,
                     availabilityStub
                 );
@@ -378,6 +434,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be patched availableTimes with overrides', async () => {
+                const profileStub = stubOne(Profile);
                 const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: false
@@ -388,8 +445,8 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    teamStub.id,
                     teamStub.uuid,
+                    profileStub.id,
                     availabilityStub.id,
                     patchAvailabilityRequestDtoMock
                 );
@@ -402,6 +459,7 @@ describe('AvailabilityService', () => {
             });
 
             it('should be not patched when dto has only availableTimes, not include overrides', async () => {
+                const profileStub = stubOne(Profile);
                 const teamStub = stubOne(Team);
                 const availabilityStub = stubOne(Availability, {
                     default: false
@@ -412,8 +470,8 @@ describe('AvailabilityService', () => {
                 availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 const patchResult = await service.patch(
-                    teamStub.id,
                     teamStub.uuid,
+                    profileStub.id,
                     availabilityStub.id,
                     patchAvailabilityRequestDtoMock
                 );
@@ -434,6 +492,7 @@ describe('AvailabilityService', () => {
                 const defaultAvailabilityStub = stubOne(Availability, {
                     default: true
                 });
+                const profileStub = stubOne(Profile);
                 const teamStub = stubOne(Team);
                 const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
@@ -443,9 +502,9 @@ describe('AvailabilityService', () => {
                 eventsServiceStub._unlinksToAvailability.resolves(true);
 
                 const result = await service.remove(
-                    availabilityStub.id,
-                    teamStub.id,
-                    teamStub.uuid
+                    teamStub.uuid,
+                    profileStub.id,
+                    availabilityStub.id
                 );
 
                 expect(result).true;
@@ -460,14 +519,19 @@ describe('AvailabilityService', () => {
                 const availabilityStub = stubOne(Availability, {
                     default: true
                 });
-                const userMock = stubOne(User);
+                const profileMock = stubOne(Profile);
+                const teamMock = stubOne(Team);
                 const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
                 availabilityRepositoryStub.findOne.resolves(availabilityStub);
                 availabilityRepositoryStub.delete.resolves(deleteResultStub);
 
                 await expect(
-                    service.remove(availabilityStub.id, userMock.id, userMock.uuid)
+                    service.remove(
+                        teamMock.uuid,
+                        profileMock.id,
+                        availabilityStub.id
+                    )
                 ).rejectedWith(CannotDeleteDefaultAvailabilityException);
 
                 expect(availabilityRepositoryStub.findOne.called).true;
@@ -478,7 +542,7 @@ describe('AvailabilityService', () => {
 
         describe('Test availability clone', () => {
             afterEach(() => {
-                validatorStub.validate.reset();
+                availabilityRepositoryStub.findOneByOrFail.reset();
                 availabilityRedisRepositoryStub.clone.reset();
                 availabilityRepositoryStub.save.reset();
             });
@@ -490,20 +554,22 @@ describe('AvailabilityService', () => {
                 const clonedAvailabilityStub = stubOne(Availability, {
                     default: false
                 });
-                const userMock = stubOne(User);
+                const profileMock = stubOne(Profile);
+                const teamMock = stubOne(Team);
 
                 const availabilityBody = testMockUtil.getAvailabilityBodyMock(availabilityStub);
 
-                validatorStub.validate.resolves(availabilityStub);
+                availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 availabilityRepositoryStub.save.resolves(clonedAvailabilityStub);
 
                 availabilityRedisRepositoryStub.clone.returns(of(availabilityBody));
 
                 const clonedAvailability = await service.clone(
+                    teamMock.id,
+                    teamMock.uuid,
+                    profileMock.id,
                     availabilityStub.id,
-                    userMock.id,
-                    userMock.uuid,
                     {
                         cloneSuffix: 'cloned'
                     }
@@ -511,7 +577,7 @@ describe('AvailabilityService', () => {
 
                 expect(clonedAvailability).ok;
                 expect(clonedAvailability.default).false;
-                expect(validatorStub.validate.called).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(availabilityRepositoryStub.save.called).true;
                 expect(availabilityRepositoryStub.save.getCall(0).args[0].default).false;
                 expect(availabilityRepositoryStub.save.getCall(0).args[0].name).contains('cloned');
@@ -525,12 +591,13 @@ describe('AvailabilityService', () => {
                 const clonedAvailabilityStub = stubOne(Availability, {
                     default: false
                 });
-                const userMock = stubOne(User);
+                const profileMock = stubOne(Profile);
+                const teamMock = stubOne(Team);
                 const expectedSuffix = 'clonecloned';
 
                 const availabilityBody = testMockUtil.getAvailabilityBodyMock(availabilityStub);
 
-                validatorStub.validate.resolves(availabilityStub);
+                availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 clonedAvailabilityStub.name = expectedSuffix;
                 availabilityRepositoryStub.save.resolves(clonedAvailabilityStub);
@@ -538,9 +605,10 @@ describe('AvailabilityService', () => {
                 availabilityRedisRepositoryStub.clone.returns(of(availabilityBody));
 
                 const clonedAvailability = await service.clone(
+                    teamMock.id,
+                    teamMock.uuid,
+                    profileMock.id,
                     availabilityStub.id,
-                    userMock.id,
-                    userMock.uuid,
                     {
                         cloneSuffix: expectedSuffix
                     }
@@ -549,7 +617,7 @@ describe('AvailabilityService', () => {
                 expect(clonedAvailability).ok;
                 expect(clonedAvailability.default).false;
                 expect(clonedAvailability.name).contains(expectedSuffix);
-                expect(validatorStub.validate.called).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(availabilityRepositoryStub.save.called).true;
                 expect(availabilityRepositoryStub.save.getCall(0).args[0].default).false;
                 expect(availabilityRepositoryStub.save.getCall(0).args[0].name).contains(
@@ -565,20 +633,22 @@ describe('AvailabilityService', () => {
                 const clonedAvailabilityStub = stubOne(Availability, {
                     default: false
                 });
-                const userMock = stubOne(User);
+                const teamMock = stubOne(Team);
+                const profileMock = stubOne(Profile);
 
                 const availabilityBody = testMockUtil.getAvailabilityBodyMock(availabilityStub);
 
-                validatorStub.validate.resolves(availabilityStub);
+                availabilityRepositoryStub.findOneByOrFail.resolves(availabilityStub);
 
                 availabilityRepositoryStub.save.resolves(clonedAvailabilityStub);
 
                 availabilityRedisRepositoryStub.clone.returns(of(availabilityBody));
 
                 const clonedAvailability = await service.clone(
+                    teamMock.id,
+                    teamMock.uuid,
+                    profileMock.id,
                     availabilityStub.id,
-                    userMock.id,
-                    userMock.uuid,
                     {
                         cloneSuffix: 'cloned'
                     }
@@ -586,7 +656,7 @@ describe('AvailabilityService', () => {
 
                 expect(clonedAvailability).ok;
                 expect(clonedAvailability.default).false;
-                expect(validatorStub.validate.called).true;
+                expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(availabilityRepositoryStub.save.called).true;
                 expect(availabilityRepositoryStub.save.getCall(0).args[0].default).false;
                 expect(availabilityRedisRepositoryStub.clone.called).true;
@@ -595,25 +665,25 @@ describe('AvailabilityService', () => {
 
         describe('Test availability link', () => {
             afterEach(() => {
-                validatorStub.validate.reset();
                 eventsServiceStub.hasOwnEventsOrThrow.reset();
                 availabilityRepositoryStub.findOneByOrFail.reset();
                 eventsServiceStub.linksToAvailability.reset();
             });
 
             it('should be linked with events', async () => {
-                const userIdMock = stubOne(User).id;
+                const teamIdMock = stubOne(Team).id;
+                const profileMock = stubOne(Profile);
                 const availabilityIdMock = stubOne(Availability).id;
                 const eventIdMocks = stub(Event).map((_event) => _event.id);
                 const defaultAvailabilityStub = stubOne(Availability, {
-                    default: true
+                    default: true,
+                    profileId: profileMock.id
                 });
 
                 availabilityRepositoryStub.findOneByOrFail.resolves(defaultAvailabilityStub);
 
-                await service.linkToEvents(userIdMock, availabilityIdMock, eventIdMocks);
+                await service.linkToEvents(profileMock.id, teamIdMock, availabilityIdMock, eventIdMocks);
 
-                expect(validatorStub.validate.called).true;
                 expect(eventsServiceStub.hasOwnEventsOrThrow.called).true;
                 expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(eventsServiceStub.linksToAvailability.called).true;
@@ -622,7 +692,6 @@ describe('AvailabilityService', () => {
 
         describe('Test availability unlink', () => {
             afterEach(() => {
-                validatorStub.validate.reset();
                 availabilityRepositoryStub.findOneByOrFail.reset();
                 eventsServiceStub.unlinksToAvailability.reset();
             });
@@ -638,7 +707,6 @@ describe('AvailabilityService', () => {
 
                 await service.unlinkToEvents(userIdMock, availabilityIdMock);
 
-                expect(validatorStub.validate.called).true;
                 expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(eventsServiceStub.unlinksToAvailability.called).true;
             });
@@ -655,7 +723,6 @@ describe('AvailabilityService', () => {
                     service.unlinkToEvents(userIdMock, defaultAvailabilityStub.id)
                 ).rejectedWith(CannotUnlinkDefaultAvailabilityException);
 
-                expect(validatorStub.validate.called).true;
                 expect(availabilityRepositoryStub.findOneByOrFail.called).true;
                 expect(eventsServiceStub.unlinksToAvailability.called).false;
             });

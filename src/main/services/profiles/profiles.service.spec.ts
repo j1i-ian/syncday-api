@@ -3,6 +3,7 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Profile } from '@entity/profiles/profile.entity';
+import { Team } from '@entity/teams/team.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { ProfilesService } from './profiles.service';
 
@@ -33,6 +34,24 @@ describe('ProfilesService', () => {
     });
 
     describe('Test profile fetching', () => {
+
+        afterEach(() => {
+            profileRepositoryStub.findOneOrFail.reset();
+            profileRepositoryStub.find.reset();
+        });
+
+        it('should be searched profiles by team id', async () => {
+            const teamIdMock = stubOne(Team).id;
+            const profileStubs = stub(Profile);
+
+            profileRepositoryStub.find.resolves(profileStubs);
+
+            const loadedProfiles =  await firstValueFrom(service.searchByTeamId(teamIdMock));
+
+            expect(loadedProfiles).ok;
+            expect(loadedProfiles.length).greaterThan(0);
+            expect(profileRepositoryStub.find.called).true;
+        });
 
         it('should be found profile by profile id', async () => {
             const profileStub = stubOne(Profile);

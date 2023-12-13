@@ -521,13 +521,13 @@ describe('Test User Service', () => {
             const googleIntergrations = stub(GoogleIntegration);
             const teamSettingStub = stubOne(TeamSetting);
             const team = stubOne(Team, {
-                availabilities,
                 eventGroup: [eventGroup],
                 teamSetting: teamSettingStub
             });
             const profile = stubOne(Profile, {
                 team,
-                googleIntergrations
+                googleIntergrations,
+                availabilities
             });
             const userSetting = stubOne(UserSetting);
 

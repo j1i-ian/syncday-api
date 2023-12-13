@@ -11,6 +11,7 @@ import { EventsRedisRepository } from '@services/events/events.redis-repository'
 import { UtilService } from '@services/util/util.service';
 import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
@@ -229,8 +230,11 @@ describe('EventsService', () => {
 
         it('should be created event with passed name when event link is not used in', async () => {
             const defaultAvailability = stubOne(Availability);
-            const teamMock = stubOne(Team, {
+            const profileMock = stubOne(Profile, {
                 availabilities: [defaultAvailability]
+            });
+            const teamMock = stubOne(Team, {
+                profiles: [profileMock]
             });
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
@@ -277,8 +281,11 @@ describe('EventsService', () => {
 
         it('should be created event with combinded name and generated numbers when event link is used in', async () => {
             const defaultAvailability = stubOne(Availability);
-            const teamMock = stubOne(Team, {
+            const profileMock = stubOne(Profile, {
                 availabilities: [defaultAvailability]
+            });
+            const teamMock = stubOne(Team, {
+                profiles: [profileMock]
             });
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
@@ -323,8 +330,12 @@ describe('EventsService', () => {
         });
 
         it('should throw an error when creating an event if the default availability does not exist', () => {
+            const defaultAvailability = stubOne(Availability);
+            const profileMock = stubOne(Profile, {
+                availabilities: [defaultAvailability]
+            });
             const teamMock = stubOne(Team, {
-                availabilities: []
+                profiles: [profileMock]
             });
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];

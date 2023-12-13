@@ -25,7 +25,7 @@ export class EventDetailsService {
                 where: {
                     id: eventDetailId,
                     event: {
-                        availability: {
+                        eventGroup: {
                             teamId
                         }
                     }

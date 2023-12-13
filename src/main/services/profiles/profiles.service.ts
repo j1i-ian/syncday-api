@@ -11,6 +11,14 @@ export class ProfilesService {
         @InjectRepository(Profile) private readonly profileRepository: Repository<Profile>
     ) {}
 
+    searchByTeamId(teamId: number): Observable<Profile[]> {
+        return from(this.profileRepository.find({
+            where: {
+                teamId
+            }
+        }));
+    }
+
     findProfileById(profileId: number): Observable<Profile> {
         return from(this.profileRepository.findOneOrFail({
             relations: [

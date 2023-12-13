@@ -56,13 +56,13 @@ describe('BookingsService', () => {
 
         const teamStub = stubOne(Team);
 
-        teamServiceStub.findTeamByWorkspace.returns(of(teamStub));
+        teamServiceStub.findByWorkspace.returns(of(teamStub));
 
         await firstValueFrom(service.fetchHost(teamStub.workspace as string));
 
-        expect(teamServiceStub.findTeamByWorkspace.called).true;
+        expect(teamServiceStub.findByWorkspace.called).true;
 
-        teamServiceStub.findTeamByWorkspace.reset();
+        teamServiceStub.findByWorkspace.reset();
     });
 
     it('should be fetched host events', async () => {

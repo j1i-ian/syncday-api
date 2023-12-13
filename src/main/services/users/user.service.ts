@@ -311,14 +311,19 @@ export class UserService {
         const initialAvailability = new Availability();
         initialAvailability.default = true;
         initialAvailability.name = this.utilService.getDefaultAvailabilityName(language);
-        initialAvailability.team = savedTeam;
+        initialAvailability.profileId = savedProfile.id;
         initialAvailability.timezone = userSetting.preferredTimezone;
 
         const savedAvailability = await _availabilityRepository.save(initialAvailability);
-        await this.availabilityRedisRepository.save(savedTeam.uuid, savedAvailability.uuid, {
-            availableTimes,
-            overrides: []
-        });
+        await this.availabilityRedisRepository.save(
+            savedTeam.uuid,
+            savedProfile.id,
+            savedAvailability.uuid,
+            {
+                availableTimes,
+                overrides: []
+            }
+        );
 
         initialEvent.availabilityId = savedAvailability.id;
 
@@ -545,8 +550,8 @@ export class UserService {
             relations: {
                 userSetting: true,
                 profiles: {
+                    availabilities: true,
                     team: {
-                        availabilities: true,
                         eventGroup: {
                             events: {
                                 eventDetail: {
@@ -566,10 +571,10 @@ export class UserService {
             userSetting
         } = user;
         const defaultProfile = profiles[0];
+        const { availabilities } = defaultProfile;
         const { googleIntergrations, team } = defaultProfile;
         const {
             eventGroup: eventGroups,
-            availabilities,
             teamSetting
         } = team;
 
@@ -620,7 +625,7 @@ export class UserService {
         });
 
         // TODO: Transaction processing is required for event processing.
-        await this.availabilityRedisRepository.deleteAll(user.uuid, availabilityUUIDs);
+        await this.availabilityRedisRepository.deleteAll(team.uuid, availabilityUUIDs);
         await this.eventRedisRepository.removeEventDetails(eventDetailUUIDs);
         await this.syncdayRedisService.deleteWorkspaceStatus(teamSetting.workspace);
 

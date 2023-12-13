@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
 import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { SearchByTeamOption } from '@interfaces/teams/search-by-team-option.interface';
+import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
+import { Role } from '@interfaces/profiles/role.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsService } from '@services/events/events.service';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
@@ -30,30 +32,39 @@ export class AvailabilityService {
     ) {}
 
     search(
-        searchOption: SearchByTeamOption = {
-            teamId: 0,
-            teamUUID: ''
-        }
+        searchOption: SearchByTeamOption | SearchByProfileOption,
+        roles: Role[]
     ): Observable<Availability[]> {
+
+        const hasTeamPermission = roles.includes(Role.MANAGER) || roles.includes(Role.OWNER);
+
+        const availabilityCondition: FindOptionsWhere<Availability> = hasTeamPermission ?
+            {
+                profile: {
+                    teamId: (searchOption as SearchByTeamOption).teamId
+                }
+            } : {
+                profileId: (searchOption as SearchByProfileOption).profileId
+            };
+
         return forkJoin({
             availabilityEntities: from(
                 this.availabilityRepository.find({
                     relations: ['events'],
-                    where: {
-                        teamId: searchOption.teamId
-                    },
+                    where: availabilityCondition,
                     order: {
                         default: 'DESC'
                     }
                 })
             ),
             availabilityBodyRecord: from(
-                this.availabilityRedisRepository.getAvailabilityBodyRecord(searchOption.teamUUID)
+                this.availabilityRedisRepository.getAvailabilityBodyRecord((searchOption as SearchByTeamOption).teamUUID)
             )
         }).pipe(
             map(({ availabilityEntities, availabilityBodyRecord }) =>
                 availabilityEntities.map((availability) => {
-                    const availabilityBody = availabilityBodyRecord[availability.uuid];
+                    const availabilityBodyKey = [availability.profileId, availability.uuid].join(':');
+                    const availabilityBody = availabilityBodyRecord[availabilityBodyKey];
 
                     availability.availableTimes = availabilityBody.availableTimes;
                     availability.overrides = availabilityBody.overrides;
@@ -65,20 +76,21 @@ export class AvailabilityService {
     }
 
     fetchDetail(
-        teamId: number,
         teamUUID: string,
+        profileId: number,
         availabilityId: number
     ): Observable<Availability> {
         return from(
             this.availabilityRepository.findOneByOrFail({
                 id: availabilityId,
-                teamId
+                profileId
             })
         ).pipe(
             mergeMap((availability) =>
                 from(
                     this.availabilityRedisRepository.getAvailabilityBody(
                         teamUUID,
+                        profileId,
                         availability.uuid
                     )
                 ).pipe(
@@ -98,11 +110,13 @@ export class AvailabilityService {
     ): Observable<Availability> {
         return from(
             this.availabilityRepository.findOneOrFail({
-                relations: ['events', 'team', 'team.teamSetting'],
+                relations: ['events', 'profile.team', 'profile.team.teamSetting'],
                 where: {
-                    team: {
-                        teamSetting: {
-                            workspace: teamWorkspace
+                    profile: {
+                        team: {
+                            teamSetting: {
+                                workspace: teamWorkspace
+                            }
                         }
                     },
                     events: {
@@ -114,7 +128,8 @@ export class AvailabilityService {
             mergeMap((availability) =>
                 from(
                     this.availabilityRedisRepository.getAvailabilityBody(
-                        availability.team.uuid,
+                        availability.profile.team.uuid,
+                        availability.profileId,
                         availability.uuid
                     )
                 ).pipe(
@@ -129,8 +144,8 @@ export class AvailabilityService {
     }
 
     async create(
-        teamId: number,
         teamUUID: string,
+        profileId: number,
         { name, availableTimes, overrides, timezone }: CreateAvailabilityRequestDto
     ): Promise<Availability> {
         const newAvailabilityBody = {
@@ -139,13 +154,14 @@ export class AvailabilityService {
         } as AvailabilityBody;
 
         const savedAvailability = await this.availabilityRepository.save({
-            userId: teamId,
+            profileId,
             name,
             timezone
         });
 
         await this.availabilityRedisRepository.save(
             teamUUID,
+            profileId,
             savedAvailability.uuid,
             newAvailabilityBody
         );
@@ -157,8 +173,8 @@ export class AvailabilityService {
     }
 
     async update(
-        teamId: number,
         teamUUID: string,
+        profileId: number,
         availabilityId: number,
         updateAvailabilityDto: UpdateAvailabilityRequestDto
     ): Promise<boolean> {
@@ -170,10 +186,9 @@ export class AvailabilityService {
             default: availabilityDefault
         } = updateAvailabilityDto;
 
-        await this.validator.validate(teamId, availabilityId, Availability);
-
         const availability = await this.availabilityRepository.findOneByOrFail({
-            id: availabilityId
+            id: availabilityId,
+            profileId
         });
 
         const updateResult = await this.availabilityRepository.update(availabilityId, {
@@ -183,10 +198,15 @@ export class AvailabilityService {
         });
 
         if (updateResult.affected && updateResult.affected > 0) {
-            await this.availabilityRedisRepository.set(teamUUID, availability.uuid, {
-                availableTimes,
-                overrides
-            });
+            await this.availabilityRedisRepository.set(
+                teamUUID,
+                profileId,
+                availability.uuid,
+                {
+                    availableTimes,
+                    overrides
+                }
+            );
         } else {
             throw new AvailabilityUpdateFailByEntityException(
                 `Cannot update availability: ${availabilityId}`
@@ -197,8 +217,8 @@ export class AvailabilityService {
     }
 
     async patch(
-        teamId: number,
         teamUUID: string,
+        profileId: number,
         availabilityId: number,
         patchAvailabilityDto: PatchAvailabilityRequestDto
     ): Promise<boolean> {
@@ -235,7 +255,7 @@ export class AvailabilityService {
                 if (availability.default) {
                     await _availabilityRepository.update(
                         {
-                            teamId
+                            profileId
                         },
                         {
                             default: false
@@ -257,10 +277,15 @@ export class AvailabilityService {
          * Notice availability uuid is fetched from rdb
          */
         if (availableTimes && overrides) {
-            await this.availabilityRedisRepository.update(teamUUID, availability.uuid, {
-                availableTimes,
-                overrides
-            });
+            await this.availabilityRedisRepository.update(
+                teamUUID,
+                profileId,
+                availability.uuid,
+                {
+                    availableTimes,
+                    overrides
+                }
+            );
         }
 
         return true;
@@ -268,6 +293,7 @@ export class AvailabilityService {
 
     async patchAll(
         teamUUID: string,
+        profileId: number,
         { availableTimes, overrides }: PatchAvailabilityRequestDto
     ): Promise<boolean> {
         /**
@@ -279,6 +305,7 @@ export class AvailabilityService {
         if (availableTimes || overrides) {
             availabilityBodyUpdateSuccess = await this.availabilityRedisRepository.updateAll(
                 teamUUID,
+                profileId,
                 {
                     availableTimes,
                     overrides
@@ -289,10 +316,14 @@ export class AvailabilityService {
         return availabilityBodyUpdateSuccess;
     }
 
-    async remove(availabilityId: number, teamId: number, teamUUID: string): Promise<boolean> {
+    async remove(
+        teamUUID: string,
+        profileId: number,
+        availabilityId: number
+    ): Promise<boolean> {
         const loadedAvailability = await this.availabilityRepository.findOne({
             where: {
-                teamId,
+                profileId,
                 id: availabilityId
             }
         });
@@ -302,7 +333,7 @@ export class AvailabilityService {
         }
 
         const defaultAvailability = await this.availabilityRepository.findOneByOrFail({
-            teamId,
+            profileId,
             default: true
         });
 
@@ -324,6 +355,7 @@ export class AvailabilityService {
         if (loadedAvailability && deleteSuccess) {
             await this.availabilityRedisRepository.deleteAvailabilityBody(
                 teamUUID,
+                profileId,
                 loadedAvailability.uuid
             );
         }
@@ -332,18 +364,21 @@ export class AvailabilityService {
     }
 
     async clone(
-        availabilityId: number,
         teamId: number,
         teamUUID: string,
+        profileId: number,
+        availabilityId: number,
         { cloneSuffix }: CloneAvailabilityRequestDto
     ): Promise<Availability> {
-        const validatedAvailability = await this.validator.validate(
-            teamId,
-            availabilityId,
-            Availability
-        );
 
-        const { id: _eventId, uuid: _eventUUID, ...newAvailability } = validatedAvailability;
+        const availability = await this.availabilityRepository.findOneByOrFail({
+            id: availabilityId,
+            profile: {
+                teamId
+            }
+        });
+
+        const { id: _availabilityId, uuid: _availabilityUUID, ...newAvailability } = availability;
 
         newAvailability.default = false;
         newAvailability.name += cloneSuffix;
@@ -353,7 +388,8 @@ export class AvailabilityService {
         const clonedAvailabilityBody = await firstValueFrom(
             this.availabilityRedisRepository.clone(
                 teamUUID,
-                validatedAvailability.uuid,
+                profileId,
+                availability.uuid,
                 clonedAvailability.uuid
             )
         );
@@ -366,16 +402,15 @@ export class AvailabilityService {
 
     async linkToEvents(
         teamId: number,
+        profileId: number,
         availabilityId: number,
         eventIds: number[]
     ): Promise<boolean> {
         // validate owner
-        await this.validator.validate(teamId, availabilityId, Availability);
-
         await this.eventsService.hasOwnEventsOrThrow(teamId, eventIds);
 
         const defaultAvailability = await this.availabilityRepository.findOneByOrFail({
-            teamId,
+            profileId,
             default: true
         });
 
@@ -389,12 +424,10 @@ export class AvailabilityService {
         return false;
     }
 
-    async unlinkToEvents(teamId: number, availabilityId: number): Promise<boolean> {
+    async unlinkToEvents(profileId: number, availabilityId: number): Promise<boolean> {
         // validate owner
-        await this.validator.validate(teamId, availabilityId, Availability);
-
         const defaultAvailability = await this.availabilityRepository.findOneByOrFail({
-            teamId,
+            profileId,
             default: true
         });
 
