@@ -3,6 +3,7 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Profile } from '@entity/profiles/profile.entity';
+import { TestMockUtil } from '@test/test-mock-util';
 import { ProfilesService } from './profiles.service';
 
 describe('ProfilesService', () => {
@@ -45,5 +46,19 @@ describe('ProfilesService', () => {
 
             expect(loadedUser).equal(profileStub);
         });
+    });
+
+    it('should be patched for profile', async () => {
+        const profileIdMock = 123;
+
+        const profileMock = stubOne(Profile);
+
+        const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+        profileRepositoryStub.update.resolves(updateResultStub);
+
+        const updateResult = await firstValueFrom(service.patch(profileIdMock, profileMock));
+        expect(updateResult).ok;
+        expect(profileRepositoryStub.update.called).true;
     });
 });
