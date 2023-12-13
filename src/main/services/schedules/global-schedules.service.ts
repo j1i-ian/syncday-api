@@ -24,6 +24,7 @@ import { CalendarIntegration } from '@entity/calendars/calendar-integration.enti
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
 import { Contact } from '@entity/events/contact.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { Team } from '@entity/teams/team.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
@@ -92,6 +93,7 @@ export class GlobalSchedulesService {
         teamWorkspace: string,
         eventUUID: string,
         newSchedule: Schedule,
+        team: Team,
         host: User,
         hostProfile: Profile
     ): Observable<Schedule> {
@@ -100,6 +102,7 @@ export class GlobalSchedulesService {
             teamWorkspace,
             eventUUID,
             newSchedule,
+            team,
             host,
             hostProfile
         );
@@ -110,6 +113,7 @@ export class GlobalSchedulesService {
         teamWorkspace: string,
         eventUUID: string,
         newSchedule: Schedule,
+        team: Team,
         host: User,
         hostProfile: Profile
     ): Observable<Schedule> {
@@ -136,7 +140,7 @@ export class GlobalSchedulesService {
         return loadedEventByTeamWorkspace$.pipe(
             concatMap(
                 (event) => combineLatest([
-                    this.availabilityRedisRepository.getAvailabilityBody(host.uuid, event.availability.uuid),
+                    this.availabilityRedisRepository.getAvailabilityBody(team.uuid, event.availability.uuid),
                     of(this.utilService.getPatchedScheduledEvent(
                         host,
                         hostProfile,

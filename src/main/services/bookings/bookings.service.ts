@@ -64,6 +64,7 @@ export class BookingsService {
                         teamWorkspace,
                         eventUUID,
                         newSchedule,
+                        loadedTeam,
                         loadedTeam.profiles[0].user,
                         loadedTeam.profiles[0]
                     )

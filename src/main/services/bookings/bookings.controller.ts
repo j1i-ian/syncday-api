@@ -36,9 +36,9 @@ export class BookingsController {
 
     @Get('events')
     fetchHostEvents(
-        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) userWorkspace: string
+        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string
     ): Observable<HostEventDto[]> {
-        return this.bookingsService.searchHostEvents(userWorkspace)
+        return this.bookingsService.searchHostEvents(teamWorkspace)
             .pipe(
                 switchMap((events) => from(events)),
                 map((event) => plainToInstance(HostEventDto, event, {
@@ -50,10 +50,10 @@ export class BookingsController {
 
     @Get('events/:eventLink')
     fetchHostEventDetail(
-        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) userWorkspace: string,
+        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string,
         @Param('eventLink', ParseEncodedUrl) eventLink: string
     ): Observable<HostEventDto> {
-        return this.bookingsService.fetchHostEventDetail(userWorkspace, eventLink)
+        return this.bookingsService.fetchHostEventDetail(teamWorkspace, eventLink)
             .pipe(
                 map((event) => plainToInstance(HostEventDto, event, {
                     excludeExtraneousValues: true
@@ -63,10 +63,10 @@ export class BookingsController {
 
     @Get('availabilities')
     searchHostAvailabilities(
-        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) userWorkspace: string,
+        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string,
         @Query('eventLink', ParseEncodedUrl) eventLink: string
     ): Observable<HostAvailabilityDto> {
-        return this.bookingsService.fetchHostAvailabilityDetail(userWorkspace, eventLink)
+        return this.bookingsService.fetchHostAvailabilityDetail(teamWorkspace, eventLink)
             .pipe(
                 map((availability) => plainToInstance(HostAvailabilityDto, availability, {
                     excludeExtraneousValues: true

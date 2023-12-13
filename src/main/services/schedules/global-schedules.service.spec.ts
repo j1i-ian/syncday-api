@@ -32,6 +32,7 @@ import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { Team } from '@entity/teams/team.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GlobalSchedulesService } from './global-schedules.service';
@@ -345,6 +346,7 @@ describe('SchedulesService', () => {
                         userSetting: userSettingStub
                     });
                     const profileMock = stubOne(Profile);
+                    const teamMock = stubOne(Team);
                     const eventStub = getEventStub();
                     const scheduleStub = getScheduleStub();
 
@@ -398,6 +400,7 @@ describe('SchedulesService', () => {
                             teamSettingMock.workspace,
                             eventStub.uuid,
                             scheduleStub,
+                            teamMock,
                             userMock,
                             profileMock
                         )
