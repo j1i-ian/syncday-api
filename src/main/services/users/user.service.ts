@@ -7,6 +7,7 @@ import { AvailableTime } from '@core/entities/availability/availability-time.ent
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
+import { Role } from '@interfaces/profiles/role.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -105,6 +106,7 @@ export class UserService {
                     uuid: true,
                     id: true,
                     name: true,
+                    roles: true,
                     team: {
                         id: true,
                         uuid: true
@@ -232,6 +234,7 @@ export class UserService {
         const _createdUser = this.userRepository.create(newUser);
         const _createdProfile = this.profileRepository.create(newProfile);
         _createdProfile.default = true;
+        _createdProfile.roles = [Role.OWNER];
 
         const _createdTeam = this.teamRepository.create({
             name: _createdProfile.name
