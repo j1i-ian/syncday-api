@@ -19,7 +19,7 @@ export class TeamController {
         return this.teamService.searchByProfileId(authProfile.id);
     }
 
-    @Get(':teamId')
+    @Get(':teamId(\\d+)')
     get(
         @AuthProfile() authProfile: AppJwtPayload
     ): Observable<Team> {
