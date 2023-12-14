@@ -142,7 +142,7 @@ export class EventsService {
     findOneByTeamWorkspaceAndLink(teamWorkspace: string, eventLink: string): Observable<Event> {
 
         return from(this.eventRepository.findOneOrFail({
-            relations: ['eventDetail'],
+            relations: ['eventDetail', 'availability', 'availability.profile'],
             where: {
                 status: EventStatus.OPENED,
                 link: eventLink,

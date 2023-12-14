@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Observable, from, map, mergeMap } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
+import { HostEvent } from '@interfaces/bookings/host-event';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { GlobalSchedulesService } from '@services/schedules/global-schedules.service';
@@ -35,8 +36,18 @@ export class BookingsService {
         });
     }
 
-    fetchHostEventDetail(teamWorkspace: string, eventLink: string): Observable<Event> {
-        return this.eventService.findOneByTeamWorkspaceAndLink(teamWorkspace, eventLink);
+    fetchHostEventDetail(teamWorkspace: string, eventLink: string): Observable<HostEvent> {
+        return this.eventService.findOneByTeamWorkspaceAndLink(teamWorkspace, eventLink)
+            .pipe(
+                map((event) => {
+                    const profileImage = event.availability.profile.image;
+
+                    return {
+                        ...event,
+                        profileImage
+                    } as HostEvent;
+                })
+            );
     }
 
     fetchHostAvailabilityDetail(teamWorkspace: string, eventLink: string): Observable<Availability> {

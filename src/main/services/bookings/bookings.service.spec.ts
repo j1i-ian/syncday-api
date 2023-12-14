@@ -7,6 +7,7 @@ import { TeamService } from '@services/team/team.service';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { BookingsService } from './bookings.service';
 
 describe('BookingsService', () => {
@@ -82,12 +83,19 @@ describe('BookingsService', () => {
     it('should be fetched host event detail', async () => {
 
         const teamStub = stubOne(Team);
-        const eventStub = stubOne(Event);
+        const profileStub = stubOne(Profile);
+        const availabilityStub = stubOne(Availability, {
+            profile: profileStub
+        });
+        const eventStub = stubOne(Event, {
+            availability: availabilityStub
+        });
 
         eventsServiceStub.findOneByTeamWorkspaceAndLink.returns(of(eventStub));
 
-        await firstValueFrom(service.fetchHostEventDetail(teamStub.workspace as string, eventStub.link));
+        const hostEvent = await firstValueFrom(service.fetchHostEventDetail(teamStub.workspace as string, eventStub.link));
 
+        expect(hostEvent.profileImage).equals(profileStub.image);
         expect(eventsServiceStub.findOneByTeamWorkspaceAndLink.called).true;
 
         eventsServiceStub.findOneByTeamWorkspaceAndLink.reset();
