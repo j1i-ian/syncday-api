@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Observable, from } from 'rxjs';
+import { Observable, from, map } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Team } from '@entity/teams/team.entity';
@@ -45,4 +45,22 @@ export class TeamService {
         );
     }
 
+    patch(
+        teamId: number,
+        patchTeamRequestDto: Pick<Team, 'name' | 'avatar'>
+    ): Observable<boolean> {
+        return from(
+            this.teamRepository.update(
+                { id: teamId },
+                {
+                    name: patchTeamRequestDto.name,
+                    avatar: patchTeamRequestDto.avatar
+                }
+            )
+        ).pipe(
+            map((updateResult) => !!(updateResult &&
+                updateResult.affected &&
+                updateResult.affected > 0))
+        );
+    }
 }

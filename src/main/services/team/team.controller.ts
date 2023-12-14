@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
@@ -24,5 +24,17 @@ export class TeamController {
         @AuthProfile() authProfile: AppJwtPayload
     ): Observable<Team> {
         return this.teamService.get(authProfile.teamId);
+    }
+
+    @Patch(':teamId(\\d+)')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    patch(
+        @AuthProfile('teamId') teamId: number,
+        @Body() patchTeamRequestDto: Pick<Team, 'name' | 'avatar'>
+    ): Observable<boolean> {
+        return this.teamService.patch(teamId, {
+            name: patchTeamRequestDto.name,
+            avatar: patchTeamRequestDto.avatar
+        });
     }
 }

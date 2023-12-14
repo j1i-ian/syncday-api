@@ -5,6 +5,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { TestMockUtil } from '@test/test-mock-util';
 import { TeamService } from './team.service';
 
 describe('TeamService', () => {
@@ -77,4 +78,19 @@ describe('TeamService', () => {
             expect(loadedTeam).equal(teamStub);
         });
     });
+
+    it('should be patched for team setting', async () => {
+        const teamIdMock = 123;
+
+        const teamMock = stubOne(Team);
+
+        const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+        teamRepositoryStub.update.resolves(updateResultStub);
+
+        const updateResult = await firstValueFrom(service.patch(teamIdMock, teamMock));
+        expect(updateResult).ok;
+        expect(teamRepositoryStub.update.called).true;
+    });
+
 });
