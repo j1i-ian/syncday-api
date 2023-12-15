@@ -8,7 +8,7 @@ import { ValidationCriteria } from '@criteria/validation-criteria.interface';
 export interface ResourceOwnCriteria<T extends { id: number }> extends ValidationCriteria<T> {
     getFindOneOption(
         ResourceEntityClass: new () => T,
-        userId: number,
+        ownerId: number,
         entityId: number
     ): FindOneOptions<T>;
 }
