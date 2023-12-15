@@ -46,7 +46,7 @@ export class CalendarIntegrationsController {
     @Patch()
     @HttpCode(HttpStatus.NO_CONTENT)
     patchAllCalendarIntegrations(
-        @AuthProfile('id') userId: number,
+        @AuthProfile('id') profileId: number,
         @Body() calendarIntegrations: CalendarIntegration[]
     ): Observable<boolean> {
 
@@ -74,7 +74,7 @@ export class CalendarIntegrationsController {
 
                     if (hasOutboundUpdate || _filteredCalendars.length > 0) {
                         return calendarIntegrationsService.patchAll(
-                            userId,
+                            profileId,
                             _filteredCalendars
                         );
                     } else {

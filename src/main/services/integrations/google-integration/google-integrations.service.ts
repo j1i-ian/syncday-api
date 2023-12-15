@@ -265,7 +265,7 @@ export class GoogleIntegrationsService implements
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _vendorIntegrationId: number,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        userId: number,
+        profileId: number,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _paritalIntegration?: Integration | undefined
     ): Observable<boolean> {
@@ -274,12 +274,12 @@ export class GoogleIntegrationsService implements
 
     async remove(
         googleIntegrationId: number,
-        userId: number
+        profileId: number
     ): Promise<boolean> {
         return this._remove(
             this.googleIntegrationRepository.manager,
             googleIntegrationId,
-            userId
+            profileId
         );
     }
 

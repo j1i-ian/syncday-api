@@ -151,7 +151,7 @@ export class ZoomIntegrationsService implements
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _vendorIntegrationId: number,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        userId: number,
+        profileId: number,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _paritalIntegration?: Integration | undefined
     ): Observable<boolean> {

@@ -38,11 +38,11 @@ export class KakaotalkIntegrationsService implements IntegrationsFactory {
         throw new Error('Method not implemented.');
     }
 
-    patch(vendorIntegrationId: number, userId: number, paritalIntegration?: Partial<Integration> | undefined): Observable<boolean> {
+    patch(vendorIntegrationId: number, profileId: number, paritalIntegration?: Partial<Integration> | undefined): Observable<boolean> {
         throw new Error('Method not implemented.');
     }
 
-    remove(vendorIntegrationId: number, userId: number): Promise<boolean> {
+    remove(vendorIntegrationId: number, profileId: number): Promise<boolean> {
         throw new Error('Method not implemented.');
     }
 }

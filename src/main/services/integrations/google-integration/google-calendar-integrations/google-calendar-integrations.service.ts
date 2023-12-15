@@ -226,7 +226,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
 
     patch(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        userId: number,
+        profileId: number,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         calendarIntegration: Partial<CalendarIntegration> & Pick<CalendarIntegration, 'id' | 'setting'>
     ): Promise<boolean> {
