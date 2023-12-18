@@ -20,6 +20,7 @@ export class PaymentMethodSubscriber implements EntitySubscriberInterface<Paymen
             expirationYear,
             cvc
         } = creditCard;
+
         const maskedCardNumber = serialNumber
             .slice(-4)
             .padStart(creditCard.serialNumber.length, '*');
