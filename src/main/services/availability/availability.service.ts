@@ -18,12 +18,10 @@ import { AvailabilityUpdateFailByEntityException } from '@app/exceptions/availab
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { CannotDeleteDefaultAvailabilityException } from '@app/exceptions/availability/cannot-delete-default-availability.exception';
 import { CannotUnlinkDefaultAvailabilityException } from '@app/exceptions/availability/cannot-unlink-default-availability.exception';
-import { Validator } from '@criteria/validator';
 
 @Injectable()
 export class AvailabilityService {
     constructor(
-        private readonly validator: Validator,
         private readonly eventsService: EventsService,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectDataSource() private datasource: DataSource,

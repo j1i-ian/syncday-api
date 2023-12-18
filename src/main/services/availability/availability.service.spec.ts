@@ -16,7 +16,6 @@ import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-
 import { CannotDeleteDefaultAvailabilityException } from '@app/exceptions/availability/cannot-delete-default-availability.exception';
 import { CannotUnlinkDefaultAvailabilityException } from '@app/exceptions/availability/cannot-unlink-default-availability.exception';
 import { TestMockUtil } from '@test/test-mock-util';
-import { Validator } from '@criteria/validator';
 import { AvailabilityService } from './availability.service';
 
 const testMockUtil = new TestMockUtil();
@@ -28,14 +27,12 @@ describe('AvailabilityService', () => {
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
-    let validatorStub: sinon.SinonStubbedInstance<Validator>;
 
     let availabilityRepositoryStub: sinon.SinonStubbedInstance<Repository<Availability>>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
 
     before(async () => {
         eventsServiceStub = sinon.createStubInstance(EventsService);
-        validatorStub = sinon.createStubInstance(Validator);
         availabilityRepositoryStub = sinon.createStubInstance<Repository<Availability>>(Repository);
         availabilityRedisRepositoryStub = sinon.createStubInstance<AvailabilityRedisRepository>(
             AvailabilityRedisRepository
@@ -47,10 +44,6 @@ describe('AvailabilityService', () => {
                 {
                     provide: EventsService,
                     useValue: eventsServiceStub
-                },
-                {
-                    provide: Validator,
-                    useValue: validatorStub
                 },
                 {
                     provide: AvailabilityRedisRepository,

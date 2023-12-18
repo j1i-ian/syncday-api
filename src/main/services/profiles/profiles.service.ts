@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Observable, from, map } from 'rxjs';
 import { Profile } from '@entity/profiles/profile.entity';
 
@@ -32,6 +32,20 @@ export class ProfilesService {
                 id: profileId
             }
         }));
+    }
+
+    async _create(
+        transactionManager: EntityManager,
+        newProfile: Partial<Profile> | Array<Partial<Profile>>
+    ): Promise<Profile | Profile[]> {
+        const profileRepository = transactionManager.getRepository(Profile);
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+        const createdProfile = profileRepository.create(newProfile as any);
+
+        const savedProfile = await profileRepository.save(createdProfile);
+
+        return savedProfile;
     }
 
     patch(profileId: number, partialProfile: Partial<Profile>): Observable<boolean> {

@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FindOptionsWhere, Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
@@ -10,15 +10,23 @@ import { ProfilesService } from './profiles.service';
 describe('ProfilesService', () => {
     let service: ProfilesService;
 
+    let module: TestingModule;
+
     let profileRepositoryStub: sinon.SinonStubbedInstance<Repository<Profile>>;
+
+    const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
     beforeEach(async () => {
 
         profileRepositoryStub = sinon.createStubInstance<Repository<Profile>>(Repository);
 
-        const module: TestingModule = await Test.createTestingModule({
+        module = await Test.createTestingModule({
             providers: [
                 ProfilesService,
+                {
+                    provide: getDataSourceToken(),
+                    useValue: datasourceMock
+                },
                 {
                     provide: getRepositoryToken(Profile),
                     useValue: profileRepositoryStub
@@ -64,6 +72,51 @@ describe('ProfilesService', () => {
             expect((actualPassedParam.where as FindOptionsWhere<Profile>).id).equals(profileStub.id);
 
             expect(loadedUser).equal(profileStub);
+        });
+    });
+
+    describe('Test creating profile', () => {
+
+        afterEach(() => {
+            profileRepositoryStub.create.reset();
+            profileRepositoryStub.save.reset();
+        });
+
+        it('should be created a profile with transaction', async () => {
+
+            const profileMockStub = stubOne(Profile);
+
+            profileRepositoryStub.create.returns(profileMockStub);
+            profileRepositoryStub.save.resolves(profileMockStub);
+
+            const createdProfile = await service._create(
+                datasourceMock as unknown as EntityManager,
+                profileMockStub
+            );
+
+            expect(createdProfile).ok;
+
+            expect(profileRepositoryStub.create.called).ok;
+            expect(profileRepositoryStub.save.called).ok;
+        });
+
+        it('should be created multiple profiles with transaction', async () => {
+
+            const profileMocksStubs = stub(Profile);
+
+            profileRepositoryStub.create.returns(profileMocksStubs as any);
+            profileRepositoryStub.save.resolves(profileMocksStubs as any);
+
+            const createdProfiles = await service._create(
+                datasourceMock as unknown as EntityManager,
+                profileMocksStubs
+            ) as Profile[];
+
+            expect(createdProfiles).ok;
+            expect(createdProfiles.length).greaterThan(0);
+
+            expect(profileRepositoryStub.create.called).ok;
+            expect(profileRepositoryStub.save.called).ok;
         });
     });
 

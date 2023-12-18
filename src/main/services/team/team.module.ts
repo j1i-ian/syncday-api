@@ -1,5 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { PaymentsModule } from '@services/payments/payments.module';
+import { ProductsModule } from '@services/products/products.module';
+import { OrdersModule } from '@services/orders/orders.module';
+import { UserModule } from '@services/users/user.module';
+import { ProfilesModule } from '@services/profiles/profiles.module';
+import { NotificationsModule } from '@services/notifications/notifications.module';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSettingModule } from './team-setting/team-setting.module';
 import { TeamService } from './team.service';
@@ -8,7 +14,13 @@ import { TeamController } from './team.controller';
 @Module({
     imports: [
         TypeOrmModule.forFeature([ Team ]),
-        TeamSettingModule
+        TeamSettingModule,
+        forwardRef(() => UserModule),
+        ProfilesModule,
+        ProductsModule,
+        OrdersModule,
+        forwardRef(() => NotificationsModule),
+        PaymentsModule
     ],
     controllers: [TeamController],
     providers: [TeamService],

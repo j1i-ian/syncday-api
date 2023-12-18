@@ -14,7 +14,7 @@ import { NotificationsService } from '@services/notifications/notifications.serv
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
-import { CreatedUserAndTeam } from '@services/users/created-user-and-team.interface';
+import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { Profile } from '@entity/profiles/profile.entity';
@@ -71,7 +71,7 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         timezone: string,
         oauth2UserProfile: GoogleOAuth2UserWithToken,
         language: Language
-    ): Promise<CreatedUserAndTeam> {
+    ): Promise<CreatedUserTeamProfile> {
 
         const { googleUser, calendars, tokens, schedules } = oauth2UserProfile;
 

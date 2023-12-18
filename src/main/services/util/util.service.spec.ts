@@ -15,7 +15,6 @@ import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-no
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
-import { Team } from '@entity/teams/team.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
@@ -226,6 +225,29 @@ describe('UtilService', () => {
             });
     });
 
+    describe('Test filtering invited new users', () => {
+        it('should be filtered new users', () => {
+
+            const invitedMemberMocks: Array<Partial<Pick<User, 'phone' | 'email'>>> = [
+                { email: 'alan@sync.day' },
+                { phone: '+821012341234' },
+                { email: 'alan2@sync.day' },
+                { phone: '+821012341235' }
+            ];
+            const searchedUserMocks = stub(User, 2);
+            searchedUserMocks[0].email = invitedMemberMocks[0].email as string;
+            searchedUserMocks[1].phone = invitedMemberMocks[1].phone as string;
+
+            const filteredNewUsers = service.filterInvitedNewUsers(
+                invitedMemberMocks,
+                searchedUserMocks
+            );
+
+            expect(filteredNewUsers).ok;
+            expect(filteredNewUsers.length).greaterThan(0);
+        });
+    });
+
     describe('Test getDefaultEvent', () => {
 
         it('should be generated a default event', () => {
@@ -363,48 +385,36 @@ describe('UtilService', () => {
     describe('Test Getting default team workspace', () => {
 
         it('should be got default team workspace which has email as workspace when there is no email id but has name', () => {
-            const nameStub = faker.name.fullName();
 
-            const teamMock = stubOne(Team, {
-                name: nameStub
-            });
+            const fullNameMock = faker.name.fullName();
 
-            const profileMock = stubOne(Profile, {
-                name: nameStub
-            });
-            const userMock = stubOne(User, {
-                email: undefined
-            });
+            const workspaceMock = fullNameMock;
+            const emailMock = undefined;
+            const profileNameMock = fullNameMock;
 
             const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
-                teamMock,
-                userMock,
-                profileMock,
+                workspaceMock,
+                emailMock,
+                profileNameMock,
                 {
                     randomSuffix: false
                 }
             );
 
             expect(defaultTeamWorkspace).ok;
-            expect(defaultTeamWorkspace).equals(nameStub);
+            expect(defaultTeamWorkspace).equals(profileNameMock);
         });
 
         it('should be got default team workspace which has workspace name with generated uuid when there is no name or email', () => {
 
-            const teamMock = stubOne(Team, {
-                name: undefined
-            });
-            const profileMock = stubOne(Profile, {
-                name: undefined
-            });
-            const userMock = stubOne(User, {
-                email: undefined
-            });
+            const workspaceMock = undefined;
+            const emailMock = undefined;
+            const profileNameMock = undefined;
 
             const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
-                teamMock,
-                userMock,
-                profileMock,
+                workspaceMock,
+                emailMock,
+                profileNameMock,
                 {
                     randomSuffix: true
                 }
@@ -414,22 +424,17 @@ describe('UtilService', () => {
         });
 
         it('should be got default team workspace which has email as workspace with generated number when option random suffix is enabled', () => {
-            const emailPrefix = 'foobar';
+            const workspaceMock = undefined;
 
-            const teamMock = stubOne(Team, {
-                name: undefined
-            });
-            const profileMock = stubOne(Profile, {
-                name: undefined
-            });
-            const userMock = stubOne(User, {
-                email: faker.internet.email(emailPrefix)
-            });
+            const emailPrefix = 'foobar';
+            const emailMock = faker.internet.email(emailPrefix);
+
+            const profileNameMock = undefined;
 
             const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
-                teamMock,
-                userMock,
-                profileMock,
+                workspaceMock,
+                emailMock,
+                profileNameMock,
                 {
                     randomSuffix: true
                 }
@@ -438,7 +443,7 @@ describe('UtilService', () => {
             expect(defaultTeamWorkspace).ok;
             expect(defaultTeamWorkspace).contains(emailPrefix);
             expect(defaultTeamWorkspace).not.equals(emailPrefix);
-            expect(defaultTeamWorkspace).not.equals(userMock.email);
+            expect(defaultTeamWorkspace).not.equals(emailMock);
         });
     });
 

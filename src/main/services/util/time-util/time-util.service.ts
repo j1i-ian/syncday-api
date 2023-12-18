@@ -422,7 +422,7 @@ export class TimeUtilService {
             location: location.join('\n'),
             organizer: {
                 email: organizerEmail,
-                name: host.name
+                name: host.name ?? ''
             },
             attendees
         });

@@ -43,8 +43,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         const status = (exception as HttpException).getStatus?.() || 500;
 
         if (this.isWhiteListedException(exception as HttpException)) {
+
+            const exceptionMessage = Array.isArray(message) ?
+                message.join('\n') :
+                message;
+
             exceptionType = exception.name;
-            message = exception.message || 'Unauthoized Information.';
+            message = exceptionMessage || 'Unauthoized Information.';
         } else if (status / 100 === 5) {
             message = 'Server error happend.';
         } else {

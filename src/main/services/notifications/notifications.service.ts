@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Observable, combineLatest, from, map, mergeMap } from 'rxjs';
+import { Observable, combineLatest, from, map, mergeMap, of } from 'rxjs';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
@@ -15,6 +15,7 @@ import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
+import { User } from '@entity/users/user.entity';
 import { Language } from '@app/enums/language.enum';
 
 @Injectable()
@@ -26,6 +27,13 @@ export class NotificationsService {
         private readonly configService: ConfigService,
         private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
     ) {}
+
+    sendTeamInvitationForNewUsers(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        users: Array<Partial<Pick<User, 'phone' | 'email'>>>
+    ): Observable<boolean> {
+        return of(true);
+    }
 
     sendBookingRequest(
         teamId: number,
@@ -117,7 +125,7 @@ export class NotificationsService {
         return await this._sendNotification(messageAttribute, notificationData);
     }
 
-    async sendWelcomeEmailForNewUser(userName: string, userEmail: string, preferredLanguage: Language): Promise<boolean> {
+    async sendWelcomeEmailForNewUser(userName: string | null, userEmail: string, preferredLanguage: Language): Promise<boolean> {
         const messageAttribute: MessageAttributeValue = {
             DataType: 'String.Array',
             StringValue: JSON.stringify([SyncdayNotificationPublishKey.EMAIL])

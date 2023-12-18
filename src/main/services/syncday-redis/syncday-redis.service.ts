@@ -32,15 +32,15 @@ export class SyncdayRedisService {
             : false;
     }
 
-    async setWorkspaceStatus(workSpace: string): Promise<boolean> {
-        const workspaceAssignStatusKey = this.getWorkspaceAssignStatusKey(workSpace);
+    async setWorkspaceStatus(workspace: string): Promise<boolean> {
+        const workspaceAssignStatusKey = this.getWorkspaceAssignStatusKey(workspace);
         const result = await this.cluster.set(workspaceAssignStatusKey, String(true));
 
         return result === 'OK';
     }
 
-    async deleteWorkspaceStatus(workSpace: string): Promise<boolean> {
-        const workspaceAssignStatusKey = this.getWorkspaceAssignStatusKey(workSpace);
+    async deleteWorkspaceStatus(workspace: string): Promise<boolean> {
+        const workspaceAssignStatusKey = this.getWorkspaceAssignStatusKey(workspace);
         const deletedCount = await this.cluster.del(workspaceAssignStatusKey);
 
         return deletedCount > 0;

@@ -31,7 +31,6 @@ import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-no
 import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { Host } from '@entity/schedules/host.entity';
-import { Team } from '@entity/teams/team.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
@@ -250,6 +249,28 @@ export class UtilService {
 
     generateRandomNumberString(digit: number, prefix = '0'): string {
         return String(Math.floor(Math.random() * Math.pow(10, digit))).padStart(digit, prefix);
+    }
+
+    filterInvitedNewUsers(
+        invitedMembers: Array<Partial<Pick<User, 'phone' | 'email'>>>,
+        searchedUsers: User[]
+    ): Array<Partial<Pick<User, 'phone' | 'email'>>> {
+        return invitedMembers
+            .filter((_member) => {
+                const _searched = searchedUsers.find((_user) => {
+                    let _found = false;
+                    if (_member.email && _user.email) {
+                        _found = _user.email.includes(_member.email);
+                    } else if (_member.phone && _user.phone) {
+                        _found = _user.phone.includes(_member.phone);
+                    } else {
+                        _found = false;
+                    }
+                    return _found;
+                });
+
+                return _searched === undefined;
+            });
     }
 
     getDefaultEvent(patchBody?: Partial<Event>): Event {
@@ -492,35 +513,29 @@ export class UtilService {
     }
 
     getDefaultTeamWorkspace(
-        team: Partial<Team>,
-        user: Partial<User>,
-        profile: Partial<Profile>,
+        workspace?: string | null,
+        email?: string,
+        profileName?: string,
         {
             randomSuffix
         } = {
             randomSuffix: false
         }
     ): string {
-        let workspaceName: string | undefined = team.teamSetting?.workspace;
 
-        if (!workspaceName) {
-            if (user.email) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-                const extractedWorkspaceNameFromEmail = user.email.split('@')[0];
-                workspaceName = extractedWorkspaceNameFromEmail;
-            } else if (profile.name) {
-                workspaceName = profile.name;
-            } else {
-                workspaceName = this.generateUUID();
-            }
-        }
+        const emailId = email?.replaceAll('.', '').split('@').shift();
+
+        workspace = workspace ??
+            emailId ??
+            profileName ??
+            this.generateUUID();
 
         if (randomSuffix) {
             const randomNumberString = this.generateRandomNumberString(4);
-            workspaceName += randomNumberString;
+            workspace += randomNumberString;
         }
 
-        return workspaceName;
+        return workspace;
     }
 
     getDefaultDateTimeFormat(language: Language, timezone: string): DefaultDateTimeFormat {

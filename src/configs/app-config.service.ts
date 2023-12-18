@@ -126,6 +126,15 @@ export class AppConfigService {
         return frontendHost;
     }
 
+    static getBootpaySetting(
+        configService: ConfigService
+    ): { clientId: string; clientSecret: string } {
+        return {
+            clientId: configService.getOrThrow('BOOTPAY_CLIENT_ID'),
+            clientSecret: configService.getOrThrow('BOOTPAY_CLIENT_SECRET')
+        };
+    }
+
     static getJwtModuleOptions(): JwtModuleAsyncOptions {
         return {
             imports: [ConfigModule],

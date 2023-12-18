@@ -18,6 +18,7 @@ import { NotificationTarget } from '@entity/schedules/notification-target.enum';
 import { Event } from '@entity/events/event.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
+import { User } from '@entity/users/user.entity';
 import { Language } from '@app/enums/language.enum';
 import { TestMockUtil } from '@test/test-mock-util';
 import { faker } from '@faker-js/faker';
@@ -94,6 +95,19 @@ describe('IntegrationsService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    describe('Test inviting new users for team', () => {
+        it('should be notified to new users for invitations', async () => {
+            const users = stub(User);
+            const isSuccess = await firstValueFrom(
+                service.sendTeamInvitationForNewUsers(
+                    users
+                )
+            );
+
+            expect(isSuccess).true;
+        });
     });
 
     describe('Test Verification email sent', () => {

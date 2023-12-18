@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
@@ -14,7 +14,9 @@ import { GoogleIntegrationsService } from '@services/integrations/google-integra
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
-import { CreatedUserAndTeam } from '@services/users/created-user-and-team.interface';
+import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
+import { ProfilesService } from '@services/profiles/profiles.service';
+import { TeamService } from '@services/team/team.service';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
@@ -66,10 +68,31 @@ export class UserService {
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly oauth2AccountService: OAuth2AccountsService,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
-        @InjectRepository(User) private readonly userRepository: Repository<User>,
-        @InjectRepository(Profile) private readonly profileRepository: Repository<Profile>,
-        @InjectRepository(Team) private readonly teamRepository: Repository<Team>
+        private readonly profilesService: ProfilesService,
+        @Inject(forwardRef(() => TeamService))
+        private readonly teamService: TeamService,
+        @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
+
+    async searchByEmailOrPhone(users: Array<Partial<Pick<User, 'email' | 'phone'>>>): Promise<User[]> {
+
+        const emails = users
+            .filter((_user) => _user.email)
+            .map((_user) => _user.email);
+
+        const phones = users
+            .filter((_user) => _user.phone)
+            .map((_user) => _user.phone);
+
+        const loadedUsers = await this.userRepository.findBy(
+            [
+                { email: In(emails) },
+                { phone: In(phones) }
+            ]
+        );
+
+        return loadedUsers;
+    }
 
     async findUserById(userId: number): Promise<User> {
         const loadedUser = await this.userRepository.findOneOrFail({
@@ -167,26 +190,18 @@ export class UserService {
         );
 
         const temporaryUser = await this.syncdayRedisService.getTemporaryUser(email);
+        const profileName = temporaryUser.name;
         const newUser = this.userRepository.create(temporaryUser);
-        const newProfile = this.profileRepository.create(temporaryUser);
 
         const {
             createdProfile,
             createdUser
         } = await this.datasource.transaction(async (transactionManager) => {
 
-            const _createdUserAndTeam = await this._createUser(transactionManager, newUser, newProfile, temporaryUser.language, timezone, {
+            const _createdUserAndTeam = await this._createUser(transactionManager, newUser, profileName, temporaryUser.language, timezone, {
                 plainPassword: temporaryUser.plainPassword,
                 emailVerification: true
             });
-
-            const { createdTeam } = _createdUserAndTeam;
-
-            await this.teamSettingService._updateTeamWorkspace(
-                transactionManager,
-                createdTeam.id,
-                createdTeam.teamSetting.workspace
-            );
 
             return _createdUserAndTeam;
         });
@@ -203,7 +218,7 @@ export class UserService {
     async _createUser(
         manager: EntityManager,
         newUser: User,
-        newProfile: Profile,
+        profileName: string,
         language: Language,
         timezone: string,
         { plainPassword, emailVerification, alreadySignedUpUserCheck }: CreateUserOptions = {
@@ -211,7 +226,7 @@ export class UserService {
             emailVerification: false,
             alreadySignedUpUserCheck: true
         }
-    ): Promise<CreatedUserAndTeam> {
+    ): Promise<CreatedUserTeamProfile> {
         /**
          * TODO: it should be applied Criteria Pattern.
          */
@@ -232,13 +247,6 @@ export class UserService {
         }
 
         const _createdUser = this.userRepository.create(newUser);
-        const _createdProfile = this.profileRepository.create(newProfile);
-        _createdProfile.default = true;
-        _createdProfile.roles = [Role.OWNER];
-
-        const _createdTeam = this.teamRepository.create({
-            name: _createdProfile.name
-        });
 
         const defaultUserSetting = this.utilService.getUserDefaultSetting(language, {
             timezone
@@ -249,12 +257,10 @@ export class UserService {
         const hashedPassword = plainPassword && this.utilService.hash(plainPassword);
 
         const _userRepository = manager.getRepository(User);
-        const _profileRepository = manager.getRepository(Profile);
-        const _teamRepository = manager.getRepository(Team);
         const _availabilityRepository = manager.getRepository(Availability);
 
         const emailId = _createdUser.email.replaceAll('.', '').split('@').shift();
-        const workspace = emailId || _createdProfile.name;
+        const workspace = emailId || profileName;
 
         const alreadyUsedIn = await this.teamSettingService.fetchTeamWorkspaceStatus(
             workspace
@@ -262,16 +268,19 @@ export class UserService {
         const shouldAddRandomSuffix = alreadyUsedIn;
 
         const defaultTeamWorkspace = this.utilService.getDefaultTeamWorkspace(
-            _createdTeam,
-            _createdUser,
-            _createdProfile,
+            null,
+            _createdUser.email,
+            profileName,
             {
                 randomSuffix: shouldAddRandomSuffix
             }
         );
 
-        const initialTeamSetting = new TeamSetting();
-        initialTeamSetting.workspace = defaultTeamWorkspace;
+        const savedTeam = await this.teamService._create(
+            manager,
+            { name: profileName },
+            { workspace: defaultTeamWorkspace }
+        );
 
         const savedUser = await _userRepository.save<User>({
             ..._createdUser,
@@ -279,22 +288,22 @@ export class UserService {
             userSetting
         } as User);
 
-        const savedTeam = await _teamRepository.save<Team>({
-            name: _createdProfile.name,
-            teamSetting: initialTeamSetting
-        } as Team);
-
-        const savedProfile = await _profileRepository.save<Profile>({
-            ..._createdProfile,
-            userId: savedUser.id,
-            teamId: savedTeam.id
-        } as Profile);
-
         const initialEventGroup = new EventGroup();
         const initialEvent = this.utilService.getDefaultEvent({
             name: '30 Minute Meeting',
             link: '30-minute-meeting'
         });
+
+        const createdProfile = await this.profilesService._create(
+            manager,
+            {
+                name: profileName,
+                default: true,
+                roles: [Role.OWNER],
+                teamId: savedTeam.id,
+                userId: savedUser.id
+            }
+        ) as Profile;
 
         const availableTimes: AvailableTime[] = [];
 
@@ -314,13 +323,13 @@ export class UserService {
         const initialAvailability = new Availability();
         initialAvailability.default = true;
         initialAvailability.name = this.utilService.getDefaultAvailabilityName(language);
-        initialAvailability.profileId = savedProfile.id;
+        initialAvailability.profileId = createdProfile.id;
         initialAvailability.timezone = userSetting.preferredTimezone;
 
         const savedAvailability = await _availabilityRepository.save(initialAvailability);
         await this.availabilityRedisRepository.save(
             savedTeam.uuid,
-            savedProfile.id,
+            createdProfile.id,
             savedAvailability.uuid,
             {
                 availableTimes,
@@ -349,7 +358,6 @@ export class UserService {
         );
 
         const createdUser = plainToInstance(User, savedUser);
-        const createdProfile = plainToInstance(Profile, savedProfile);
         const createdTeam = plainToInstance(Team, savedTeam);
 
         return {
@@ -372,22 +380,20 @@ export class UserService {
         },
         language: Language,
         integrationParams?: Partial<OAuth2MetaInfo>
-    ): Promise<CreatedUserAndTeam> {
+    ): Promise<CreatedUserTeamProfile> {
 
         const createdUserAndTeam = await this.datasource.transaction(async (manager) => {
+            const newUserEmail = createUserRequestDto.email;
             const newUser = {
-                email: createUserRequestDto.email,
+                email: newUserEmail,
                 timezone: createUserRequestDto.timezone
             } as unknown as User;
 
+            const newProfileName = createUserRequestDto.name;
             const newProfile = {
-                name: createUserRequestDto.name,
+                name: newProfileName,
                 image: oauth2UserProfileImageUrl ?? null
             } as Profile;
-
-            const newTeam = {
-                name: createUserRequestDto.name
-            } as Team;
 
             newUser.profiles = [newProfile];
 
@@ -398,9 +404,9 @@ export class UserService {
             }) as UserSetting;
 
             const teamWorkspace = this.utilService.getDefaultTeamWorkspace(
-                newTeam,
-                newUser,
-                newProfile,
+                null,
+                newUserEmail,
+                newProfileName,
                 {
                     randomSuffix: false
                 }
@@ -413,7 +419,7 @@ export class UserService {
                 createdUser: _createdUser,
                 createdProfile: _createdProfile,
                 createdTeam: _createdTeam
-            } = await this._createUser(manager, newUser, newProfile, language, timezone, {
+            } = await this._createUser(manager, newUser, newProfileName, language, timezone, {
                 plainPassword: undefined,
                 alreadySignedUpUserCheck: false,
                 emailVerification: false
@@ -457,6 +463,7 @@ export class UserService {
             await this.teamSettingService._updateTeamWorkspace(
                 manager,
                 _createdTeam.id,
+                null,
                 _createdTeam.teamSetting.workspace
             );
 
@@ -464,7 +471,7 @@ export class UserService {
                 createdUser: _createdUser,
                 createdProfile: _createdProfile,
                 createdTeam: _createdTeam
-            } as CreatedUserAndTeam;
+            } as CreatedUserTeamProfile;
         });
 
         return createdUserAndTeam;

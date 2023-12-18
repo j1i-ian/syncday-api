@@ -1,6 +1,6 @@
 import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
-import { CreatedUserAndTeam } from '@services/users/created-user-and-team.interface';
+import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
@@ -27,7 +27,7 @@ export interface OAuth2TokenService {
         timezone: string,
         oauth2UserProfile: OAuth2UserProfile,
         language: Language
-    ): Promise<CreatedUserAndTeam>;
+    ): Promise<CreatedUserTeamProfile>;
 
     multipleSocialSignIn(
         user: User,

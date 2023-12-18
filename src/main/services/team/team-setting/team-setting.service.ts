@@ -40,6 +40,33 @@ export class TeamSettingService {
         return workspaceStatus;
     }
 
+    async _create(
+        manager: EntityManager,
+        newTeamSetting: Partial<TeamSetting>
+    ): Promise<TeamSetting> {
+
+        const teamSettingRepository = manager.getRepository(TeamSetting);
+
+        const createdTeamSetting = teamSettingRepository.create(newTeamSetting);
+
+        const savedTeamSetting = await teamSettingRepository.save(createdTeamSetting);
+
+        const newWorkspace = savedTeamSetting.workspace;
+
+        await this._updateTeamWorkspaceRecord(
+            null,
+            newWorkspace
+        );
+
+        await teamSettingRepository.update({
+            teamId: savedTeamSetting.teamId
+        }, {
+            workspace: newWorkspace
+        });
+
+        return savedTeamSetting;
+    }
+
     patch(teamId: number, teamSetting: Partial<TeamSetting>): Observable<boolean> {
         return from(
             this.teamSettingRepository.update(
@@ -57,9 +84,16 @@ export class TeamSettingService {
         teamId: number,
         newWorkspace: string
     ): Promise<boolean> {
+        const teamSetting = await this.teamSettingRepository.findOneByOrFail({
+            teamId
+        });
+
+        const previousWorkspace = teamSetting.workspace;
+
         return this._updateTeamWorkspace(
             this.teamSettingRepository.manager,
             teamId,
+            previousWorkspace,
             newWorkspace
         );
     }
@@ -67,10 +101,27 @@ export class TeamSettingService {
     async _updateTeamWorkspace(
         manager: EntityManager,
         teamId: number,
+        previousWorkspace: string | null,
         newWorkspace: string
     ): Promise<boolean> {
 
         const _teamSettingRepository = manager.getRepository(TeamSetting);
+
+        const workspaceStatus = await this._updateTeamWorkspaceRecord(
+            previousWorkspace,
+            newWorkspace
+        );
+
+        await _teamSettingRepository.update({ teamId }, { workspace: newWorkspace });
+
+        return workspaceStatus;
+    }
+
+    // TODO: it should be wrapped by rxjs finalized.
+    async _updateTeamWorkspaceRecord(
+        previousWorkspace: string | null,
+        newWorkspace: string
+    ): Promise<boolean> {
 
         // for validation again
         const _workspaceUsageStatus = await this.syncdayRedisService.getWorkspaceStatus(
@@ -81,17 +132,11 @@ export class TeamSettingService {
             throw new AlreadyUsedInWorkspace();
         }
 
-        const loadedTeamSetting = await _teamSettingRepository.findOneByOrFail({
-            teamId
-        });
-        const previousWorkspace = loadedTeamSetting.workspace;
-
-        // TODO: it should be wrapped by rxjs finalized.
-        await this.syncdayRedisService.deleteWorkspaceStatus(previousWorkspace);
+        if (previousWorkspace) {
+            await this.syncdayRedisService.deleteWorkspaceStatus(previousWorkspace);
+        }
 
         const workspaceStatus = await this.syncdayRedisService.setWorkspaceStatus(newWorkspace);
-
-        await _teamSettingRepository.update({ teamId }, { workspace: newWorkspace });
 
         return workspaceStatus;
     }

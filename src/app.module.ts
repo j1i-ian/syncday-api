@@ -23,6 +23,9 @@ import { SchedulesModule } from './main/services/schedules/schedules.module';
 import { OAuth2Module } from './main/services/oauth2/oauth2.module';
 import { TeamModule } from './main/services/team/team.module';
 import { ProfilesModule } from './main/services/profiles/profiles.module';
+import { PaymentsModule } from './main/services/payments/payments.module';
+import { OrdersModule } from './main/services/orders/orders.module';
+import { ProductsModule } from './main/services/products/products.module';
 
 @Module({
     imports: [
@@ -54,7 +57,10 @@ import { ProfilesModule } from './main/services/profiles/profiles.module';
         BookingsModule,
         SchedulesModule,
         OAuth2Module,
-        ProfilesModule
+        ProfilesModule,
+        PaymentsModule,
+        OrdersModule,
+        ProductsModule
     ],
     controllers: [AppController],
     providers: [
