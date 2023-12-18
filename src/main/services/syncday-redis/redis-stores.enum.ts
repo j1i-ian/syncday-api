@@ -15,5 +15,6 @@ export enum RedisStores {
     SCHEDULES = 'schedules',
     GOOGLE_INTEGRATIONS = 'integrations:google',
     GOOGLE_CALENDARS = 'calendars',
-    CALENDAR_SUBSCRIPTION = 'calendars-subscription'
+    CALENDAR_SUBSCRIPTION = 'calendars-subscription',
+    PG_PAYMENTS = 'pg_payments'
 }

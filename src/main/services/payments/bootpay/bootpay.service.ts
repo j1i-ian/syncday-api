@@ -4,9 +4,7 @@ import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { BootpayConfiguration } from '@services/payments/bootpay/bootpay-configuration.interface';
 import { CreditCard } from '@entity/payments/credit-card.entity';
 import { Order } from '@entity/orders/order.entity';
-import { Bootpay } from '@bootpay/backend-js';
-// eslint-disable-next-line import/no-internal-modules
-import { ReceiptResponseParameters } from '@bootpay/backend-js/lib/response';
+import { BootpayBackendNodejs, ReceiptResponseParameters } from '@typings/bootpay';
 
 @Injectable({
     scope: Scope.REQUEST
@@ -14,9 +12,16 @@ import { ReceiptResponseParameters } from '@bootpay/backend-js/lib/response';
 export class BootpayService {
 
     private _billing: Billing;
+    private Bootpay: BootpayBackendNodejs;
+
+    async patchBootpay(): Promise<void> {
+        const { Bootpay } = (await import('@bootpay/backend-js'));
+
+        this.Bootpay = Bootpay;
+    }
 
     setConfig(bootpayConfig: BootpayConfiguration): BootpayService {
-        Bootpay.setConfiguration(bootpayConfig);
+        this.Bootpay.setConfiguration(bootpayConfig);
 
         return this;
     }
@@ -30,7 +35,11 @@ export class BootpayService {
 
         this._billing = billing ?? this._billing;
 
-        const paymentResponse = await Bootpay.requestSubscribeCardPayment({
+        const KoreanPhoneNumberFormatOrUndefined = buyer.phone?.includes('+82') ?
+            buyer.phone?.replace('+82', '10') :
+            undefined;
+
+        const paymentResponse = await this.Bootpay.requestSubscribeCardPayment({
             order_id: String(order.id),
             order_name: order.name,
             billing_key: this._billing.key,
@@ -39,7 +48,7 @@ export class BootpayService {
             user: {
                 username: buyer.name,
                 email: buyer.email,
-                phone: buyer.phone
+                phone: KoreanPhoneNumberFormatOrUndefined
             }
         });
 
@@ -61,10 +70,14 @@ export class BootpayService {
 
         const pg = '나이스페이';
 
+        const KoreanPhoneNumberFormatOrUndefined = buyer.phone?.includes('+82') ?
+            buyer.phone?.replace('+82', '10') :
+            undefined;
+
         const {
             billing_key,
             billing_expire_at
-        } = await Bootpay.requestSubscribeBillingKey({
+        } = await this.Bootpay.requestSubscribeBillingKey({
             pg,
             subscription_id: orderId,
             order_name: teamName,
@@ -76,7 +89,7 @@ export class BootpayService {
             user: {
                 username: buyer.name,
                 email: buyer.email,
-                phone: buyer.phone
+                phone: KoreanPhoneNumberFormatOrUndefined
             },
             extra: {
                 subscribe_test_payment: true
@@ -92,6 +105,10 @@ export class BootpayService {
     }
 
     async _getAccessToken(): Promise<void> {
-        await Bootpay.getAccessToken();
+        await this.Bootpay.getAccessToken();
+    }
+
+    get billing(): Billing {
+        return this._billing;
     }
 }

@@ -66,6 +66,9 @@
       "@core/*": [
         "src/@core/src/*"
       ],
+      "@typings/*": [
+        "./typings/*"
+      ],
       "*": [
         "node_modules/*"
       ]
@@ -80,6 +83,7 @@
       "chai",
       "node",
       "test",
+      "bootpay",
       "typeorm-faker"
     ]
   },

@@ -2,6 +2,7 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { Observable, combineLatest, from, map, mergeMap } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
+import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { Role } from '@interfaces/profiles/role.enum';
@@ -77,7 +78,7 @@ export class TeamService {
 
     create(
         newOrder: Partial<Order> & Pick<Order, 'unit' | 'price'>,
-        newPaymentMethod: Partial<PaymentMethod>,
+        newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teamId'>>,
         newTeam: Partial<Team>,
         newTeamSetting: Pick<TeamSetting, 'workspace' | 'greetings'>,
         teamMembers: Array<Partial<Pick<User, 'phone' | 'email'>>>,
@@ -86,9 +87,10 @@ export class TeamService {
 
         return combineLatest([
             this.productsService.findTeamPlanProduct(1),
-            this.userService.searchByEmailOrPhone(teamMembers)
+            this.userService.searchByEmailOrPhone(teamMembers),
+            this.userService.findUserById(ownerUserId)
         ]).pipe(
-            mergeMap(([loadedProduct, searchedUsers]: [Product, User[]]) =>
+            mergeMap(([loadedProduct, searchedUsers, owner]: [Product, User[], User]) =>
                 this.datasource.transaction(async (transactionManager) => {
 
                     const _createdTeam = await this._create(
@@ -98,7 +100,12 @@ export class TeamService {
                     );
 
                     newPaymentMethod.teamId = _createdTeam.id;
-                    const _createdPaymentMethod = await this.paymentMethodService._create(transactionManager, newPaymentMethod);
+
+                    const _buyer = {
+                        name: _createdTeam.name,
+                        email: owner.email,
+                        phone: owner.phone
+                    } as Buyer;
 
                     const _createdOrder = await this.ordersService._create(
                         transactionManager,
@@ -107,10 +114,18 @@ export class TeamService {
                         _createdTeam.id
                     );
 
+                    const _createdPaymentMethod = await this.paymentMethodService._create(
+                        transactionManager,
+                        newPaymentMethod,
+                        _buyer,
+                        _createdOrder.uuid
+                    );
+
                     await this.paymentsService._create(
                         transactionManager,
                         _createdOrder,
-                        _createdPaymentMethod
+                        _createdPaymentMethod,
+                        _buyer
                     );
 
                     await this.ordersService._updateOrderStatus(
@@ -127,7 +142,7 @@ export class TeamService {
                         status: ProfileStatus.ACTIVATED,
                         roles: [Role.OWNER],
                         teamId: _createdTeam.id,
-                        userId: ownerUserId
+                        userId: owner.id
                     } as Profile;
 
                     const _allProfiles = _createdProfiles.concat(_rootProfile);

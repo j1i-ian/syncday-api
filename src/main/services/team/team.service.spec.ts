@@ -187,7 +187,7 @@ describe('TeamService', () => {
 
         it('should be created a team with order, payment method, invitations', async () => {
 
-            const ownerUserId = stubOne(User).id;
+            const ownerUserMockStub = stubOne(User);
             const productStub = stubOne(Product);
             const searchedTeamMemberMocksStubs = stub(User);
 
@@ -201,6 +201,7 @@ describe('TeamService', () => {
 
             productsServiceStub.findTeamPlanProduct.resolves(productStub);
             userServiceStub.searchByEmailOrPhone.resolves(searchedTeamMemberMocksStubs);
+            userServiceStub.findUserById.resolves(ownerUserMockStub);
 
             const _createStub = serviceSandbox.stub(service, '_create');
             _createStub.resolves(teamMockStub);
@@ -219,7 +220,7 @@ describe('TeamService', () => {
                 teamMockStub,
                 teamSettingMock,
                 searchedTeamMemberMocksStubs,
-                ownerUserId
+                ownerUserMockStub.id
             ));
             expect(result).ok;
 
@@ -237,7 +238,7 @@ describe('TeamService', () => {
             expect(notificationsStub.sendTeamInvitationForNewUsers.called).true;
 
             const passedNewProfiles = profilesServiceStub._create.getCall(0).args[1] as Profile[];
-            const ownerProfile = passedNewProfiles.find((_profile) => _profile.userId === ownerUserId);
+            const ownerProfile = passedNewProfiles.find((_profile) => _profile.userId === ownerUserMockStub.id);
             expect(ownerProfile).ok;
             expect(ownerProfile?.roles).includes(Role.OWNER);
         });

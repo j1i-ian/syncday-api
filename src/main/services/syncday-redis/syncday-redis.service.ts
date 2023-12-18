@@ -108,6 +108,10 @@ export class SyncdayRedisService {
         return result === 'OK';
     }
 
+    getPGPaymentKey(orderUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.PG_PAYMENTS, [orderUUID]);
+    }
+
     getTemporaryUserKey(email: string): RedisKey {
         return this.getRedisKey(RedisStores.TEMPORARY_USER, [email]);
     }

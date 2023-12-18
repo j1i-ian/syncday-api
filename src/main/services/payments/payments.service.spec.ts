@@ -1,9 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
+import { Buyer } from '@core/interfaces/payments/buyer.interface';
+import { BootpayService } from '@services/payments/bootpay/bootpay.service';
+import { PaymentRedisRepository } from '@services/payments/payment.redis-repository';
 import { Payment } from '@entity/payments/payment.entity';
 import { Order } from '@entity/orders/order.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { User } from '@entity/users/user.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { PaymentsService } from './payments.service';
 
@@ -14,15 +19,33 @@ describe('PaymentsService', () => {
 
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
+    let bootpayServicePatchBootpayStub: sinon.SinonStub;
+    let bootpayServicePlaceOrderStub: sinon.SinonStub;
+
+    let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
+
     let paymentRepositoryStub: sinon.SinonStubbedInstance<Repository<Payment>>;
 
-    beforeEach(async () => {
+    let paymentRedisRepository: sinon.SinonStubbedInstance<PaymentRedisRepository>;
+
+    before(async () => {
+        configServiceStub = sinon.createStubInstance(ConfigService);
 
         paymentRepositoryStub = sinon.createStubInstance<Repository<Payment>>(Repository);
+
+        paymentRedisRepository = sinon.createStubInstance(PaymentRedisRepository);
 
         module = await Test.createTestingModule({
             providers: [
                 PaymentsService,
+                {
+                    provide: ConfigService,
+                    useValue: configServiceStub
+                },
+                {
+                    provide: PaymentRedisRepository,
+                    useValue: paymentRedisRepository
+                },
                 {
                     provide: getDataSourceToken(),
                     useValue: datasourceMock
@@ -42,9 +65,25 @@ describe('PaymentsService', () => {
     });
 
     describe('Test payment method creating', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+            bootpayServicePlaceOrderStub = serviceSandbox.stub(BootpayService.prototype, 'placeOrder');
+
+            bootpayServicePatchBootpayStub = serviceSandbox.stub(BootpayService.prototype, 'patchBootpay');
+        });
+
         afterEach(() => {
             paymentRepositoryStub.create.reset();
             paymentRepositoryStub.save.reset();
+
+            bootpayServicePatchBootpayStub.reset();
+            bootpayServicePlaceOrderStub.reset();
+
+            paymentRedisRepository.setPGPaymentResult.reset();
+
+            serviceSandbox.restore();
         });
 
         it('should be saved a payment method with transactional interface', async () => {
@@ -55,6 +94,12 @@ describe('PaymentsService', () => {
                 amount: orderMock.price,
                 orderId: orderMock.id
             });
+            const userStub = stubOne(User);
+            const buyerMock = {
+                name: 'sample',
+                email: userStub.email,
+                phone: userStub.phone
+            } as Buyer;
 
             paymentRepositoryStub.create.returns(paymentStub);
             paymentRepositoryStub.save.resolves(paymentStub);
@@ -62,13 +107,20 @@ describe('PaymentsService', () => {
             const saved = await service._create(
                 datasourceMock as unknown as EntityManager,
                 orderMock,
-                paymentMethodMock
+                paymentMethodMock,
+                buyerMock
             );
 
             expect(saved).ok;
             expect(saved).deep.equals(paymentStub);
+
             expect(paymentRepositoryStub.create.called).true;
             expect(paymentRepositoryStub.save.called).true;
+
+            expect(bootpayServicePatchBootpayStub.called).true;
+            expect(bootpayServicePlaceOrderStub.called).true;
+
+            expect(paymentRedisRepository.setPGPaymentResult.called).true;
         });
     });
 });
