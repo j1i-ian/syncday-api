@@ -37,7 +37,7 @@ export class TeamController {
         const newOrder = createTeamRequestDto.order;
         const newTeam = {
             name: createTeamRequestDto.name,
-            avatar: createTeamRequestDto.avatar
+            logo: createTeamRequestDto.logo
         } as Team;
         const newTeamSetting = {
             workspace: createTeamRequestDto.link,
@@ -65,11 +65,11 @@ export class TeamController {
     @HttpCode(HttpStatus.NO_CONTENT)
     patch(
         @AuthProfile('teamId') teamId: number,
-        @Body() patchTeamRequestDto: Pick<Team, 'name' | 'avatar'>
+        @Body() patchTeamRequestDto: Pick<Team, 'name' | 'logo'>
     ): Observable<boolean> {
         return this.teamService.patch(teamId, {
             name: patchTeamRequestDto.name,
-            avatar: patchTeamRequestDto.avatar
+            logo: patchTeamRequestDto.logo
         });
     }
 }

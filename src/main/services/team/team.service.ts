@@ -191,14 +191,14 @@ export class TeamService {
 
     patch(
         teamId: number,
-        patchTeamRequestDto: Pick<Team, 'name' | 'avatar'>
+        patchTeamRequestDto: Pick<Team, 'name' | 'logo'>
     ): Observable<boolean> {
         return from(
             this.teamRepository.update(
                 { id: teamId },
                 {
                     name: patchTeamRequestDto.name,
-                    avatar: patchTeamRequestDto.avatar
+                    logo: patchTeamRequestDto.logo
                 }
             )
         ).pipe(
