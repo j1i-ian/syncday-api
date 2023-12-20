@@ -14,7 +14,9 @@ export class ProfilesController {
 
     @Get(':profileId(\\d+)')
     get(@Param('profileId') profileId: number): Observable<Profile> {
-        return this.profileService.findProfileById(profileId);
+        return this.profileService.findProfile({
+            profileId
+        });
     }
 
     @Patch(':profileId(\\d+)')

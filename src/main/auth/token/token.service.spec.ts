@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { calendar_v3 } from 'googleapis';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { firstValueFrom, of } from 'rxjs';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
@@ -14,6 +15,7 @@ import { Language } from '@interfaces/users/language.enum';
 import { UtilService } from '@services/util/util.service';
 import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { GoogleOAuth2TokenService } from '@services/oauth2/google-oauth2-token/google-oauth2-token.service';
+import { ProfilesService } from '@services/profiles/profiles.service';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
@@ -35,6 +37,7 @@ describe('TokenService', () => {
     let jwtServiceStub: sinon.SinonStubbedInstance<JwtService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
+    let profileServiceStub: sinon.SinonStubbedInstance<ProfilesService>;
     let oauth2TokenServiceLocatorStub: sinon.SinonStubbedInstance<OAuth2TokenServiceLocator>;
 
     let oauth2TokenServiceStub: sinon.SinonStubbedInstance<GoogleOAuth2TokenService>;
@@ -46,6 +49,7 @@ describe('TokenService', () => {
         jwtServiceStub = sinon.createStubInstance(JwtService);
         utilServiceStub = sinon.createStubInstance(UtilService);
         userServiceStub = sinon.createStubInstance(UserService);
+        profileServiceStub = sinon.createStubInstance(ProfilesService);
         oauth2TokenServiceLocatorStub = sinon.createStubInstance(OAuth2TokenServiceLocator);
 
         oauth2TokenServiceStub = sinon.createStubInstance(GoogleOAuth2TokenService);
@@ -75,6 +79,10 @@ describe('TokenService', () => {
                 {
                     provide: UserService,
                     useValue: userServiceStub
+                },
+                {
+                    provide: ProfilesService,
+                    useValue: profileServiceStub
                 },
                 {
                     provide: OAuth2TokenServiceLocator,
@@ -157,16 +165,16 @@ describe('TokenService', () => {
     describe('Test issueTokenByRefreshToken', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
-        before(() => {
+        beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
         });
 
-        after(() => {
+        afterEach(() => {
             serviceSandbox.restore();
         });
 
-        it('should be issued token by refresh token', () => {
-            const userStub = stubOne(User);
+        it('should be issued token by refresh token', async () => {
+            const profileStub = stubOne(Profile);
             const fakeRefreshTokenMock = 'iamfakeRefreshToken';
 
             const issuedTokenStub: CreateTokenResponseDto = {
@@ -174,16 +182,51 @@ describe('TokenService', () => {
                 refreshToken: 'fakeRefreshToken'
             };
 
-            jwtServiceStub.verify.returns(userStub);
+            jwtServiceStub.verify.returns(profileStub);
 
             const issueTokenStub = serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
 
-            const signed = service.issueTokenByRefreshToken(fakeRefreshTokenMock);
+            const signed = await firstValueFrom(service.issueTokenByRefreshToken(fakeRefreshTokenMock));
 
             expect(issueTokenStub.called).true;
             expect(signed).ok;
             expect(signed.accessToken).equal(issuedTokenStub.accessToken);
             expect(signed.refreshToken).equal(issuedTokenStub.refreshToken);
+            expect(profileServiceStub.findProfile.called).false;
+        });
+
+        it('should be issued token for team switching', async () => {
+            const teamIdMock = stubOne(Team).id;
+            const userIdMock = stubOne(User).id;
+            const profileStub = stubOne(Profile, {
+                userId: userIdMock
+            });
+            const fakeRefreshTokenMock = 'iamfakeRefreshToken';
+
+            const issuedTokenStub: CreateTokenResponseDto = {
+                accessToken: 'fakeJwtToken',
+                refreshToken: 'fakeRefreshToken'
+            };
+
+            jwtServiceStub.verify.returns(profileStub);
+
+            const issueTokenStub = serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
+
+            profileServiceStub.findProfile.returns(of(profileStub));
+
+            const signed = await firstValueFrom(
+                service.issueTokenByRefreshToken(
+                    fakeRefreshTokenMock,
+                    teamIdMock,
+                    userIdMock
+                )
+            );
+
+            expect(issueTokenStub.called).true;
+            expect(signed).ok;
+            expect(signed.accessToken).equal(issuedTokenStub.accessToken);
+            expect(signed.refreshToken).equal(issuedTokenStub.refreshToken);
+            expect(profileServiceStub.findProfile.called).true;
         });
     });
 

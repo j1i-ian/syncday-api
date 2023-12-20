@@ -6,6 +6,7 @@ import { OAuth2AccountsModule } from '@services/users/oauth2-accounts/oauth2-acc
 import { NotificationsModule } from '@services/notifications/notifications.module';
 import { UserModule } from '@services/users/user.module';
 import { OAuth2Module } from '@services/oauth2/oauth2.module';
+import { ProfilesModule } from '@services/profiles/profiles.module';
 import { AppConfigService } from '../../../configs/app-config.service';
 import { IntegrationsModule } from '../../services/integrations/integrations.module';
 import { TokenController } from './token.controller';
@@ -20,6 +21,7 @@ import { TokenService } from './token.service';
         OAuth2AccountsModule,
         NotificationsModule,
         UserModule,
+        ProfilesModule,
         OAuth2Module
     ],
     controllers: [TokenController],

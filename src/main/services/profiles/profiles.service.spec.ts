@@ -66,7 +66,9 @@ describe('ProfilesService', () => {
 
             profileRepositoryStub.findOneOrFail.resolves(profileStub);
 
-            const loadedUser =  await firstValueFrom(service.findProfileById(profileStub.id));
+            const loadedUser =  await firstValueFrom(service.findProfile({
+                profileId: profileStub.id
+            }));
 
             const actualPassedParam = profileRepositoryStub.findOneOrFail.getCall(0).args[0];
             expect((actualPassedParam.where as FindOptionsWhere<Profile>).id).equals(profileStub.id);

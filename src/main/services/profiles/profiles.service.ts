@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { Observable, from, map } from 'rxjs';
+import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { Profile } from '@entity/profiles/profile.entity';
 
 @Injectable()
@@ -19,7 +20,14 @@ export class ProfilesService {
         }));
     }
 
-    findProfileById(profileId: number): Observable<Profile> {
+    findProfile(searchByProfileOption: SearchByProfileOption): Observable<Profile> {
+
+        const {
+            profileId,
+            teamId,
+            userId
+        } = searchByProfileOption;
+
         return from(this.profileRepository.findOneOrFail({
             relations: [
                 'user',
@@ -29,7 +37,9 @@ export class ProfilesService {
                 'zoomIntegrations'
             ],
             where: {
-                id: profileId
+                id: profileId,
+                teamId,
+                userId
             }
         }));
     }

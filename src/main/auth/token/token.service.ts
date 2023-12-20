@@ -4,6 +4,7 @@ import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { oauth2_v2 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+import { Observable, from, map, of } from 'rxjs';
 import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
@@ -11,6 +12,7 @@ import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { UserService } from '@services/users/user.service';
 import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { UtilService } from '@services/util/util.service';
+import { ProfilesService } from '@services/profiles/profiles.service';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
@@ -40,6 +42,7 @@ export class TokenService {
         private readonly jwtService: JwtService,
         private readonly utilService: UtilService,
         private readonly userService: UserService,
+        private readonly profileService: ProfilesService,
         private readonly oauth2TokenServiceLocator: OAuth2TokenServiceLocator,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
@@ -202,27 +205,49 @@ export class TokenService {
         }
     }
 
-    issueTokenByRefreshToken(refreshToken: string): CreateTokenResponseDto {
+    issueTokenByRefreshToken(
+        refreshToken: string,
+        teamId?: number,
+        userId?: number
+    ): Observable<CreateTokenResponseDto> {
 
         const decoedProfileByRefreshToken: AppJwtPayload = this.jwtService.verify(refreshToken, {
             secret: this.jwtRefreshTokenOption.secret
         });
-        const extractedProfile = decoedProfileByRefreshToken as Partial<Profile>;
-        const extractedUser = {
-            id: decoedProfileByRefreshToken.userId,
-            email: decoedProfileByRefreshToken.email
-        } as Pick<User, 'id' | 'email'>;
-        const extractedTeam = {
-            id: decoedProfileByRefreshToken.teamId
-        } as Pick<Team, 'id'>;
-        const extractedUserSettingId = decoedProfileByRefreshToken.userSettingId;
 
-        return this.issueToken(
-            extractedProfile as Profile,
-            extractedUser as User,
-            extractedTeam as Team,
-            extractedUserSettingId
+        const isNewProfileRequest = teamId && userId && decoedProfileByRefreshToken.userId === userId;
+        const decoedProfileByRefreshToken$ = isNewProfileRequest ?
+            from(
+                this.profileService.findProfile({
+                    teamId,
+                    userId
+                })
+            ) :  of(decoedProfileByRefreshToken as Partial<Profile>);
+
+        return decoedProfileByRefreshToken$.pipe(
+            map((_decoedProfileByRefreshToken) => {
+
+                const extractedProfile = _decoedProfileByRefreshToken;
+                const extractedUser = {
+                    id: decoedProfileByRefreshToken.userId,
+                    email: decoedProfileByRefreshToken.email
+                } as Pick<User, 'id' | 'email'>;
+                const extractedTeam = {
+                    id: decoedProfileByRefreshToken.teamId
+                } as Pick<Team, 'id'>;
+                const extractedUserSettingId = decoedProfileByRefreshToken.userSettingId;
+
+                const tokenResponse = this.issueToken(
+                    extractedProfile as Profile,
+                    extractedUser as User,
+                    extractedTeam as Team,
+                    extractedUserSettingId
+                );
+
+                return tokenResponse;
+            })
         );
+
     }
 
     issueToken(

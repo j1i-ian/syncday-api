@@ -4,13 +4,17 @@ import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+import { Observable } from 'rxjs';
 import { AppConfigService } from '@config/app-config.service';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { AuthUser } from '@decorators/auth-user.decorator';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { User } from '@entity/users/user.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
+import { CreateTokenByRefreshToken } from '@dto/auth/tokens/create-token-by-refresh-token.dto';
 import { Language } from '@app/enums/language.enum';
 import { Public } from '../strategy/jwt/public.decorator';
 import { LocalAuthGuard } from '../strategy/local/local-auth.guard';
@@ -59,7 +63,9 @@ export class TokenController {
     @Post()
     @Public()
     @UseGuards(LocalAuthGuard)
-    issueTokenByEmail(@AuthUser() authUser: User & { userSettingId: number }): CreateTokenResponseDto {
+    issueTokenByEmail(
+        @AuthUser() authUser: User & { userSettingId: number }
+    ): CreateTokenResponseDto {
         const profile = authUser.profiles[0];
         const team = profile.team;
 
@@ -79,8 +85,15 @@ export class TokenController {
 
     @Put()
     @Public()
-    issueTokenByRefreshToken(@Body('refreshToken') refreshToken: string): CreateTokenResponseDto {
-        return this.tokenService.issueTokenByRefreshToken(refreshToken);
+    issueTokenByRefreshToken(
+        @Body() createTokenByRefreshToken: CreateTokenByRefreshToken,
+        @AuthProfile() authProfile: AppJwtPayload
+    ): Observable<CreateTokenResponseDto> {
+        return this.tokenService.issueTokenByRefreshToken(
+            createTokenByRefreshToken.refreshToken,
+            createTokenByRefreshToken.teamId,
+            authProfile.userId
+        );
     }
 
     /**
