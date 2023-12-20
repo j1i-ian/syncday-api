@@ -6,6 +6,7 @@ import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { Role } from '@interfaces/profiles/role.enum';
+import { SearchTeamsWithOptions } from '@interfaces/teams/search-teams-with-options.interface';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ProductsService } from '@services/products/products.service';
 import { OrdersService } from '@services/orders/orders.service';
@@ -42,16 +43,14 @@ export class TeamService {
         @InjectRepository(Team) private readonly teamRepository: Repository<Team>
     ) {}
 
-    search(userId: number): Observable<Team[]> {
+    search(userId: number, option: Partial<SearchTeamsWithOptions>): Observable<Team[]> {
+
+        const teamQueryBuilder = this.teamRepository.createQueryBuilder('team');
+
+        const patchedQueryBuilder = this.__getTeamOptionQuery(option, userId, teamQueryBuilder);
+
         return from(
-            this.teamRepository.find({
-                where: {
-                    profiles: {
-                        userId
-                    }
-                },
-                relations: ['teamSetting']
-            })
+            patchedQueryBuilder.getMany()
         );
     }
 
@@ -206,5 +205,28 @@ export class TeamService {
                 updateResult.affected &&
                 updateResult.affected > 0))
         );
+    }
+
+    __getTeamOptionQuery(
+        option: Partial<SearchTeamsWithOptions>,
+        userId: number,
+        teamQueryBuilder: SelectQueryBuilder<Team>
+    ): SelectQueryBuilder<Team> {
+
+        if (userId) {
+            teamQueryBuilder
+                .leftJoin('team.profiles', 'profile')
+                .leftJoinAndSelect('team.teamSetting', 'teamSetting')
+                .where('profile.userId = :userId', {
+                    userId
+                });
+        }
+
+        if (option.withMemberCounts) {
+            teamQueryBuilder
+                .loadRelationCountAndMap('team.memberCount', 'team.profiles');
+        }
+
+        return teamQueryBuilder;
     }
 }

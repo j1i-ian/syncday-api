@@ -4,9 +4,9 @@ import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs'
 import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
-import { SearchByTeamOption } from '@interfaces/teams/search-by-team-option.interface';
 import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { Role } from '@interfaces/profiles/role.enum';
+import { SearchTeamsWithOptions } from '@interfaces/teams/search-teams-with-options.interface';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsService } from '@services/events/events.service';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
@@ -30,7 +30,7 @@ export class AvailabilityService {
     ) {}
 
     search(
-        searchOption: SearchByTeamOption | SearchByProfileOption,
+        searchOption: SearchTeamsWithOptions | SearchByProfileOption,
         roles: Role[]
     ): Observable<Availability[]> {
 
@@ -39,7 +39,7 @@ export class AvailabilityService {
         const availabilityCondition: FindOptionsWhere<Availability> = hasTeamPermission ?
             {
                 profile: {
-                    teamId: (searchOption as SearchByTeamOption).teamId
+                    teamId: (searchOption as SearchTeamsWithOptions).teamId
                 }
             } : {
                 profileId: (searchOption as SearchByProfileOption).profileId
@@ -56,7 +56,7 @@ export class AvailabilityService {
                 })
             ),
             availabilityBodyRecord: from(
-                this.availabilityRedisRepository.getAvailabilityBodyRecord((searchOption as SearchByTeamOption).teamUUID)
+                this.availabilityRedisRepository.getAvailabilityBodyRecord((searchOption as SearchTeamsWithOptions).teamUUID)
             )
         }).pipe(
             map(({ availabilityEntities, availabilityBodyRecord }) =>

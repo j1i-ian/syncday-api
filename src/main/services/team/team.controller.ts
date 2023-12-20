@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Query } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
@@ -16,9 +16,15 @@ export class TeamController {
 
     @Get()
     search(
-        @AuthProfile('userId') userId: number
+        @AuthProfile('userId') userId: number,
+        @Query('withMemberCounts') withMemberCounts: string | boolean
     ): Observable<Team[]> {
-        return this.teamService.search(userId);
+
+        withMemberCounts = withMemberCounts === 'true';
+
+        return this.teamService.search(userId, {
+            withMemberCounts
+        });
     }
 
     @Get(':teamId(\\d+)')

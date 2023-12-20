@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EntityManager, FindManyOptions, FindOptionsWhere, Repository } from 'typeorm';
+import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
 import { firstValueFrom, of } from 'rxjs';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
+import { stubQueryBuilder } from 'typeorm-faker';
 import { Role } from '@interfaces/profiles/role.enum';
+import { SearchTeamsWithOptions } from '@interfaces/teams/search-teams-with-options.interface';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { UserService } from '@services/users/user.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
@@ -113,29 +115,42 @@ describe('TeamService', () => {
     });
 
     describe('Test team finding', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        let teamQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Team>>;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+            const teamsStub = stub(Team);
+
+            teamQueryBuilderStub = stubQueryBuilder(
+                serviceSandbox,
+                Team,
+                teamsStub
+            );
+        });
+
         afterEach(() => {
-            teamRepositoryStub.find.reset();
             teamRepositoryStub.findOneOrFail.reset();
             teamRepositoryStub.findOneBy.reset();
+
+            teamQueryBuilderStub.getMany.reset();
+
+            serviceSandbox.restore();
         });
 
         it('should be searched teams by profile id', async () => {
             const userIdMock = stubOne(User).id;
-            const teamsStub = stub(Team);
+            const optionMock = {} as SearchTeamsWithOptions;
 
-            teamRepositoryStub.find.resolves(teamsStub);
+            serviceSandbox.stub(service, '__getTeamOptionQuery')
+                .returns(teamQueryBuilderStub);
 
-            const loadedTeams = await firstValueFrom(service.search(userIdMock));
+            const loadedTeams = await firstValueFrom(service.search(userIdMock, optionMock));
+            expect(loadedTeams).ok;
+            expect(loadedTeams.length).greaterThan(0);
 
-            const actualPassedParam = teamRepositoryStub.find.getCall(0).args[0] as FindManyOptions<Team>;
-            expect(
-                (
-                    (actualPassedParam.where as FindOptionsWhere<Team>)
-                        .profiles as FindOptionsWhere<Profile>
-                ).userId
-            ).equals(userIdMock);
-
-            expect(loadedTeams[0]).equal(teamsStub[0]);
+            expect(teamQueryBuilderStub.getMany.called).true;
         });
 
         it('should be got a team by team workspace', async () => {
@@ -302,4 +317,70 @@ describe('TeamService', () => {
         expect(teamRepositoryStub.update.called).true;
     });
 
+    describe('Test __getTeamOptionQuery', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        let teamQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Team>>;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+
+            const teamsStub = stub(Team);
+
+            teamQueryBuilderStub = stubQueryBuilder(
+                serviceSandbox,
+                Team,
+                teamsStub
+            );
+        });
+
+        afterEach(() => {
+
+            teamQueryBuilderStub.leftJoin.reset();
+            teamQueryBuilderStub.leftJoinAndSelect.reset();
+            teamQueryBuilderStub.where.reset();
+            teamQueryBuilderStub.loadRelationCountAndMap.reset();
+
+            serviceSandbox.restore();
+        });
+
+        [
+            {
+                optionsMock: {
+                    userId: 1
+                } as Partial<SearchTeamsWithOptions>,
+                expectation: (_teamQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Team>>) => {
+                    expect(_teamQueryBuilderStub.leftJoin.called).true;
+                    expect(_teamQueryBuilderStub.leftJoinAndSelect.called).true;
+                    expect(_teamQueryBuilderStub.where.called).true;
+                }
+            },
+            {
+                optionsMock: {
+                    withMemberCounts: true
+                } as Partial<SearchTeamsWithOptions>,
+                expectation: (_teamQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Team>>) => {
+                    expect(_teamQueryBuilderStub.loadRelationCountAndMap.called).true;
+                }
+            }
+        ].forEach(function ({
+            optionsMock,
+            expectation
+        }) {
+            it('should be patched for user id option', () => {
+
+                const userIdMock = stubOne(User).id;
+
+                const composedTeamQueryBuilder = service.__getTeamOptionQuery(
+                    optionsMock,
+                    userIdMock,
+                    teamQueryBuilderStub
+                );
+
+                expectation(composedTeamQueryBuilder as SinonStubbedInstance<SelectQueryBuilder<Team>>);
+            });
+
+        });
+
+    });
 });
