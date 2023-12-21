@@ -22,6 +22,7 @@ import { Product } from '@entity/products/product.entity';
 import { Order } from '@entity/orders/order.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { Payment } from '@entity/payments/payment.entity';
+import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { TeamService } from './team.service';
 
@@ -175,7 +176,7 @@ describe('TeamService', () => {
     describe('Test team creating', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
-        before(() => {
+        beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
         });
 
@@ -185,11 +186,13 @@ describe('TeamService', () => {
             teamRepositoryStub.save.reset();
             teamSettingServiceStub._updateTeamWorkspace.reset();
 
+            teamSettingServiceStub.fetchTeamWorkspaceStatus.reset();
             productsServiceStub.findTeamPlanProduct.reset();
             userServiceStub.searchByEmailOrPhone.reset();
             paymentMethodServiceStub._create.reset();
             ordersServiceStub._create.reset();
             paymentsServiceStub._create.reset();
+            ordersServiceStub._updateOrderStatus.reset();
             profilesServiceStub._create.reset();
             profilesServiceStub.saveInvitedNewTeamMember.reset();
             utilServiceStub.filterInvitedNewUsers.reset();
@@ -215,6 +218,7 @@ describe('TeamService', () => {
             const profileStubs = stub(Profile);
             const teamSettingMock = stubOne(TeamSetting);
 
+            teamSettingServiceStub.fetchTeamWorkspaceStatus.resolves(false);
             productsServiceStub.findTeamPlanProduct.resolves(productStub);
             userServiceStub.searchByEmailOrPhone.resolves(searchedTeamMemberMocksStubs);
             userServiceStub.findUserById.resolves(ownerUserMockStub);
@@ -229,6 +233,7 @@ describe('TeamService', () => {
             profilesServiceStub._create.resolves(profileStubs);
             utilServiceStub.filterInvitedNewUsers.returns([]);
             profilesServiceStub.saveInvitedNewTeamMember.returns(of(true));
+            utilServiceStub.filterInvitedNewUsers.returns([]);
             notificationsStub.sendTeamInvitationForNewUsers.returns(of(true));
 
             const result = await firstValueFrom(service.create(
@@ -241,6 +246,7 @@ describe('TeamService', () => {
             ));
             expect(result).ok;
 
+            expect(teamSettingServiceStub.fetchTeamWorkspaceStatus.called).true;
             expect(productsServiceStub.findTeamPlanProduct.called).true;
             expect(userServiceStub.searchByEmailOrPhone.called).true;
 
@@ -302,6 +308,39 @@ describe('TeamService', () => {
             expect(teamRepositoryStub.create.called).true;
             expect(teamRepositoryStub.save.called).true;
             expect(teamSettingServiceStub._updateTeamWorkspace.called).true;
+        });
+
+        it('should be thrown an already used workspace error', async () => {
+
+            const ownerUserMockStub = stubOne(User);
+            const searchedTeamMemberMocksStubs = stub(User);
+
+            const teamMockStub = stubOne(Team);
+            const paymentMethodMockStub = stubOne(PaymentMethod);
+            const orderMockStub = stubOne(Order);
+            const teamSettingMock = stubOne(TeamSetting);
+
+            teamSettingServiceStub.fetchTeamWorkspaceStatus.resolves(true);
+
+            await expect(firstValueFrom(service.create(
+                orderMockStub,
+                paymentMethodMockStub,
+                teamMockStub,
+                teamSettingMock,
+                searchedTeamMemberMocksStubs,
+                ownerUserMockStub.id
+            ))).rejectedWith(AlreadyUsedInWorkspace);
+
+            expect(teamSettingServiceStub.fetchTeamWorkspaceStatus.called).true;
+            expect(productsServiceStub.findTeamPlanProduct.called).false;
+            expect(userServiceStub.searchByEmailOrPhone.called).false;
+            expect(paymentMethodServiceStub._create.called).false;
+            expect(ordersServiceStub._create.called).false;
+            expect(paymentsServiceStub._create.called).false;
+            expect(ordersServiceStub._updateOrderStatus.called).false;
+            expect(profilesServiceStub._create.called).false;
+            expect(utilServiceStub.filterInvitedNewUsers.called).false;
+            expect(notificationsStub.sendTeamInvitationForNewUsers.called).false;
         });
     });
 

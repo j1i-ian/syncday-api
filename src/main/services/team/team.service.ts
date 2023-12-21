@@ -1,5 +1,5 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { Observable, combineLatest, from, map, mergeMap } from 'rxjs';
+import { Observable, combineLatest, from, map, mergeMap, tap } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
@@ -24,6 +24,7 @@ import { Product } from '@entity/products/product.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 
 @Injectable()
 export class TeamService {
@@ -85,11 +86,24 @@ export class TeamService {
         ownerUserId: number
     ): Observable<Team> {
 
-        return combineLatest([
-            this.productsService.findTeamPlanProduct(1),
-            this.userService.searchByEmailOrPhone(teamMembers),
-            this.userService.findUserById(ownerUserId)
-        ]).pipe(
+        const checkAlreadyUsedWorkspaceIn$ = from(
+            this.teamSettingService.fetchTeamWorkspaceStatus(
+                newTeamSetting.workspace
+            )
+        ).pipe(
+            tap((isAlreadyUsedIn) => {
+                if (isAlreadyUsedIn) {
+                    throw new AlreadyUsedInWorkspace();
+                }
+            })
+        );
+
+        return checkAlreadyUsedWorkspaceIn$.pipe(
+            mergeMap(() => combineLatest([
+                this.productsService.findTeamPlanProduct(1),
+                this.userService.searchByEmailOrPhone(teamMembers),
+                this.userService.findUserById(ownerUserId)
+            ])),
             mergeMap(([loadedProduct, searchedUsers, owner]: [Product, User[], User]) =>
                 this.datasource.transaction(async (transactionManager) => {
 
