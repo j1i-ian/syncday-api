@@ -31,6 +31,7 @@ import { EventSetting } from '@interfaces/events/event-setting';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
@@ -38,6 +39,7 @@ import { OverridedAvailabilityTime } from '@entity/availability/overrided-availa
 import { Verification } from '@entity/verifications/verification.interface';
 import { ConferenceLink } from '@entity/schedules/conference-link.entity';
 import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
+import { User } from '@entity/users/user.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
@@ -96,6 +98,18 @@ export class TestMockUtil {
     }
 
     sandbox: SinonSandbox;
+
+    getInvitedNewTeamMemberMocks(teamIdMock: number): InvitedNewTeamMember[] {
+        return stub(User, 10, {
+            phone: TestMockUtil.faker.phone.number()
+        }).map((_user, index) => index % 2 ? {
+            email: _user.email,
+            teamId: teamIdMock
+        } : {
+            phone: _user.phone,
+            teamId: teamIdMock
+        } as InvitedNewTeamMember);
+    }
 
     getAppleCalDAVCredentialMock(): AppleCalDAVCredential {
 

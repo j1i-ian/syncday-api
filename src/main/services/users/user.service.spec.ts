@@ -2,7 +2,10 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, FindOneOptions, FindOptionsWhere, Repository } from 'typeorm';
+import { firstValueFrom, of } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -11,6 +14,9 @@ import { NotificationsService } from '@services/notifications/notifications.serv
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { TeamService } from '@services/team/team.service';
+import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
+import { OAuth2MetaInfo } from '@services/users/oauth2-metainfo.interface';
+import { OAuth2UserProfile } from '@services/users/oauth2-user-profile.interface';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { Event } from '@entity/events/event.entity';
@@ -21,6 +27,7 @@ import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
+import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
@@ -236,6 +243,102 @@ describe('Test User Service', () => {
 
             expect(loadedUser).not.ok;
         });
+    });
+
+    describe('Test createUser overloading', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            serviceSandbox.restore();
+        });
+
+        [
+            {
+                description: 'should be overloaded method for createUserWithVerificationByEmail',
+                getArgs: () => {
+                    const emailMock = TestMockUtil.faker.internet.email();
+                    const userSettingStub = stubOne(UserSetting);
+
+                    const verificationStub = testMockUtil.getVerificationMock();
+
+                    const args = [
+                        emailMock,
+                        verificationStub.verificationCode,
+                        userSettingStub.preferredTimezone
+                    ] as [string, string, string];
+
+                    return args;
+                },
+                createUserWithVerificationByEmailCall: true,
+                createUserByOAuth2Call: false
+            },
+            {
+                description: 'should be overloaded method for createUserByOAuth2',
+                getArgs: () => {
+                    const emailMock = TestMockUtil.faker.internet.email();
+                    const createUserRequestDto = {} as CreateUserRequestDto;
+                    const oauth2Token = {} as OAuthToken;
+                    const oauth2UserEmail = emailMock;
+                    const oauth2UserProfileImageUrl = TestMockUtil.faker.image.imageUrl();
+                    const language = Language.ENGLISH;
+                    const integrationParams = {} as OAuth2MetaInfo;
+
+                    const args = [
+                        OAuth2Type.GOOGLE,
+                        createUserRequestDto,
+                        oauth2Token,
+                        {
+                            oauth2UserEmail,
+                            oauth2UserProfileImageUrl
+                        },
+                        language,
+                        integrationParams
+                    ] as [
+                        OAuth2Type,
+                        CreateUserRequestDto,
+                        OAuthToken,
+                        OAuth2UserProfile,
+                        Language,
+                        Partial<OAuth2MetaInfo>
+                    ];
+
+                    return args;
+                },
+                createUserWithVerificationByEmailCall: false,
+                createUserByOAuth2Call: true
+            }
+        ].forEach(function ({
+            description,
+            getArgs,
+            createUserWithVerificationByEmailCall,
+            createUserByOAuth2Call
+        }) {
+
+            it(description, async () => {
+
+                const userStub = stubOne(User);
+
+                const createUserWithVerificationByEmailStub = serviceSandbox.stub(service, 'createUserWithVerificationByEmail').resolves(userStub);
+                const createUserByOAuth2Stub = serviceSandbox.stub(service, 'createUserByOAuth2').resolves({ createdUser: userStub } as CreatedUserTeamProfile);
+
+                const args = getArgs();
+
+                const createdUser = await firstValueFrom(
+                    // eslint-disable-next-line prefer-spread
+                    service.createUser.apply(service, args as any)
+                );
+
+                expect(createdUser).ok;
+
+                expect(createUserWithVerificationByEmailStub.called).equals(createUserWithVerificationByEmailCall);
+                expect(createUserByOAuth2Stub.called).equals(createUserByOAuth2Call);
+            });
+        });
+
     });
 
     describe('Test user sign up', () => {
@@ -480,6 +583,8 @@ describe('Test User Service', () => {
                     createdTeam: teamStub
                 });
 
+                profilesServiceStub.createInvitedProfiles.returns(of([profileStub]));
+                profilesServiceStub.completeInvitation.returns(of(true));
                 notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(true);
 
                 const createdUser = (await service.createUserWithVerificationByEmail(
@@ -494,6 +599,8 @@ describe('Test User Service', () => {
                 expect(createdUser).ok;
                 expect(createdUser.id).equals(userStub.id);
 
+                expect(profilesServiceStub.createInvitedProfiles.called).ok;
+                expect(profilesServiceStub.completeInvitation.called).ok;
                 expect(notificationsServiceStub.sendWelcomeEmailForNewUser.called).ok;
             });
 

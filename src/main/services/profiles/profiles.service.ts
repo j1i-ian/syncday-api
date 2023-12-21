@@ -1,14 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { Observable, from, map } from 'rxjs';
+import { Observable, combineLatest, from, map, mergeMap, toArray, zip } from 'rxjs';
 import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
+import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
+import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { Profile } from '@entity/profiles/profile.entity';
+import { User } from '@entity/users/user.entity';
 
 @Injectable()
 export class ProfilesService {
 
     constructor(
+        private readonly profilesRedisRepository: ProfilesRedisRepository,
         @InjectRepository(Profile) private readonly profileRepository: Repository<Profile>
     ) {}
 
@@ -44,6 +48,24 @@ export class ProfilesService {
         }));
     }
 
+    createInvitedProfiles(
+        user: Pick<User, 'id' | 'email' | 'phone'>
+    ): Observable<Profile[]> {
+
+        return zip(
+            this.profilesRedisRepository.getInvitedTeamIds(user.email),
+            this.profilesRedisRepository.getInvitedTeamIds(user.phone)
+        ).pipe(
+            mergeMap(([_emailTeamIds, _phoneTeamIds]) => from(_emailTeamIds.concat(_phoneTeamIds))),
+            map((_teamId) => (this.profileRepository.create({
+                teamId: _teamId,
+                userId: user.id
+            }))),
+            toArray(),
+            mergeMap((_newProfiles) => from(this.profileRepository.save(_newProfiles)))
+        );
+    }
+
     async _create(
         transactionManager: EntityManager,
         newProfile: Partial<Profile> | Array<Partial<Profile>>
@@ -58,6 +80,16 @@ export class ProfilesService {
         return savedProfile;
     }
 
+    saveInvitedNewTeamMember(
+        createdTeamId: number,
+        invitedNewMembers: InvitedNewTeamMember[]
+    ): Observable<boolean> {
+        return this.profilesRedisRepository.setInvitedNewTeamMembers(
+            createdTeamId,
+            invitedNewMembers
+        );
+    }
+
     patch(profileId: number, partialProfile: Partial<Profile>): Observable<boolean> {
         return from(
             this.profileRepository.update(
@@ -69,5 +101,14 @@ export class ProfilesService {
                 updateResult.affected &&
                 updateResult.affected > 0))
         );
+    }
+
+    completeInvitation(
+        user: Pick<User, 'id' | 'email' | 'phone'>
+    ): Observable<boolean> {
+        return combineLatest([
+            this.profilesRedisRepository.deleteTeamInvitations(user.email),
+            this.profilesRedisRepository.deleteTeamInvitations(user.phone)
+        ]).pipe(map(() => true));
     }
 }

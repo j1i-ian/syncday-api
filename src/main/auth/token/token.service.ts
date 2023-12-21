@@ -4,7 +4,7 @@ import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { oauth2_v2 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { Observable, from, map, of } from 'rxjs';
+import { Observable, firstValueFrom, from, map, mergeMap, of } from 'rxjs';
 import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
@@ -141,6 +141,7 @@ export class TokenService {
 
         switch (ensuredIntegrationContext) {
             case IntegrationContext.SIGN_UP:
+                // TODO: it should be migrated to user service.
                 const {
                     createdProfile,
                     createdTeam,
@@ -154,6 +155,18 @@ export class TokenService {
                 user = createdUser;
                 team = createdTeam;
                 isNewbie = true;
+
+                const profiles = await firstValueFrom(
+                    this.profileService.createInvitedProfiles(createdUser)
+                        .pipe(
+                            map((_profiles) => _profiles ? [ createdProfile ].concat(_profiles) : [createdProfile]),
+                            mergeMap((_profiles) => this.profileService.completeInvitation(createdUser)
+                                .pipe(map(() => _profiles))
+                            )
+                        )
+                );
+
+                user.profiles = profiles;
                 break;
             case IntegrationContext.SIGN_IN:
                 isNewbie = false;

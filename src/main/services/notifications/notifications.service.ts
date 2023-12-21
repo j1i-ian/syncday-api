@@ -14,8 +14,8 @@ import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-clien
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
+import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
-import { User } from '@entity/users/user.entity';
 import { Language } from '@app/enums/language.enum';
 
 @Injectable()
@@ -30,7 +30,7 @@ export class NotificationsService {
 
     sendTeamInvitationForNewUsers(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        users: Array<Partial<Pick<User, 'phone' | 'email'>>>
+        users: InvitedNewTeamMember[]
     ): Observable<boolean> {
         return of(true);
     }

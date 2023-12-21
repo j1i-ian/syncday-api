@@ -16,6 +16,7 @@ import { UserService } from '@services/users/user.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { UtilService } from '@services/util/util.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
+import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Order } from '@entity/orders/order.entity';
@@ -80,7 +81,7 @@ export class TeamService {
         newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teamId'>>,
         newTeam: Partial<Team>,
         newTeamSetting: Pick<TeamSetting, 'workspace' | 'greetings'>,
-        teamMembers: Array<Partial<Pick<User, 'phone' | 'email'>>>,
+        teamMembers: InvitedNewTeamMember[],
         ownerUserId: number
     ): Observable<Team> {
 
@@ -157,8 +158,11 @@ export class TeamService {
 
                 const invitedNewUsers = this.utilService.filterInvitedNewUsers(teamMembers, searchedUsers);
 
-                return this.notificationsService.sendTeamInvitationForNewUsers(invitedNewUsers)
-                    .pipe(map(() => createdTeam));
+                return this.profilesService.saveInvitedNewTeamMember(createdTeam.id, invitedNewUsers)
+                    .pipe(
+                        mergeMap(() => this.notificationsService.sendTeamInvitationForNewUsers(invitedNewUsers)),
+                        map(() => createdTeam)
+                    );
             })
         );
     }

@@ -17,6 +17,7 @@ import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
+import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { DateTimeOrderFormat } from '@entity/users/date-time-format-order.enum';
@@ -252,9 +253,9 @@ export class UtilService {
     }
 
     filterInvitedNewUsers(
-        invitedMembers: Array<Partial<Pick<User, 'phone' | 'email'>>>,
+        invitedMembers: InvitedNewTeamMember[],
         searchedUsers: User[]
-    ): Array<Partial<Pick<User, 'phone' | 'email'>>> {
+    ): InvitedNewTeamMember[] {
         return invitedMembers
             .filter((_member) => {
                 const _searched = searchedUsers.find((_user) => {

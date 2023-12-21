@@ -191,6 +191,7 @@ describe('TeamService', () => {
             ordersServiceStub._create.reset();
             paymentsServiceStub._create.reset();
             profilesServiceStub._create.reset();
+            profilesServiceStub.saveInvitedNewTeamMember.reset();
             utilServiceStub.filterInvitedNewUsers.reset();
             notificationsStub.sendTeamInvitationForNewUsers.reset();
 
@@ -227,6 +228,7 @@ describe('TeamService', () => {
             ordersServiceStub._updateOrderStatus.resolves(true);
             profilesServiceStub._create.resolves(profileStubs);
             utilServiceStub.filterInvitedNewUsers.returns([]);
+            profilesServiceStub.saveInvitedNewTeamMember.returns(of(true));
             notificationsStub.sendTeamInvitationForNewUsers.returns(of(true));
 
             const result = await firstValueFrom(service.create(

@@ -245,6 +245,9 @@ describe('TokenService', () => {
             _oauth2TokenServiceStub = serviceSandbox.createStubInstance(GoogleOAuth2TokenService);
             oauth2TokenServiceLocatorStub.get.returns(_oauth2TokenServiceStub);
 
+            profileServiceStub.createInvitedProfiles.returns(of([]));
+            profileServiceStub.completeInvitation.returns(of(true));
+
             evaluateIntegrationContextStub = serviceSandbox.stub(service, 'evaluateIntegrationContext');
             issueTokenStub = serviceSandbox.stub(service, 'issueToken');
         });
@@ -257,6 +260,8 @@ describe('TokenService', () => {
             _oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.reset();
 
             userServiceStub.findUserByEmail.reset();
+            profileServiceStub.createInvitedProfiles.reset();
+            profileServiceStub.completeInvitation.reset();
 
             _oauth2TokenServiceStub.signUpWithOAuth.reset();
             _oauth2TokenServiceStub.integrate.reset();
@@ -289,6 +294,8 @@ describe('TokenService', () => {
                 getFindUserStub: () => null,
                 isExpectedNewbie: true,
                 signUpWithOAuthCall: true,
+                createInvitedProfilesCall: true,
+                completeInvitationCall: true,
                 integrateCall: false,
                 multipleSocialSignInCall: false
             },
@@ -323,6 +330,8 @@ describe('TokenService', () => {
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
+                createInvitedProfilesCall: false,
+                completeInvitationCall: false,
                 integrateCall: false,
                 multipleSocialSignInCall: false
             },
@@ -357,6 +366,8 @@ describe('TokenService', () => {
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
+                createInvitedProfilesCall: false,
+                completeInvitationCall: false,
                 integrateCall: false,
                 multipleSocialSignInCall: false
             },
@@ -391,6 +402,8 @@ describe('TokenService', () => {
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
+                createInvitedProfilesCall: false,
+                completeInvitationCall: false,
                 integrateCall: true,
                 multipleSocialSignInCall: false
             },
@@ -437,6 +450,8 @@ describe('TokenService', () => {
                 }),
                 isExpectedNewbie: false,
                 signUpWithOAuthCall: false,
+                createInvitedProfilesCall: false,
+                completeInvitationCall: false,
                 integrateCall: true,
                 multipleSocialSignInCall: false
             }
@@ -447,6 +462,8 @@ describe('TokenService', () => {
             getFindUserStub,
             isExpectedNewbie,
             signUpWithOAuthCall,
+            createInvitedProfilesCall,
+            completeInvitationCall,
             integrateCall,
             multipleSocialSignInCall
         }) {
@@ -502,6 +519,9 @@ describe('TokenService', () => {
                 expect(_oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.called).true;
 
                 expect(userServiceStub.findUserByEmail.called).true;
+
+                expect(profileServiceStub.createInvitedProfiles.called).equals(createInvitedProfilesCall);
+                expect(profileServiceStub.completeInvitation.called).equals(completeInvitationCall);
 
                 expect(_oauth2TokenServiceStub.signUpWithOAuth.called).equals(signUpWithOAuthCall);
                 expect(_oauth2TokenServiceStub.integrate.called).equals(integrateCall);

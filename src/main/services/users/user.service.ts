@@ -2,10 +2,10 @@ import { BadRequestException, Inject, Injectable, InternalServerErrorException, 
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
+import { Observable, firstValueFrom, from, map, mergeMap } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
-import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { Role } from '@interfaces/profiles/role.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
@@ -17,10 +17,12 @@ import { TeamSettingService } from '@services/team/team-setting/team-setting.ser
 import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { TeamService } from '@services/team/team.service';
+import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
+import { OAuth2MetaInfo } from '@services/users/oauth2-metainfo.interface';
+import { OAuth2UserProfile } from '@services/users/oauth2-user-profile.interface';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
-import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
@@ -34,7 +36,6 @@ import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
-import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
 import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
@@ -42,11 +43,6 @@ import { PasswordMismatchException } from '@exceptions/auth/password-mismatch.ex
 import { UtilService } from '../util/util.service';
 import { SyncdayRedisService } from '../syncday-redis/syncday-redis.service';
 
-interface OAuth2MetaInfo {
-    googleCalendarIntegrations: GoogleCalendarIntegration[];
-    googleIntegrationBody: GoogleIntegrationBody;
-    options: CalendarCreateOption;
-}
 
 interface CreateUserOptions {
     plainPassword?: string;
@@ -74,7 +70,7 @@ export class UserService {
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
 
-    async searchByEmailOrPhone(users: Array<Partial<Pick<User, 'email' | 'phone'>>>): Promise<User[]> {
+    async searchByEmailOrPhone(users: InvitedNewTeamMember[]): Promise<User[]> {
 
         const emails = users
             .filter((_user) => _user.email)
@@ -170,6 +166,53 @@ export class UserService {
         return result ? loadedUser : null;
     }
 
+    createUser(
+        oauth2Type: OAuth2Type,
+        createUserRequestDto: CreateUserRequestDto,
+        oauth2Token: OAuthToken,
+        {
+            oauth2UserEmail,
+            oauth2UserProfileImageUrl
+        }: OAuth2UserProfile,
+        language: Language,
+        integrationParams?: Partial<OAuth2MetaInfo>
+    ): Observable<CreatedUserTeamProfile>;
+    createUser(
+        email: string,
+        verificationCode: string,
+        timezone: string
+    ): Observable<User | null>;
+    createUser(
+        emailOrOAuth2Type: string | OAuth2Type,
+        verificationCodeOrcreateUserRequestDto: string | CreateUserRequestDto,
+        timezoneOrOauth2Token: string | OAuthToken,
+        oauth2UserProfile?: OAuth2UserProfile,
+        language?: Language,
+        integrationParams?: Partial<OAuth2MetaInfo>
+    ): Observable<User | null> | Observable<CreatedUserTeamProfile> {
+
+        const createUser$ = typeof verificationCodeOrcreateUserRequestDto === 'string' ?
+            from(
+                this.createUserWithVerificationByEmail(
+                    emailOrOAuth2Type,
+                    verificationCodeOrcreateUserRequestDto ,
+                    timezoneOrOauth2Token as string
+                )
+            ) :
+            from(
+                this.createUserByOAuth2(
+                    emailOrOAuth2Type as OAuth2Type,
+                    verificationCodeOrcreateUserRequestDto ,
+                    timezoneOrOauth2Token as OAuthToken,
+                    oauth2UserProfile as OAuth2UserProfile,
+                    language as Language,
+                    integrationParams as Partial<OAuth2MetaInfo>
+                )
+            );
+
+        return createUser$;
+    }
+
     async createUserWithVerificationByEmail(
         email: string,
         verificationCode: string,
@@ -205,6 +248,16 @@ export class UserService {
 
             return _createdUserAndTeam;
         });
+
+        const createdProfileByInvitations = await firstValueFrom(
+            this.profilesService.createInvitedProfiles(createdUser).pipe(
+                mergeMap((_profiles) => this.profilesService.completeInvitation(createdUser)
+                    .pipe(map(() => _profiles))
+                )
+            )
+        );
+
+        createdUser.profiles = [ createdProfile ].concat(createdProfileByInvitations);
 
         await this.notificationsService.sendWelcomeEmailForNewUser(
             createdProfile.name,
@@ -374,10 +427,7 @@ export class UserService {
         {
             oauth2UserEmail,
             oauth2UserProfileImageUrl
-        }: {
-            oauth2UserEmail: string;
-            oauth2UserProfileImageUrl?: string | null;
-        },
+        }: OAuth2UserProfile,
         language: Language,
         integrationParams?: Partial<OAuth2MetaInfo>
     ): Promise<CreatedUserTeamProfile> {

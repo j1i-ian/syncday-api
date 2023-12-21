@@ -6,6 +6,7 @@ import { TextTemplate } from '@core/interfaces/notifications/text-template.enum'
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
+import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
@@ -228,7 +229,7 @@ describe('UtilService', () => {
     describe('Test filtering invited new users', () => {
         it('should be filtered new users', () => {
 
-            const invitedMemberMocks: Array<Partial<Pick<User, 'phone' | 'email'>>> = [
+            const invitedMemberMocks: InvitedNewTeamMember[] = [
                 { email: 'alan@sync.day' },
                 { phone: '+821012341234' },
                 { email: 'alan2@sync.day' },
