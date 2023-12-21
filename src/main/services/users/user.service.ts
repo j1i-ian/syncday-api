@@ -519,10 +519,6 @@ export class UserService {
         return updateResult.affected ? updateResult.affected > 0 : false;
     }
 
-    async updateUser(userId: number): Promise<boolean> {
-        return await Promise.resolve(!!userId);
-    }
-
     async updateUserPhone(userId: number, updatePhoneWithVerificationDto: UpdatePhoneWithVerificationDto): Promise<boolean> {
         const verificationOrNull = await this.syncdayRedisService.getPhoneVerification(updatePhoneWithVerificationDto.phone);
 
