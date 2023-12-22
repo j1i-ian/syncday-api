@@ -237,8 +237,9 @@ export class TokenService {
             secret: this.jwtRefreshTokenOption.secret
         });
 
-        const isNewProfileRequest = teamId && userId && decoedProfileByRefreshToken.userId === userId;
-        const decoedProfileByRefreshToken$ = isNewProfileRequest ?
+        const isNewProfileTokenRequest = teamId && userId && decoedProfileByRefreshToken.userId === userId;
+
+        const decoedProfileByRefreshToken$ = isNewProfileTokenRequest ?
             from(
                 this.profileService.findProfile({
                     teamId,
@@ -255,7 +256,7 @@ export class TokenService {
                     email: decoedProfileByRefreshToken.email
                 } as Pick<User, 'id' | 'email'>;
                 const extractedTeam = {
-                    id: decoedProfileByRefreshToken.teamId
+                    id: _decoedProfileByRefreshToken.teamId
                 } as Pick<Team, 'id'>;
                 const extractedUserSettingId = decoedProfileByRefreshToken.userSettingId;
 
