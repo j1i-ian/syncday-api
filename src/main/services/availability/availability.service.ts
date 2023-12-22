@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
 import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
-import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, Repository } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
@@ -144,14 +144,44 @@ export class AvailabilityService {
     async create(
         teamUUID: string,
         profileId: number,
-        { name, availableTimes, overrides, timezone }: CreateAvailabilityRequestDto
+        { name, availableTimes, overrides, timezone }: CreateAvailabilityRequestDto,
+        availabilityOptions: Pick<Availability, 'default'> = {
+            default: false
+        }
     ): Promise<Availability> {
+        return this._create(
+            this.availabilityRepository.manager,
+            teamUUID,
+            profileId,
+            {
+                name,
+                availableTimes,
+                overrides,
+                timezone
+            },
+            availabilityOptions
+        );
+    }
+
+    async _create(
+        manager: EntityManager,
+        teamUUID: string,
+        profileId: number,
+        { name, availableTimes, overrides, timezone }: CreateAvailabilityRequestDto,
+        availabilityOptions: Pick<Availability, 'default'> = {
+            default: false
+        }
+    ): Promise<Availability> {
+
+        const _availabilityRepository = manager.getRepository(Availability);
+
         const newAvailabilityBody = {
             availableTimes,
             overrides
         } as AvailabilityBody;
 
-        const savedAvailability = await this.availabilityRepository.save({
+        const savedAvailability = await _availabilityRepository.save({
+            default: availabilityOptions.default,
             profileId,
             name,
             timezone

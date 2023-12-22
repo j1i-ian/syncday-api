@@ -94,33 +94,11 @@ describe('EventsService', () => {
         expect(service).ok;
     });
 
-    describe('Test Event CRUD', () => {
+    describe('Test Event Searching', () => {
         afterEach(() => {
-            validatorStub.validate.reset();
-
-            eventGroupRepositoryStub.findOneOrFail.reset();
-
             eventRepositoryStub.find.reset();
-            eventRepositoryStub.findOneOrFail.reset();
-            eventRepositoryStub.save.reset();
-            eventRepositoryStub.update.reset();
-            eventRepositoryStub.delete.reset();
 
-            eventRedisRepositoryStub.getInviteeQuestions.reset();
-            eventRedisRepositoryStub.getNotificationInfo.reset();
-            eventRedisRepositoryStub.getEventSetting.reset();
-            eventRedisRepositoryStub.save.reset();
-            eventRedisRepositoryStub.remove.reset();
-            eventRedisRepositoryStub.clone.reset();
-            eventRedisRepositoryStub.getEventLinkSetStatus.reset();
-            eventRedisRepositoryStub.setEventLinkSetStatus.reset();
-            eventRedisRepositoryStub.deleteEventLinkSetStatus.reset();
             eventRedisRepositoryStub.getEventDetailRecords.reset();
-
-            eventDetailRepositoryStub.save.reset();
-            eventDetailRepositoryStub.delete.reset();
-
-            utilServiceStub.generateUniqueNumber.reset();
         });
 
         it('should be searched event list', async () => {
@@ -138,8 +116,22 @@ describe('EventsService', () => {
 
             expect(list).ok;
             expect(list.length).greaterThan(0);
+
             expect(eventRepositoryStub.find.called).true;
             expect(eventRedisRepositoryStub.getEventDetailRecords.called).true;
+        });
+    });
+
+    describe('Test Event Fetching', () => {
+
+        afterEach(() => {
+            validatorStub.validate.reset();
+
+            eventRepositoryStub.findOneOrFail.reset();
+
+            eventRedisRepositoryStub.getInviteeQuestions.reset();
+            eventRedisRepositoryStub.getNotificationInfo.reset();
+            eventRedisRepositoryStub.getEventSetting.reset();
         });
 
         it('should be fetched event with detail', async () => {
@@ -164,7 +156,7 @@ describe('EventsService', () => {
 
             expect(loadedEventWithDetail).ok;
             expect(loadedEventWithDetail.eventDetail).ok;
-            expect(eventRepositoryStub);
+            expect(eventRepositoryStub.findOneOrFail.called).true;
             expect(eventRedisRepositoryStub.getInviteeQuestions.called).true;
             expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
             expect(eventRedisRepositoryStub.getEventSetting.called).true;
@@ -191,7 +183,7 @@ describe('EventsService', () => {
 
             expect(loadedEventWithDetail).ok;
             expect(loadedEventWithDetail.eventDetail).ok;
-            expect(eventRepositoryStub);
+            expect(eventRepositoryStub.findOneOrFail.called).true;
             expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
         });
 
@@ -222,13 +214,37 @@ describe('EventsService', () => {
 
             expect(loadedEventWithDetail).ok;
             expect(loadedEventWithDetail.eventDetail).ok;
-            expect(eventRepositoryStub);
+            expect(eventRepositoryStub.findOneOrFail.called).true;
             expect(eventRedisRepositoryStub.getInviteeQuestions.called).true;
             expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
             expect(eventRedisRepositoryStub.getEventSetting.called).true;
         });
 
+    });
+
+    describe('Test Event Creating', () => {
+
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+
+            eventGroupRepositoryStub.findOneOrFail.reset();
+
+            eventRedisRepositoryStub.getEventLinkSetStatus.reset();
+
+            utilServiceStub.generateUniqueNumber.reset();
+
+            serviceSandbox.restore();
+        });
+
         it('should be created event with passed name when event link is not used in', async () => {
+
+            const eventMockStub = stubOne(Event);
+
             const defaultAvailability = stubOne(Availability);
             const profileMock = stubOne(Profile, {
                 availabilities: [defaultAvailability]
@@ -236,47 +252,26 @@ describe('EventsService', () => {
             const teamMock = stubOne(Team, {
                 profiles: [profileMock]
             });
-
-            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
-            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
-
-            const eventDetailBodyStub = {
-                inviteeQuestions: inviteeQuestionStubs,
-                notificationInfo: notificationInfoStub
-            } as EventsDetailBody;
-
-            const eventDetailStub = stubOne(EventDetail, {
-                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
-                notificationInfo: eventDetailBodyStub.notificationInfo
-            });
-            const eventMock = stubOne(Event, {
-                eventDetail: eventDetailStub
-            });
             const defaultEventGroupStub = stubOne(EventGroup, {
-                team: teamMock,
-                events: [eventMock],
-                teamId: teamMock.id
+                team: teamMock
             });
+            const isAlreadyUsedInStub = false;
 
             eventGroupRepositoryStub.findOneOrFail.resolves(defaultEventGroupStub);
-            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
-            utilServiceStub.getDefaultEvent.returns(eventMock);
-            eventRepositoryStub.save.resolves(eventMock);
-            eventRedisRepositoryStub.save.resolves(eventDetailBodyStub);
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(isAlreadyUsedInStub);
 
-            const createdEvent = await service.create(teamMock.uuid, teamMock.id, eventMock);
+            const coreCreateStub = serviceSandbox.stub(service, '_create');
+            coreCreateStub.resolves(eventMockStub);
+
+            const teamUUIDDummy = teamMock.uuid;
+            const createdEvent = await service.create(teamUUIDDummy, teamMock.id, eventMockStub);
 
             expect(createdEvent).ok;
-            expect(createdEvent.name).equals(eventMock.name);
-            expect(createdEvent.eventDetail).ok;
-            expect(createdEvent.eventDetail.inviteeQuestions).ok;
-            expect(createdEvent.eventDetail.inviteeQuestions.length).greaterThan(0);
-            expect(createdEvent.eventDetail.notificationInfo).ok;
+            expect(createdEvent.name).equals(eventMockStub.name);
 
             expect(utilServiceStub.generateUniqueNumber.called).false;
-            expect(eventGroupRepositoryStub.findOneOrFail.called).true;
-            expect(eventRepositoryStub.save.called).true;
-            expect(eventRedisRepositoryStub.save.called).true;
+
+            expect(coreCreateStub.called).true;
         });
 
         it('should be created event with combinded name and generated numbers when event link is used in', async () => {
@@ -288,48 +283,30 @@ describe('EventsService', () => {
                 profiles: [profileMock]
             });
 
-            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
-            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
-
-            const eventDetailBodyStub = {
-                inviteeQuestions: inviteeQuestionStubs,
-                notificationInfo: notificationInfoStub
-            } as EventsDetailBody;
-
-            const eventDetailStub = stubOne(EventDetail, {
-                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
-                notificationInfo: eventDetailBodyStub.notificationInfo
-            });
-            const eventMock = stubOne(Event, {
-                eventDetail: eventDetailStub
-            });
+            const eventMockStub = stubOne(Event);
             const defaultEventGroupStub = stubOne(EventGroup, {
                 team: teamMock,
-                events: [eventMock],
                 teamId: teamMock.id
             });
+            const isAlreadyUsedInStub = true;
 
             eventGroupRepositoryStub.findOneOrFail.resolves(defaultEventGroupStub);
-            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
-            utilServiceStub.getDefaultEvent.returns(eventMock);
-            eventRepositoryStub.save.resolves(eventMock);
-            eventRedisRepositoryStub.save.resolves(eventDetailBodyStub);
 
-            const createdEvent = await service.create(teamMock.uuid, teamMock.id, eventMock);
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(isAlreadyUsedInStub);
+
+            const coreCreateStub = serviceSandbox.stub(service, '_create');
+            coreCreateStub.resolves(eventMockStub);
+
+            const teamUUIDDummy = teamMock.uuid;
+            const createdEvent = await service.create(teamUUIDDummy, teamMock.id, eventMockStub);
 
             expect(createdEvent).ok;
-            expect(createdEvent.eventDetail).ok;
-            expect(createdEvent.eventDetail.inviteeQuestions).ok;
-            expect(createdEvent.eventDetail.inviteeQuestions.length).greaterThan(0);
-            expect(createdEvent.eventDetail.notificationInfo).ok;
-
             expect(utilServiceStub.generateUniqueNumber.called).true;
-            expect(eventGroupRepositoryStub.findOneOrFail.called).true;
-            expect(eventRepositoryStub.save.called).true;
-            expect(eventRedisRepositoryStub.save.called).true;
+
+            expect(coreCreateStub.called).true;
         });
 
-        it('should throw an error when creating an event if the default availability does not exist', () => {
+        it('should be thrown an error on event creating when creating an event if the default availability does not exist', () => {
             const defaultAvailability = stubOne(Availability);
             const profileMock = stubOne(Profile, {
                 availabilities: [defaultAvailability]
@@ -363,302 +340,369 @@ describe('EventsService', () => {
 
             expect(service.create(teamMock.uuid, teamMock.id, eventMock)).rejectedWith(NoDefaultAvailabilityException, 'No default availability exception');
         });
+    });
 
-        describe('Test Event Patching', () => {
+    describe('Test Event Creating with transaction', () => {
 
-            afterEach(() => {
-                validatorStub.validate.reset();
-                eventRedisRepositoryStub.getEventLinkSetStatus.reset();
-                eventRedisRepositoryStub.deleteEventLinkSetStatus.reset();
-                eventRedisRepositoryStub.setEventLinkSetStatus.reset();
-                eventRepositoryStub.update.reset();
-            });
+        afterEach(() => {
+            utilServiceStub.getDefaultEvent.reset();
 
-            it('should be thrown an error for any event update request that does not belong to team', async () => {
-                const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
-                const teamMock = stubOne(Team);
-                const eventMock = stubOne(Event);
-                const validatedEventStub = stubOne(Event, eventMock);
-
-                validatorStub.validate.resolves(validatedEventStub);
-
-                eventMock.link = null as any;
-
-                validatorStub.validate.throws(new NotAnOwnerException());
-
-                eventRepositoryStub.update.resolves(updateResultStub);
-
-                await expect(service.patch(
-                    teamMock.uuid,
-                    teamMock.id,
-                    eventMock.id,
-                    eventMock
-                )).rejectedWith(NotAnOwnerException);
-
-                expect(validatorStub.validate.called).true;
-                expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).false;
-                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
-                expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
-                expect(eventRepositoryStub.update.called).false;
-            });
-
-            it('should be thrown an error for already used in event link', async () => {
-                const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
-
-                const teamMock = stubOne(Team);
-                const eventMock = stubOne(Event, {
-                    link: 'fakeEventLink'
-                });
-                const validatedEventStub = stubOne(Event, eventMock);
-
-                validatorStub.validate.resolves(validatedEventStub);
-
-                eventMock.link = 'fakeNewEventLink';
-
-                eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
-                eventRepositoryStub.update.resolves(updateResultStub);
-
-                await expect(service.patch(
-                    teamMock.uuid,
-                    teamMock.id,
-                    eventMock.id,
-                    eventMock
-                )).rejectedWith(AlreadyUsedInEventLinkException);
-
-                expect(validatorStub.validate.called).true;
-                expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
-                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
-                expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
-                expect(eventRepositoryStub.update.called).false;
-            });
-
-            it('should be patched event', async () => {
-                const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
-
-                const teamMock = stubOne(Team);
-                const eventMock = stubOne(Event, {
-                    link: 'fakeNewEventLink'
-                });
-                const validatedEventStub = stubOne(Event, eventMock);
-                validatedEventStub.link = 'fakeEventLink';
-
-                validatorStub.validate.resolves(validatedEventStub);
-
-                eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
-                eventRedisRepositoryStub.deleteEventLinkSetStatus.resolves(true);
-                eventRedisRepositoryStub.setEventLinkSetStatus.resolves(true);
-
-                eventRepositoryStub.update.resolves(updateResultStub);
-
-                const updateResult = await service.patch(
-                    teamMock.uuid,
-                    teamMock.id,
-                    eventMock.id,
-                    eventMock
-                );
-
-                expect(updateResult).true;
-                expect(validatorStub.validate.called).true;
-                expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
-                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).true;
-                expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
-                expect(eventRepositoryStub.update.called).true;
-            });
-
-            it('should be patched event with same link', async () => {
-                const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
-
-                const teamMock = stubOne(Team);
-                const eventMock = stubOne(Event, {
-                    link: 'fakeEventLink'
-                });
-                const validatedEventStub = stubOne(Event, eventMock);
-
-                validatorStub.validate.resolves(validatedEventStub);
-
-                eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
-                eventRedisRepositoryStub.deleteEventLinkSetStatus.resolves(true);
-                eventRedisRepositoryStub.setEventLinkSetStatus.resolves(true);
-
-                eventRepositoryStub.update.resolves(updateResultStub);
-
-                const updateResult = await service.patch(
-                    teamMock.uuid,
-                    teamMock.id,
-                    eventMock.id,
-                    eventMock
-                );
-
-                expect(updateResult).true;
-                expect(validatorStub.validate.called).true;
-                expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).false;
-                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
-                expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
-                expect(eventRepositoryStub.update.called).true;
-            });
+            eventRepositoryStub.save.reset();
+            eventRedisRepositoryStub.save.reset();
+            eventRedisRepositoryStub.setEventLinkSetStatus.reset();
         });
 
-        describe('Test Evnet Update', () => {
+        it('should be created an event with transaction' , async () => {
+            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
-            afterEach(() => {
-                validatorStub.validate.reset();
-                eventRepositoryStub.findOne.reset();
-                eventRedisRepositoryStub.getEventLinkSetStatus.reset();
-                eventDetailRepositoryStub.findOneByOrFail.reset();
-                eventRepositoryStub.update.reset();
-                eventDetailRepositoryStub.update.reset();
-                eventRedisRepositoryStub.deleteEventLinkSetStatus.reset();
-                eventRedisRepositoryStub.setEventLinkSetStatus.reset();
+            const eventDetailBodyStub = {
+                inviteeQuestions: inviteeQuestionStubs,
+                notificationInfo: notificationInfoStub
+            } as EventsDetailBody;
+
+            const eventDetailStub = stubOne(EventDetail, {
+                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
+                notificationInfo: eventDetailBodyStub.notificationInfo
+            });
+            const eventMockStub = stubOne(Event, {
+                eventDetail: eventDetailStub
             });
 
-            it('should be thrown an error for any event update request that does not belong to requester', async () => {
+            utilServiceStub.getDefaultEvent.returns(eventMockStub);
+            eventRepositoryStub.save.resolves(eventMockStub);
+            eventRedisRepositoryStub.save.resolves(eventDetailBodyStub);
 
-                const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            const teamUUIDDummy = stubOne(Team).uuid;
 
-                validatorStub.validate.throws(new NotAnOwnerException());
+            const createdEvent = await service._create(
+                datasourceMock as unknown as EntityManager,
+                teamUUIDDummy,
+                eventMockStub
+            );
 
-                const teamMock = stubOne(Team);
-                const eventDetailMock = stubOne(EventDetail);
-                const eventMock = stubOne(Event, {
-                    eventDetail: eventDetailMock
-                });
+            expect(createdEvent.eventDetail).ok;
+            expect(createdEvent.eventDetail.inviteeQuestions).ok;
+            expect(createdEvent.eventDetail.inviteeQuestions.length).greaterThan(0);
+            expect(createdEvent.eventDetail.notificationInfo).ok;
 
-                eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
+            expect(eventRepositoryStub.save.called).true;
+            expect(eventRedisRepositoryStub.save.called).true;
 
-                eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
-                eventRepositoryStub.update.resolves(updateResultStub);
-                eventDetailRepositoryStub.update.resolves(updateResultStub);
+            expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
+        });
+    });
 
-                await expect(service.update(
-                    teamMock.uuid,
-                    teamMock.id,
-                    eventMock.id,
-                    eventMock
-                )).rejectedWith(NotAnOwnerException);
+    // TODO: Parameterizing
+    describe('Test Event Patching', () => {
 
-                expect(validatorStub.validate.called).true;
-                expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).false;
-                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
-                expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
-                expect(eventRepositoryStub.update.called).false;
+        afterEach(() => {
+            validatorStub.validate.reset();
+            eventRedisRepositoryStub.getEventLinkSetStatus.reset();
+            eventRedisRepositoryStub.deleteEventLinkSetStatus.reset();
+            eventRedisRepositoryStub.setEventLinkSetStatus.reset();
+            eventRepositoryStub.update.reset();
+        });
+
+        it('should be thrown an error for any event update request that does not belong to team', async () => {
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            const teamMock = stubOne(Team);
+            const eventMock = stubOne(Event);
+            const validatedEventStub = stubOne(Event, eventMock);
+
+            validatorStub.validate.resolves(validatedEventStub);
+
+            eventMock.link = null as any;
+
+            validatorStub.validate.throws(new NotAnOwnerException());
+
+            eventRepositoryStub.update.resolves(updateResultStub);
+
+            await expect(service.patch(
+                teamMock.uuid,
+                teamMock.id,
+                eventMock.id,
+                eventMock
+            )).rejectedWith(NotAnOwnerException);
+
+            expect(validatorStub.validate.called).true;
+            expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).false;
+            expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
+            expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
+            expect(eventRepositoryStub.update.called).false;
+        });
+
+        it('should be thrown an error for already used in event link', async () => {
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            const teamMock = stubOne(Team);
+            const eventMock = stubOne(Event, {
+                link: 'fakeEventLink'
+            });
+            const validatedEventStub = stubOne(Event, eventMock);
+
+            validatorStub.validate.resolves(validatedEventStub);
+
+            eventMock.link = 'fakeNewEventLink';
+
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
+            eventRepositoryStub.update.resolves(updateResultStub);
+
+            await expect(service.patch(
+                teamMock.uuid,
+                teamMock.id,
+                eventMock.id,
+                eventMock
+            )).rejectedWith(AlreadyUsedInEventLinkException);
+
+            expect(validatorStub.validate.called).true;
+            expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
+            expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
+            expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
+            expect(eventRepositoryStub.update.called).false;
+        });
+
+        it('should be patched event', async () => {
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            const teamMock = stubOne(Team);
+            const eventMock = stubOne(Event, {
+                link: 'fakeNewEventLink'
+            });
+            const validatedEventStub = stubOne(Event, eventMock);
+            validatedEventStub.link = 'fakeEventLink';
+
+            validatorStub.validate.resolves(validatedEventStub);
+
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
+            eventRedisRepositoryStub.deleteEventLinkSetStatus.resolves(true);
+            eventRedisRepositoryStub.setEventLinkSetStatus.resolves(true);
+
+            eventRepositoryStub.update.resolves(updateResultStub);
+
+            const updateResult = await service.patch(
+                teamMock.uuid,
+                teamMock.id,
+                eventMock.id,
+                eventMock
+            );
+
+            expect(updateResult).true;
+            expect(validatorStub.validate.called).true;
+            expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
+            expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).true;
+            expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
+            expect(eventRepositoryStub.update.called).true;
+        });
+
+        it('should be patched event with same link', async () => {
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            const teamMock = stubOne(Team);
+            const eventMock = stubOne(Event, {
+                link: 'fakeEventLink'
+            });
+            const validatedEventStub = stubOne(Event, eventMock);
+
+            validatorStub.validate.resolves(validatedEventStub);
+
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
+            eventRedisRepositoryStub.deleteEventLinkSetStatus.resolves(true);
+            eventRedisRepositoryStub.setEventLinkSetStatus.resolves(true);
+
+            eventRepositoryStub.update.resolves(updateResultStub);
+
+            const updateResult = await service.patch(
+                teamMock.uuid,
+                teamMock.id,
+                eventMock.id,
+                eventMock
+            );
+
+            expect(updateResult).true;
+            expect(validatorStub.validate.called).true;
+            expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).false;
+            expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
+            expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
+            expect(eventRepositoryStub.update.called).true;
+        });
+    });
+
+    describe('Test Evnet Update', () => {
+
+        afterEach(() => {
+            validatorStub.validate.reset();
+
+            eventRedisRepositoryStub.getEventLinkSetStatus.reset();
+
+            eventRepositoryStub.update.reset();
+            eventDetailRepositoryStub.update.reset();
+
+            eventRepositoryStub.findOne.reset();
+            eventDetailRepositoryStub.findOneByOrFail.reset();
+            eventRedisRepositoryStub.deleteEventLinkSetStatus.reset();
+            eventRedisRepositoryStub.setEventLinkSetStatus.reset();
+        });
+
+        it('should be thrown an error for any event update request that does not belong to requester', async () => {
+
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            validatorStub.validate.throws(new NotAnOwnerException());
+
+            const teamMock = stubOne(Team);
+            const eventDetailMock = stubOne(EventDetail);
+            const eventMock = stubOne(Event, {
+                eventDetail: eventDetailMock
             });
 
-            it('should be thrown an error if team requests the event which has a link which is already used in', async () => {
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
 
-                const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
+            eventRepositoryStub.update.resolves(updateResultStub);
+            eventDetailRepositoryStub.update.resolves(updateResultStub);
 
-                const teamMock = stubOne(Team);
-                const eventLinkMock = 'fake';
-                const newEventLinkMock = 'fake2';
-                const eventDetailMock = stubOne(EventDetail);
-                const eventMock = stubOne(Event, {
-                    eventDetail: eventDetailMock,
-                    link: eventLinkMock
-                });
+            await expect(service.update(
+                teamMock.uuid,
+                teamMock.id,
+                eventMock.id,
+                eventMock
+            )).rejectedWith(NotAnOwnerException);
 
-                const validatedEventStub = stubOne(Event, {
-                    ...eventMock,
-                    eventDetail: eventDetailMock,
-                    link: eventLinkMock
-                });
+            expect(validatorStub.validate.called).true;
+            expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).false;
+            expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
+            expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
+            expect(eventRepositoryStub.update.called).false;
+        });
 
-                validatorStub.validate.resolves(validatedEventStub);
-                eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
+        it('should be thrown an error if team requests the event which has a link which is already used in', async () => {
 
-                eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-                eventRepositoryStub.update.resolves(updateResultStub);
-
-                eventMock.link = newEventLinkMock;
-
-                await expect(service.update(
-                    teamMock.uuid,
-                    teamMock.id,
-                    eventMock.id,
-                    eventMock
-                )).rejectedWith(AlreadyUsedInEventLinkException);
-
-                expect(validatorStub.validate.called).true;
-                expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
-                expect(eventRepositoryStub.update.called).false;
-                expect(eventRedisRepositoryStub.save.called).false;
-                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
-                expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
+            const teamMock = stubOne(Team);
+            const eventLinkMock = 'fake';
+            const newEventLinkMock = 'fake2';
+            const eventDetailMock = stubOne(EventDetail);
+            const eventMock = stubOne(Event, {
+                eventDetail: eventDetailMock,
+                link: eventLinkMock
             });
 
-            it('should be updated event for same link', async () => {
-                const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
-
-                const teamMock = stubOne(Team);
-                const eventIdMock = 1;
-                const eventDetailMock = stubOne(EventDetail);
-                const eventMock = stubOne(Event, {
-                    id: eventIdMock,
-                    eventDetail: eventDetailMock
-                });
-
-                validatorStub.validate.resolves(eventMock);
-
-                eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
-
-                eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
-
-                eventRepositoryStub.update.resolves(updateResultStub);
-                eventDetailRepositoryStub.update.resolves(updateResultStub);
-
-                const updateResult = await service.update(
-                    teamMock.uuid,
-                    teamMock.id,
-                    eventMock.id,
-                    eventMock
-                );
-
-                expect(updateResult).true;
-                expect(validatorStub.validate.called).true;
-                expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
-                expect(eventRepositoryStub.update.called).true;
-                expect(eventDetailRepositoryStub.update.called).true;
-                expect(eventRedisRepositoryStub.save.called).true;
-                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).true;
-                expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
+            const validatedEventStub = stubOne(Event, {
+                ...eventMock,
+                eventDetail: eventDetailMock,
+                link: eventLinkMock
             });
 
-            it('should be updated event', async () => {
-                const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            validatorStub.validate.resolves(validatedEventStub);
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
 
-                const teamMock = stubOne(Team);
-                const eventIdMock = 1;
-                const eventDetailMock = stubOne(EventDetail);
-                const eventMock = stubOne(Event, {
-                    id: eventIdMock,
-                    eventDetail: eventDetailMock
-                });
+            eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
 
-                validatorStub.validate.resolves(eventMock);
+            eventRepositoryStub.update.resolves(updateResultStub);
 
-                eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
+            eventMock.link = newEventLinkMock;
 
-                eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
+            await expect(service.update(
+                teamMock.uuid,
+                teamMock.id,
+                eventMock.id,
+                eventMock
+            )).rejectedWith(AlreadyUsedInEventLinkException);
 
-                eventRepositoryStub.update.resolves(updateResultStub);
-                eventDetailRepositoryStub.update.resolves(updateResultStub);
+            expect(validatorStub.validate.called).true;
+            expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
+            expect(eventRepositoryStub.update.called).false;
+            expect(eventRedisRepositoryStub.save.called).false;
+            expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).false;
+            expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).false;
+        });
 
-                const updateResult = await service.update(
-                    teamMock.uuid,
-                    teamMock.id,
-                    eventMock.id,
-                    eventMock
-                );
+        it('should be updated event for same link', async () => {
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-                expect(updateResult).true;
-                expect(validatorStub.validate.called).true;
-                expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
-                expect(eventRepositoryStub.update.called).true;
-                expect(eventDetailRepositoryStub.update.called).true;
-                expect(eventRedisRepositoryStub.save.called).true;
-                expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).true;
-                expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
+            const teamMock = stubOne(Team);
+            const eventIdMock = 1;
+            const eventDetailMock = stubOne(EventDetail);
+            const eventMock = stubOne(Event, {
+                id: eventIdMock,
+                eventDetail: eventDetailMock
             });
+
+            validatorStub.validate.resolves(eventMock);
+
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
+
+            eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
+
+            eventRepositoryStub.update.resolves(updateResultStub);
+            eventDetailRepositoryStub.update.resolves(updateResultStub);
+
+            const updateResult = await service.update(
+                teamMock.uuid,
+                teamMock.id,
+                eventMock.id,
+                eventMock
+            );
+
+            expect(updateResult).true;
+            expect(validatorStub.validate.called).true;
+            expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
+            expect(eventRepositoryStub.update.called).true;
+            expect(eventDetailRepositoryStub.update.called).true;
+            expect(eventRedisRepositoryStub.save.called).true;
+            expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).true;
+            expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
+        });
+
+        it('should be updated event', async () => {
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            const teamMock = stubOne(Team);
+            const eventIdMock = 1;
+            const eventDetailMock = stubOne(EventDetail);
+            const eventMock = stubOne(Event, {
+                id: eventIdMock,
+                eventDetail: eventDetailMock
+            });
+
+            validatorStub.validate.resolves(eventMock);
+
+            eventRedisRepositoryStub.getEventLinkSetStatus.resolves(false);
+
+            eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
+
+            eventRepositoryStub.update.resolves(updateResultStub);
+            eventDetailRepositoryStub.update.resolves(updateResultStub);
+
+            const updateResult = await service.update(
+                teamMock.uuid,
+                teamMock.id,
+                eventMock.id,
+                eventMock
+            );
+
+            expect(updateResult).true;
+            expect(validatorStub.validate.called).true;
+            expect(eventRedisRepositoryStub.getEventLinkSetStatus.called).true;
+            expect(eventRepositoryStub.update.called).true;
+            expect(eventDetailRepositoryStub.update.called).true;
+            expect(eventRedisRepositoryStub.save.called).true;
+            expect(eventRedisRepositoryStub.deleteEventLinkSetStatus.called).true;
+            expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
+        });
+    });
+
+    describe('Test Event Removing', () => {
+
+        afterEach(() => {
+
+            eventGroupRepositoryStub.findOneOrFail.reset();
+
+            eventDetailRepositoryStub.delete.reset();
+            eventRepositoryStub.delete.reset();
+            eventRedisRepositoryStub.remove.reset();
         });
 
         it('should be removed event', async () => {
@@ -684,8 +728,8 @@ describe('EventsService', () => {
 
             validatorStub.validate.resolves(eventMock);
 
-            eventRepositoryStub.delete.resolves(deleteResultStub);
             eventDetailRepositoryStub.delete.resolves(deleteResultStub);
+            eventRepositoryStub.delete.resolves(deleteResultStub);
 
             const deleteResult = await service.remove(eventMock.id, teamMock.id);
 
@@ -696,7 +740,7 @@ describe('EventsService', () => {
             expect(eventRedisRepositoryStub.remove.called).true;
         });
 
-        it('should not be removed if either the event removal or the removal of event detail has failed', async () => {
+        it('should be thrown as an error when an event removal occurs within a transaction', async () => {
             const teamMock = stubOne(Team);
 
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
@@ -731,6 +775,19 @@ describe('EventsService', () => {
             expect(eventRedisRepositoryStub.remove.called).false;
         });
 
+    });
+
+    describe('Test Evetn Cloning', () => {
+
+        afterEach(() => {
+
+            validatorStub.validate.reset();
+            utilServiceStub.generateUniqueNumber.reset();
+
+            eventRedisRepositoryStub.clone.reset();
+            eventRedisRepositoryStub.setEventLinkSetStatus.reset();
+        });
+
         it('should be cloned event', async () => {
             const teamMock = stubOne(Team);
 
@@ -761,6 +818,13 @@ describe('EventsService', () => {
             expect(eventRepositoryStub.save.called).true;
             expect(eventRedisRepositoryStub.clone.called).true;
         });
+    });
+
+    describe('Test Event Linking', () => {
+        afterEach(() => {
+            validatorStub.validate.reset();
+            eventRepositoryStub.update.reset();
+        });
 
         it('should be linked to availability for event', async () => {
             const teamIdMock = stubOne(Team).id;
@@ -774,7 +838,7 @@ describe('EventsService', () => {
         });
     });
 
-    describe('Test Link / Unlink with availability', () => {
+    describe('Test Multiple Event Linking / Unlinking with availability', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
         beforeEach(() => {

@@ -11,14 +11,9 @@ import { ProfilesModule } from '@services/profiles/profiles.module';
 import { OAuth2Module } from '@services/oauth2/oauth2.module';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
-import { Event } from '@entity/events/event.entity';
-import { EventDetail } from '@entity/events/event-detail.entity';
-import { Team } from '@entity/teams/team.entity';
 import { VerificationModule } from '../../auth/verification/verification.module';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
-import { UserSettingModule } from './user-setting/user-setting.module';
-import { TemporaryUsersModule } from './temporary-users/temporary-users.module';
 import { SyncdayRedisModule } from '../syncday-redis/syncday-redis.module';
 import { OAuth2AccountsModule } from './oauth2-accounts/oauth2-accounts.module';
 
@@ -28,22 +23,20 @@ import { OAuth2AccountsModule } from './oauth2-accounts/oauth2-accounts.module';
  */
 @Module({
     imports: [
-        TypeOrmModule.forFeature([User, Team, EventGroup, Event, EventDetail]),
+        TypeOrmModule.forFeature([User, EventGroup]),
+        OAuth2Module,
+        SyncdayRedisModule,
+        OAuth2AccountsModule,
+        ProfilesModule,
+        TeamSettingModule,
+        AvailabilityModule,
+        NotificationsModule,
+        GoogleIntegrationModule,
         forwardRef(() => VerificationModule),
         // FIXME: remove this coupling after splitting sendMessage from integration module
-        forwardRef(() => IntegrationsModule),
         forwardRef(() => TeamModule),
-        OAuth2Module,
-        TeamSettingModule,
-        UserSettingModule,
-        SyncdayRedisModule,
-        TemporaryUsersModule,
-        AvailabilityModule,
-        EventsModule,
-        GoogleIntegrationModule,
-        OAuth2AccountsModule,
-        NotificationsModule,
-        ProfilesModule
+        forwardRef(() => IntegrationsModule),
+        EventsModule
     ],
     controllers: [UserController],
     providers: [UserService],

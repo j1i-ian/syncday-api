@@ -214,23 +214,43 @@ export class EventsService {
             newEvent.link = newEventLink;
         }
 
+        return this._create(
+            this.eventRepository.manager,
+            teamUUID,
+            newEvent
+        );
+    }
+
+    async _create(
+        manager: EntityManager,
+        teamUUID: string,
+        newEvent: Event
+    ): Promise<Event> {
+
+        const _eventRepository = manager.getRepository(Event);
+
         const ensuredNewEvent = this.utilService.getDefaultEvent(newEvent);
 
         // save relation data
         // event detail is saved by orm cascading.
-        const savedEvent = await this.eventRepository.save(ensuredNewEvent);
+        const savedEvent = await _eventRepository.save(ensuredNewEvent);
 
         const savedEventDetail = savedEvent.eventDetail;
 
         // save consumption data
         const newEventDetail = ensuredNewEvent.eventDetail;
         const { inviteeQuestions, notificationInfo, eventSetting } = newEventDetail;
-        const savedEventDetailBody = await this.eventRedisRepository.save(savedEventDetail.uuid, inviteeQuestions, notificationInfo, eventSetting);
+
+        await this.eventRedisRepository.setEventLinkSetStatus(teamUUID, savedEvent.link);
+        const savedEventDetailBody = await this.eventRedisRepository.save(
+            savedEventDetail.uuid,
+            inviteeQuestions,
+            notificationInfo,
+            eventSetting
+        );
 
         savedEvent.eventDetail.inviteeQuestions = savedEventDetailBody.inviteeQuestions;
         savedEvent.eventDetail.notificationInfo = savedEventDetailBody.notificationInfo;
-
-        await this.eventRedisRepository.setEventLinkSetStatus(teamUUID, savedEvent.link);
 
         return savedEvent;
     }

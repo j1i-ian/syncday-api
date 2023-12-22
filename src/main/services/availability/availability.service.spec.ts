@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { firstValueFrom, of } from 'rxjs';
 import { InternalServerErrorException } from '@nestjs/common';
 import { Availability } from '@core/entities/availability/availability.entity';
@@ -178,7 +178,36 @@ describe('AvailabilityService', () => {
             expect(loadedAvailability).ok;
         });
 
-        it('should be created availability', async () => {
+        describe('Test availability creating', () => {
+
+            let serviceSandbox: sinon.SinonSandbox;
+
+            beforeEach(() => {
+                serviceSandbox = sinon.createSandbox();
+            });
+
+            afterEach(() => {
+                serviceSandbox.restore();
+            });
+
+            it('coverage fill: should be created availability', async () => {
+                const teamStub = stubOne(Team);
+                const profileStub = stubOne(Profile);
+                const availabilityStub = stubOne(Availability);
+                const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock(availabilityStub);
+
+                serviceSandbox.stub(service, '_create').resolves(availabilityStub);
+
+                await service.create(
+                    teamStub.uuid,
+                    profileStub.id,
+                    availabilityBodyStub as CreateAvailabilityRequestDto
+                );
+            });
+        });
+
+
+        it('should be created availability with transaction manager', async () => {
             const teamStub = stubOne(Team);
             const profileStub = stubOne(Profile);
             const availabilityStub = stubOne(Availability);
@@ -189,7 +218,8 @@ describe('AvailabilityService', () => {
             availabilityRepositoryStub.save.resolves(availabilityStub);
             availabilityRedisRepositoryStub.save.resolves(availabilityBodyStub);
 
-            const loadedAvailability = await service.create(
+            const loadedAvailability = await service._create(
+                datasourceMock as unknown as EntityManager,
                 teamStub.uuid,
                 profileStub.id,
                 availabilityBodyStub as CreateAvailabilityRequestDto

@@ -23,10 +23,12 @@ import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.typ
 import { OAuth2MetaInfo } from '@services/users/oauth2-metainfo.interface';
 import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { OAuth2UserProfile } from '@services/users/oauth2-user-profile.interface';
+import { AvailabilityService } from '@services/availability/availability.service';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { EventsService } from '@services/events/events.service';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
-import { Weekday } from '@entity/availability/weekday.enum';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
@@ -56,21 +58,24 @@ interface CreateUserOptions {
 @Injectable()
 export class UserService {
     constructor(
-        private readonly teamSettingService: TeamSettingService,
-        private readonly syncdayRedisService: SyncdayRedisService,
-        private readonly utilService: UtilService,
-        private readonly notificationsService: NotificationsService,
-        private readonly eventRedisRepository: EventsRedisRepository,
-        private readonly googleIntegrationService: GoogleIntegrationsService,
-        private readonly oauth2AccountService: OAuth2AccountsService,
-        private readonly availabilityRedisRepository: AvailabilityRedisRepository,
-        private readonly profilesService: ProfilesService,
         private readonly oauth2TokenServiceLocator: OAuth2TokenServiceLocator,
-        @InjectDataSource() private datasource: DataSource,
+        private readonly timeUtilService: TimeUtilService,
+        private readonly utilService: UtilService,
+        private readonly syncdayRedisService: SyncdayRedisService,
+        private readonly oauth2AccountService: OAuth2AccountsService,
+        private readonly profilesService: ProfilesService,
+        private readonly teamSettingService: TeamSettingService,
+        private readonly availabilityService: AvailabilityService,
+        private readonly notificationsService: NotificationsService,
+        private readonly googleIntegrationService: GoogleIntegrationsService,
         @Inject(forwardRef(() => VerificationService))
         private readonly verificationService: VerificationService,
         @Inject(forwardRef(() => TeamService))
         private readonly teamService: TeamService,
+        private readonly eventsService: EventsService,
+        private readonly eventRedisRepository: EventsRedisRepository,
+        private readonly availabilityRedisRepository: AvailabilityRedisRepository,
+        @InjectDataSource() private datasource: DataSource,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
 
@@ -329,7 +334,6 @@ export class UserService {
         const hashedPassword = plainPassword && this.utilService.hash(plainPassword);
 
         const _userRepository = manager.getRepository(User);
-        const _availabilityRepository = manager.getRepository(Availability);
 
         const emailId = _createdUser.email.replaceAll('.', '').split('@').shift();
         const workspace = emailId || profileName;
@@ -354,19 +358,13 @@ export class UserService {
             { workspace: defaultTeamWorkspace }
         );
 
-        const savedUser = await _userRepository.save<User>({
+        const savedUser = await _userRepository.save({
             ..._createdUser,
             hashedPassword,
             userSetting
-        } as User);
-
-        const initialEventGroup = new EventGroup();
-        const initialEvent = this.utilService.getDefaultEvent({
-            name: '30 Minute Meeting',
-            link: '30-minute-meeting'
         });
 
-        const createdProfile = await this.profilesService._create(
+        const savedProfile = await this.profilesService._create(
             manager,
             {
                 name: profileName,
@@ -377,64 +375,50 @@ export class UserService {
             }
         ) as Profile;
 
-        const availableTimes: AvailableTime[] = [];
+        const defaultAvailableTimes: AvailableTime[] = this.timeUtilService.getDefaultAvailableTimes();
 
-        for (let weekdayIndex = Weekday.MONDAY; weekdayIndex <= Weekday.FRIDAY; weekdayIndex++) {
-            const initialAvailableTime = new AvailableTime();
-            initialAvailableTime.day = weekdayIndex;
-            initialAvailableTime.timeRanges = [
-                {
-                    startTime: '09:00:00',
-                    endTime: '17:00:00'
-                }
-            ];
+        const availabilityDefaultName = this.utilService.getDefaultAvailabilityName(language);
 
-            availableTimes.push(initialAvailableTime);
-        }
-
-        const initialAvailability = new Availability();
-        initialAvailability.default = true;
-        initialAvailability.name = this.utilService.getDefaultAvailabilityName(language);
-        initialAvailability.profileId = createdProfile.id;
-        initialAvailability.timezone = userSetting.preferredTimezone;
-
-        const savedAvailability = await _availabilityRepository.save(initialAvailability);
-        await this.availabilityRedisRepository.save(
+        const savedAvailability = await this.availabilityService._create(
+            manager,
             savedTeam.uuid,
-            createdProfile.id,
-            savedAvailability.uuid,
+            savedProfile.id,
             {
-                availableTimes,
-                overrides: []
+                availableTimes: defaultAvailableTimes,
+                name: availabilityDefaultName,
+                overrides: [],
+                timezone: userSetting.preferredTimezone
+            },
+            {
+                default: true
             }
         );
 
+        const initialEvent = this.utilService.getDefaultEvent({
+            name: '30 Minute Meeting',
+            link: '30-minute-meeting'
+        });
         initialEvent.availabilityId = savedAvailability.id;
 
-        initialEventGroup.events = [initialEvent];
+        const savedEvent = await this.eventsService._create(
+            manager,
+            savedTeam.uuid,
+            initialEvent
+        );
+
+        const initialEventGroup = new EventGroup();
+        initialEventGroup.events = [savedEvent];
         initialEventGroup.teamId = savedTeam.id;
 
         const eventGroupRepository = manager.getRepository(EventGroup);
-
-        const createdEventGroup = await eventGroupRepository.save(initialEventGroup);
-
-        const intializedEvent = createdEventGroup.events.pop() as Event;
-        const initializedEventDetail = intializedEvent.eventDetail;
-
-        await this.eventRedisRepository.setEventLinkSetStatus(savedUser.uuid, initialEvent.link);
-        await this.eventRedisRepository.save(
-            initializedEventDetail.uuid,
-            initializedEventDetail.inviteeQuestions,
-            initializedEventDetail.notificationInfo,
-            initializedEventDetail.eventSetting
-        );
+        await eventGroupRepository.save(initialEventGroup);
 
         const createdUser = plainToInstance(User, savedUser);
         const createdTeam = plainToInstance(Team, savedTeam);
 
         return {
             createdUser,
-            createdProfile,
+            createdProfile: savedProfile,
             createdTeam
         };
     }
