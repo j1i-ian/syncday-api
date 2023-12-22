@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Header, HttpCode, HttpStatus, Patch, Put, Query } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
+import { Roles } from '@decorators/roles.decorator';
 import { TeamSettingSearchOption } from '@interfaces/teams/team-settings/team-setting-search-option.interface';
+import { Role } from '@interfaces/profiles/role.enum';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { UpdateTeamWorkspaceRequestDto } from '@dto/teams/update-team-workspace-request.dto';
@@ -31,6 +33,7 @@ export class TeamSettingController {
     }
 
     @Patch(':teamSettingId(\\d+)')
+    @Roles(Role.OWNER, Role.MANAGER)
     @HttpCode(HttpStatus.NO_CONTENT)
     patch(
         @AuthProfile('teamId') teamId: number,
@@ -40,6 +43,7 @@ export class TeamSettingController {
     }
 
     @Put(':teamSettingId(\\d+)/workspace')
+    @Roles(Role.OWNER, Role.MANAGER)
     @HttpCode(HttpStatus.NO_CONTENT)
     async patchTeamWorkspace(
         @AuthProfile('teamId') teamId: number,

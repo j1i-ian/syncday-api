@@ -9,6 +9,7 @@ import { UserModule } from '@services/users/user.module';
 import { SyncdayAwsSdkClientModule } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.module';
 import { TeamSettingModule } from '@services/team/team-setting/team-setting.module';
 import { GlobalExceptionFilter } from '@app/filters/global-exception.filter';
+import { RolesGuard } from '@app/auth/roles.guard';
 import { ClusterModule } from '@liaoliaots/nestjs-redis';
 import { AppController } from './app.controller';
 import { AuthModule } from './main/auth/auth.module';
@@ -75,6 +76,10 @@ import { ProductsModule } from './main/services/products/products.module';
         {
             provide: APP_GUARD,
             useClass: JwtAuthGuard
+        },
+        {
+            provide: APP_GUARD,
+            useClass: RolesGuard
         },
         {
             provide: APP_PIPE,

@@ -21,6 +21,8 @@ import { Request, Response } from 'express';
 import { Event } from '@core/entities/events/event.entity';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
+import { Roles } from '@decorators/roles.decorator';
+import { Role } from '@interfaces/profiles/role.enum';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
 import { PatchEventRequestDto } from '@dto/event-groups/events/patch-event-request.dto';
 import { FetchEventResponseDto } from '@dto/event-groups/events/fetch-event-response.dto';
@@ -28,6 +30,7 @@ import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-req
 import { EventsService } from './events.service';
 
 @Controller()
+@Roles(Role.OWNER, Role.MANAGER)
 export class EventsController {
     constructor(private readonly eventsService: EventsService) {}
 

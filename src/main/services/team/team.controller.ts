@@ -1,7 +1,9 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Query } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
+import { Roles } from '@decorators/roles.decorator';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
+import { Role } from '@interfaces/profiles/role.enum';
 import { TeamService } from '@services/team/team.service';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
@@ -68,6 +70,7 @@ export class TeamController {
     }
 
     @Patch(':teamId(\\d+)')
+    @Roles(Role.OWNER, Role.MANAGER)
     @HttpCode(HttpStatus.NO_CONTENT)
     patch(
         @AuthProfile('teamId') teamId: number,
