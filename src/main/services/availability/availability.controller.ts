@@ -20,6 +20,7 @@ import { plainToInstance } from 'class-transformer';
 import { Request, Response } from 'express';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
+import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
 import { Availability } from '@entity/availability/availability.entity';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
@@ -31,6 +32,7 @@ import { CloneAvailabilityRequestDto } from '@dto/availability/clone-availabilit
 import { AvailabilityService } from './availability.service';
 
 @Controller()
+@Roles(Role.OWNER, Role.MANAGER)
 export class AvailabilityController {
     constructor(private readonly availabilityService: AvailabilityService) {}
 
