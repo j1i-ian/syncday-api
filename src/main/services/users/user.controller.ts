@@ -12,6 +12,7 @@ import {
     Put
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { Observable, map } from 'rxjs';
 import { User } from '@core/entities/users/user.entity';
 import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
 import { PatchUserRequestDto } from '@dto/users/patch-user-request.dto';
@@ -46,19 +47,19 @@ export class UserController {
     @Post()
     @Public()
     @Header('Content-type', 'application/json')
-    async createUserWithEmailVerification(
+    createUserWithEmailVerification(
         @Body() createUserWithVerificationDto: CreateUserWithVerificationDto
-    ): Promise<CreateUserResponseDto> {
+    ): Observable<CreateUserResponseDto> {
         const { email, verificationCode, timezone } = createUserWithVerificationDto;
-        const createdUser = await this.userService.createUserWithVerificationByEmail(
+        return this.userService.createUser(
             email,
             verificationCode,
             timezone
+        ).pipe(
+            map(({ createdUser }) => plainToInstance(CreateUserResponseDto, createdUser, {
+                excludeExtraneousValues: true
+            }))
         );
-
-        return plainToInstance(CreateUserResponseDto, createdUser, {
-            excludeExtraneousValues: true
-        });
     }
 
     @Patch(':userId(\\d+)')

@@ -3,20 +3,14 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { UtilService } from '@services/util/util.service';
-import { UserService } from '@services/users/user.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
-import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
-import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { UserSetting } from '@entity/users/user-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
-import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
-import { Language } from '@app/enums/language.enum';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleOAuth2TokenService } from './google-oauth2-token.service';
 
@@ -29,11 +23,9 @@ describe('GoogleOAuth2TokenService', () => {
     let oauth2AccountsServiceStub: sinon.SinonStubbedInstance<OAuth2AccountsService>;
     let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
     let integrationsValidatorStub: sinon.SinonStubbedInstance<IntegrationsValidator>;
-    let userServiceStub: sinon.SinonStubbedInstance<UserService>;
     let googleIntegrationFacadeStub: sinon.SinonStubbedInstance<GoogleIntegrationFacade>;
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
     let googleIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
-    let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
 
     let loggerStub: sinon.SinonStub;
 
@@ -43,11 +35,9 @@ describe('GoogleOAuth2TokenService', () => {
         oauth2AccountsServiceStub = sinon.createStubInstance(OAuth2AccountsService);
         integrationsServiceLocatorStub = sinon.createStubInstance(IntegrationsServiceLocator);
         integrationsValidatorStub = sinon.createStubInstance(IntegrationsValidator);
-        userServiceStub = sinon.createStubInstance(UserService);
         googleIntegrationFacadeStub = sinon.createStubInstance(GoogleIntegrationFacade);
         googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
         googleIntegrationServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
-        notificationsServiceStub = sinon.createStubInstance(NotificationsService);
 
         loggerStub = sinon.stub({
             debug: () => {},
@@ -75,10 +65,6 @@ describe('GoogleOAuth2TokenService', () => {
                     useValue: integrationsValidatorStub
                 },
                 {
-                    provide: UserService,
-                    useValue: userServiceStub
-                },
-                {
                     provide: GoogleIntegrationFacade,
                     useValue: googleIntegrationFacadeStub
                 },
@@ -89,10 +75,6 @@ describe('GoogleOAuth2TokenService', () => {
                 {
                     provide: GoogleIntegrationsService,
                     useValue: googleIntegrationServiceStub
-                },
-                {
-                    provide: NotificationsService,
-                    useValue: notificationsServiceStub
                 },
                 {
                     provide: WINSTON_MODULE_PROVIDER,
@@ -130,59 +112,6 @@ describe('GoogleOAuth2TokenService', () => {
             expect(googleOAuth2UserWithToken).ok;
             expect(googleOAuth2UserWithToken.googleUser).ok;
             expect(googleIntegrationFacadeStub.fetchGoogleUsersWithToken.called).true;
-        });
-    });
-
-    describe('Test signUpWithOAuth', () => {
-        const oauth2UserProfileMock = testMockUtil.getGoogleOAuth2UserWithToken();
-
-        let signedUpUserStub: User;
-        let signedUpProfileStub: Profile;
-        let signedUpTeamStub: Team;
-
-        beforeEach(() => {
-
-            const userSettingStub = stubOne(UserSetting);
-            signedUpUserStub = stubOne(User, {
-                userSetting: userSettingStub
-            });
-            signedUpProfileStub = stubOne(Profile);
-            signedUpTeamStub = stubOne(Team);
-
-            const googleCalendarIntegrationStubs = stub(GoogleCalendarIntegration);
-
-            googleConverterServiceStub.convertToGoogleCalendarIntegration.returns(googleCalendarIntegrationStubs);
-
-            userServiceStub.createUserByOAuth2.resolves({
-                createdUser: signedUpUserStub,
-                createdProfile: signedUpProfileStub,
-                createdTeam: signedUpTeamStub
-            });
-        });
-
-        afterEach(() => {
-
-            googleConverterServiceStub.convertToGoogleCalendarIntegration.reset();
-            userServiceStub.createUserByOAuth2.reset();
-            notificationsServiceStub.sendWelcomeEmailForNewUser.reset();
-        });
-
-        it('should be signed up with oauth2 for google', async () => {
-
-            const timezoneMock = 'Asia/Seoul';
-            const languageMock = Language.KOREAN;
-
-            const signedUpUser = await service.signUpWithOAuth(
-                timezoneMock,
-                oauth2UserProfileMock,
-                languageMock
-            );
-
-            expect(signedUpUser).ok;
-
-            expect(googleConverterServiceStub.convertToGoogleCalendarIntegration.called).true;
-            expect(userServiceStub.createUserByOAuth2.called).true;
-            expect(notificationsServiceStub.sendWelcomeEmailForNewUser.called).true;
         });
     });
 

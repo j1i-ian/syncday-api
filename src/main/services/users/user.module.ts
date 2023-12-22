@@ -8,6 +8,7 @@ import { NotificationsModule } from '@services/notifications/notifications.modul
 import { TeamModule } from '@services/team/team.module';
 import { TeamSettingModule } from '@services/team/team-setting/team-setting.module';
 import { ProfilesModule } from '@services/profiles/profiles.module';
+import { OAuth2Module } from '@services/oauth2/oauth2.module';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { Event } from '@entity/events/event.entity';
@@ -32,6 +33,7 @@ import { OAuth2AccountsModule } from './oauth2-accounts/oauth2-accounts.module';
         // FIXME: remove this coupling after splitting sendMessage from integration module
         forwardRef(() => IntegrationsModule),
         forwardRef(() => TeamModule),
+        OAuth2Module,
         TeamSettingModule,
         UserSettingModule,
         SyncdayRedisModule,

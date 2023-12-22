@@ -2,7 +2,7 @@
 import { URL } from 'url';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { OAuth2Setting } from '@core/interfaces/auth/oauth2-setting.interface';
 import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-oauth2-state-params.interface';
 import { AppConfigService } from '@config/app-config.service';
@@ -11,13 +11,11 @@ import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.e
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { OAuth2TokenService } from '@services/integrations/oauth2-token-service.interface';
 import { KakaotalkIntegrationsFacade } from '@services/integrations/kakaotalk-integrations/kakaotalk-integrations.facade';
-import { UserService } from '@services/users/user.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
-import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
+import { OAuth2Converter } from '@services/integrations/oauth2-converter.interface';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
-import { Language } from '@app/enums/language.enum';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { KakaotalkUserProfileResponse } from '@app/interfaces/integrations/kakaotalk/kakaotalk-user-profile-response.interface';
 
@@ -26,7 +24,6 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly userService: UserService,
         private readonly oauth2AccountsService: OAuth2AccountsService,
         private readonly kakaotalkIntegrationFacade: KakaotalkIntegrationsFacade
     ) {
@@ -83,40 +80,6 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
         return fetchedKakaotalkUserProfile;
     }
 
-    async signUpWithOAuth(
-        timezone: string,
-        oauth2UserProfile: KakaotalkUserProfileResponse,
-        language: Language
-    ): Promise<CreatedUserTeamProfile> {
-
-        const { kakao_account, oauth2Token } = oauth2UserProfile;
-        const { email, profile } = kakao_account;
-        const { nickname, is_default_image, thumbnail_image_url: profileThumbnailImageUrl } = profile;
-        const oauth2UserProfileImageUrl = is_default_image ? null : profileThumbnailImageUrl;
-
-        const createUserRequestDto: CreateUserRequestDto = {
-            email,
-            name: nickname,
-            timezone
-        };
-        const oauth2UserEmail = email;
-
-        const signedUpUserAndTeam = await this.userService.createUserByOAuth2(
-            OAuth2Type.KAKAOTALK,
-            createUserRequestDto,
-            oauth2Token,
-            {
-                oauth2UserEmail,
-                oauth2UserProfileImageUrl
-            },
-            language
-        );
-
-        // TODO: send notification for user with Kakao Alimtalk ..
-
-        return signedUpUserAndTeam;
-    }
-
     async multipleSocialSignIn(
         user: User,
         ensuredRequesterEmail: string
@@ -128,7 +91,7 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
     }
 
     integrate(
-        oauth2UserProfile: OAuth2UserProfile,
+        oauth2UserProfile: OAuth2AccountUserProfileMetaInfo,
         user: User
     ): Promise<void> {
         throw new Error('Method not implemented.');
@@ -138,5 +101,36 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
         oauth2UserProfile: KakaotalkUserProfileResponse
     ): string {
         return oauth2UserProfile.kakao_account.email;
+    }
+
+    get converter(): OAuth2Converter {
+        return <OAuth2Converter>{
+            convertToCreateUserRequestDTO: (
+                timezone: string,
+                oauth2AccountUserProfileMetaInfo: KakaotalkUserProfileResponse
+            ) => {
+
+                const { kakao_account, oauth2Token } = oauth2AccountUserProfileMetaInfo;
+                const { email, profile } = kakao_account;
+                const { nickname, is_default_image, thumbnail_image_url: profileThumbnailImageUrl } = profile;
+                const oauth2UserProfileImageUrl = is_default_image ? null : profileThumbnailImageUrl;
+
+                const createUserRequestDto: CreateUserRequestDto = {
+                    email,
+                    name: nickname,
+                    timezone
+                };
+
+                return {
+                    oauth2Type: OAuth2Type.KAKAOTALK,
+                    createUserRequestDto,
+                    oauth2Token,
+                    oauth2UserProfile: {
+                        oauth2UserEmail: email,
+                        oauth2UserProfileImageUrl
+                    }
+                };
+            }
+        };
     }
 }

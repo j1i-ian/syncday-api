@@ -2,12 +2,14 @@ import { BadRequestException, Inject, Injectable, InternalServerErrorException, 
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { Observable, firstValueFrom, from, map, mergeMap } from 'rxjs';
+import { Observable, firstValueFrom, from, map, mergeMap, of } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { Role } from '@interfaces/profiles/role.enum';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -19,6 +21,7 @@ import { ProfilesService } from '@services/profiles/profiles.service';
 import { TeamService } from '@services/team/team.service';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { OAuth2MetaInfo } from '@services/users/oauth2-metainfo.interface';
+import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { OAuth2UserProfile } from '@services/users/oauth2-user-profile.interface';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
@@ -53,9 +56,6 @@ interface CreateUserOptions {
 @Injectable()
 export class UserService {
     constructor(
-        @InjectDataSource() private datasource: DataSource,
-        @Inject(forwardRef(() => VerificationService))
-        private readonly verificationService: VerificationService,
         private readonly teamSettingService: TeamSettingService,
         private readonly syncdayRedisService: SyncdayRedisService,
         private readonly utilService: UtilService,
@@ -65,6 +65,10 @@ export class UserService {
         private readonly oauth2AccountService: OAuth2AccountsService,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         private readonly profilesService: ProfilesService,
+        private readonly oauth2TokenServiceLocator: OAuth2TokenServiceLocator,
+        @InjectDataSource() private datasource: DataSource,
+        @Inject(forwardRef(() => VerificationService))
+        private readonly verificationService: VerificationService,
         @Inject(forwardRef(() => TeamService))
         private readonly teamService: TeamService,
         @InjectRepository(User) private readonly userRepository: Repository<User>
@@ -167,57 +171,67 @@ export class UserService {
     }
 
     createUser(
-        oauth2Type: OAuth2Type,
-        createUserRequestDto: CreateUserRequestDto,
-        oauth2Token: OAuthToken,
-        {
-            oauth2UserEmail,
-            oauth2UserProfileImageUrl
-        }: OAuth2UserProfile,
-        language: Language,
-        integrationParams?: Partial<OAuth2MetaInfo>
+        integrationVendor: IntegrationVendor,
+        oauth2UserProfile: OAuth2AccountUserProfileMetaInfo,
+        timezone: string,
+        language: Language
     ): Observable<CreatedUserTeamProfile>;
     createUser(
         email: string,
         verificationCode: string,
         timezone: string
-    ): Observable<User | null>;
+    ): Observable<CreatedUserTeamProfile>;
     createUser(
-        emailOrOAuth2Type: string | OAuth2Type,
-        verificationCodeOrcreateUserRequestDto: string | CreateUserRequestDto,
-        timezoneOrOauth2Token: string | OAuthToken,
-        oauth2UserProfile?: OAuth2UserProfile,
-        language?: Language,
-        integrationParams?: Partial<OAuth2MetaInfo>
-    ): Observable<User | null> | Observable<CreatedUserTeamProfile> {
+        emailOrIntegrationVendor: string | IntegrationVendor,
+        verificationCodeOrOAuth2UserProfile: string | OAuth2AccountUserProfileMetaInfo,
+        timezone: string,
+        language?: Language
+    ): Observable<CreatedUserTeamProfile> {
 
-        const createUser$ = typeof verificationCodeOrcreateUserRequestDto === 'string' ?
+        const isOAuth2SignUp = !!language;
+
+        const createUser$ = isOAuth2SignUp === false ?
             from(
-                this.createUserWithVerificationByEmail(
-                    emailOrOAuth2Type,
-                    verificationCodeOrcreateUserRequestDto ,
-                    timezoneOrOauth2Token as string
+                this._createUserWithVerificationByEmail(
+                    emailOrIntegrationVendor,
+                    verificationCodeOrOAuth2UserProfile as string,
+                    timezone
                 )
             ) :
-            from(
-                this.createUserByOAuth2(
-                    emailOrOAuth2Type as OAuth2Type,
-                    verificationCodeOrcreateUserRequestDto ,
-                    timezoneOrOauth2Token as OAuthToken,
-                    oauth2UserProfile as OAuth2UserProfile,
-                    language as Language,
-                    integrationParams as Partial<OAuth2MetaInfo>
-                )
-            );
+            of(this.oauth2TokenServiceLocator.get(emailOrIntegrationVendor as IntegrationVendor))
+                .pipe(
+                    map((oauth2TokenService) =>
+                        oauth2TokenService.converter.convertToCreateUserRequestDTO(
+                            timezone,
+                            verificationCodeOrOAuth2UserProfile as OAuth2AccountUserProfileMetaInfo
+                        )
+                    ),
+                    mergeMap(({
+                        oauth2Type,
+                        createUserRequestDto,
+                        oauth2Token,
+                        oauth2UserProfile,
+                        integrationParams
+                    }) =>
+                        this.createUserWithOAuth2(
+                            oauth2Type,
+                            createUserRequestDto,
+                            oauth2Token,
+                            oauth2UserProfile,
+                            language as Language,
+                            integrationParams
+                        )
+                    )
+                );
 
         return createUser$;
     }
 
-    async createUserWithVerificationByEmail(
+    async _createUserWithVerificationByEmail(
         email: string,
         verificationCode: string,
         timezone: string
-    ): Promise<User | null> {
+    ): Promise<CreatedUserTeamProfile> {
         const verificationOrNull = await this.syncdayRedisService.getEmailVerification(email);
 
         const isCodeMatched =
@@ -238,7 +252,8 @@ export class UserService {
 
         const {
             createdProfile,
-            createdUser
+            createdUser,
+            createdTeam
         } = await this.datasource.transaction(async (transactionManager) => {
 
             const _createdUserAndTeam = await this._createUser(transactionManager, newUser, profileName, temporaryUser.language, timezone, {
@@ -265,7 +280,11 @@ export class UserService {
             createdUser.userSetting.preferredLanguage
         );
 
-        return createdUser;
+        return {
+            createdUser,
+            createdProfile,
+            createdTeam
+        };
     }
 
     async _createUser(
@@ -420,7 +439,7 @@ export class UserService {
         };
     }
 
-    async createUserByOAuth2(
+    async createUserWithOAuth2(
         oauth2Type: OAuth2Type,
         createUserRequestDto: CreateUserRequestDto,
         oauth2Token: OAuthToken,

@@ -19,6 +19,7 @@ import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { HostEvent } from '@interfaces/bookings/host-event';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { UserModule } from '@services/users/user.module';
 import { UtilModule } from '@services/util/util.module';
 import { IntegrationsModule } from '@services/integrations/integrations.module';
@@ -57,6 +58,8 @@ import { QuestionInputType } from '@entity/invitee-questions/question-input-type
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { Team } from '@entity/teams/team.entity';
 import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
 import { CreateTemporaryUserRequestDto } from '@dto/users/create-temporary-user-request.dto';
 import { CreateScheduledRequestDto } from '@dto/schedules/create-scheduled-request.dto';
@@ -174,8 +177,9 @@ export class TestIntegrationUtil {
 
     async createEmailUser(
         fakeUser: User
-    ): Promise<Pick<User, 'email' | 'name'>> {
+    ): Promise<Pick<User, 'email'>> {
 
+        const userNameMock = 'tmp';
         const userTimezoneISO8601Seoul = 'Asia/Seoul';
         const plainPassword = faker.internet.password();
 
@@ -201,7 +205,7 @@ export class TestIntegrationUtil {
         // The FE app also requests permission to record user data. After verification, this data will be used to create a host.
         const createTemporaryUserRequestDto: CreateTemporaryUserRequestDto = {
             email: fakeUser.email,
-            name: fakeUser.name,
+            name: userNameMock,
             plainPassword
         };
 
@@ -219,12 +223,11 @@ export class TestIntegrationUtil {
             verificationCode: _generatedEmailVerificationCode.verificationCode
         };
 
-        const createdUser = await this.userController.createUserWithEmailVerification(createUserWithVerificationDto);
+        const createdUser = await firstValueFrom(this.userController.createUserWithEmailVerification(createUserWithVerificationDto));
 
         this.logger.info(createdUser);
         expect(createdUser).ok;
         expect(createdUser.email).equals(fakeUser.email);
-        expect(createdUser.name).equals(fakeUser.name);
 
         return createdUser;
     }
@@ -284,17 +287,35 @@ export class TestIntegrationUtil {
         expect(generatedRedirectURL).ok;
     }
 
-    getAccessToken(user: User): string {
-        const issuedToken = this.tokenService.issueToken(user);
+    getAccessToken(
+        profile: Profile,
+        user: User,
+        team: Team
+    ): string {
+        const userSettingIdMock = 1;
+        const issuedToken = this.tokenService.issueToken(
+            profile,
+            user,
+            team,
+            userSettingIdMock
+        );
         return issuedToken.accessToken;
     }
 
     async integrateZoomOAuth(
         serviceSandbox: sinon.SinonSandbox,
-        user: User
+        profile: Profile,
+        user: User,
+        team: Team
     ): Promise<void> {
 
-        const issuedToken = this.tokenService.issueToken(user);
+        const userSettingIdMock = 1;
+        const issuedToken = this.tokenService.issueToken(
+            profile,
+            user,
+            team,
+            userSettingIdMock
+        );
         const issuedAccessToken = issuedToken.accessToken;
 
         this.setZoomUser();
@@ -344,7 +365,7 @@ export class TestIntegrationUtil {
     }
 
     async integrateApple(
-        user: User,
+        authProfile: AppJwtPayload,
         timezone: string
     ): Promise<void> {
 
@@ -355,7 +376,7 @@ export class TestIntegrationUtil {
         };
 
         await this.vendorIntegrationsController.createIntegration(
-            user,
+            authProfile,
             IntegrationVendor.APPLE,
             newIntegration
         );
@@ -541,8 +562,7 @@ export class TestIntegrationUtil {
 
         const fakeUserName = faker.internet.userName();
         const fakeUser = {
-            email: faker.internet.email(fakeUserName),
-            name: fakeUserName
+            email: faker.internet.email(fakeUserName)
         } as User;
 
         return fakeUser;

@@ -1,6 +1,6 @@
-import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 
-export interface ZoomUserResponseDTO extends OAuth2UserProfile {
+export interface ZoomUserResponseDTO extends OAuth2AccountUserProfileMetaInfo {
     id: string;
     first_name: string;
     last_name: string;

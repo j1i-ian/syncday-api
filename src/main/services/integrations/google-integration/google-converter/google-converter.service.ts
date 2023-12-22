@@ -6,18 +6,23 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { TimezoneOffset } from '@core/interfaces/integrations/timezone-offset.interface';
 import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
+import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { Notification } from '@interfaces/notifications/notification';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
 import { ContactType } from '@interfaces/events/contact-type.enum';
+import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { UtilService } from '@services/util/util.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { OAuth2Converter } from '@services/integrations/oauth2-converter.interface';
+import { CreateUserWithOAuth2DTO } from '@services/users/interfaces/create-user-with-oauth2-dto.interface';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
+import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 
 @Injectable()
-export class GoogleConverterService {
+export class GoogleConverterService implements OAuth2Converter {
 
     constructor(
         private readonly utilService: UtilService,
@@ -25,6 +30,48 @@ export class GoogleConverterService {
     ) {}
 
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
+
+    convertToCreateUserRequestDTO(
+        timezone: string,
+        oauth2UserProfile: GoogleOAuth2UserWithToken
+    ): CreateUserWithOAuth2DTO {
+
+        const { googleUser, calendars, tokens, schedules } = oauth2UserProfile;
+
+        const newGoogleCalendarIntegrations = this.convertToGoogleCalendarIntegration(calendars);
+        const googleUserEmail = googleUser.email;
+
+        const primaryGoogleCalendar = calendars?.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
+        const ensuredTimezone = timezone || primaryGoogleCalendar?.timeZone as string;
+
+        const createUserRequestDto: CreateUserRequestDto = {
+            email: googleUser.email,
+            name: googleUser.name,
+            timezone: ensuredTimezone
+        };
+
+        return {
+            oauth2Type: OAuth2Type.GOOGLE,
+            createUserRequestDto,
+            oauth2Token: tokens,
+            oauth2UserProfile: {
+                oauth2UserEmail: googleUserEmail,
+                oauth2UserProfileImageUrl: googleUser.picture
+            },
+            integrationParams: {
+                googleCalendarIntegrations: newGoogleCalendarIntegrations,
+                googleIntegrationBody: {
+
+                    googleUserEmail,
+                    calendars,
+                    schedules
+                },
+                options: {
+                    isFirstIntegration: true
+                }
+            }
+        };
+    }
 
     convertToGoogleCalendarIntegration(
         googleCalendars: calendar_v3.Schema$CalendarList,

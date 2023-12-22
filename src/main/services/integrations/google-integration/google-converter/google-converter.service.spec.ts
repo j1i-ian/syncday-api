@@ -58,6 +58,21 @@ describe('GoogleConverterService', () => {
         expect(service).ok;
     });
 
+    it('should be converted to createUserRequsetDTO from google oauth2 user profile', () => {
+        const timezoneMock = 'Asia/Seoul';
+        const oauth2UserProfileMock = testMockUtil.getGoogleOAuth2UserWithToken();
+
+        const createUesrWithOAuth2DTO = service.convertToCreateUserRequestDTO(
+            timezoneMock,
+            oauth2UserProfileMock
+        );
+
+        expect(createUesrWithOAuth2DTO).ok;
+        expect(createUesrWithOAuth2DTO.createUserRequestDto).ok;
+        expect(createUesrWithOAuth2DTO.createUserRequestDto.email).ok;
+        expect(createUesrWithOAuth2DTO.oauth2UserProfile).ok;
+    });
+
     it('should be converted to GoogleCalendarIntegration from GoogleCalendar', () => {
         const googleCalendarListMock = testMockUtil.getGoogleCalendarMock();
 

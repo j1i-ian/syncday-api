@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { calendar_v3 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
@@ -7,20 +6,16 @@ import { IntegrationContext } from '@interfaces/integrations/integration-context
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { OAuth2TokenService } from '@services/integrations/oauth2-token-service.interface';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
-import { UserService } from '@services/users/user.service';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
-import { NotificationsService } from '@services/notifications/notifications.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
-import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
+import { OAuth2Converter } from '@services/integrations/oauth2-converter.interface';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
-import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
-import { Language } from '@app/enums/language.enum';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 
 @Injectable()
@@ -30,11 +25,9 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         private readonly oauth2AccountsService: OAuth2AccountsService,
         private readonly integrationsServiceLocator: IntegrationsServiceLocator,
         private readonly integrationsValidator: IntegrationsValidator,
-        private readonly userService: UserService,
         private readonly googleIntegrationFacade: GoogleIntegrationFacade,
         private readonly googleConverterService: GoogleConverterService,
         private readonly googleIntegrationService: GoogleIntegrationsService,
-        private readonly notificationsService: NotificationsService,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
@@ -65,62 +58,6 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
             });
 
         return googleOAuth2UserWithToken;
-    }
-
-    async signUpWithOAuth(
-        timezone: string,
-        oauth2UserProfile: GoogleOAuth2UserWithToken,
-        language: Language
-    ): Promise<CreatedUserTeamProfile> {
-
-        const { googleUser, calendars, tokens, schedules } = oauth2UserProfile;
-
-        const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
-        const googleUserEmail = googleUser.email;
-
-        const primaryGoogleCalendar = calendars?.items.find((_cal) => _cal.primary) as calendar_v3.Schema$CalendarListEntry;
-        const ensuredTimezone = timezone || primaryGoogleCalendar?.timeZone as string;
-
-        const createUserRequestDto: CreateUserRequestDto = {
-            email: googleUser.email,
-            name: googleUser.name,
-            timezone: ensuredTimezone
-        };
-
-        const createdUserAndTeam = await this.userService.createUserByOAuth2(
-            OAuth2Type.GOOGLE,
-            createUserRequestDto,
-            tokens,
-            {
-                oauth2UserEmail: googleUserEmail,
-                oauth2UserProfileImageUrl: googleUser.picture
-            },
-            language,
-            {
-                googleCalendarIntegrations: newGoogleCalendarIntegrations,
-                googleIntegrationBody: {
-
-                    googleUserEmail,
-                    calendars,
-                    schedules
-                },
-                options: {
-                    isFirstIntegration: true
-                }
-            }
-        );
-        const {
-            createdUser: signedUpUser,
-            createdProfile: signedUpProfile
-        } = createdUserAndTeam;
-
-        await this.notificationsService.sendWelcomeEmailForNewUser(
-            signedUpProfile.name,
-            signedUpUser.email,
-            signedUpUser.userSetting.preferredLanguage
-        );
-
-        return createdUserAndTeam;
     }
 
     async multipleSocialSignIn(
@@ -202,5 +139,9 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         oauth2UserProfile: GoogleOAuth2UserWithToken
     ): string {
         return oauth2UserProfile.googleUser.email;
+    }
+
+    get converter(): OAuth2Converter {
+        return this.googleConverterService;
     }
 }

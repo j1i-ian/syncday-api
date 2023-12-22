@@ -5,7 +5,7 @@ import { oauth2_v2 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Observable, firstValueFrom, from, map, mergeMap, of } from 'rxjs';
-import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
@@ -13,6 +13,7 @@ import { UserService } from '@services/users/user.service';
 import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { UtilService } from '@services/util/util.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
@@ -44,6 +45,7 @@ export class TokenService {
         private readonly userService: UserService,
         private readonly profileService: ProfilesService,
         private readonly oauth2TokenServiceLocator: OAuth2TokenServiceLocator,
+        private readonly notificationsService: NotificationsService,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
         this.jwtOption = AppConfigService.getJwtOptions(this.configService);
@@ -146,11 +148,12 @@ export class TokenService {
                     createdProfile,
                     createdTeam,
                     createdUser
-                } = await oauth2TokenService.signUpWithOAuth(
-                    timezone,
+                } = await firstValueFrom(this.userService.createUser(
+                    integrationVendor,
                     oauth2UserProfile,
+                    timezone,
                     language
-                );
+                ));
                 profile = createdProfile;
                 user = createdUser;
                 team = createdTeam;
@@ -164,6 +167,12 @@ export class TokenService {
                                 .pipe(map(() => _profiles))
                             )
                         )
+                );
+
+                await this.notificationsService.sendWelcomeEmailForNewUser(
+                    createdProfile.name,
+                    createdUser.email,
+                    createdUser.userSetting.preferredLanguage
                 );
 
                 user.profiles = profiles;
@@ -307,7 +316,7 @@ export class TokenService {
 
     async evaluateIntegrationContext(
         integrationVendor: IntegrationVendor,
-        oauth2UserProfile: OAuth2UserProfile,
+        oauth2UserProfile: OAuth2AccountUserProfileMetaInfo,
         requestIntegrationContext: IntegrationContext,
         ensuredUserEmail: string
     ): Promise<IntegrationContext> {

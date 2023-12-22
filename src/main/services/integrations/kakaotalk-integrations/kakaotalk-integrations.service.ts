@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
-import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { Integration } from '@entity/integrations/integration.entity';
@@ -34,7 +34,7 @@ export class KakaotalkIntegrationsService implements IntegrationsFactory {
         throw new Error('Method not implemented.');
     }
 
-    create(profile: Profile, oauthToken: OAuthToken, oauth2UserProfile: OAuth2UserProfile): Promise<Integration> {
+    create(profile: Profile, oauthToken: OAuthToken, oauth2UserProfile: OAuth2AccountUserProfileMetaInfo): Promise<Integration> {
         throw new Error('Method not implemented.');
     }
 

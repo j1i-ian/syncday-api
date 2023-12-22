@@ -1,4 +1,4 @@
-import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { KakaotalkUserProfile } from '@app/interfaces/integrations/kakaotalk/kakaotalk-user-profile.interface';
 
@@ -7,7 +7,7 @@ import { KakaotalkUserProfile } from '@app/interfaces/integrations/kakaotalk/kak
  * @see {@link [Kakaotalk Develoeprs API Document](https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api#req-user-info)}
  */
 
-export interface KakaotalkUserProfileResponse extends OAuth2UserProfile {
+export interface KakaotalkUserProfileResponse extends OAuth2AccountUserProfileMetaInfo {
     id: number;
     has_signed_up: boolean;
     connected_at: Date;

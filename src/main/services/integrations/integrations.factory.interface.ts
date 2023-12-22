@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
-import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
 import { Integration } from '@entity/integrations/integration.entity';
@@ -13,7 +13,7 @@ import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
 type GoogleIntegrationRequest =  [Profile, TeamSetting, UserSetting, OAuthToken, GoogleCalendarIntegration[], GoogleIntegrationBody, CalendarCreateOption?];
-type ZoomIntegrationRequest = [Profile, OAuthToken, OAuth2UserProfile];
+type ZoomIntegrationRequest = [Profile, OAuthToken, OAuth2AccountUserProfileMetaInfo];
 type AppleIntegrationRequest = [Profile, UserSetting, TeamSetting, AppleCalDAVCredential, string];
 
 /**

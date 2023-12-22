@@ -17,6 +17,9 @@ import { TeamService } from '@services/team/team.service';
 import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
 import { OAuth2MetaInfo } from '@services/users/oauth2-metainfo.interface';
 import { OAuth2UserProfile } from '@services/users/oauth2-user-profile.interface';
+import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
+import { GoogleOAuth2TokenService } from '@services/oauth2/google-oauth2-token/google-oauth2-token.service';
+import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { Event } from '@entity/events/event.entity';
@@ -53,6 +56,10 @@ describe('Test User Service', () => {
     let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
     let profilesServiceStub: sinon.SinonStubbedInstance<ProfilesService>;
     let teamServiceStub: sinon.SinonStubbedInstance<TeamService>;
+    let oauth2TokenServiceLocatorStub: sinon.SinonStubbedInstance<OAuth2TokenServiceLocator>;
+
+    let oauth2TokenServiceStub: sinon.SinonStubbedInstance<GoogleOAuth2TokenService>;
+    let oauth2TokenServiceConverterStub: sinon.SinonStubbedInstance<GoogleConverterService>;
 
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
@@ -81,6 +88,14 @@ describe('Test User Service', () => {
         profilesServiceStub = sinon.createStubInstance(ProfilesService);
         teamServiceStub = sinon.createStubInstance(TeamService);
         utilServiceStub = sinon.createStubInstance(UtilService);
+
+        oauth2TokenServiceConverterStub = sinon.createStubInstance(GoogleConverterService);
+        sinon.stub(GoogleOAuth2TokenService.prototype, 'converter')
+            .get(() =>  oauth2TokenServiceConverterStub);
+
+        oauth2TokenServiceStub = sinon.createStubInstance(GoogleOAuth2TokenService);
+        oauth2TokenServiceLocatorStub = sinon.createStubInstance(OAuth2TokenServiceLocator);
+        oauth2TokenServiceLocatorStub.get.returns(oauth2TokenServiceStub);
 
         eventsRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
@@ -140,6 +155,10 @@ describe('Test User Service', () => {
                 {
                     provide: TeamService,
                     useValue: teamServiceStub
+                },
+                {
+                    provide: OAuth2TokenServiceLocator,
+                    useValue: oauth2TokenServiceLocatorStub
                 },
                 {
                     provide: getRepositoryToken(User),
@@ -250,9 +269,14 @@ describe('Test User Service', () => {
 
         beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
+
+            oauth2TokenServiceConverterStub.convertToCreateUserRequestDTO.returns({} as any);
         });
 
         afterEach(() => {
+
+            oauth2TokenServiceConverterStub.convertToCreateUserRequestDTO.reset();
+
             serviceSandbox.restore();
         });
 
@@ -274,7 +298,8 @@ describe('Test User Service', () => {
                     return args;
                 },
                 createUserWithVerificationByEmailCall: true,
-                createUserByOAuth2Call: false
+                convertToCreateUserRequestDTOCall: false,
+                createUserWithOAuth2Call: false
             },
             {
                 description: 'should be overloaded method for createUserByOAuth2',
@@ -309,21 +334,29 @@ describe('Test User Service', () => {
                     return args;
                 },
                 createUserWithVerificationByEmailCall: false,
-                createUserByOAuth2Call: true
+                convertToCreateUserRequestDTOCall: true,
+                createUserWithOAuth2Call: true
             }
         ].forEach(function ({
             description,
             getArgs,
             createUserWithVerificationByEmailCall,
-            createUserByOAuth2Call
+            convertToCreateUserRequestDTOCall,
+            createUserWithOAuth2Call
         }) {
 
             it(description, async () => {
 
                 const userStub = stubOne(User);
+                const profileStub = stubOne(Profile);
+                const teamStub = stubOne(Team);
 
-                const createUserWithVerificationByEmailStub = serviceSandbox.stub(service, 'createUserWithVerificationByEmail').resolves(userStub);
-                const createUserByOAuth2Stub = serviceSandbox.stub(service, 'createUserByOAuth2').resolves({ createdUser: userStub } as CreatedUserTeamProfile);
+                const createUserWithVerificationByEmailStub = serviceSandbox.stub(service, '_createUserWithVerificationByEmail').resolves({
+                    createdUser: userStub,
+                    createdProfile: profileStub,
+                    createdTeam: teamStub
+                });
+                const createUserByOAuth2Stub = serviceSandbox.stub(service, 'createUserWithOAuth2').resolves({ createdUser: userStub } as CreatedUserTeamProfile);
 
                 const args = getArgs();
 
@@ -335,7 +368,8 @@ describe('Test User Service', () => {
                 expect(createdUser).ok;
 
                 expect(createUserWithVerificationByEmailStub.called).equals(createUserWithVerificationByEmailCall);
-                expect(createUserByOAuth2Stub.called).equals(createUserByOAuth2Call);
+                expect(oauth2TokenServiceConverterStub.convertToCreateUserRequestDTO.called).equals(convertToCreateUserRequestDTOCall);
+                expect(createUserByOAuth2Stub.called).equals(createUserWithOAuth2Call);
             });
         });
 
@@ -587,11 +621,11 @@ describe('Test User Service', () => {
                 profilesServiceStub.completeInvitation.returns(of(true));
                 notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(true);
 
-                const createdUser = (await service.createUserWithVerificationByEmail(
+                const { createdUser } = (await service._createUserWithVerificationByEmail(
                     emailMock,
                     verificationStub.verificationCode,
                     userSettingStub.preferredTimezone
-                )) as User;
+                ));
 
                 expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).true;
                 expect(syncdayRedisServiceStub.getEmailVerification.called).true;
@@ -614,7 +648,7 @@ describe('Test User Service', () => {
                 serviceSandbox.stub(service, '_createUser');
 
                 await expect(
-                    service.createUserWithVerificationByEmail(emailMock, verificationCodeMock, timezoneMcok)
+                    service._createUserWithVerificationByEmail(emailMock, verificationCodeMock, timezoneMcok)
                 ).rejectedWith(EmailVertificationFailException);
 
                 expect(syncdayRedisServiceStub.getEmailVerification.called).true;

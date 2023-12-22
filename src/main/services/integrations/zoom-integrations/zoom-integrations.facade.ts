@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Injectable } from '@nestjs/common';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
-import { OAuth2UserProfile } from '@core/interfaces/integrations/oauth2-user-profile.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { ZoomOauthTokenService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-token.service';
 import { ZoomOauthUserService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-user.service';
@@ -56,7 +56,7 @@ export class ZoomIntegrationFacade implements IntegrationsFacade {
         );
     }
 
-    fetchOAuth2User(oauth2Token: OAuthToken): Promise<OAuth2UserProfile> {
+    fetchOAuth2User(oauth2Token: OAuthToken): Promise<OAuth2AccountUserProfileMetaInfo> {
         return this.zoomOauthUserService.getZoomUser(oauth2Token.accessToken);
     }
 

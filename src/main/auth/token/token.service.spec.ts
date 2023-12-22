@@ -16,6 +16,7 @@ import { UtilService } from '@services/util/util.service';
 import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { GoogleOAuth2TokenService } from '@services/oauth2/google-oauth2-token/google-oauth2-token.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
@@ -41,6 +42,7 @@ describe('TokenService', () => {
     let oauth2TokenServiceLocatorStub: sinon.SinonStubbedInstance<OAuth2TokenServiceLocator>;
 
     let oauth2TokenServiceStub: sinon.SinonStubbedInstance<GoogleOAuth2TokenService>;
+    let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
 
     let loggerStub: sinon.SinonStub;
 
@@ -53,6 +55,8 @@ describe('TokenService', () => {
         oauth2TokenServiceLocatorStub = sinon.createStubInstance(OAuth2TokenServiceLocator);
 
         oauth2TokenServiceStub = sinon.createStubInstance(GoogleOAuth2TokenService);
+        notificationsServiceStub = sinon.createStubInstance(NotificationsService);
+
         oauth2TokenServiceLocatorStub.get.returns(oauth2TokenServiceStub);
 
         loggerStub = sinon.stub({
@@ -87,6 +91,10 @@ describe('TokenService', () => {
                 {
                     provide: OAuth2TokenServiceLocator,
                     useValue: oauth2TokenServiceLocatorStub
+                },
+                {
+                    provide: NotificationsService,
+                    useValue: notificationsServiceStub
                 },
                 {
                     provide: WINSTON_MODULE_PROVIDER,
@@ -263,9 +271,11 @@ describe('TokenService', () => {
             profileServiceStub.createInvitedProfiles.reset();
             profileServiceStub.completeInvitation.reset();
 
-            _oauth2TokenServiceStub.signUpWithOAuth.reset();
+            userServiceStub.createUser.reset();
+            notificationsServiceStub.sendWelcomeEmailForNewUser.reset();
             _oauth2TokenServiceStub.integrate.reset();
             _oauth2TokenServiceStub.multipleSocialSignIn.reset();
+
 
             serviceSandbox.restore();
         });
@@ -293,7 +303,8 @@ describe('TokenService', () => {
                 } as GoogleOAuth2UserWithToken,
                 getFindUserStub: () => null,
                 isExpectedNewbie: true,
-                signUpWithOAuthCall: true,
+                createUserCall: true,
+                sendWelcomeEmailForNewUserCall: true,
                 createInvitedProfilesCall: true,
                 completeInvitationCall: true,
                 integrateCall: false,
@@ -329,7 +340,8 @@ describe('TokenService', () => {
                     userSetting: stubOne(UserSetting)
                 }),
                 isExpectedNewbie: false,
-                signUpWithOAuthCall: false,
+                createUserCall: false,
+                sendWelcomeEmailForNewUserCall: false,
                 createInvitedProfilesCall: false,
                 completeInvitationCall: false,
                 integrateCall: false,
@@ -365,7 +377,8 @@ describe('TokenService', () => {
                     userSetting: stubOne(UserSetting)
                 }),
                 isExpectedNewbie: false,
-                signUpWithOAuthCall: false,
+                createUserCall: false,
+                sendWelcomeEmailForNewUserCall: false,
                 createInvitedProfilesCall: false,
                 completeInvitationCall: false,
                 integrateCall: false,
@@ -401,7 +414,8 @@ describe('TokenService', () => {
                     userSetting: stubOne(UserSetting)
                 }),
                 isExpectedNewbie: false,
-                signUpWithOAuthCall: false,
+                createUserCall: false,
+                sendWelcomeEmailForNewUserCall: false,
                 createInvitedProfilesCall: false,
                 completeInvitationCall: false,
                 integrateCall: true,
@@ -449,7 +463,8 @@ describe('TokenService', () => {
                     userSetting: stubOne(UserSetting)
                 }),
                 isExpectedNewbie: false,
-                signUpWithOAuthCall: false,
+                createUserCall: false,
+                sendWelcomeEmailForNewUserCall: false,
                 createInvitedProfilesCall: false,
                 completeInvitationCall: false,
                 integrateCall: true,
@@ -461,7 +476,8 @@ describe('TokenService', () => {
             googleOAuth2UserWithToken,
             getFindUserStub,
             isExpectedNewbie,
-            signUpWithOAuthCall,
+            createUserCall: createUserCall,
+            sendWelcomeEmailForNewUserCall,
             createInvitedProfilesCall,
             completeInvitationCall,
             integrateCall,
@@ -489,11 +505,11 @@ describe('TokenService', () => {
                 const createdUserStub = stubOne(User, {
                     userSetting: createdUserSettingStub
                 });
-                _oauth2TokenServiceStub.signUpWithOAuth.resolves({
+                userServiceStub.createUser.returns(of({
                     createdUser: createdUserStub,
                     createdProfile: createdProfileStub,
                     createdTeam: createdTeamStub
-                });
+                }));
 
                 const issuedTokenStub: CreateTokenResponseDto = {
                     accessToken: 'fakeJwtToken',
@@ -523,7 +539,8 @@ describe('TokenService', () => {
                 expect(profileServiceStub.createInvitedProfiles.called).equals(createInvitedProfilesCall);
                 expect(profileServiceStub.completeInvitation.called).equals(completeInvitationCall);
 
-                expect(_oauth2TokenServiceStub.signUpWithOAuth.called).equals(signUpWithOAuthCall);
+                expect(userServiceStub.createUser.called).equals(createUserCall);
+                expect(notificationsServiceStub.sendWelcomeEmailForNewUser.called).equals(sendWelcomeEmailForNewUserCall);
                 expect(_oauth2TokenServiceStub.integrate.called).equals(integrateCall);
                 expect(_oauth2TokenServiceStub.multipleSocialSignIn.called).equals(multipleSocialSignInCall);
 
