@@ -16,7 +16,6 @@ import { AuthModule } from './main/auth/auth.module';
 import { JwtAuthGuard } from './main/auth/strategy/jwt/jwt-auth.guard';
 import { UtilModule } from './main/services/util/util.module';
 import { IntegrationsModule } from './main/services/integrations/integrations.module';
-import { WorkspacesModule } from './main/services/workspaces/workspaces.module';
 import { AvailabilityModule } from './main/services/availability/availability.module';
 import { EventsModule } from './main/services/events/events.module';
 import { BookingsModule } from './main/services/bookings/bookings.module';
@@ -47,8 +46,6 @@ import { ProductsModule } from './main/services/products/products.module';
         UtilModule,
 
         IntegrationsModule,
-
-        WorkspacesModule,
 
         AvailabilityModule,
 

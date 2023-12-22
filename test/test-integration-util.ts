@@ -23,7 +23,6 @@ import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { UserModule } from '@services/users/user.module';
 import { UtilModule } from '@services/util/util.module';
 import { IntegrationsModule } from '@services/integrations/integrations.module';
-import { WorkspacesModule } from '@services/workspaces/workspaces.module';
 import { AvailabilityModule } from '@services/availability/availability.module';
 import { EventsModule } from '@services/events/events.module';
 import { SyncdayAwsSdkClientModule } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.module';
@@ -743,8 +742,6 @@ export class TestIntegrationUtil {
                 UtilModule,
 
                 IntegrationsModule,
-
-                WorkspacesModule,
 
                 AvailabilityModule,
 

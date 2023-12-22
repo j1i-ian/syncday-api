@@ -18,7 +18,6 @@ import { TokenModule } from '../main/auth/token/token.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
 import { TemporaryUsersModule } from '../main/services/users/temporary-users/temporary-users.module';
-import { WorkspacesModule } from '../main/services/workspaces/workspaces.module';
 
 export const routes: Routes = [
     {
@@ -46,10 +45,6 @@ export const routes: Routes = [
     {
         path: 'team-settings',
         module: TeamSettingModule
-    },
-    {
-        path: 'workspaces',
-        module: WorkspacesModule
     },
     {
         path: 'tokens',
