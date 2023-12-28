@@ -83,7 +83,7 @@ export class TokenController {
     }
 
     @Put()
-    @Public()
+    @Public({ ignoreInvalidJwtToken: false })
     issueTokenByRefreshToken(
         @Body() createTokenByRefreshTokenRequestDto: CreateTokenByRefreshTokenRequestDto,
         @AuthProfile('userId') userId?: number

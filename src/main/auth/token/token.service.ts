@@ -239,6 +239,13 @@ export class TokenService {
 
         const isNewProfileTokenRequest = teamId && userId && decoedProfileByRefreshToken.userId === userId;
 
+        this.logger.info({
+            decoedProfileByRefreshToken,
+            teamId,
+            userId,
+            isNewProfileTokenRequest
+        });
+
         const decoedProfileByRefreshToken$ = isNewProfileTokenRequest ?
             from(
                 this.profileService.findProfile({
