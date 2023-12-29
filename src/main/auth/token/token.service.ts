@@ -260,11 +260,13 @@ export class TokenService {
                 const extractedProfile = _decoedProfileByRefreshToken;
                 const extractedUser = {
                     id: decoedProfileByRefreshToken.userId,
+                    uuid: decoedProfileByRefreshToken.userUUID,
                     email: decoedProfileByRefreshToken.email
-                } as Pick<User, 'id' | 'email'>;
+                } as Pick<User, 'id' | 'uuid' | 'email'>;
                 const extractedTeam = {
-                    id: _decoedProfileByRefreshToken.teamId
-                } as Pick<Team, 'id'>;
+                    id: _decoedProfileByRefreshToken.teamId,
+                    uuid: _decoedProfileByRefreshToken.teamUUID
+                } as Pick<Team, 'id' | 'uuid'>;
                 const extractedUserSettingId = decoedProfileByRefreshToken.userSettingId;
 
                 const tokenResponse = this.issueToken(
@@ -282,7 +284,7 @@ export class TokenService {
 
     issueToken(
         profile: Profile,
-        user: Pick<User, 'id' | 'email'>,
+        user: Pick<User, 'id' | 'uuid' | 'email'>,
         team: Pick<Team, 'id' | 'uuid'>,
         userSettingId: number
     ): CreateTokenResponseDto {
@@ -292,6 +294,7 @@ export class TokenService {
             uuid: profile.uuid,
             name: profile.name,
             userId: user.id,
+            userUUID: user.uuid,
             email: user.email,
             userSettingId,
             image: profile.image,

@@ -86,11 +86,12 @@ describe('VerificationService', () => {
                     description: 'should be created email verification when cluster saving is success',
                     languageDummy: Language.ENGLISH,
                     createVerificationDtoMock: {
-                        email: TestMockUtil.faker.internet.email()
+                        email: TestMockUtil.faker.internet.email(),
+                        uuid: TestMockUtil.faker.datatype.uuid()
                     } as CreateVerificationDto,
                     fakeKeyStubValue: 'local:verifications:email:alan@sync.day',
                     generateRandomNumberStringStubValue: '0123',
-                    uuidStubValue: TestMockUtil.faker.datatype.uuid(),
+                    isSignUpVerification: false,
                     setexStubValue: 'OK' as const,
                     expectedResult: true
                 },
@@ -98,11 +99,12 @@ describe('VerificationService', () => {
                     description: 'should be not created email verification when cluster saving is failed',
                     languageDummy: Language.ENGLISH,
                     createVerificationDtoMock: {
-                        email: TestMockUtil.faker.internet.email()
+                        email: TestMockUtil.faker.internet.email(),
+                        uuid: TestMockUtil.faker.datatype.uuid()
                     } as CreateVerificationDto,
                     fakeKeyStubValue: 'local:verifications:email:alan@sync.day',
                     generateRandomNumberStringStubValue: '0123',
-                    uuidStubValue: TestMockUtil.faker.datatype.uuid(),
+                    isSignUpVerification: false,
                     setexStubValue: undefined,
                     expectedResult: false
                 },
@@ -110,11 +112,12 @@ describe('VerificationService', () => {
                     description: 'should be created phoneNumber verification when cluster saving is success',
                     languageDummy: Language.ENGLISH,
                     createVerificationDtoMock: {
-                        phoneNumber: TestMockUtil.faker.phone.number()
+                        phoneNumber: TestMockUtil.faker.phone.number(),
+                        uuid: TestMockUtil.faker.datatype.uuid()
                     } as CreateVerificationDto,
                     fakeKeyStubValue: 'local:verifications:phone:+821012345678',
                     generateRandomNumberStringStubValue: '0123',
-                    uuidStubValue: TestMockUtil.faker.datatype.uuid(),
+                    isSignUpVerification: false,
                     setexStubValue: 'OK' as const,
                     expectedResult: true
                 },
@@ -122,11 +125,12 @@ describe('VerificationService', () => {
                     description: 'should be not created phoneNumber verification when cluster saving is failed',
                     languageDummy: Language.ENGLISH,
                     createVerificationDtoMock: {
-                        phoneNumber: TestMockUtil.faker.phone.number()
+                        phoneNumber: TestMockUtil.faker.phone.number(),
+                        uuid: TestMockUtil.faker.datatype.uuid()
                     } as CreateVerificationDto,
                     fakeKeyStubValue: 'local:verifications:phone:+821012345678',
                     generateRandomNumberStringStubValue: '0123',
-                    uuidStubValue: TestMockUtil.faker.datatype.uuid(),
+                    isSignUpVerification: false,
                     setexStubValue: undefined,
                     expectedResult: false
                 }
@@ -136,26 +140,27 @@ describe('VerificationService', () => {
                 createVerificationDtoMock,
                 fakeKeyStubValue,
                 generateRandomNumberStringStubValue,
-                uuidStubValue,
+                isSignUpVerification,
                 setexStubValue,
                 expectedResult
             }) {
                 it(description, async () => {
 
                     utilServiceStub.generateRandomNumberString.returns(generateRandomNumberStringStubValue);
-                    utilServiceStub.generateUUID.returns(uuidStubValue);
 
                     if (createVerificationDtoMock.email) {
                         syncdayRedisServiceStub.getEmailVerificationKey.returns(fakeKeyStubValue);
+                        userServiceStub.findUserByEmail.resolves(null);
                     } else {
                         syncdayRedisServiceStub.getPhoneVerificationKey.returns(fakeKeyStubValue);
+                        userServiceStub.searchByEmailOrPhone.resolves([]);
                     }
 
                     serviceSandbox.stub(service, 'publishSyncdayNotification').resolves(true);
 
                     clusterStub.setex.resolves(setexStubValue);
 
-                    const result = await service.createVerification(createVerificationDtoMock, languageDummy);
+                    const result = await service.createVerification(createVerificationDtoMock, languageDummy, isSignUpVerification);
 
                     expect(utilServiceStub.generateRandomNumberString.called).true;
                     if (createVerificationDtoMock.email) {
@@ -180,7 +185,7 @@ describe('VerificationService', () => {
                     createVerificationDtoMock: {
                         email: TestMockUtil.faker.internet.email()
                     } as Verification,
-                    isAlreadySignedUpUserOnEmailVerificationMock: false,
+                    isSignUpVerification: false,
                     expectedResult: true
                 },
                 {
@@ -189,7 +194,7 @@ describe('VerificationService', () => {
                     createVerificationDtoMock: {
                         email: TestMockUtil.faker.internet.email()
                     } as Verification,
-                    isAlreadySignedUpUserOnEmailVerificationMock: true,
+                    isSignUpVerification: true,
                     expectedResult: true
                 },
                 {
@@ -198,14 +203,23 @@ describe('VerificationService', () => {
                     createVerificationDtoMock: {
                         phoneNumber: TestMockUtil.faker.phone.number()
                     } as Verification,
-                    isAlreadySignedUpUserOnEmailVerificationMock: false,
+                    isSignUpVerification: false,
+                    expectedResult: true
+                },
+                {
+                    description: 'should be published phoneNumber verification for already signed-up user',
+                    languageMock: Language.ENGLISH,
+                    createVerificationDtoMock: {
+                        phoneNumber: TestMockUtil.faker.phone.number()
+                    } as Verification,
+                    isSignUpVerification: true,
                     expectedResult: true
                 }
             ].forEach(function ({
                 description,
                 languageMock,
                 createVerificationDtoMock,
-                isAlreadySignedUpUserOnEmailVerificationMock,
+                isSignUpVerification,
                 expectedResult
             }) {
                 it(description, async () => {
@@ -215,7 +229,7 @@ describe('VerificationService', () => {
                     const result = await service.publishSyncdayNotification(
                         languageMock,
                         createVerificationDtoMock,
-                        isAlreadySignedUpUserOnEmailVerificationMock
+                        isSignUpVerification
                     );
 
                     expect(notificationsServiceStub.sendMessage.called).true;
@@ -231,16 +245,32 @@ describe('VerificationService', () => {
                 {
                     description:'should be passed validation of createVerificationDto',
                     createVerificationDtoMock: {
-                        email: TestMockUtil.faker.internet.email()
+                        email: TestMockUtil.faker.internet.email(),
+                        uuid: TestMockUtil.faker.datatype.uuid()
                     } as CreateVerificationDto,
                     expectedResult: true
                 },
                 {
                     description:'should be passed validation of createVerificationDto',
                     createVerificationDtoMock: {
-                        phoneNumber: TestMockUtil.faker.phone.number()
+                        phoneNumber: TestMockUtil.faker.phone.number(),
+                        uuid: TestMockUtil.faker.datatype.uuid()
                     } as CreateVerificationDto,
                     expectedResult: true
+                },
+                {
+                    description:'should be not passed validation of createVerificationDto without uuid',
+                    createVerificationDtoMock: {
+                        phoneNumber: TestMockUtil.faker.phone.number()
+                    } as CreateVerificationDto,
+                    expectedResult: false
+                },
+                {
+                    description:'should be not passed validation of createVerificationDto without uuid',
+                    createVerificationDtoMock: {
+                        email: TestMockUtil.faker.internet.email()
+                    } as CreateVerificationDto,
+                    expectedResult: false
                 },
                 {
                     description:'should be not passed validation of createVerificationDto',

@@ -29,35 +29,36 @@ export class VerificationService {
 
     async createVerification(
         createVerificationDto: CreateVerificationDto,
-        language: Language
+        language: Language,
+        isSignUpVerification: boolean
     ): Promise<boolean> {
         const { email, phoneNumber } = createVerificationDto;
 
         const digit = 4;
         const generatedVerificationCode = this.utilService.generateRandomNumberString(digit);
-        const generatedUUID = this.utilService.generateUUID();
         const newVerificationParam: Verification = {
-            uuid: generatedUUID,
             verificationCode: generatedVerificationCode,
-            ...createVerificationDto
+            ...createVerificationDto,
+            uuid: createVerificationDto.uuid as string
         };
 
         let verificationRedisKey: RedisKey | null;
-        let isAlreadySignedUpUserOnEmailVerification = false;
 
         if (email) {
             verificationRedisKey = this.syncdayRedisService.getEmailVerificationKey(email);
             const alreadySignedUpUser = await this.userService.findUserByEmail(email);
-            isAlreadySignedUpUserOnEmailVerification = !!alreadySignedUpUser;
+            isSignUpVerification = !!alreadySignedUpUser;
         } else {
             verificationRedisKey = this.syncdayRedisService.getPhoneVerificationKey(phoneNumber as string);
-            isAlreadySignedUpUserOnEmailVerification = false;
+            const alreadySignedUpUsers = await this.userService.searchByEmailOrPhone([{ phone: phoneNumber }]);
+
+            isSignUpVerification = !!alreadySignedUpUsers[0];
         }
 
         await this.publishSyncdayNotification(
             language,
             newVerificationParam,
-            isAlreadySignedUpUserOnEmailVerification
+            isSignUpVerification
         );
 
         // verification code is valid while 10 minutes
@@ -75,8 +76,8 @@ export class VerificationService {
 
     async publishSyncdayNotification(
         language: Language,
-        newVerificationParam: Pick<Verification, 'email' | 'phoneNumber'>,
-        isAlreadySignedUpUserOnEmailVerification: boolean
+        newVerificationParam: Verification,
+        isSignUpVerification: boolean
     ): Promise<boolean> {
 
         let notificationPublishParam: SyncdayNotificationPublishRequest
@@ -89,7 +90,7 @@ export class VerificationService {
                 verificationValue: newVerificationParam.email
             };
 
-            if (isAlreadySignedUpUserOnEmailVerification) {
+            if (isSignUpVerification) {
                 notificationPublishParam = {
                     templateType: EmailTemplate.ALREADY_SIGNED_UP,
                     newVerification: null,
@@ -104,12 +105,29 @@ export class VerificationService {
             }
 
         } else {
-            notificationPublishParam = {
+
+            const defaultNotificationPublishParam = {
                 notificationPublishKey: SyncdayNotificationPublishKey.SMS_GLOBAL,
-                templateType: TextTemplate.VERIFICATION,
-                newVerification: newVerificationParam,
                 verificationValue: newVerificationParam.phoneNumber as string
             };
+
+            if (isSignUpVerification) {
+
+                // TODO: The template type should be replaced with a guide for those who have already signed up
+                notificationPublishParam = {
+                    templateType: TextTemplate.VERIFICATION,
+                    newVerification: null,
+                    ...defaultNotificationPublishParam
+                };
+                newVerificationParam.verificationCode = '';
+            } else {
+
+                notificationPublishParam = {
+                    templateType: TextTemplate.VERIFICATION,
+                    newVerification: newVerificationParam,
+                    ...defaultNotificationPublishParam
+                };
+            }
         }
 
         const jsonStringNewVerification = JSON.stringify(newVerificationParam);
@@ -129,30 +147,32 @@ export class VerificationService {
         return publishResult;
     }
 
-    validateCreateVerificationDto(createVerificationDto: CreateVerificationDto): boolean {
+    validateCreateVerificationDto(
+        createVerificationDto: CreateVerificationDto,
+        userUUID?: string
+    ): boolean {
 
         const { email, phoneNumber } = createVerificationDto;
 
+        const isUUIDValid = userUUID ? true : !!createVerificationDto.uuid;
+
         const isValid = !!email || !!phoneNumber;
 
-        return isValid;
+        return isValid && isUUIDValid;
     }
 
-    async isVerifiedPhone(phone: string): Promise<boolean> {
+    async isValidPhoneVerification(
+        phone: string,
+        verificationCode: string,
+        uuid: string
+    ): Promise<boolean> {
         const verificationOrNull = await this.syncdayRedisService.getPhoneVerification(phone);
 
-        let isVerified = false;
+        const isValidVerification = verificationOrNull &&
+            verificationOrNull.verificationCode === verificationCode &&
+            verificationOrNull.uuid === uuid;
 
-        if (verificationOrNull) {
-            isVerified = await this.syncdayRedisService.getPhoneVerificationStatus(
-                phone,
-                verificationOrNull.uuid
-            );
-        } else {
-            isVerified = false;
-        }
-
-        return isVerified;
+        return !!isValidVerification;
     }
 
     async isVerifiedUser(email: string): Promise<boolean> {

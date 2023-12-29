@@ -572,17 +572,24 @@ export class UserService {
         return updateResult.affected ? updateResult.affected > 0 : false;
     }
 
-    async updateUserPhone(userId: number, updatePhoneWithVerificationDto: UpdatePhoneWithVerificationDto): Promise<boolean> {
-        const verificationOrNull = await this.syncdayRedisService.getPhoneVerification(updatePhoneWithVerificationDto.phone);
+    async updateUserPhone(
+        userId: number,
+        userUUID: string,
+        updatePhoneWithVerificationDto: UpdatePhoneWithVerificationDto
+    ): Promise<boolean> {
 
-        const isCodeMatched =
-            verificationOrNull !== null && verificationOrNull.verificationCode === updatePhoneWithVerificationDto.verificationCode;
+        const isValidPhoneVerification = await this.verificationService.isValidPhoneVerification(
+            updatePhoneWithVerificationDto.phone,
+            updatePhoneWithVerificationDto.verificationCode,
+            userUUID
+        );
 
         let isUpdated = false;
-        if (isCodeMatched) {
+
+        if (isValidPhoneVerification) {
             await this.syncdayRedisService.setPhoneVerificationStatus(
                 updatePhoneWithVerificationDto.phone,
-                verificationOrNull.uuid
+                userUUID
             );
 
             const updateResult =  await this.userRepository.update(userId, {

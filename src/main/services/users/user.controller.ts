@@ -92,9 +92,10 @@ export class UserController {
     @HttpCode(HttpStatus.NO_CONTENT)
     async updateUserPhone(
         @AuthProfile('userId') userId: number,
+        @AuthProfile('userUUID') userUUID: string,
         @Body() patchUserBody: UpdatePhoneWithVerificationDto
     ): Promise<void> {
-        const result = await this.userService.updateUserPhone(userId, patchUserBody);
+        const result = await this.userService.updateUserPhone(userId, userUUID, patchUserBody);
 
         if (result === false) {
             throw new BadRequestException('Cannot update user data');

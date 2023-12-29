@@ -1,4 +1,5 @@
 import { Body, Controller, Header, Post } from '@nestjs/common';
+import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { CreateVerificationDto } from '@dto/verifications/create-verification.dto';
 import { Language } from '@app/enums/language.enum';
 import { BCP47AcceptLanguage } from '../../decorators/accept-language.decorator';
@@ -11,16 +12,21 @@ export class VerificationController {
 
     @Post()
     @Header('Content-type', 'application/json')
-    @Public()
+    @Public({ ignoreInvalidJwtToken: false })
     async create(
         @Body() createVerificationDto: CreateVerificationDto,
+        @AuthProfile('userUUID') userUUID: string,
         @BCP47AcceptLanguage() language: Language
     ): Promise<boolean> {
 
-        let isValid = this.verificationService.validateCreateVerificationDto(createVerificationDto);
+        let isValid = this.verificationService.validateCreateVerificationDto(createVerificationDto, userUUID);
 
         if (isValid) {
-            isValid = await this.verificationService.createVerification(createVerificationDto, language);
+
+            createVerificationDto.uuid = userUUID ?? createVerificationDto.uuid;
+            const isSignUpVerification = userUUID ? true : false;
+
+            isValid = await this.verificationService.createVerification(createVerificationDto, language, isSignUpVerification);
         }
 
         return isValid;

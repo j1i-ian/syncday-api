@@ -72,6 +72,7 @@ export class TokenController {
             profile,
             {
                 id: authUser.id,
+                uuid: authUser.uuid,
                 email: authUser.email
             },
             {

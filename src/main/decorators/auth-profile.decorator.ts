@@ -3,7 +3,7 @@ import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { Profile } from '@entity/profiles/profile.entity';
 
 export const AuthProfile = createParamDecorator(
-    (data: Extract<keyof AppJwtPayload, keyof Profile | 'teamUUID'>, ctx: ExecutionContext) => {
+    (data: Extract<keyof AppJwtPayload, keyof Profile | 'teamUUID' | 'userUUID'>, ctx: ExecutionContext) => {
         const request = ctx.switchToHttp().getRequest();
 
         const profileOrNull: AppJwtPayload | null = request.user ?? null;
