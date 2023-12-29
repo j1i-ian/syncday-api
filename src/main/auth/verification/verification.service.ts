@@ -11,6 +11,7 @@ import { NotificationsService } from '@services/notifications/notifications.serv
 import { UserService } from '@services/users/user.service';
 import { Verification } from '@entity/verifications/verification.interface';
 import { CreateVerificationDto } from '@dto/verifications/create-verification.dto';
+import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
 import { Language } from '@app/enums/language.enum';
 import { SyncdayNotificationPublishRequest } from '@app/interfaces/auth/verifications/syncday-notification-publish-request.interface';
 
@@ -72,6 +73,28 @@ export class VerificationService {
         const redisSetResult = _result === 'OK';
 
         return redisSetResult;
+    }
+
+    async update(updatePhoneWithVerificationDto: UpdatePhoneWithVerificationDto): Promise<boolean> {
+
+        const { phone, verificationCode, uuid } = updatePhoneWithVerificationDto;
+
+        const verificationRedisKey = this.syncdayRedisService.getPhoneVerificationKey(phone);
+        const verificationJsonString = await this.cluster.get(verificationRedisKey);
+        const verificationParam = JSON.parse(verificationJsonString as string) as Verification;
+
+        const isVerificationCodeValid = verificationParam.verificationCode === verificationCode
+            && verificationParam.uuid === uuid;
+
+        let updateSuccess = false;
+
+        if (isVerificationCodeValid) {
+            await this.syncdayRedisService.setPhoneVerificationStatus(phone, uuid, true);
+
+            updateSuccess = true;
+        }
+
+        return updateSuccess;
     }
 
     async publishSyncdayNotification(
@@ -149,7 +172,7 @@ export class VerificationService {
 
     validateCreateVerificationDto(
         createVerificationDto: CreateVerificationDto,
-        userUUID?: string
+        userUUID?: string | null | undefined
     ): boolean {
 
         const { email, phoneNumber } = createVerificationDto;
