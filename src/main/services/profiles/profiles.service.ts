@@ -36,6 +36,7 @@ export class ProfilesService {
             relations: [
                 'user',
                 'user.oauth2Accounts',
+                'team',
                 'googleIntergrations',
                 'appleCalDAVIntegrations',
                 'zoomIntegrations'

@@ -257,6 +257,13 @@ export class TokenService {
         return decoedProfileByRefreshToken$.pipe(
             map((_decoedProfileByRefreshToken) => {
 
+                const switchedTeam = _decoedProfileByRefreshToken.team as Team;
+
+                this.logger.debug({
+                    _decoedProfileByRefreshToken,
+                    switchedTeam
+                });
+
                 const extractedProfile = _decoedProfileByRefreshToken;
                 const extractedUser = {
                     id: decoedProfileByRefreshToken.userId,
@@ -264,8 +271,8 @@ export class TokenService {
                     email: decoedProfileByRefreshToken.email
                 } as Pick<User, 'id' | 'uuid' | 'email'>;
                 const extractedTeam = {
-                    id: _decoedProfileByRefreshToken.teamId,
-                    uuid: _decoedProfileByRefreshToken.teamUUID
+                    id: switchedTeam.id,
+                    uuid: switchedTeam.uuid
                 } as Pick<Team, 'id' | 'uuid'>;
                 const extractedUserSettingId = decoedProfileByRefreshToken.userSettingId;
 

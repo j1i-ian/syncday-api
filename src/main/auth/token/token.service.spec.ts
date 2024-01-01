@@ -182,7 +182,10 @@ describe('TokenService', () => {
         });
 
         it('should be issued token by refresh token', async () => {
-            const profileStub = stubOne(Profile);
+            const teamStub = stubOne(Team);
+            const profileStub = stubOne(Profile, {
+                team: teamStub
+            });
             const fakeRefreshTokenMock = 'iamfakeRefreshToken';
 
             const issuedTokenStub: CreateTokenResponseDto = {
@@ -204,10 +207,11 @@ describe('TokenService', () => {
         });
 
         it('should be issued token for team switching', async () => {
-            const teamIdMock = stubOne(Team).id;
+            const teamMockStub = stubOne(Team);
             const userIdMock = stubOne(User).id;
             const profileStub = stubOne(Profile, {
-                userId: userIdMock
+                userId: userIdMock,
+                team: teamMockStub
             });
             const fakeRefreshTokenMock = 'iamfakeRefreshToken';
 
@@ -225,7 +229,7 @@ describe('TokenService', () => {
             const signed = await firstValueFrom(
                 service.issueTokenByRefreshToken(
                     fakeRefreshTokenMock,
-                    teamIdMock,
+                    teamMockStub.id,
                     userIdMock
                 )
             );
