@@ -35,7 +35,7 @@ describe('User Integration Test', () => {
 
                 fakeUser = testIntegrationUtil.getFakeUser();
 
-                const loadedUser = await userService.findUserByEmail(fakeUser.email);
+                const loadedUser = await userService.findUserByLocalAuth(fakeUser.email);
 
                 if (loadedUser) {
                     await userService.deleteUser(loadedUser.id);
@@ -70,7 +70,7 @@ describe('User Integration Test', () => {
 
                         const { email: newFakeUserEmail } = testIntegrationUtil.setNewFakeUserEmail(true);
 
-                        const loadedUser = await userService.findUserByEmail(newFakeUserEmail);
+                        const loadedUser = await userService.findUserByLocalAuth(newFakeUserEmail);
 
                         if (loadedUser) {
                             await userService.deleteUser(loadedUser.id);
@@ -84,7 +84,7 @@ describe('User Integration Test', () => {
 
                         const { email: newFakeUserEmail } = testIntegrationUtil.setNewFakeUserEmail(true);
 
-                        const loadedUser = await userService.findUserByEmail(newFakeUserEmail);
+                        const loadedUser = await userService.findUserByLocalAuth(newFakeUserEmail);
 
                         if (loadedUser) {
                             await userService.deleteUser(loadedUser.id);
@@ -98,7 +98,7 @@ describe('User Integration Test', () => {
 
                         const fakeUser = testIntegrationUtil.setNewFakeUserEmail(true);
 
-                        const loadedUser = await userService.findUserByEmail(fakeUser.email);
+                        const loadedUser = await userService.findUserByLocalAuth(fakeUser.email);
 
                         if (!loadedUser) {
                             await testIntegrationUtil.createEmailUser(fakeUser);
@@ -111,7 +111,7 @@ describe('User Integration Test', () => {
                     initializingUserStatus: async () => {
                         const fakeUser = testIntegrationUtil.setNewFakeUserEmail(true);
 
-                        const loadedUser = await userService.findUserByEmail(fakeUser.email);
+                        const loadedUser = await userService.findUserByLocalAuth(fakeUser.email);
 
                         if (!loadedUser) {
                             await testIntegrationUtil.createEmailUser(fakeUser);

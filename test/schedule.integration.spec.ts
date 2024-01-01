@@ -62,13 +62,13 @@ describe('Schedule Integration Test', () => {
 
             const newFakeHostUser = testIntegrationUtil.setNewFakeUserEmail(true);
 
-            const loadedUser = await userService.findUserByEmail(newFakeHostUser.email);
+            const loadedUser = await userService.findUserByLocalAuth(newFakeHostUser.email);
 
             if (!loadedUser) {
                 await testIntegrationUtil.createEmailUser(newFakeHostUser);
             }
 
-            fakeHostUser = await userService.findUserByEmail(newFakeHostUser.email) as User;
+            fakeHostUser = await userService.findUserByLocalAuth(newFakeHostUser.email) as User;
 
             hostWorkspace = fakeHostUser.profiles[0].team.workspace as string;
 

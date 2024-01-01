@@ -148,7 +148,7 @@ describe('VerificationService', () => {
 
                 if (createVerificationDtoMock.email) {
                     syncdayRedisServiceStub.getEmailVerificationKey.returns(fakeKeyStubValue);
-                    userServiceStub.findUserByEmail.resolves(null);
+                    userServiceStub.findUserByLocalAuth.resolves(null);
                 } else {
                     syncdayRedisServiceStub.getPhoneVerificationKey.returns(fakeKeyStubValue);
                     userServiceStub.searchByEmailOrPhone.resolves([]);

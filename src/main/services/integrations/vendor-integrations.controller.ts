@@ -81,7 +81,7 @@ export class VendorIntegrationsController {
 
         const loadedOAuth2User = await integrationFacacde.fetchOAuth2User(issuedToken);
 
-        const loadedAppUserByEmail = await this.userService.findUserByEmail(decodedUser.email);
+        const loadedAppUserByEmail = await this.userService.findUserByLocalAuth(decodedUser.email);
 
         if (!loadedAppUserByEmail) {
             throw new BadRequestException('Invalid user request - email: ' + decodedUser.email);
@@ -134,7 +134,7 @@ export class VendorIntegrationsController {
     ): Promise<Integration> {
         const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
 
-        const loadedAppUserByEmail = await this.userService.findUserByEmail(authProfile.email);
+        const loadedAppUserByEmail = await this.userService.findUserByLocalAuth(authProfile.email);
 
         if (!loadedAppUserByEmail) {
             throw new BadRequestException('Invalid user request - email: ' + authProfile.email);

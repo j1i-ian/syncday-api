@@ -215,7 +215,7 @@ describe('Test User Service', () => {
     describe('Test user finding', () => {
         afterEach(() => {
             userRepositoryStub.findOneOrFail.reset();
-            userRepositoryStub.findOneBy.reset();
+            userRepositoryStub.findOne.reset();
         });
 
         it('should be found user by user id', async () => {
@@ -232,11 +232,13 @@ describe('Test User Service', () => {
         });
 
         it('should be found user by email', async () => {
-            const userStub = stubOne(User);
+            const userStub = stubOne(User, {
+                email: TestMockUtil.faker.internet.email()
+            });
 
             userRepositoryStub.findOne.resolves(userStub);
 
-            const loadedUser = await service.findUserByEmail(userStub.email);
+            const loadedUser = await service.findUserByLocalAuth(userStub.email);
 
             const actualPassedParam: FindOneOptions<User> =
                 userRepositoryStub.findOne.getCall(0).args[0];
@@ -248,12 +250,33 @@ describe('Test User Service', () => {
             expect(loadedUser).equal(userStub);
         });
 
+        it('should be found user by phone', async () => {
+            const userStub = stubOne(User, {
+                phone: TestMockUtil.faker.phone.number()
+            });
+
+            userRepositoryStub.findOne.resolves(userStub);
+
+            const loadedUser = await service.findUserByLocalAuth(userStub.phone);
+
+            const actualPassedParam: FindOneOptions<User> =
+                userRepositoryStub.findOne.getCall(0).args[0];
+
+            const userFindOneOptionWhere: FindOptionsWhere<User> =
+                actualPassedParam.where as FindOptionsWhere<User>;
+            expect(userFindOneOptionWhere.phone).equals(userStub.phone);
+
+            expect(loadedUser).equal(userStub);
+        });
+
         it('should be not found user by email when user is not exist', async () => {
-            const userStub = stubOne(User);
+            const userStub = stubOne(User, {
+                email: TestMockUtil.faker.internet.email()
+            });
 
             userRepositoryStub.findOne.resolves(null);
 
-            const loadedUser = await service.findUserByEmail(userStub.email);
+            const loadedUser = await service.findUserByLocalAuth(userStub.email);
 
             expect(loadedUser).not.ok;
         });
@@ -418,7 +441,7 @@ describe('Test User Service', () => {
             const availabilityStub = stubOne(Availability);
             const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
 
-            const findUserByEmailStub = serviceSandbox.stub(service, 'findUserByEmail');
+            const findUserByEmailStub = serviceSandbox.stub(service, 'findUserByLocalAuth');
 
             verificationServiceStub.isVerifiedUser.resolves(true);
             findUserByEmailStub.resolves(null);
@@ -490,7 +513,7 @@ describe('Test User Service', () => {
             });
             const plainPasswordDummy = 'test';
             const languageDummy = Language.ENGLISH;
-            serviceSandbox.stub(service, 'findUserByEmail').resolves(alreadySignedUpUser);
+            serviceSandbox.stub(service, 'findUserByLocalAuth').resolves(alreadySignedUpUser);
 
             const userStub = stubOne(User);
             const profileNameMock = 'bar';
@@ -940,7 +963,7 @@ describe('Test User Service', () => {
                 hashedPassword: plainPassword
             });
 
-            serviceSandbox.stub(service, 'findUserByEmail').resolves(userStub);
+            serviceSandbox.stub(service, 'findUserByLocalAuth').resolves(userStub);
             utilServiceStub.comparePassword.resolves(true);
 
             const validatedUserOrNull = await service.validateEmailAndPassword(
@@ -956,7 +979,7 @@ describe('Test User Service', () => {
 
             const userStub = stubOne(User);
 
-            serviceSandbox.stub(service, 'findUserByEmail').resolves(null);
+            serviceSandbox.stub(service, 'findUserByLocalAuth').resolves(null);
 
             const validatedUserOrNull = await service.validateEmailAndPassword(
                 userStub.email,
@@ -971,7 +994,7 @@ describe('Test User Service', () => {
 
             const userStub = stubOne(User);
 
-            serviceSandbox.stub(service, 'findUserByEmail').resolves(userStub);
+            serviceSandbox.stub(service, 'findUserByLocalAuth').resolves(userStub);
             utilServiceStub.comparePassword.resolves(false);
 
             const validatedUserOrNull = await service.validateEmailAndPassword(

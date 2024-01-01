@@ -267,7 +267,7 @@ describe('TokenService', () => {
             _oauth2TokenServiceStub.getOAuth2UserProfile.reset();
             _oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.reset();
 
-            userServiceStub.findUserByEmail.reset();
+            userServiceStub.findUserByLocalAuth.reset();
             profileServiceStub.createInvitedProfiles.reset();
             profileServiceStub.completeInvitation.reset();
 
@@ -497,7 +497,7 @@ describe('TokenService', () => {
 
                 evaluateIntegrationContextStub.resolves(integratinoContext);
 
-                userServiceStub.findUserByEmail.resolves(userStub);
+                userServiceStub.findUserByLocalAuth.resolves(userStub);
 
                 const createdTeamStub = stubOne(Team);
                 const createdProfileStub = stubOne(Profile);
@@ -534,7 +534,7 @@ describe('TokenService', () => {
                 expect(_oauth2TokenServiceStub.getOAuth2UserProfile.called).true;
                 expect(_oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.called).true;
 
-                expect(userServiceStub.findUserByEmail.called).true;
+                expect(userServiceStub.findUserByLocalAuth.called).true;
 
                 expect(profileServiceStub.createInvitedProfiles.called).equals(createInvitedProfilesCall);
                 expect(profileServiceStub.completeInvitation.called).equals(completeInvitationCall);
@@ -576,13 +576,13 @@ describe('TokenService', () => {
                 ]
             });
 
-            userServiceStub.findUserByEmail.resolves(userStub);
+            userServiceStub.findUserByLocalAuth.resolves(userStub);
 
             utilServiceStub.ensureIntegrationContext.returns(IntegrationContext.SIGN_UP);
         });
 
         afterEach(() => {
-            userServiceStub.findUserByEmail.reset();
+            userServiceStub.findUserByLocalAuth.reset();
 
             utilServiceStub.ensureIntegrationContext.reset();
 
@@ -606,7 +606,7 @@ describe('TokenService', () => {
             );
 
             expect(_oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.called).true;
-            expect(userServiceStub.findUserByEmail.called).true;
+            expect(userServiceStub.findUserByLocalAuth.called).true;
             expect(utilServiceStub.ensureIntegrationContext.called).true;
 
             expect(googleOAuth2UserWithToken).ok;

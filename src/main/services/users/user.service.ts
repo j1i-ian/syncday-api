@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, In, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { Observable, firstValueFrom, from, map, mergeMap, of } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
@@ -115,41 +115,20 @@ export class UserService {
         return loadedUser;
     }
 
-    async findUserByEmail(email: string): Promise<User | null> {
+    async findUserByLocalAuth(emailOrPhone: string): Promise<User | null> {
+
+        const _appJwtPayloadFindOptionsSelect = this.appJwtPayloadFindOptionsSelect;
+        const _appJwtPayloadFindOptionsRelations = this.appJwtPayloadFindOptionsRelations;
+
+        const emailFindOptionWhere = emailOrPhone.includes('@')
+            ? { email: emailOrPhone }
+            : { phone: emailOrPhone };
+
         const loadedUser = await this.userRepository.findOne({
-            relations: {
-                profiles: {
-                    googleIntergrations: true,
-                    zoomIntegrations: true,
-                    team: {
-                        teamSetting: true
-                    }
-                },
-                userSetting: true,
-                oauth2Accounts: true
-            },
-            select: {
-                id: true,
-                uuid: true,
-                email: true,
-                hashedPassword: true,
-                profiles: {
-                    uuid: true,
-                    id: true,
-                    name: true,
-                    roles: true,
-                    team: {
-                        id: true,
-                        uuid: true
-                    }
-                },
-                userSetting: {
-                    id: true,
-                    preferredTimezone: true
-                }
-            },
+            relations: _appJwtPayloadFindOptionsRelations,
+            select: _appJwtPayloadFindOptionsSelect,
             where: {
-                email,
+                ...emailFindOptionWhere,
                 profiles: {
                     default: true
                 }
@@ -163,7 +142,7 @@ export class UserService {
         email: string,
         requestPlainPassword: string
     ): Promise<User | null> {
-        const loadedUser = await this.findUserByEmail(email);
+        const loadedUser = await this.findUserByLocalAuth(email);
 
         let result = false;
         if (loadedUser) {
@@ -412,7 +391,7 @@ export class UserService {
         }
 
         if (alreadySignedUpUserCheck) {
-            const alreadySignedUser = await this.findUserByEmail(newUser.email);
+            const alreadySignedUser = await this.findUserByLocalAuth(newUser.email);
 
             if (alreadySignedUser) {
                 throw new AlreadySignedUpEmailException('Already signed up email.');
@@ -810,5 +789,42 @@ export class UserService {
         await this.syncdayRedisService.deleteWorkspaceStatus(teamSetting.workspace);
 
         return deleteSuccess;
+    }
+
+    get appJwtPayloadFindOptionsRelations(): FindOptionsRelations<User> {
+        return {
+            profiles: {
+                googleIntergrations: true,
+                zoomIntegrations: true,
+                team: {
+                    teamSetting: true
+                }
+            },
+            userSetting: true,
+            oauth2Accounts: true
+        };
+    }
+
+    get appJwtPayloadFindOptionsSelect(): FindOptionsSelect<User> {
+        return {
+            id: true,
+            uuid: true,
+            email: true,
+            hashedPassword: true,
+            profiles: {
+                uuid: true,
+                id: true,
+                name: true,
+                roles: true,
+                team: {
+                    id: true,
+                    uuid: true
+                }
+            },
+            userSetting: {
+                id: true,
+                preferredTimezone: true
+            }
+        };
     }
 }

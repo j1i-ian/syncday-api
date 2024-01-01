@@ -49,7 +49,7 @@ describe('Integration Integration Test', () => {
 
             fakeUser = testIntegrationUtil.getFakeUser();
 
-            const loadedUser = await userService.findUserByEmail(fakeUser.email);
+            const loadedUser = await userService.findUserByLocalAuth(fakeUser.email);
 
             if (loadedUser) {
                 await userService.deleteUser(loadedUser.id);
@@ -67,7 +67,7 @@ describe('Integration Integration Test', () => {
                 description: 'Host cannot add integration over limit for Google Integration',
                 initializingUserStatus: async () => {
 
-                    const loadedUser = await userService.findUserByEmail(fakeUser.email);
+                    const loadedUser = await userService.findUserByLocalAuth(fakeUser.email);
 
                     if (!loadedUser) {
 
@@ -75,7 +75,7 @@ describe('Integration Integration Test', () => {
 
                         await testIntegrationUtil.createEmailUser(newFakeUser);
 
-                        fakeUser = await userService.findUserByEmail(newFakeUser.email) as User;
+                        fakeUser = await userService.findUserByLocalAuth(newFakeUser.email) as User;
 
                         fakeUserAccessToken = testIntegrationUtil.getAccessToken(fakeUser);
 

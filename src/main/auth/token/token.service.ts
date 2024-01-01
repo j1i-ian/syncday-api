@@ -132,7 +132,7 @@ export class TokenService {
 
         let isNewbie: boolean;
 
-        let user: User | null = await this.userService.findUserByEmail(ensuredRequesterEmail);
+        let user: User | null = await this.userService.findUserByLocalAuth(ensuredRequesterEmail);
 
         let profile = user?.profiles[0] as Profile | null;
         let team = user?.profiles[0].team as Team | null;
@@ -337,7 +337,7 @@ export class TokenService {
 
         const oauth2UserEmail = oauth2TokenService.getEmailFromOAuth2UserProfile(oauth2UserProfile);
 
-        const loadedUserOrNull = await this.userService.findUserByEmail(ensuredUserEmail);
+        const loadedUserOrNull = await this.userService.findUserByLocalAuth(ensuredUserEmail);
 
         const loadedOAuth2AccountOrNull = loadedUserOrNull?.oauth2Accounts.find(
             (_oauthAccount) => _oauthAccount.email === oauth2UserEmail &&

@@ -47,7 +47,7 @@ export class VerificationService {
 
         if (email) {
             verificationRedisKey = this.syncdayRedisService.getEmailVerificationKey(email);
-            const alreadySignedUpUser = await this.userService.findUserByEmail(email);
+            const alreadySignedUpUser = await this.userService.findUserByLocalAuth(email);
             isSignUpVerification = !!alreadySignedUpUser;
         } else {
             verificationRedisKey = this.syncdayRedisService.getPhoneVerificationKey(phoneNumber as string);
