@@ -14,11 +14,15 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { Observable, map } from 'rxjs';
 import { User } from '@core/entities/users/user.entity';
-import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
+import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
+import { Language } from '@interfaces/users/language.enum';
+import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
 import { PatchUserRequestDto } from '@dto/users/patch-user-request.dto';
 import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
+import { CreateUserWithEmailVerificationDto } from '@dto/users/create-user-with-email-verification.dto';
+import { CreateUserWithPhoneVerificationDto } from '@dto/users/create-user-with-phone-verification.dto';
 import { AuthProfile } from '../../decorators/auth-profile.decorator';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
 import { UserService } from './user.service';
@@ -41,21 +45,48 @@ export class UserController {
      * Therefore this api should be public.
      *
      * @param id issued verification id
-     * @param createUserWithVerificationDto
+     * @param createUserWithEmailOrPhoneVerificationDto
      * @returns
      */
     @Post()
     @Public()
     @Header('Content-type', 'application/json')
-    createUserWithEmailVerification(
-        @Body() createUserWithVerificationDto: CreateUserWithVerificationDto
+    createUserWithEmailOrPhoneVerification(
+        @BCP47AcceptLanguage() language: Language,
+        @Body() createUserWithEmailOrPhoneVerificationDto: CreateUserWithEmailVerificationDto | CreateUserWithPhoneVerificationDto
     ): Observable<CreateUserResponseDto> {
-        const { email, verificationCode, timezone } = createUserWithVerificationDto;
-        return this.userService.createUser(
-            email,
-            verificationCode,
-            timezone
-        ).pipe(
+
+        let createUser$: Observable<CreatedUserTeamProfile>;
+
+        if (createUserWithEmailOrPhoneVerificationDto instanceof CreateUserWithEmailVerificationDto) {
+            const { email, verificationCode, timezone } = createUserWithEmailOrPhoneVerificationDto;
+
+            createUser$ = this.userService.createUser(
+                email,
+                verificationCode,
+                timezone
+            );
+        } else {
+            const {
+                phone,
+                plainPassword,
+                name,
+                uuid,
+                timezone
+            } = createUserWithEmailOrPhoneVerificationDto;
+
+            createUser$ = this.userService.createUser(
+                phone,
+                plainPassword,
+                name,
+                uuid,
+                timezone,
+                language
+            );
+
+        }
+
+        return createUser$.pipe(
             map(({ createdUser }) => plainToInstance(CreateUserResponseDto, createdUser, {
                 excludeExtraneousValues: true
             }))

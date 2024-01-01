@@ -41,6 +41,7 @@ import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
+import { AlreadySignedUpPhoneException } from '@app/exceptions/already-signed-up-phone.exception';
 import { VerificationService } from '../../auth/verification/verification.service';
 import { Language } from '../../enums/language.enum';
 import { AlreadySignedUpEmailException } from '../../exceptions/already-signed-up-email.exception';
@@ -53,6 +54,8 @@ interface CreateUserOptions {
     plainPassword?: string;
     emailVerification?: boolean;
     alreadySignedUpUserCheck?: boolean;
+    alreadySignedUpUserCheckByPhone?: boolean;
+    uuidWorkspace?: boolean;
 }
 
 @Injectable()
@@ -187,28 +190,54 @@ export class UserService {
         timezone: string
     ): Observable<CreatedUserTeamProfile>;
     createUser(
-        emailOrIntegrationVendor: string | IntegrationVendor,
-        verificationCodeOrOAuth2UserProfile: string | OAuth2AccountUserProfileMetaInfo,
+        phone: string,
+        plainPassword: string,
+        name: string,
+        uuid: string,
         timezone: string,
+        language: Language
+    ): Observable<CreatedUserTeamProfile>;
+    createUser(
+        emailOrIntegrationVendorOrPhone: string | IntegrationVendor,
+        verificationCodeOrOAuth2UserProfileOrPlainPassword: string | OAuth2AccountUserProfileMetaInfo,
+        timezoneOrName: string,
+        languageOrUUID?: string | Language,
+        timezone?: string,
         language?: Language
     ): Observable<CreatedUserTeamProfile> {
 
-        const isOAuth2SignUp = !!language;
+        const isCreateUserByPhone = !!language;
+        const isOAuth2SignUp = !!languageOrUUID;
 
-        const createUser$ = isOAuth2SignUp === false ?
-            from(
-                this._createUserWithVerificationByEmail(
-                    emailOrIntegrationVendor,
-                    verificationCodeOrOAuth2UserProfile as string,
-                    timezone
+        let createUser$: Observable<CreatedUserTeamProfile>;
+
+        if (isCreateUserByPhone) {
+            createUser$ = from(
+                this._createUserWithVerificationByPhoneNumber(
+                    emailOrIntegrationVendorOrPhone,
+                    verificationCodeOrOAuth2UserProfileOrPlainPassword as string,
+                    timezoneOrName,
+                    languageOrUUID as string,
+                    timezone as string,
+                    language
                 )
-            ) :
-            of(this.oauth2TokenServiceLocator.get(emailOrIntegrationVendor as IntegrationVendor))
+            );
+        } else if (isOAuth2SignUp === false) {
+            createUser$ = from(
+                this._createUserWithVerificationByEmail(
+                    emailOrIntegrationVendorOrPhone,
+                    verificationCodeOrOAuth2UserProfileOrPlainPassword as string,
+                    timezoneOrName
+                )
+            );
+        } else {
+
+            createUser$ = of(this.oauth2TokenServiceLocator.get(emailOrIntegrationVendorOrPhone as IntegrationVendor))
                 .pipe(
                     map((oauth2TokenService) =>
                         oauth2TokenService.converter.convertToCreateUserRequestDTO(
-                            timezone,
-                            verificationCodeOrOAuth2UserProfile as OAuth2AccountUserProfileMetaInfo
+                            timezoneOrName,
+                            verificationCodeOrOAuth2UserProfileOrPlainPassword as OAuth2AccountUserProfileMetaInfo
                         )
                     ),
                     mergeMap(({
@@ -223,11 +252,13 @@ export class UserService {
                             createUserRequestDto,
                             oauth2Token,
                             oauth2UserProfile,
-                            language as Language,
+                            languageOrUUID as Language,
                             integrationParams
                         )
                     )
                 );
+
+        }
 
         return createUser$;
     }
@@ -292,16 +323,81 @@ export class UserService {
         };
     }
 
+    async _createUserWithVerificationByPhoneNumber(
+        phone: string,
+        plainPassword: string,
+        name: string,
+        uuid: string,
+        timezone: string,
+        language: Language
+    ): Promise<CreatedUserTeamProfile> {
+
+        const isVerifiedPhoneNumber = await this.syncdayRedisService.getPhoneVerificationStatus(phone, uuid);
+
+        if (!isVerifiedPhoneNumber) {
+            throw new PhoneVertificationFailException();
+        }
+
+        const newUser = this.userRepository.create({
+            uuid,
+            phone
+        });
+
+        const {
+            createdProfile,
+            createdUser,
+            createdTeam
+        } = await this.datasource.transaction(async (transactionManager) => {
+
+            const _createdUserAndTeam = await this._createUser(transactionManager,
+                newUser,
+                name,
+                language,
+                timezone,
+                {
+                    plainPassword,
+                    uuidWorkspace: true
+                }
+            );
+
+            return _createdUserAndTeam;
+        });
+
+        const createdProfileByInvitations = await firstValueFrom(
+            this.profilesService.createInvitedProfiles(createdUser).pipe(
+                mergeMap((_profiles) => this.profilesService.completeInvitation(createdUser)
+                    .pipe(map(() => _profiles))
+                )
+            )
+        );
+
+        createdUser.profiles = [ createdProfile ].concat(createdProfileByInvitations);
+
+        return {
+            createdUser,
+            createdProfile,
+            createdTeam
+        };
+    }
+
     async _createUser(
         manager: EntityManager,
         newUser: User,
         profileName: string,
         language: Language,
         timezone: string,
-        { plainPassword, emailVerification, alreadySignedUpUserCheck }: CreateUserOptions = {
+        {
+            plainPassword,
+            emailVerification,
+            alreadySignedUpUserCheck,
+            alreadySignedUpUserCheckByPhone,
+            uuidWorkspace
+        }: CreateUserOptions = {
             plainPassword: undefined,
             emailVerification: false,
-            alreadySignedUpUserCheck: true
+            alreadySignedUpUserCheck: true,
+            alreadySignedUpUserCheckByPhone: false,
+            uuidWorkspace: false
         }
     ): Promise<CreatedUserTeamProfile> {
         /**
@@ -323,6 +419,15 @@ export class UserService {
             }
         }
 
+        if (alreadySignedUpUserCheckByPhone) {
+            const alreadySignedUsers = await this.searchByEmailOrPhone([{ phone: newUser.phone }]);
+            const alreadySignedUser = alreadySignedUsers[0];
+
+            if (alreadySignedUser) {
+                throw new AlreadySignedUpPhoneException('Already signed up phone.');
+            }
+        }
+
         const _createdUser = this.userRepository.create(newUser);
 
         const defaultUserSetting = this.utilService.getUserDefaultSetting(language, {
@@ -335,8 +440,15 @@ export class UserService {
 
         const _userRepository = manager.getRepository(User);
 
-        const emailId = _createdUser.email.replaceAll('.', '').split('@').shift();
-        const workspace = emailId || profileName;
+        /**
+         * The workspace is assigned a UUID for users who have signed up with a phone number
+         */
+        let workspace = this.utilService.uuid();
+
+        if (_createdUser.email && uuidWorkspace === false) {
+            const emailId = _createdUser.email.replaceAll('.', '').split('@').shift();
+            workspace = emailId || profileName;
+        }
 
         const alreadyUsedIn = await this.teamSettingService.fetchTeamWorkspaceStatus(
             workspace
@@ -344,11 +456,12 @@ export class UserService {
         const shouldAddRandomSuffix = alreadyUsedIn;
 
         const defaultTeamWorkspace = this.utilService.getDefaultTeamWorkspace(
-            null,
+            workspace,
             _createdUser.email,
             profileName,
             {
-                randomSuffix: shouldAddRandomSuffix
+                randomSuffix: shouldAddRandomSuffix,
+                uuidWorkspace: uuidWorkspace || false
             }
         );
 
@@ -394,24 +507,24 @@ export class UserService {
             }
         );
 
+        const initialEventGroup = new EventGroup();
+        initialEventGroup.teamId = savedTeam.id;
+
+        const eventGroupRepository = manager.getRepository(EventGroup);
+        const savedEventGroup = await eventGroupRepository.save(initialEventGroup);
+
         const initialEvent = this.utilService.getDefaultEvent({
             name: '30 Minute Meeting',
-            link: '30-minute-meeting'
+            link: '30-minute-meeting',
+            eventGroupId: savedEventGroup.id
         });
         initialEvent.availabilityId = savedAvailability.id;
 
-        const savedEvent = await this.eventsService._create(
+        await this.eventsService._create(
             manager,
             savedTeam.uuid,
             initialEvent
         );
-
-        const initialEventGroup = new EventGroup();
-        initialEventGroup.events = [savedEvent];
-        initialEventGroup.teamId = savedTeam.id;
-
-        const eventGroupRepository = manager.getRepository(EventGroup);
-        await eventGroupRepository.save(initialEventGroup);
 
         const createdUser = plainToInstance(User, savedUser);
         const createdTeam = plainToInstance(Team, savedTeam);
@@ -461,7 +574,8 @@ export class UserService {
                 newUserEmail,
                 newProfileName,
                 {
-                    randomSuffix: false
+                    randomSuffix: false,
+                    uuidWorkspace: false
                 }
             );
             const newTeamSetting = {

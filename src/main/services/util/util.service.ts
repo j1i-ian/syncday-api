@@ -518,18 +518,25 @@ export class UtilService {
         email?: string,
         profileName?: string,
         {
-            randomSuffix
+            randomSuffix,
+            uuidWorkspace
         } = {
-            randomSuffix: false
+            randomSuffix: false,
+            uuidWorkspace: false
         }
     ): string {
 
         const emailId = email?.replaceAll('.', '').split('@').shift();
 
-        workspace = workspace ??
-            emailId ??
-            profileName ??
-            this.generateUUID();
+        if (uuidWorkspace) {
+            workspace = this.generateUUID();
+        } else {
+
+            workspace = workspace ??
+                emailId ??
+                profileName ??
+                this.generateUUID();
+        }
 
         if (randomSuffix) {
             const randomNumberString = this.generateRandomNumberString(4);

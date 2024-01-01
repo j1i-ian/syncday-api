@@ -59,11 +59,11 @@ import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-in
 import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
-import { CreateUserWithVerificationDto } from '@dto/verifications/create-user-with-verification.dto';
 import { CreateTemporaryUserRequestDto } from '@dto/users/create-temporary-user-request.dto';
 import { CreateScheduledRequestDto } from '@dto/schedules/create-scheduled-request.dto';
 import { ScheduledEventResponseDto } from '@dto/schedules/scheduled-event-response.dto';
 import { CreateAppleCalDAVRequestDto } from '@dto/integrations/apple/create-apple-cal-dav-request.dto';
+import { CreateUserWithEmailVerificationDto } from '@dto/users/create-user-with-email-verification.dto';
 import { AuthModule } from '@app/auth/auth.module';
 import { VerificationController } from '@app/auth/verification/verification.controller';
 import { TokenController } from '@app/auth/token/token.controller';
@@ -180,12 +180,14 @@ export class TestIntegrationUtil {
 
         const userNameMock = 'tmp';
         const userTimezoneISO8601Seoul = 'Asia/Seoul';
+        const uuidMock = faker.datatype.uuid();
         const plainPassword = faker.internet.password();
 
         const isVerificationValid = await this.verificationController.create(
             {
                 email: fakeUser.email
             },
+            uuidMock,
             Language.ENGLISH
         );
 
@@ -216,13 +218,13 @@ export class TestIntegrationUtil {
         expect(createdTemporaryUser).ok;
 
         // (anonymous) User will sign up with verification code with own email
-        const createUserWithVerificationDto: CreateUserWithVerificationDto = {
+        const createUserWithEmailVerificationDto: CreateUserWithEmailVerificationDto = {
             email: fakeUser.email,
             timezone: userTimezoneISO8601Seoul,
             verificationCode: _generatedEmailVerificationCode.verificationCode
         };
 
-        const createdUser = await firstValueFrom(this.userController.createUserWithEmailVerification(createUserWithVerificationDto));
+        const createdUser = await firstValueFrom(this.userController.createUserWithEmailOrPhoneVerification(createUserWithEmailVerificationDto));
 
         this.logger.info(createdUser);
         expect(createdUser).ok;

@@ -4,8 +4,8 @@ import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, FindOneOptions, FindOptionsWhere, Repository } from 'typeorm';
 import { firstValueFrom, of } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
-import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
-import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
+import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -15,8 +15,6 @@ import { TeamSettingService } from '@services/team/team-setting/team-setting.ser
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { TeamService } from '@services/team/team.service';
 import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
-import { OAuth2MetaInfo } from '@services/users/oauth2-metainfo.interface';
-import { OAuth2UserProfile } from '@services/users/oauth2-user-profile.interface';
 import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { GoogleOAuth2TokenService } from '@services/oauth2/google-oauth2-token/google-oauth2-token.service';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
@@ -33,7 +31,6 @@ import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
-import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { Language } from '@app/enums/language.enum';
 import { EmailVertificationFailException } from '@app/exceptions/users/email-verification-fail.exception';
 import { PhoneVertificationFailException } from '@app/exceptions/users/phone-verification-fail.exception';
@@ -302,31 +299,20 @@ describe('Test User Service', () => {
             {
                 description: 'should be overloaded method for createUserByOAuth2',
                 getArgs: () => {
-                    const emailMock = TestMockUtil.faker.internet.email();
-                    const createUserRequestDto = {} as CreateUserRequestDto;
-                    const oauth2Token = {} as OAuthToken;
-                    const oauth2UserEmail = emailMock;
-                    const oauth2UserProfileImageUrl = TestMockUtil.faker.image.imageUrl();
+                    const integrationParams = {} as OAuth2AccountUserProfileMetaInfo;
+                    const timezoneMock = 'Asia/Seoul';
                     const language = Language.ENGLISH;
-                    const integrationParams = {} as OAuth2MetaInfo;
 
                     const args = [
-                        OAuth2Type.GOOGLE,
-                        createUserRequestDto,
-                        oauth2Token,
-                        {
-                            oauth2UserEmail,
-                            oauth2UserProfileImageUrl
-                        },
-                        language,
-                        integrationParams
+                        IntegrationVendor.GOOGLE,
+                        integrationParams,
+                        timezoneMock,
+                        language
                     ] as [
-                        OAuth2Type,
-                        CreateUserRequestDto,
-                        OAuthToken,
-                        OAuth2UserProfile,
-                        Language,
-                        Partial<OAuth2MetaInfo>
+                        IntegrationVendor,
+                        OAuth2AccountUserProfileMetaInfo,
+                        string,
+                        Language
                     ];
 
                     return args;
@@ -427,8 +413,8 @@ describe('Test User Service', () => {
             });
             const languageDummy = Language.ENGLISH;
             const defaultUserSettingStub = stubOne(UserSetting);
+            const eventGroupStub = stubOne(EventGroup);
             const defaultEventStub = stubOne(Event);
-            const eventGroupDummy = null as unknown as EventGroup;
             const availabilityStub = stubOne(Availability);
             const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
 
@@ -450,7 +436,7 @@ describe('Test User Service', () => {
 
             utilServiceStub.getDefaultEvent.returns(defaultEventStub);
             eventsServiceStub._create.resolves(defaultEventStub);
-            eventGroupRepositoryStub.save.resolves(eventGroupDummy);
+            eventGroupRepositoryStub.save.resolves(eventGroupStub);
 
             const {
                 createdUser,
@@ -558,92 +544,315 @@ describe('Test User Service', () => {
             ).rejectedWith(BadRequestException, 'Verification is not completed');
         });
 
-        describe('Test update verification by email', () => {
-            let serviceSandbox: sinon.SinonSandbox;
+        it('should be created user with phone', async () => {
+            const plainPassword = 'test';
+            const phoneNumberMock = TestMockUtil.faker.phone.number('+8210########');
 
-            beforeEach(() => {
-                serviceSandbox = sinon.createSandbox();
+            const expectedWorkspace = 'test';
+
+            const userStub = stubOne(User, {
+                phone: phoneNumberMock,
+                hashedPassword: plainPassword
             });
 
-            afterEach(() => {
-                syncdayRedisServiceStub.setEmailVerificationStatus.reset();
-                syncdayRedisServiceStub.getEmailVerification.reset();
+            const profileStub = stubOne(Profile);
+            const teamSettingStub = stubOne(TeamSetting, {
+                workspace: expectedWorkspace
+            });
+            const teamStub = stubOne(Team, {
+                teamSetting: teamSettingStub
+            });
+            const languageDummy = Language.ENGLISH;
+            const defaultUserSettingStub = stubOne(UserSetting);
+            const defaultEventStub = stubOne(Event);
+            const eventGroupStub = stubOne(EventGroup);
+            const availabilityStub = stubOne(Availability);
+            const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
 
-                serviceSandbox.reset();
-                serviceSandbox.restore();
-                utilServiceStub.comparePassword.reset();
+            const searchByEmailOrPhoneStub = serviceSandbox.stub(service, 'searchByEmailOrPhone');
 
-                notificationsServiceStub.sendWelcomeEmailForNewUser.reset();
+            verificationServiceStub.isVerifiedUser.resolves(true);
+            searchByEmailOrPhoneStub.resolves([]);
+            teamSettingServiceStub.fetchTeamWorkspaceStatus.resolves(true);
+            utilServiceStub.getUserDefaultSetting.returns(defaultUserSettingStub);
+            utilServiceStub.hash.returns(userStub.hashedPassword);
+            profilesServiceStub._create.resolves(profileStub);
+
+            teamServiceStub._create.resolves(teamStub);
+            userRepositoryStub.create.returns(userStub);
+            userRepositoryStub.save.resolves(userStub);
+            timeUtilServiceStub.getDefaultAvailableTimes.returns(availabilityBodyStub.availableTimes);
+            utilServiceStub.getDefaultAvailabilityName.returns(availabilityStub.name);
+            availabilityServiceStub._create.resolves(availabilityStub);
+
+            utilServiceStub.getDefaultEvent.returns(defaultEventStub);
+            eventsServiceStub._create.resolves(defaultEventStub);
+            eventGroupRepositoryStub.save.resolves(eventGroupStub);
+
+            const {
+                createdUser,
+                createdProfile,
+                createdTeam
+            } = await service._createUser(
+                datasourceMock as EntityManager,
+                userStub,
+                profileStub.name as string,
+                languageDummy,
+                defaultUserSettingStub.preferredTimezone,
+                {
+                    plainPassword,
+                    emailVerification: true,
+                    alreadySignedUpUserCheck: false,
+                    alreadySignedUpUserCheckByPhone: true
+                }
+            );
+
+            expect(verificationServiceStub.isVerifiedUser.called).true;
+            expect(searchByEmailOrPhoneStub.called).true;
+            expect(teamServiceStub._create.called).true;
+            expect(userRepositoryStub.create.called).true;
+            expect(teamSettingServiceStub.fetchTeamWorkspaceStatus.called).true;
+            expect(utilServiceStub.getUserDefaultSetting.called).true;
+            expect(utilServiceStub.hash.called).true;
+            expect(profilesServiceStub._create.called).true;
+
+            expect(userRepositoryStub.save.called).true;
+            expect(utilServiceStub.getDefaultEvent.called).true;
+            expect(timeUtilServiceStub.getDefaultAvailableTimes.called).true;
+            expect(utilServiceStub.getDefaultAvailabilityName.called).true;
+            expect(availabilityServiceStub._create.called).true;
+            expect(eventsServiceStub._create.called).true;
+            expect(eventGroupRepositoryStub.save.called).true;
+
+            expect(createdUser).ok;
+            expect(createdProfile).ok;
+            expect(createdUser.email).not.ok;
+            expect(createdUser.phone).ok;
+            expect(createdUser.phone).equals(phoneNumberMock);
+            expect(createdTeam.teamSetting.workspace).contains(expectedWorkspace);
+        });
+
+        it('should be not created user with phone number when user is already exist', async () => {
+            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const alreadySignedUpUserProfile = stubOne(Profile, {
+                name: 'foo',
+                default: true
+            });
+            const alreadySignedUpUser = stubOne(User, {
+                profiles: [alreadySignedUpUserProfile]
+            });
+            const plainPasswordDummy = 'test';
+            const languageDummy = Language.ENGLISH;
+            serviceSandbox.stub(service, 'searchByEmailOrPhone').resolves([alreadySignedUpUser]);
+
+            const userStub = stubOne(User);
+            const profileNameMock = 'bar';
+
+            await expect(
+                service._createUser(
+                    datasourceMock as EntityManager,
+                    userStub,
+                    profileNameMock,
+                    languageDummy,
+                    timezoneMock,
+                    {
+                        plainPassword: plainPasswordDummy,
+                        emailVerification: false,
+                        alreadySignedUpUserCheckByPhone: true
+                    })
+            ).rejectedWith(BadRequestException);
+        });
+
+    });
+
+    describe('Test user creating by _createUserWithVerificationByEmail', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            syncdayRedisServiceStub.setEmailVerificationStatus.reset();
+            syncdayRedisServiceStub.getEmailVerification.reset();
+
+            serviceSandbox.reset();
+            serviceSandbox.restore();
+            utilServiceStub.comparePassword.reset();
+
+            notificationsServiceStub.sendWelcomeEmailForNewUser.reset();
+        });
+
+        after(() => {
+            serviceSandbox.restore();
+        });
+
+        it('should be created a user with email by _createUserWithVerificationByEmail when user is not exist', async () => {
+            const emailMock = TestMockUtil.faker.internet.email();
+
+            const tempUserStub = testMockUtil.getTemporaryUser();
+            const userSettingStub = stubOne(UserSetting);
+            const teamSettingStub = stubOne(TeamSetting);
+            const userStub = stubOne(User, {
+                userSetting: userSettingStub
+            });
+            const profileStub = stubOne(Profile);
+            const teamStub = stubOne(Team, {
+                teamSetting: teamSettingStub
             });
 
-            after(() => {
-                serviceSandbox.restore();
+            const verificationStub = testMockUtil.getVerificationMock();
+            syncdayRedisServiceStub.getEmailVerification.resolves(verificationStub);
+            syncdayRedisServiceStub.getTemporaryUser.resolves(tempUserStub);
+
+            userRepositoryStub.create.returns(userStub);
+            userRepositoryStub.save.resolves(userStub);
+
+            serviceSandbox.stub(service, '_createUser').resolves({
+                createdUser: userStub,
+                createdProfile: profileStub,
+                createdTeam: teamStub
             });
 
-            it('should be verified when email and verification is matched each other', async () => {
-                const emailMock = TestMockUtil.faker.internet.email();
+            profilesServiceStub.createInvitedProfiles.returns(of([profileStub]));
+            profilesServiceStub.completeInvitation.returns(of(true));
+            notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(true);
 
-                const tempUserStub = testMockUtil.getTemporaryUser();
-                const userSettingStub = stubOne(UserSetting);
-                const teamSettingStub = stubOne(TeamSetting);
-                const userStub = stubOne(User, {
-                    userSetting: userSettingStub
-                });
-                const profileStub = stubOne(Profile);
-                const teamStub = stubOne(Team, {
-                    teamSetting: teamSettingStub
-                });
+            const { createdUser } = (await service._createUserWithVerificationByEmail(
+                emailMock,
+                verificationStub.verificationCode,
+                userSettingStub.preferredTimezone
+            ));
 
-                const verificationStub = testMockUtil.getVerificationMock();
-                syncdayRedisServiceStub.getEmailVerification.resolves(verificationStub);
-                syncdayRedisServiceStub.getTemporaryUser.resolves(tempUserStub);
+            expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).true;
+            expect(syncdayRedisServiceStub.getEmailVerification.called).true;
 
-                userRepositoryStub.create.returns(userStub);
-                userRepositoryStub.save.resolves(userStub);
+            expect(createdUser).ok;
+            expect(createdUser.id).equals(userStub.id);
 
-                serviceSandbox.stub(service, '_createUser').resolves({
-                    createdUser: userStub,
-                    createdProfile: profileStub,
-                    createdTeam: teamStub
-                });
+            expect(profilesServiceStub.createInvitedProfiles.called).ok;
+            expect(profilesServiceStub.completeInvitation.called).ok;
+            expect(notificationsServiceStub.sendWelcomeEmailForNewUser.called).ok;
+        });
 
-                profilesServiceStub.createInvitedProfiles.returns(of([profileStub]));
-                profilesServiceStub.completeInvitation.returns(of(true));
-                notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(true);
+        it('should be not created a user when email verification code is not matched', async () => {
+            const emailMock = TestMockUtil.faker.internet.email();
+            const timezoneMcok = stubOne(UserSetting).preferredTimezone;
+            const verificationCodeMock = '1423';
 
-                const { createdUser } = (await service._createUserWithVerificationByEmail(
-                    emailMock,
-                    verificationStub.verificationCode,
-                    userSettingStub.preferredTimezone
-                ));
+            syncdayRedisServiceStub.getEmailVerification.resolves(null);
 
-                expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).true;
-                expect(syncdayRedisServiceStub.getEmailVerification.called).true;
+            serviceSandbox.stub(service, '_createUser');
 
+            await expect(
+                service._createUserWithVerificationByEmail(emailMock, verificationCodeMock, timezoneMcok)
+            ).rejectedWith(EmailVertificationFailException);
+
+            expect(syncdayRedisServiceStub.getEmailVerification.called).true;
+            expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).false;
+        });
+    });
+
+    describe('Test creating user by _createUserWithVerificationByPhoneNumber', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        let _createUserStub: sinon.SinonStub;
+
+        let userStub: User;
+        let teamStub: Team;
+        let profileStub: Profile;
+
+        let invitiedProfileStub: Profile;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+
+            profileStub = stubOne(Profile);
+            teamStub = stubOne(Team);
+            userStub = stubOne(User);
+
+            _createUserStub = serviceSandbox.stub(service, '_createUser').resolves({
+                createdProfile: profileStub,
+                createdTeam: teamStub,
+                createdUser: userStub
+            });
+
+            invitiedProfileStub = stubOne(Profile);
+            profilesServiceStub.createInvitedProfiles.returns(of([invitiedProfileStub]));
+            profilesServiceStub.completeInvitation.returns(of(true));
+        });
+
+        afterEach(() => {
+            syncdayRedisServiceStub.getPhoneVerificationStatus.reset();
+
+            userRepositoryStub.create.reset();
+            _createUserStub.reset();
+
+            profilesServiceStub.createInvitedProfiles.reset();
+            profilesServiceStub.completeInvitation.reset();
+
+            serviceSandbox.reset();
+            serviceSandbox.restore();
+        });
+
+        [
+            {
+                description: 'should be created a user with phone number by _createUserWithVerificationByPhoneNumber when user is not exist'
+            }
+        ].forEach(function({
+            description
+        }) {
+
+            it(description, async () => {
+
+                const phoneNumberMock = TestMockUtil.faker.phone.number('+8210########');
+                const plainPasswordMock = TestMockUtil.faker.internet.password();
+                const nameMock = TestMockUtil.faker.name.firstName();
+                const uuidMock = TestMockUtil.faker.datatype.uuid();
+                const timezoneMock = stubOne(UserSetting).preferredTimezone;
+                const language = Language.KOREAN;
+
+                syncdayRedisServiceStub.getPhoneVerificationStatus.resolves(true);
+
+                const {
+                    createdProfile,
+                    createdTeam,
+                    createdUser
+                } = await service._createUserWithVerificationByPhoneNumber(
+                    phoneNumberMock,
+                    plainPasswordMock,
+                    nameMock,
+                    uuidMock,
+                    timezoneMock,
+                    language
+                );
+
+                expect(createdProfile).ok;
+                expect(createdTeam).ok;
                 expect(createdUser).ok;
                 expect(createdUser.id).equals(userStub.id);
-
-                expect(profilesServiceStub.createInvitedProfiles.called).ok;
-                expect(profilesServiceStub.completeInvitation.called).ok;
-                expect(notificationsServiceStub.sendWelcomeEmailForNewUser.called).ok;
             });
+        });
 
-            it('should be not verified when email and verification is not matched', async () => {
-                const emailMock = TestMockUtil.faker.internet.email();
-                const timezoneMcok = stubOne(UserSetting).preferredTimezone;
-                const verificationCodeMock = '1423';
+        it('should be not created a user when phone verification status is false', async () => {
 
-                syncdayRedisServiceStub.getEmailVerification.resolves(null);
+            const phoneNumberMock = TestMockUtil.faker.phone.number('+8210########');
+            const plainPasswordMock = TestMockUtil.faker.internet.password();
+            const nameMock = TestMockUtil.faker.name.firstName();
+            const uuidMock = TestMockUtil.faker.datatype.uuid();
+            const timezoneMock = stubOne(UserSetting).preferredTimezone;
+            const language = Language.KOREAN;
 
-                serviceSandbox.stub(service, '_createUser');
+            syncdayRedisServiceStub.getPhoneVerificationStatus.resolves(false);
 
-                await expect(
-                    service._createUserWithVerificationByEmail(emailMock, verificationCodeMock, timezoneMcok)
-                ).rejectedWith(EmailVertificationFailException);
-
-                expect(syncdayRedisServiceStub.getEmailVerification.called).true;
-                expect(syncdayRedisServiceStub.setEmailVerificationStatus.called).false;
-            });
+            await expect(service._createUserWithVerificationByPhoneNumber(
+                phoneNumberMock,
+                plainPasswordMock,
+                nameMock,
+                uuidMock,
+                timezoneMock,
+                language
+            )).rejectedWith(PhoneVertificationFailException);
         });
     });
 
