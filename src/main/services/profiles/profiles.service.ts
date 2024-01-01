@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
-import { Observable, combineLatest, from, map, mergeMap, toArray, zip } from 'rxjs';
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+import { Observable, combineLatest, defer, from, map, mergeMap, tap, toArray, zip } from 'rxjs';
 import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
+import { Role } from '@interfaces/profiles/role.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { Profile } from '@entity/profiles/profile.entity';
@@ -13,6 +14,7 @@ export class ProfilesService {
 
     constructor(
         private readonly profilesRedisRepository: ProfilesRedisRepository,
+        @InjectDataSource() private datasource: DataSource,
         @InjectRepository(Profile) private readonly profileRepository: Repository<Profile>
     ) {}
 
@@ -101,6 +103,92 @@ export class ProfilesService {
             map((updateResult) => !!(updateResult &&
                 updateResult.affected &&
                 updateResult.affected > 0))
+        );
+    }
+
+    updateRoles(
+        teamId: number,
+        profileId: number,
+        roles: Role[],
+        targetProfileId: number,
+        updateRoles: Role[]
+    ): Observable<boolean> {
+
+
+        return from(this.profileRepository.findOneByOrFail({
+            id: targetProfileId,
+            teamId
+        })).pipe(
+            tap((_loadedTargetProfile) => {
+
+                const isTargetOwner = _loadedTargetProfile.roles.includes(Role.OWNER);
+                const isOwnerPermissionRequest = isTargetOwner || updateRoles.includes(Role.OWNER);
+                const hasNoOwnerPermission = roles.includes(Role.OWNER) === false;
+                const hasNoPermission = isOwnerPermissionRequest && hasNoOwnerPermission;
+
+                if (hasNoPermission) {
+                    throw new ForbiddenException('Permission denied');
+                }
+            }),
+            mergeMap(() => {
+
+                const grantOwner$ = from(defer(() => this.datasource.transaction(async (manager) => {
+                    const _profileRepository = manager.getRepository(Profile);
+
+                    const __grantOwnerUpdateResult = await _profileRepository.update(
+                        { id: targetProfileId },
+                        {
+                            roles: _updateRoles
+                        }
+                    );
+                    const __isGrantOwnerUpdateSuccess = !!(__grantOwnerUpdateResult &&
+                        __grantOwnerUpdateResult.affected &&
+                        __grantOwnerUpdateResult.affected > 0);
+
+                    const __demotePreviousOwnerUpdateResult = await _profileRepository.update(
+                        { id: profileId },
+                        {
+                            roles: [Role.MANAGER]
+                        }
+                    );
+                    const __isDemotePreviousOwnerUpdateSuccess = !!(__demotePreviousOwnerUpdateResult &&
+                        __demotePreviousOwnerUpdateResult.affected &&
+                        __demotePreviousOwnerUpdateResult.affected > 0);
+
+                    return __isGrantOwnerUpdateSuccess && __isDemotePreviousOwnerUpdateSuccess;
+                })));
+
+                const simpleUpdate$ = from(defer(() => this.profileRepository.update(
+                    { id: targetProfileId },
+                    {
+                        roles: _updateRoles
+                    }
+                ))).pipe(
+                    map((updateResult) => !!(updateResult &&
+                        updateResult.affected &&
+                        updateResult.affected > 0)
+                    )
+                );
+
+                let _updateRoles: Role[] = [];
+                let typeormUpdateRoles$: Observable<boolean>;
+
+                if (updateRoles.includes(Role.OWNER)) {
+                    _updateRoles = [Role.MEMBER, Role.MANAGER, Role.OWNER];
+
+                    typeormUpdateRoles$ = grantOwner$;
+                } else if (updateRoles.includes(Role.MANAGER)) {
+                    _updateRoles = [Role.MEMBER, Role.MANAGER];
+
+                    typeormUpdateRoles$ = simpleUpdate$;
+                } else {
+                    _updateRoles = [Role.MEMBER];
+
+                    typeormUpdateRoles$ = simpleUpdate$;
+                }
+
+                return typeormUpdateRoles$;
+            })
         );
     }
 

@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom, of } from 'rxjs';
+import { ForbiddenException } from '@nestjs/common';
+import { Role } from '@interfaces/profiles/role.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
@@ -183,6 +185,122 @@ describe('ProfilesService', () => {
         const updateResult = await firstValueFrom(service.patch(profileIdMock, profileMock));
         expect(updateResult).ok;
         expect(profileRepositoryStub.update.called).true;
+    });
+
+    describe('Update profile roles', () => {
+
+        afterEach(() => {
+            profileRepositoryStub.findOneByOrFail.reset();
+            profileRepositoryStub.update.reset();
+        });
+
+        it('should be updated the role to manager by manager for member', async () => {
+
+            const profileMock = stubOne(Profile, {
+                roles: [Role.MANAGER]
+            });
+            const targetProfileStub = stubOne(Profile, {
+                roles: [Role.MEMBER]
+            });
+            const desireRoles = [Role.MANAGER];
+
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            profileRepositoryStub.findOneByOrFail.resolves(targetProfileStub);
+            profileRepositoryStub.update.resolves(updateResultStub);
+
+            const result = await firstValueFrom(service.updateRoles(
+                profileMock.teamId,
+                profileMock.id,
+                profileMock.roles,
+                targetProfileStub.id,
+                desireRoles
+            ));
+
+            expect(result).ok;
+            expect(profileRepositoryStub.findOneByOrFail.called).true;
+            expect(profileRepositoryStub.update.called).true;
+        });
+
+        it('should be updated the role to owner by previous owner for member or manager', async () => {
+
+            const profileMock = stubOne(Profile, {
+                roles: [Role.OWNER]
+            });
+            const targetProfileStub = stubOne(Profile, {
+                roles: [Role.MEMBER]
+            });
+            const desireRoles = [Role.OWNER];
+
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            profileRepositoryStub.findOneByOrFail.resolves(targetProfileStub);
+            profileRepositoryStub.update.resolves(updateResultStub);
+
+            const result = await firstValueFrom(service.updateRoles(
+                profileMock.teamId,
+                profileMock.id,
+                profileMock.roles,
+                targetProfileStub.id,
+                desireRoles
+            ));
+
+            expect(result).ok;
+            expect(profileRepositoryStub.findOneByOrFail.called).true;
+            expect(profileRepositoryStub.update.calledTwice).true;
+        });
+
+        it('should be not updated as promote the role to owner by manager for manager', async () => {
+
+            const profileMock = stubOne(Profile, {
+                roles: [Role.MANAGER]
+            });
+            const targetProfileStub = stubOne(Profile, {
+                roles: [Role.MANAGER]
+            });
+            const desireRoles = [Role.OWNER];
+
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            profileRepositoryStub.findOneByOrFail.resolves(targetProfileStub);
+            profileRepositoryStub.update.resolves(updateResultStub);
+
+            await expect(
+                firstValueFrom(service.updateRoles(
+                    profileMock.teamId,
+                    profileMock.id,
+                    profileMock.roles,
+                    targetProfileStub.id,
+                    desireRoles
+                ))
+            ).rejectedWith(ForbiddenException);
+        });
+
+        it('should be not updated as demote the role to manager by manager for owner', async () => {
+
+            const profileMock = stubOne(Profile, {
+                roles: [Role.MANAGER]
+            });
+            const targetProfileStub = stubOne(Profile, {
+                roles: [Role.OWNER]
+            });
+            const desireRoles = [Role.MANAGER];
+
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            profileRepositoryStub.findOneByOrFail.resolves(targetProfileStub);
+            profileRepositoryStub.update.resolves(updateResultStub);
+
+            await expect(
+                firstValueFrom(service.updateRoles(
+                    profileMock.teamId,
+                    profileMock.id,
+                    profileMock.roles,
+                    targetProfileStub.id,
+                    desireRoles
+                ))
+            ).rejectedWith(ForbiddenException);
+        });
     });
 
     it('should be completed a invitation for new user', async () => {
