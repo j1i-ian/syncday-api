@@ -17,6 +17,9 @@ import { ProfilesService } from '@services/profiles/profiles.service';
 import { UtilService } from '@services/util/util.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
+import { EventsService } from '@services/events/events.service';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { AvailabilityService } from '@services/availability/availability.service';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Order } from '@entity/orders/order.entity';
@@ -24,6 +27,8 @@ import { Product } from '@entity/products/product.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { EventGroup } from '@entity/events/event-group.entity';
+import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 
 @Injectable()
@@ -31,6 +36,7 @@ export class TeamService {
 
     constructor(
         private readonly utilService: UtilService,
+        private readonly timeUtilService: TimeUtilService,
         private readonly teamSettingService: TeamSettingService,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
@@ -39,6 +45,8 @@ export class TeamService {
         private readonly ordersService: OrdersService,
         private readonly paymentMethodService: PaymentMethodService,
         private readonly paymentsService: PaymentsService,
+        private readonly eventsService: EventsService,
+        private readonly availabilityService: AvailabilityService,
         @Inject(forwardRef(() => NotificationsService))
         private readonly notificationsService: NotificationsService,
         @InjectDataSource() private readonly datasource: DataSource,
@@ -164,6 +172,50 @@ export class TeamService {
                     const savedProfiles = await this.profilesService._create(transactionManager, _allProfiles) as Profile[];
 
                     _createdTeam.profiles = savedProfiles;
+
+                    const ownerSetting = owner.userSetting;
+                    const _createdRootProfile = savedProfiles.find((_profile) => _profile.roles.includes(Role.OWNER)) as Profile;
+
+                    const defaultAvailableTimes: AvailableTime[] = this.timeUtilService.getDefaultAvailableTimes();
+
+                    const availabilityDefaultName = this.utilService.getDefaultAvailabilityName(ownerSetting.preferredLanguage);
+
+                    const savedAvailability = await this.availabilityService._create(
+                        transactionManager,
+                        _createdTeam.uuid,
+                        _createdRootProfile.id,
+                        {
+                            availableTimes: defaultAvailableTimes,
+                            name: availabilityDefaultName,
+                            overrides: [],
+                            timezone: ownerSetting.preferredTimezone
+                        },
+                        {
+                            default: true
+                        }
+                    );
+
+                    // create a default event group
+                    const eventGroupRepository = transactionManager.getRepository(EventGroup);
+
+                    const initialEventGroup = new EventGroup();
+                    initialEventGroup.teamId = _createdTeam.id;
+
+                    const savedEventGroup = await eventGroupRepository.save(initialEventGroup);
+
+                    // create a default event
+                    const initialEvent = this.utilService.getDefaultEvent({
+                        name: '30 Minute Meeting',
+                        link: '30-minute-meeting',
+                        eventGroupId: savedEventGroup.id
+                    });
+                    initialEvent.availabilityId = savedAvailability.id;
+
+                    await this.eventsService._create(
+                        transactionManager,
+                        _createdTeam.uuid,
+                        initialEvent
+                    );
 
                     return [_createdTeam, searchedUsers] as [Team, User[]];
                 })

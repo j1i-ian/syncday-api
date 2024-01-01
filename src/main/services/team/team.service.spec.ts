@@ -14,6 +14,9 @@ import { PaymentMethodService } from '@services/payments/payment-method/payment-
 import { PaymentsService } from '@services/payments/payments.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { UtilService } from '@services/util/util.service';
+import { EventsService } from '@services/events/events.service';
+import { AvailabilityService } from '@services/availability/availability.service';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
@@ -22,6 +25,10 @@ import { Product } from '@entity/products/product.entity';
 import { Order } from '@entity/orders/order.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { Payment } from '@entity/payments/payment.entity';
+import { Availability } from '@entity/availability/availability.entity';
+import { EventGroup } from '@entity/events/event-group.entity';
+import { Event } from '@entity/events/event.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { TeamService } from './team.service';
@@ -39,10 +46,14 @@ describe('TeamService', () => {
     let ordersServiceStub: sinon.SinonStubbedInstance<OrdersService>;
     let paymentMethodServiceStub: sinon.SinonStubbedInstance<PaymentMethodService>;
     let paymentsServiceStub: sinon.SinonStubbedInstance<PaymentsService>;
+    let timeUtilServiceStub: sinon.SinonStubbedInstance<TimeUtilService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let notificationsStub: sinon.SinonStubbedInstance<NotificationsService>;
+    let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
+    let availabilityServiceStub: sinon.SinonStubbedInstance<AvailabilityService>;
 
     let teamRepositoryStub: sinon.SinonStubbedInstance<Repository<Team>>;
+    let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
 
     before(async () => {
 
@@ -53,10 +64,14 @@ describe('TeamService', () => {
         ordersServiceStub = sinon.createStubInstance(OrdersService);
         paymentMethodServiceStub = sinon.createStubInstance(PaymentMethodService);
         paymentsServiceStub = sinon.createStubInstance(PaymentsService);
+        timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
         utilServiceStub = sinon.createStubInstance(UtilService);
         notificationsStub = sinon.createStubInstance(NotificationsService);
+        eventsServiceStub = sinon.createStubInstance(EventsService);
+        availabilityServiceStub = sinon.createStubInstance(AvailabilityService);
 
         teamRepositoryStub = sinon.createStubInstance<Repository<Team>>(Repository);
+        eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
 
         module = await Test.createTestingModule({
             providers: [
@@ -90,6 +105,10 @@ describe('TeamService', () => {
                     useValue: profilesServiceStub
                 },
                 {
+                    provide: TimeUtilService,
+                    useValue: timeUtilServiceStub
+                },
+                {
                     provide: UtilService,
                     useValue: utilServiceStub
                 },
@@ -98,12 +117,24 @@ describe('TeamService', () => {
                     useValue: notificationsStub
                 },
                 {
+                    provide: EventsService,
+                    useValue: eventsServiceStub
+                },
+                {
+                    provide: AvailabilityService,
+                    useValue: availabilityServiceStub
+                },
+                {
                     provide: getDataSourceToken(),
                     useValue: datasourceMock
                 },
                 {
                     provide: getRepositoryToken(Team),
                     useValue: teamRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(EventGroup),
+                    useValue: eventGroupRepositoryStub
                 }
             ]
         }).compile();
@@ -195,6 +226,13 @@ describe('TeamService', () => {
             ordersServiceStub._updateOrderStatus.reset();
             profilesServiceStub._create.reset();
             profilesServiceStub.saveInvitedNewTeamMember.reset();
+
+            utilServiceStub.getDefaultAvailabilityName.reset();
+            availabilityServiceStub._create.reset();
+            eventGroupRepositoryStub.save.reset();
+            utilServiceStub.getDefaultEvent.reset();
+            eventsServiceStub._create.reset();
+
             utilServiceStub.filterInvitedNewUsers.reset();
             notificationsStub.sendTeamInvitationForNewUsers.reset();
 
@@ -206,7 +244,10 @@ describe('TeamService', () => {
 
         it('should be created a team with order, payment method, invitations', async () => {
 
-            const ownerUserMockStub = stubOne(User);
+            const ownerUserSettingStub = stubOne(UserSetting);
+            const ownerUserMockStub = stubOne(User, {
+                userSetting: ownerUserSettingStub
+            });
             const productStub = stubOne(Product);
             const searchedTeamMemberMocksStubs = stub(User);
 
@@ -216,7 +257,13 @@ describe('TeamService', () => {
             const paymentStub = stubOne(Payment);
 
             const profileStubs = stub(Profile);
+            profileStubs[0].roles = [Role.OWNER];
+
             const teamSettingMock = stubOne(TeamSetting);
+
+            const availabilityStub = stubOne(Availability);
+            const eventGroupStub = stubOne(EventGroup);
+            const eventStub = stubOne(Event);
 
             teamSettingServiceStub.fetchTeamWorkspaceStatus.resolves(false);
             productsServiceStub.findTeamPlanProduct.resolves(productStub);
@@ -231,9 +278,15 @@ describe('TeamService', () => {
             paymentsServiceStub._create.resolves(paymentStub);
             ordersServiceStub._updateOrderStatus.resolves(true);
             profilesServiceStub._create.resolves(profileStubs);
+
+            utilServiceStub.getDefaultAvailabilityName.returns('');
+            availabilityServiceStub._create.resolves(availabilityStub);
+            eventGroupRepositoryStub.save.resolves(eventGroupStub);
+            utilServiceStub.getDefaultEvent.returns(eventStub);
+            eventsServiceStub._create.resolves(eventStub);
+
             utilServiceStub.filterInvitedNewUsers.returns([]);
             profilesServiceStub.saveInvitedNewTeamMember.returns(of(true));
-            utilServiceStub.filterInvitedNewUsers.returns([]);
             notificationsStub.sendTeamInvitationForNewUsers.returns(of(true));
 
             const result = await firstValueFrom(service.create(
@@ -257,6 +310,13 @@ describe('TeamService', () => {
             expect(paymentsServiceStub._create.called).true;
             expect(ordersServiceStub._updateOrderStatus.called).true;
             expect(profilesServiceStub._create.called).true;
+
+            expect(utilServiceStub.getDefaultAvailabilityName.called).true;
+            expect(availabilityServiceStub._create.called).true;
+            expect(eventGroupRepositoryStub.save.called).true;
+            expect(utilServiceStub.getDefaultEvent.called).true;
+            expect(eventsServiceStub._create.called).true;
+
             expect(utilServiceStub.filterInvitedNewUsers.called).true;
             expect(notificationsStub.sendTeamInvitationForNewUsers.called).true;
 
