@@ -1,11 +1,13 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Put } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
+import { plainToInstance } from 'class-transformer';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PatchProfileRequestDto } from '@dto/profiles/patch-profile-request.dto';
+import { FetchProfileResponseDto } from '@dto/profiles/fetch-profile-response.dto';
 
 @Controller()
 export class ProfilesController {
@@ -14,13 +16,33 @@ export class ProfilesController {
         private readonly profileService: ProfilesService
     ) {}
 
+    @Get()
+    search(
+        @AuthProfile('userId') userId: number
+    ): Observable<FetchProfileResponseDto[]> {
+        return this.profileService.searchByUserId(userId).pipe(
+            map((searchedProfiles) =>
+                searchedProfiles.map(
+                    (_searchedProfile) =>
+                        plainToInstance(FetchProfileResponseDto, _searchedProfile, {
+                            excludeExtraneousValues: true
+                        })
+                )
+            )
+        );
+    }
+
     @Get(':profileId(\\d+)')
     get(
         @AuthProfile('id') profileId: number
-    ): Observable<Profile> {
+    ): Observable<FetchProfileResponseDto> {
         return this.profileService.findProfile({
             profileId
-        });
+        }).pipe(
+            map((loadedProfile) => plainToInstance(FetchProfileResponseDto, loadedProfile, {
+                excludeExtraneousValues: true
+            }))
+        );
     }
 
     @Patch(':profileId(\\d+)')

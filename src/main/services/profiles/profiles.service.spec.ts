@@ -75,6 +75,19 @@ describe('ProfilesService', () => {
             expect(profileRepositoryStub.find.called).true;
         });
 
+        it('should be searched profiles by user id', async () => {
+            const userIdMock = stubOne(User).id;
+            const profileStubs = stub(Profile);
+
+            profileRepositoryStub.find.resolves(profileStubs);
+
+            const loadedProfiles =  await firstValueFrom(service.searchByUserId(userIdMock));
+
+            expect(loadedProfiles).ok;
+            expect(loadedProfiles.length).greaterThan(0);
+            expect(profileRepositoryStub.find.called).true;
+        });
+
         it('should be found profile by profile id', async () => {
             const profileStub = stubOne(Profile);
 

@@ -26,6 +26,14 @@ export class ProfilesService {
         }));
     }
 
+    searchByUserId(userId: number): Observable<Profile[]> {
+        return from(this.profileRepository.find({
+            where: {
+                userId
+            }
+        }));
+    }
+
     findProfile(searchByProfileOption: SearchByProfileOption): Observable<Profile> {
 
         const {
