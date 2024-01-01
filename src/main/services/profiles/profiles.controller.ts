@@ -8,6 +8,7 @@ import { ProfilesService } from '@services/profiles/profiles.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PatchProfileRequestDto } from '@dto/profiles/patch-profile-request.dto';
 import { FetchProfileResponseDto } from '@dto/profiles/fetch-profile-response.dto';
+import { PatchAllProfileRequestDto } from '@dto/profiles/patch-all-profile-request.dto';
 
 @Controller()
 export class ProfilesController {
@@ -42,6 +43,18 @@ export class ProfilesController {
             map((loadedProfile) => plainToInstance(FetchProfileResponseDto, loadedProfile, {
                 excludeExtraneousValues: true
             }))
+        );
+    }
+
+    @Patch()
+    @HttpCode(HttpStatus.NO_CONTENT)
+    patchAll(
+        @AuthProfile('userId') userId: number,
+        @Body() patchAllProfileRequestDto: PatchAllProfileRequestDto
+    ): Observable<boolean> {
+        return this.profileService.patchAll(
+            userId,
+            patchAllProfileRequestDto as Partial<Profile>
         );
     }
 

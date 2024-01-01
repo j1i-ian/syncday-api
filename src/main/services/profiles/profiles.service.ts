@@ -114,6 +114,19 @@ export class ProfilesService {
         );
     }
 
+    patchAll(userId: number, partialProfile: Partial<Profile>): Observable<boolean> {
+        return from(
+            this.profileRepository.update(
+                { userId },
+                partialProfile
+            )
+        ).pipe(
+            map((updateResult) => !!(updateResult &&
+                updateResult.affected &&
+                updateResult.affected > 0))
+        );
+    }
+
     updateRoles(
         teamId: number,
         profileId: number,
