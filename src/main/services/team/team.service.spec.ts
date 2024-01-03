@@ -204,6 +204,63 @@ describe('TeamService', () => {
         });
     });
 
+    describe('Test team fetching', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        let teamQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Team>>;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+            const teamsStub = stub(Team);
+
+            teamQueryBuilderStub = stubQueryBuilder(
+                serviceSandbox,
+                Team,
+                teamsStub
+            );
+        });
+
+        afterEach(() => {
+            teamRepositoryStub.createQueryBuilder.reset();
+
+            teamQueryBuilderStub.andWhere.reset();
+            teamQueryBuilderStub.getOneOrFail.reset();
+
+            serviceSandbox.restore();
+        });
+
+        it('should be fetched a team with option', async () => {
+            const teamStub = stubOne(Team, {
+                memberCount: 12121
+            });
+            const userIdMock = stubOne(User).id;
+
+            serviceSandbox.stub(service, '__getTeamOptionQuery')
+                .returns(teamQueryBuilderStub);
+
+            teamQueryBuilderStub.getOneOrFail.resolves(teamStub);
+
+            const teamIdMock = teamStub.id;
+
+            const fetchedTeam = await firstValueFrom(
+                service.get(
+                    teamIdMock,
+                    userIdMock,
+                    {
+                        withMemberCounts: true
+                    }
+                )
+            );
+
+            expect(fetchedTeam).ok;
+            expect(fetchedTeam.memberCount).equals(teamStub.memberCount);
+
+            expect(teamRepositoryStub.createQueryBuilder.called).true;
+            expect(teamQueryBuilderStub.andWhere.called).true;
+            expect(teamQueryBuilderStub.getOneOrFail.called).true;
+        });
+    });
+
     describe('Test team creating', () => {
         let serviceSandbox: sinon.SinonSandbox;
 

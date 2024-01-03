@@ -31,9 +31,16 @@ export class TeamController {
 
     @Get(':teamId(\\d+)')
     get(
-        @AuthProfile() authProfile: AppJwtPayload
+        @AuthProfile('teamId') teamId: number,
+        @AuthProfile('userId') userId: number,
+        @Query('withMemberCounts') withMemberCounts: string | boolean
     ): Observable<Team> {
-        return this.teamService.get(authProfile.teamId);
+
+        withMemberCounts = withMemberCounts === 'true';
+
+        return this.teamService.get(teamId, userId, {
+            withMemberCounts
+        });
     }
 
     @Post()

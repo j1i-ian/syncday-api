@@ -64,11 +64,20 @@ export class TeamService {
         );
     }
 
-    get(teamId: number): Observable<Team> {
+    get(
+        teamId: number,
+        userId: number,
+        option: Partial<SearchTeamsWithOptions>
+    ): Observable<Team> {
+
+        const teamQueryBuilder = this.teamRepository.createQueryBuilder('team');
+
+        const patchedQueryBuilder = this.__getTeamOptionQuery(option, userId, teamQueryBuilder);
+
+        patchedQueryBuilder.andWhere('team.id = :teamId', { teamId });
+
         return from(
-            this.teamRepository.findOneByOrFail({
-                id: teamId
-            })
+            patchedQueryBuilder.getOneOrFail()
         );
     }
 
