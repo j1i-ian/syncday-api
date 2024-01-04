@@ -423,4 +423,33 @@ describe('ProfilesService', () => {
 
         profilesRedisRepositoryStub.deleteTeamInvitations.reset();
     });
+
+    describe('Test Profile Delete', () => {
+        it('should be removed a profile for kick a user from the team', async () => {
+
+            const teamIdMock = stubOne(Team).id;
+            const profileIdMock = stubOne(Profile).id;
+
+            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            profileRepositoryStub.delete.resolves(deleteResultStub);
+
+            await firstValueFrom(service.remove(
+                teamIdMock,
+                profileIdMock
+            ));
+        });
+    });
+
+    it('should be completed a invitation for new user', async () => {
+        profilesRedisRepositoryStub.deleteTeamInvitations.returns(of(true));
+
+        const userMock = stubOne(User);
+
+        await firstValueFrom(service.completeInvitation(userMock));
+
+        expect(profilesRedisRepositoryStub.deleteTeamInvitations.calledTwice).true;
+
+        profilesRedisRepositoryStub.deleteTeamInvitations.reset();
+    });
 });

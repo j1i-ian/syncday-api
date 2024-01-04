@@ -271,6 +271,19 @@ export class ProfilesService {
         ]).pipe(map(() => true));
     }
 
+    remove(teamId: number, profileId: number): Observable<boolean> {
+        return from(
+            this.profileRepository.delete({
+                id: profileId,
+                teamId
+            })
+        ).pipe(
+            map((deleteResult) =>!!(deleteResult &&
+                deleteResult.affected &&
+                deleteResult.affected > 0))
+        );
+    }
+
     _getWithUserData(): {
         relations: FindOptionsRelations<Profile>;
         select: FindOptionsSelect<Profile>;

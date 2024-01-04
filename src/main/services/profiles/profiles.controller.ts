@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
@@ -115,6 +115,16 @@ export class ProfilesController {
             targetProfileId,
             patchProfileRolesRequest.roles
         );
+    }
+
+    @Delete(':profileId(\\d+)')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @Roles(Role.OWNER, Role.MANAGER)
+    remove(
+        @Param('profileId') profileId: number,
+        @AuthProfile('teamId') teamId: number
+    ): Observable<boolean> {
+        return this.profileService.remove(teamId, profileId);
     }
 
     /**
