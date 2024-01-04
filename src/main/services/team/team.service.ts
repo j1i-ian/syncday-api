@@ -38,15 +38,16 @@ export class TeamService {
         private readonly utilService: UtilService,
         private readonly timeUtilService: TimeUtilService,
         private readonly teamSettingService: TeamSettingService,
-        @Inject(forwardRef(() => UserService))
-        private readonly userService: UserService,
-        private readonly profilesService: ProfilesService,
         private readonly productsService: ProductsService,
         private readonly ordersService: OrdersService,
         private readonly paymentMethodService: PaymentMethodService,
         private readonly paymentsService: PaymentsService,
         private readonly eventsService: EventsService,
         private readonly availabilityService: AvailabilityService,
+        @Inject(forwardRef(() => ProfilesService))
+        private readonly profilesService: ProfilesService,
+        @Inject(forwardRef(() => UserService))
+        private readonly userService: UserService,
         @Inject(forwardRef(() => NotificationsService))
         private readonly notificationsService: NotificationsService,
         @InjectDataSource() private readonly datasource: DataSource,
@@ -165,10 +166,8 @@ export class TeamService {
                         OrderStatus.PLACED
                     );
 
-                    const _createdProfiles = searchedUsers.map((_user) => ({
-                        teamId: _createdTeam.id,
-                        userId: _user.id
-                    } as Partial<Profile>));
+                    const _createdProfiles = searchedUsers.map((_user) => this.utilService.createNewProfile(_createdTeam.id, _user.id));
+
                     const _rootProfile = {
                         status: ProfileStatus.ACTIVATED,
                         roles: [Role.OWNER],

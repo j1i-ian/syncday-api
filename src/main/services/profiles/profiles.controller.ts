@@ -1,15 +1,17 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
 import { ProfilesService } from '@services/profiles/profiles.service';
+import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PatchProfileRequestDto } from '@dto/profiles/patch-profile-request.dto';
 import { FetchProfileResponseDto } from '@dto/profiles/fetch-profile-response.dto';
 import { PatchAllProfileRequestDto } from '@dto/profiles/patch-all-profile-request.dto';
 import { PatchProfileRolesRequest } from '@dto/profiles/patch-profile-roles-request.dto';
+import { CreateProfileRequestDto } from '@dto/profiles/create-profile-request.dto';
 
 @Controller()
 export class ProfilesController {
@@ -53,6 +55,22 @@ export class ProfilesController {
         );
     }
 
+    @Post()
+    @Roles(Role.OWNER, Role.MANAGER)
+    create(
+        @AuthProfile('teamId') teamId: number,
+        @Body() createProfileRequestDto: CreateProfileRequestDto
+    ): Observable<Profile | InvitedNewTeamMember> {
+
+        return this.profileService.create(teamId, {
+            email: createProfileRequestDto.email,
+            phone: createProfileRequestDto.phone
+        });
+    }
+
+    /**
+     * This API is used for accepting an invitation
+     */
     @Patch()
     @HttpCode(HttpStatus.NO_CONTENT)
     patchAll(
@@ -68,7 +86,7 @@ export class ProfilesController {
     @Patch(':profileId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     patch(
-        @Param('profileId') profileId: number,
+        @AuthProfile('id') profileId: number,
         @Body() patchProfileRequestDto: PatchProfileRequestDto
     ): Observable<boolean> {
         return this.profileService.patch(profileId, patchProfileRequestDto as Partial<Profile>);

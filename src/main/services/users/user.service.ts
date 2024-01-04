@@ -66,18 +66,19 @@ export class UserService {
         private readonly utilService: UtilService,
         private readonly syncdayRedisService: SyncdayRedisService,
         private readonly oauth2AccountService: OAuth2AccountsService,
-        private readonly profilesService: ProfilesService,
         private readonly teamSettingService: TeamSettingService,
         private readonly availabilityService: AvailabilityService,
         private readonly notificationsService: NotificationsService,
         private readonly googleIntegrationService: GoogleIntegrationsService,
+        private readonly eventsService: EventsService,
+        private readonly eventRedisRepository: EventsRedisRepository,
+        private readonly availabilityRedisRepository: AvailabilityRedisRepository,
+        @Inject(forwardRef(() => ProfilesService))
+        private readonly profilesService: ProfilesService,
         @Inject(forwardRef(() => VerificationService))
         private readonly verificationService: VerificationService,
         @Inject(forwardRef(() => TeamService))
         private readonly teamService: TeamService,
-        private readonly eventsService: EventsService,
-        private readonly eventRedisRepository: EventsRedisRepository,
-        private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}

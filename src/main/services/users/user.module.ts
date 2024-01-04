@@ -27,11 +27,11 @@ import { OAuth2AccountsModule } from './oauth2-accounts/oauth2-accounts.module';
         OAuth2Module,
         SyncdayRedisModule,
         OAuth2AccountsModule,
-        ProfilesModule,
         TeamSettingModule,
         AvailabilityModule,
         NotificationsModule,
         GoogleIntegrationModule,
+        forwardRef(() => ProfilesModule),
         forwardRef(() => VerificationModule),
         // FIXME: remove this coupling after splitting sendMessage from integration module
         forwardRef(() => TeamModule),

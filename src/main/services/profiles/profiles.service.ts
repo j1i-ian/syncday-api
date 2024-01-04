@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, Repository } from 'typeorm';
 import { Observable, combineLatest, defer, from, map, mergeMap, tap, toArray, zip } from 'rxjs';
@@ -6,6 +6,8 @@ import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-op
 import { Role } from '@interfaces/profiles/role.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
+import { UserService } from '@services/users/user.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { User } from '@entity/users/user.entity';
 
@@ -14,6 +16,9 @@ export class ProfilesService {
 
     constructor(
         private readonly profilesRedisRepository: ProfilesRedisRepository,
+        private readonly notificationsService: NotificationsService,
+        @Inject(forwardRef(() => UserService))
+        private readonly userService: UserService,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(Profile) private readonly profileRepository: Repository<Profile>
     ) {}
@@ -78,6 +83,36 @@ export class ProfilesService {
                 userId
             }
         }));
+    }
+
+    create(
+        teamId: number,
+        invitedNewUser: Pick<Partial<User>, 'email' | 'phone'>
+    ): Observable<Profile | InvitedNewTeamMember> {
+        return from(this.userService.searchByEmailOrPhone([
+            { email: invitedNewUser.email },
+            { phone: invitedNewUser.phone }
+        ])).pipe(
+            map((searchedUsers) => searchedUsers.length > 0 ? searchedUsers.pop() : null),
+            map((searchedUser) =>
+                [
+                    searchedUser,
+                    [{ teamId, ...invitedNewUser }] as InvitedNewTeamMember[]
+                ] as [User, InvitedNewTeamMember[]]),
+            mergeMap(([ searchedUser, invitedNewTeamMembers ]: [User, InvitedNewTeamMember[]]) => (
+                this.saveInvitedNewTeamMember(teamId, invitedNewTeamMembers)
+                // create a profile then link to the user
+                    .pipe(
+                        mergeMap(() =>
+                            searchedUser ? this.createInvitedProfiles(searchedUser)
+                                : // create a profile for new user
+                                this.notificationsService.sendTeamInvitationForNewUsers(invitedNewTeamMembers)
+                                    .pipe(map(() => invitedNewTeamMembers))
+                        ),
+                        map((createdProfiles) => createdProfiles[0])
+                    )
+            ))
+        );
     }
 
     createInvitedProfiles(

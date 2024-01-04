@@ -5,6 +5,8 @@ import { firstValueFrom, of } from 'rxjs';
 import { ForbiddenException } from '@nestjs/common';
 import { Role } from '@interfaces/profiles/role.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
+import { UserService } from '@services/users/user.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { User } from '@entity/users/user.entity';
@@ -18,13 +20,19 @@ describe('ProfilesService', () => {
 
     let module: TestingModule;
 
+    let userServiceStub: sinon.SinonStubbedInstance<UserService>;
+    let notificationServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
+
     let profilesRedisRepositoryStub: sinon.SinonStubbedInstance<ProfilesRedisRepository>;
 
     let profileRepositoryStub: sinon.SinonStubbedInstance<Repository<Profile>>;
 
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
-    beforeEach(async () => {
+    before(async () => {
+
+        userServiceStub = sinon.createStubInstance(UserService);
+        notificationServiceStub = sinon.createStubInstance(NotificationsService);
 
         profilesRedisRepositoryStub = sinon.createStubInstance<ProfilesRedisRepository>(ProfilesRedisRepository);
 
@@ -33,6 +41,14 @@ describe('ProfilesService', () => {
         module = await Test.createTestingModule({
             providers: [
                 ProfilesService,
+                {
+                    provide: NotificationsService,
+                    useValue: notificationServiceStub
+                },
+                {
+                    provide: UserService,
+                    useValue: userServiceStub
+                },
                 {
                     provide: ProfilesRedisRepository,
                     useValue: profilesRedisRepositoryStub
@@ -95,7 +111,7 @@ describe('ProfilesService', () => {
 
             const loadedUser =  await firstValueFrom(service.findProfile({
                 profileId: profileStub.id
-            }, {}));
+            }));
 
             const actualPassedParam = profileRepositoryStub.findOneOrFail.getCall(0).args[0];
             expect((actualPassedParam.where as FindOptionsWhere<Profile>).id).equals(profileStub.id);
@@ -104,7 +120,85 @@ describe('ProfilesService', () => {
         });
     });
 
-    describe('Test creating profile', () => {
+    describe('Test creating a profile for invitation', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+
+        });
+
+        afterEach(() => {
+
+            userServiceStub.searchByEmailOrPhone.reset();
+
+            notificationServiceStub.sendTeamInvitationForNewUsers.reset();
+
+            serviceSandbox.restore();
+        });
+
+        [
+            {
+                description: 'should be created a profile as invitation for sync user',
+                createInvitedProfilesCall: true,
+                sendTeamInvitationForNewUsersCall: false,
+                getSearchedUserStubs: () => {
+                    const syncUserStub = stubOne(User);
+                    return [ syncUserStub ];
+                }
+            },
+            {
+                description: 'should be created a profile as invitation for new user',
+                createInvitedProfilesCall: false,
+                sendTeamInvitationForNewUsersCall: true,
+                getSearchedUserStubs: () => []
+            }
+        ].forEach(function({
+            description,
+            createInvitedProfilesCall,
+            sendTeamInvitationForNewUsersCall,
+            getSearchedUserStubs
+        }) {
+
+            it(description, async () => {
+
+                const invitiedNewUserMock = stubOne(User);
+                const teamIdMock = stubOne(Team).id;
+                const profileStub = stubOne(Profile);
+                const userStubs = getSearchedUserStubs();
+
+                userServiceStub.searchByEmailOrPhone.resolves(userStubs);
+
+                const saveInvitedNewTeamMemberStub = serviceSandbox.stub(
+                    service,
+                    'saveInvitedNewTeamMember'
+                ).returns(of(true));
+
+                const createInvitedProfilesStub = serviceSandbox.stub(
+                    service,
+                    'createInvitedProfiles'
+                ).returns(of([profileStub]));
+
+                notificationServiceStub.sendTeamInvitationForNewUsers.returns(of(true));
+
+                const createdProfile = await firstValueFrom(
+                    service.create(
+                        teamIdMock,
+                        invitiedNewUserMock
+                    )
+                );
+
+                expect(createdProfile).ok;
+                expect(userServiceStub.searchByEmailOrPhone.called).true;
+                expect(saveInvitedNewTeamMemberStub.called).true;
+                expect(createInvitedProfilesStub.called).equals(createInvitedProfilesCall);
+                expect(notificationServiceStub.sendTeamInvitationForNewUsers.called).equals(sendTeamInvitationForNewUsersCall);
+            });
+        });
+
+    });
+
+    describe('Test creating profile with transaction', () => {
 
         afterEach(() => {
             profileRepositoryStub.create.reset();

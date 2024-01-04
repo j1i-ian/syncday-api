@@ -281,6 +281,7 @@ describe('TeamService', () => {
             ordersServiceStub._create.reset();
             paymentsServiceStub._create.reset();
             ordersServiceStub._updateOrderStatus.reset();
+            utilServiceStub.createNewProfile.reset();
             profilesServiceStub._create.reset();
             profilesServiceStub.saveInvitedNewTeamMember.reset();
 
@@ -334,6 +335,7 @@ describe('TeamService', () => {
             ordersServiceStub._create.resolves(orderMockStub);
             paymentsServiceStub._create.resolves(paymentStub);
             ordersServiceStub._updateOrderStatus.resolves(true);
+            utilServiceStub.createNewProfile.resolves(profileStubs);
             profilesServiceStub._create.resolves(profileStubs);
 
             utilServiceStub.getDefaultAvailabilityName.returns('');
@@ -366,6 +368,7 @@ describe('TeamService', () => {
             expect(ordersServiceStub._create.called).true;
             expect(paymentsServiceStub._create.called).true;
             expect(ordersServiceStub._updateOrderStatus.called).true;
+            expect(utilServiceStub.createNewProfile.called).true;
             expect(profilesServiceStub._create.called).true;
 
             expect(utilServiceStub.getDefaultAvailabilityName.called).true;

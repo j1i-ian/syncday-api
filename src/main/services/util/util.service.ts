@@ -34,6 +34,7 @@ import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { Host } from '@entity/schedules/host.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Language } from '@app/enums/language.enum';
+import { NewProfile } from '@app/interfaces/profiles/new-profile.type';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 
 interface UserDefaultSettingOption {
@@ -61,6 +62,16 @@ type EventDetailInit = Omit<EventDetail,
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
+
+    createNewProfile(
+        teamId: number,
+        userId: number
+    ): NewProfile {
+        return {
+            teamId,
+            userId
+        } as NewProfile;
+    }
 
     convertIntegrationVendorToOAuth2Type(
         integrationVendor: IntegrationVendor
