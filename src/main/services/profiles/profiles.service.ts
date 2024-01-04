@@ -32,8 +32,9 @@ export class ProfilesService {
     }
 
     searchByUserId(
-        userId: number,
         {
+            userId,
+            teamId,
             withUserData
         }: Partial<SearchByProfileOption>
     ): Observable<Profile[]> {
@@ -55,7 +56,8 @@ export class ProfilesService {
             select,
             relations,
             where: {
-                userId
+                userId,
+                teamId
             }
         }));
     }

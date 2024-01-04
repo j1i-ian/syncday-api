@@ -97,7 +97,9 @@ describe('ProfilesService', () => {
 
             profileRepositoryStub.find.resolves(profileStubs);
 
-            const loadedProfiles =  await firstValueFrom(service.searchByUserId(userIdMock, {}));
+            const loadedProfiles =  await firstValueFrom(service.searchByUserId({
+                userId: userIdMock
+            }));
 
             expect(loadedProfiles).ok;
             expect(loadedProfiles.length).greaterThan(0);

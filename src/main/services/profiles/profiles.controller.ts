@@ -4,6 +4,7 @@ import { plainToInstance } from 'class-transformer';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
+import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { Profile } from '@entity/profiles/profile.entity';
@@ -23,14 +24,19 @@ export class ProfilesController {
     @Get()
     search(
         @AuthProfile('userId') userId: number,
-        @Query('withUserData') withUserDataString: string | boolean
+        @AuthProfile('teamId') teamId: number,
+        @Query('userId') userIdQuery?: number | undefined,
+        @Query('teamId') teamIdQuery?: number | undefined,
+        @Query('withUserData') withUserDataString?: string | boolean | undefined
     ): Observable<FetchProfileResponseDto[]> {
 
-        const withUserData = withUserDataString === 'true' || withUserDataString === true;
+        const options: Partial<SearchByProfileOption> = {
+            userId: userIdQuery ? userId : undefined,
+            teamId: teamIdQuery ? teamId : undefined,
+            withUserData: withUserDataString === 'true' || withUserDataString === true
+        };
 
-        return this.profileService.searchByUserId(userId, {
-            withUserData
-        }).pipe(
+        return this.profileService.searchByUserId(options).pipe(
             map((searchedProfiles) =>
                 searchedProfiles.map(
                     (_searchedProfile) =>
