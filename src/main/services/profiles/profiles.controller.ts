@@ -5,6 +5,7 @@ import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
 import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { Profile } from '@entity/profiles/profile.entity';
@@ -23,18 +24,17 @@ export class ProfilesController {
 
     @Get()
     search(
-        @AuthProfile('userId') userId: number,
-        @AuthProfile('teamId') teamId: number,
-        @Query('userId') userIdQuery?: number | undefined,
-        @Query('teamId') teamIdQuery?: number | undefined,
-        @Query('withUserData') withUserDataString?: string | boolean | undefined
+        @AuthProfile() authProfile: AppJwtPayload,
+        @Query() searchOptions: Partial<SearchByProfileOption>,
+        @Query('withUserData') withUserDataString: string | boolean | undefined
     ): Observable<FetchProfileResponseDto[]> {
 
-        const options: Partial<SearchByProfileOption> = {
-            userId: userIdQuery ? userId : undefined,
-            teamId: teamIdQuery ? teamId : undefined,
-            withUserData: withUserDataString === 'true' || withUserDataString === true
-        };
+        searchOptions.withUserData = withUserDataString === 'true' || withUserDataString === true;
+
+        const options = this._parseSearchOption(
+            authProfile,
+            searchOptions
+        );
 
         return this.profileService.searchByUserId(options).pipe(
             map((searchedProfiles) =>
@@ -115,5 +115,35 @@ export class ProfilesController {
             targetProfileId,
             patchProfileRolesRequest.roles
         );
+    }
+
+    /**
+     * query param's existence indicates that field is used as an search option
+     */
+    _parseSearchOption(
+        {
+            teamId: authTeamId,
+            userId: authUserId
+        }: Pick<AppJwtPayload, 'userId' | 'teamId'>,
+        {
+            teamId,
+            userId,
+            withUserData
+        }: Partial<SearchByProfileOption>
+    ): Partial<SearchByProfileOption> {
+
+        const teamIdOption = teamId ? authTeamId : undefined;
+
+        const isAllSearchOptionDisabled = teamIdOption === undefined || userId;
+
+        const userIdOption = isAllSearchOptionDisabled
+            ? authUserId
+            : undefined;
+
+        return {
+            userId: userIdOption,
+            teamId: teamIdOption,
+            withUserData
+        };
     }
 }

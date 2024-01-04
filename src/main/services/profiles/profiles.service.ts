@@ -39,26 +39,17 @@ export class ProfilesService {
         }: Partial<SearchByProfileOption>
     ): Observable<Profile[]> {
 
-        let relations: FindOptionsRelations<Profile> = [] as FindOptionsRelations<Profile>;
-        let select: FindOptionsSelect<Profile> = {};
-
-        if (withUserData) {
-            relations = ['user'] as FindOptionsRelations<Profile>;
-            select = {
-                user: {
-                    email: true,
-                    phone: true
-                }
-            };
-        }
+        const withUserDataOption = withUserData
+            ? this._getWithUserData()
+            : {};
 
         return from(this.profileRepository.find({
-            select,
-            relations,
+            ...withUserDataOption,
             where: {
                 userId,
                 teamId
-            }
+            },
+            take: 20
         }));
     }
 
@@ -278,5 +269,24 @@ export class ProfilesService {
             this.profilesRedisRepository.deleteTeamInvitations(user.email),
             this.profilesRedisRepository.deleteTeamInvitations(user.phone)
         ]).pipe(map(() => true));
+    }
+
+    _getWithUserData(): {
+        relations: FindOptionsRelations<Profile>;
+        select: FindOptionsSelect<Profile>;
+    } {
+
+        const relations = ['user'] as FindOptionsRelations<Profile>;
+        const select = {
+            user: {
+                email: true,
+                phone: true
+            }
+        };
+
+        return {
+            relations,
+            select
+        };
     }
 }
