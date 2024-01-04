@@ -73,7 +73,7 @@ export class GoogleIntegrationsService implements
         });
     }
 
-    findOne(profileSearchOption: SearchByProfileOption): Promise<Integration | null> {
+    findOne(profileSearchOption: Partial<SearchByProfileOption>): Promise<Integration | null> {
         return this.googleIntegrationRepository.findOne({
             where: {
                 profiles: {

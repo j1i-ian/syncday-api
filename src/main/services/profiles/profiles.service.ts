@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, Repository } from 'typeorm';
 import { Observable, combineLatest, defer, from, map, mergeMap, tap, toArray, zip } from 'rxjs';
 import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { Role } from '@interfaces/profiles/role.enum';
@@ -26,15 +26,36 @@ export class ProfilesService {
         }));
     }
 
-    searchByUserId(userId: number): Observable<Profile[]> {
+    searchByUserId(
+        userId: number,
+        {
+            withUserData
+        }: Partial<SearchByProfileOption>
+    ): Observable<Profile[]> {
+
+        let relations: FindOptionsRelations<Profile> = [] as FindOptionsRelations<Profile>;
+        let select: FindOptionsSelect<Profile> = {};
+
+        if (withUserData) {
+            relations = ['user'] as FindOptionsRelations<Profile>;
+            select = {
+                user: {
+                    email: true,
+                    phone: true
+                }
+            };
+        }
+
         return from(this.profileRepository.find({
+            select,
+            relations,
             where: {
                 userId
             }
         }));
     }
 
-    findProfile(searchByProfileOption: SearchByProfileOption): Observable<Profile> {
+    findProfile(searchByProfileOption: Partial<SearchByProfileOption>): Observable<Profile> {
 
         const {
             profileId,
@@ -135,7 +156,6 @@ export class ProfilesService {
         updateRoles: Role[]
     ): Observable<boolean> {
 
-
         return from(this.profileRepository.findOneByOrFail({
             id: targetProfileId,
             teamId
@@ -155,6 +175,7 @@ export class ProfilesService {
 
                 const grantOwner$ = from(defer(() => this.datasource.transaction(async (manager) => {
                     const _profileRepository = manager.getRepository(Profile);
+
 
                     const __grantOwnerUpdateResult = await _profileRepository.update(
                         { id: targetProfileId },

@@ -49,7 +49,7 @@ export class ZoomIntegrationsService implements
         throw new Error('Method not implemented.');
     }
 
-    async search(profileSearchOption: SearchByProfileOption): Promise<Integration[]> {
+    async search(profileSearchOption: Partial<SearchByProfileOption>): Promise<Integration[]> {
 
         const { profileId } = profileSearchOption;
 
@@ -82,7 +82,7 @@ export class ZoomIntegrationsService implements
         });
     }
 
-    findOne(searchZoomIntegrationOptions: SearchZoomIntegrationOptions): Promise<ZoomIntegration | null> {
+    findOne(searchZoomIntegrationOptions: Partial<SearchZoomIntegrationOptions>): Promise<ZoomIntegration | null> {
 
         const { profileId } = searchZoomIntegrationOptions;
 

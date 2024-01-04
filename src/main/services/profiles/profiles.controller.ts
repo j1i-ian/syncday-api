@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Put } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Put, Query } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
@@ -9,6 +9,7 @@ import { Profile } from '@entity/profiles/profile.entity';
 import { PatchProfileRequestDto } from '@dto/profiles/patch-profile-request.dto';
 import { FetchProfileResponseDto } from '@dto/profiles/fetch-profile-response.dto';
 import { PatchAllProfileRequestDto } from '@dto/profiles/patch-all-profile-request.dto';
+import { PatchProfileRolesRequest } from '@dto/profiles/patch-profile-roles-request.dto';
 
 @Controller()
 export class ProfilesController {
@@ -19,9 +20,15 @@ export class ProfilesController {
 
     @Get()
     search(
-        @AuthProfile('userId') userId: number
+        @AuthProfile('userId') userId: number,
+        @Query('withUserData') withUserDataString: string | boolean
     ): Observable<FetchProfileResponseDto[]> {
-        return this.profileService.searchByUserId(userId).pipe(
+
+        const withUserData = withUserDataString === 'true' || withUserDataString === true;
+
+        return this.profileService.searchByUserId(userId, {
+            withUserData
+        }).pipe(
             map((searchedProfiles) =>
                 searchedProfiles.map(
                     (_searchedProfile) =>
@@ -61,7 +68,7 @@ export class ProfilesController {
     @Patch(':profileId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     patch(
-        @AuthProfile('id') profileId: number,
+        @Param('profileId') profileId: number,
         @Body() patchProfileRequestDto: PatchProfileRequestDto
     ): Observable<boolean> {
         return this.profileService.patch(profileId, patchProfileRequestDto as Partial<Profile>);
@@ -75,14 +82,14 @@ export class ProfilesController {
         @AuthProfile('roles') roles: Role[],
         @AuthProfile('teamId') teamId: number,
         @Param('profileId') targetProfileId: number,
-        @Body() updateRoles: Role[]
+        @Body() patchProfileRolesRequest: PatchProfileRolesRequest
     ): Observable<boolean> {
         return this.profileService.updateRoles(
             teamId,
             profileId,
             roles,
             targetProfileId,
-            updateRoles
+            patchProfileRolesRequest.roles
         );
     }
 }
