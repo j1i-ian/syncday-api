@@ -1,4 +1,15 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Query } from '@nestjs/common';
+import {
+    BadRequestException,
+    Body,
+    Controller,
+    Delete,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Patch,
+    Post,
+    Query
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
@@ -87,5 +98,14 @@ export class TeamController {
             name: patchTeamRequestDto.name,
             logo: patchTeamRequestDto.logo
         });
+    }
+
+    @Delete(':teamId(\\d+)')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @Roles(Role.OWNER)
+    remove(
+        @AuthProfile('teamId') authTeamId: number
+    ): Observable<boolean> {
+        return this.teamService.delete(authTeamId);
     }
 }

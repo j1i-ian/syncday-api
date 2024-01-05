@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, from, map } from 'rxjs';
+import { Observable, from, iif, map, mergeMap, of, throwError } from 'rxjs';
 import { EntityManager, Repository } from 'typeorm';
 import { TeamSettingSearchOption } from '@interfaces/teams/team-settings/team-setting-search-option.interface';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
@@ -139,5 +139,36 @@ export class TeamSettingService {
         const workspaceStatus = await this.syncdayRedisService.setWorkspaceStatus(newWorkspace);
 
         return workspaceStatus;
+    }
+
+    _delete(
+        transactionManager: EntityManager,
+        teamSettingId: number
+    ): Observable<boolean> {
+
+        return of(transactionManager.getRepository(TeamSetting))
+            .pipe(
+                mergeMap((teamSettingRepository) =>
+                    from(teamSettingRepository.delete(teamSettingId))
+                ),
+                map((deleteResult) =>
+                    !!(deleteResult
+                        && deleteResult.affected
+                        && deleteResult.affected > 0)
+                ),
+                map(
+                    (deleteSuccess) => iif(
+                        () => deleteSuccess,
+                        of(true),
+                        throwError(() => new NotFoundException('Team setting does not exist'))
+                    )
+                ),
+                mergeMap(() => this.teamSettingRepository.findOneByOrFail({ id: teamSettingId })),
+                mergeMap((teamSetting) =>
+                    from(this.syncdayRedisService.deleteWorkspaceStatus(
+                        teamSetting.workspace
+                    ))
+                )
+            );
     }
 }

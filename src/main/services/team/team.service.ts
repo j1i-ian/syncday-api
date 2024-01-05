@@ -1,5 +1,5 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { Observable, combineLatest, from, map, mergeMap, tap } from 'rxjs';
+import { Observable, combineLatest, concat, defer, firstValueFrom, from, map, mergeMap, of, reduce, tap } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
@@ -283,6 +283,37 @@ export class TeamService {
                 updateResult.affected &&
                 updateResult.affected > 0))
         );
+    }
+
+    delete(teamId: number): Observable<boolean> {
+        return from(
+            defer(() =>
+                this.datasource.transaction((transactionManager) =>
+                    firstValueFrom(
+                        concat(
+                            this._delete(transactionManager, teamId),
+                            this.teamSettingService._delete(
+                                transactionManager,
+                                teamId
+                            )
+                        ).pipe(
+                            reduce((acc, curr) => acc && curr)
+                        )
+                    )
+                )
+            )
+        );
+    }
+
+    _delete(transactionManager: EntityManager, teamId: number): Observable<boolean> {
+
+        return of(transactionManager.getRepository(Team))
+            .pipe(
+                mergeMap(() => this.teamRepository.delete(teamId)),
+                map((deleteResult) => !!(deleteResult &&
+                    deleteResult.affected &&
+                    deleteResult.affected > 0))
+            );
     }
 
     __getTeamOptionQuery(
