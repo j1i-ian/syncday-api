@@ -218,7 +218,7 @@ export class ProfilesService {
                     const __demotePreviousOwnerUpdateResult = await _profileRepository.update(
                         { id: profileId },
                         {
-                            roles: [Role.MANAGER]
+                            roles: [Role.MEMBER, Role.MANAGER]
                         }
                     );
                     const __isDemotePreviousOwnerUpdateSuccess = !!(__demotePreviousOwnerUpdateResult &&

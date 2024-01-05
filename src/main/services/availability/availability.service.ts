@@ -30,7 +30,7 @@ export class AvailabilityService {
     ) {}
 
     search(
-        searchOption: SearchTeamsWithOptions | SearchByProfileOption,
+        searchOption: SearchTeamsWithOptions | Partial<SearchByProfileOption>,
         roles: Role[]
     ): Observable<Availability[]> {
 
@@ -42,7 +42,7 @@ export class AvailabilityService {
                     teamId: (searchOption as SearchTeamsWithOptions).teamId
                 }
             } : {
-                profileId: (searchOption as SearchByProfileOption).profileId
+                profileId: (searchOption as Partial<SearchByProfileOption>).profileId
             };
 
         return forkJoin({

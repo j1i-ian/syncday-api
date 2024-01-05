@@ -306,7 +306,7 @@ describe('ProfilesService', () => {
         it('should be updated the role to manager by manager for member', async () => {
 
             const profileMock = stubOne(Profile, {
-                roles: [Role.MANAGER]
+                roles: [Role.MEMBER, Role.MANAGER]
             });
             const targetProfileStub = stubOne(Profile, {
                 roles: [Role.MEMBER]
@@ -334,7 +334,7 @@ describe('ProfilesService', () => {
         it('should be updated the role to owner by previous owner for member or manager', async () => {
 
             const profileMock = stubOne(Profile, {
-                roles: [Role.OWNER]
+                roles: [Role.MEMBER, Role.MANAGER, Role.OWNER]
             });
             const targetProfileStub = stubOne(Profile, {
                 roles: [Role.MEMBER]
@@ -362,10 +362,10 @@ describe('ProfilesService', () => {
         it('should be not updated as promote the role to owner by manager for manager', async () => {
 
             const profileMock = stubOne(Profile, {
-                roles: [Role.MANAGER]
+                roles: [Role.MEMBER, Role.MANAGER]
             });
             const targetProfileStub = stubOne(Profile, {
-                roles: [Role.MANAGER]
+                roles: [Role.MEMBER, Role.MANAGER]
             });
             const desireRoles = [Role.OWNER];
 
@@ -388,12 +388,12 @@ describe('ProfilesService', () => {
         it('should be not updated as demote the role to manager by manager for owner', async () => {
 
             const profileMock = stubOne(Profile, {
-                roles: [Role.MANAGER]
+                roles: [Role.MEMBER, Role.MANAGER]
             });
             const targetProfileStub = stubOne(Profile, {
-                roles: [Role.OWNER]
+                roles: [Role.MEMBER, Role.MANAGER, Role.OWNER]
             });
-            const desireRoles = [Role.MANAGER];
+            const desireRoles = [Role.MEMBER, Role.MANAGER];
 
             const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 

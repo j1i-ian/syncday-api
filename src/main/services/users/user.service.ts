@@ -10,6 +10,7 @@ import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { Role } from '@interfaces/profiles/role.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -462,6 +463,7 @@ export class UserService {
             {
                 name: profileName,
                 default: true,
+                status: ProfileStatus.ACTIVATED,
                 roles: [Role.OWNER],
                 teamId: savedTeam.id,
                 userId: savedUser.id
