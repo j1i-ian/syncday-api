@@ -1,13 +1,16 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, Repository } from 'typeorm';
-import { Observable, combineLatest, defer, from, map, mergeMap, tap, toArray, zip } from 'rxjs';
+import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, Repository, UpdateResult } from 'typeorm';
+import { Observable, combineLatest, defer, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, toArray, zip } from 'rxjs';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { Role } from '@interfaces/profiles/role.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
+import { UtilService } from '@services/util/util.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { User } from '@entity/users/user.entity';
 
@@ -15,8 +18,10 @@ import { User } from '@entity/users/user.entity';
 export class ProfilesService {
 
     constructor(
+        private readonly utilService: UtilService,
         private readonly profilesRedisRepository: ProfilesRedisRepository,
         private readonly notificationsService: NotificationsService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
         @InjectDataSource() private datasource: DataSource,
@@ -151,16 +156,34 @@ export class ProfilesService {
     }
 
     patch(profileId: number, partialProfile: Partial<Profile>): Observable<boolean> {
-        return from(
-            this.profileRepository.update(
-                { id: profileId },
-                partialProfile
-            )
-        ).pipe(
-            map((updateResult) => !!(updateResult &&
-                updateResult.affected &&
-                updateResult.affected > 0))
+        return this._patch(
+            this.profileRepository.manager,
+            profileId,
+            partialProfile
         );
+    }
+
+    _patch(
+        transactionManager: EntityManager,
+        profileId: number,
+        partialProfile: Partial<Profile>
+    ): Observable<boolean> {
+        return of(transactionManager.getRepository(Profile))
+            .pipe(
+                mergeMap(
+                    (profileRepository) =>
+                        profileRepository.update(
+                            profileId,
+                            partialProfile
+                        )
+                ),
+                map((updateResult) =>
+                    Boolean(
+                        updateResult.affected
+                        && updateResult.affected > 0
+                    )
+                )
+            );
     }
 
     patchAll(userId: number, partialProfile: Partial<Profile>): Observable<boolean> {
@@ -179,87 +202,59 @@ export class ProfilesService {
     updateRoles(
         teamId: number,
         profileId: number,
-        roles: Role[],
+        targetProfileId: number,
+        updateRoles: Role[]
+    ): Observable<boolean> {
+        return from(defer(() => this.datasource.transaction(async (manager) => {
+            const result = await firstValueFrom(this._updateRoles(
+                manager,
+                teamId,
+                profileId,
+                targetProfileId,
+                updateRoles
+            ));
+
+            return result;
+        })));
+    }
+
+    _updateRoles(
+        transactionManager: EntityManager,
+        teamId: number,
+        profileId: number,
         targetProfileId: number,
         updateRoles: Role[]
     ): Observable<boolean> {
 
-        return from(this.profileRepository.findOneByOrFail({
-            id: targetProfileId,
-            teamId
-        })).pipe(
-            tap((_loadedTargetProfile) => {
+        const transactionProfileRepository$ = of(transactionManager.getRepository(Profile));
 
-                const isTargetOwner = _loadedTargetProfile.roles.includes(Role.OWNER);
-                const isOwnerPermissionRequest = isTargetOwner || updateRoles.includes(Role.OWNER);
-                const hasNoOwnerPermission = roles.includes(Role.OWNER) === false;
-                const hasNoPermission = isOwnerPermissionRequest && hasNoOwnerPermission;
+        const roleUpdate$ = transactionProfileRepository$
+            .pipe(
+                mergeMap((_profileRepository) =>
+                    from(_profileRepository.update(
+                        { id: targetProfileId, teamId },
+                        { roles: updateRoles }
+                    ))
+                ),
+                map((__updateResult: UpdateResult) => this.utilService.convertUpdateResultToBoolean(__updateResult))
+            );
 
-                if (hasNoPermission) {
-                    throw new ForbiddenException('Permission denied');
-                }
-            }),
-            mergeMap(() => {
-
-                const grantOwner$ = from(defer(() => this.datasource.transaction(async (manager) => {
-                    const _profileRepository = manager.getRepository(Profile);
-
-
-                    const __grantOwnerUpdateResult = await _profileRepository.update(
-                        { id: targetProfileId },
-                        {
-                            roles: _updateRoles
-                        }
-                    );
-                    const __isGrantOwnerUpdateSuccess = !!(__grantOwnerUpdateResult &&
-                        __grantOwnerUpdateResult.affected &&
-                        __grantOwnerUpdateResult.affected > 0);
-
-                    const __demotePreviousOwnerUpdateResult = await _profileRepository.update(
-                        { id: profileId },
-                        {
-                            roles: [Role.MEMBER, Role.MANAGER]
-                        }
-                    );
-                    const __isDemotePreviousOwnerUpdateSuccess = !!(__demotePreviousOwnerUpdateResult &&
-                        __demotePreviousOwnerUpdateResult.affected &&
-                        __demotePreviousOwnerUpdateResult.affected > 0);
-
-                    return __isGrantOwnerUpdateSuccess && __isDemotePreviousOwnerUpdateSuccess;
-                })));
-
-                const simpleUpdate$ = from(defer(() => this.profileRepository.update(
-                    { id: targetProfileId },
-                    {
-                        roles: _updateRoles
-                    }
-                ))).pipe(
-                    map((updateResult) => !!(updateResult &&
-                        updateResult.affected &&
-                        updateResult.affected > 0)
-                    )
-                );
-
-                let _updateRoles: Role[] = [];
-                let typeormUpdateRoles$: Observable<boolean>;
-
-                if (updateRoles.includes(Role.OWNER)) {
-                    _updateRoles = [Role.MEMBER, Role.MANAGER, Role.OWNER];
-
-                    typeormUpdateRoles$ = grantOwner$;
-                } else if (updateRoles.includes(Role.MANAGER)) {
-                    _updateRoles = [Role.MEMBER, Role.MANAGER];
-
-                    typeormUpdateRoles$ = simpleUpdate$;
-                } else {
-                    _updateRoles = [Role.MEMBER];
-
-                    typeormUpdateRoles$ = simpleUpdate$;
-                }
-
-                return typeormUpdateRoles$;
-            })
+        const ensuredMigrationOwnerRole$ = iif(
+            () => updateRoles.includes(Role.OWNER),
+            transactionProfileRepository$
+                .pipe(
+                    mergeMap((_profileRepository) =>
+                        _profileRepository.update(
+                            { id: profileId, teamId },
+                            { roles: [Role.MANAGER] }
+                        )),
+                    map((__updateResult: UpdateResult) => this.utilService.convertUpdateResultToBoolean(__updateResult))
+                ),
+            of(true)
         );
+
+        return merge(roleUpdate$, ensuredMigrationOwnerRole$)
+            .pipe(reduce((acc, curr) => acc && curr));
     }
 
     completeInvitation(
@@ -282,6 +277,20 @@ export class ProfilesService {
                 deleteResult.affected &&
                 deleteResult.affected > 0))
         );
+    }
+
+    validateRoleUpdateRequest(
+        authRoles: Role[],
+        updateRoles: Role[]
+    ): void {
+
+        const isValidRoleUpdateRequest = this.utilService.isValidRoleUpdateRequest(authRoles, updateRoles);
+
+        const isForbiddenPermissionRequest = !isValidRoleUpdateRequest;
+
+        if (isForbiddenPermissionRequest) {
+            throw new ForbiddenException('Permission denied');
+        }
     }
 
     _getWithUserData(): {

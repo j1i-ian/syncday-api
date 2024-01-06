@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
+import { UpdateResult } from 'typeorm';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
@@ -16,6 +17,7 @@ import { IntegrationContext } from '@interfaces/integrations/integration-context
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { Role } from '@interfaces/profiles/role.enum';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { UserSetting } from '@entity/users/user-setting.entity';
@@ -62,6 +64,34 @@ type EventDetailInit = Omit<EventDetail,
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
+
+    convertUpdateResultToBoolean(updateResult: UpdateResult): boolean {
+        return Boolean(
+            updateResult?.affected
+            && updateResult.affected > 0
+        );
+    }
+
+    isValidRoleUpdateRequest(
+        authRoles: Role[],
+        desireRoles: Role[]
+    ): boolean {
+
+        let isValidRequest: boolean;
+
+        const isOwner = authRoles.includes(Role.OWNER);
+        const isOwnerPermissionUpdateRequest = desireRoles.includes(Role.OWNER);
+
+        if (isOwner) {
+            isValidRequest = true;
+        } else if (isOwnerPermissionUpdateRequest) {
+            isValidRequest = false;
+        } else {
+            isValidRequest = true;
+        }
+
+        return isValidRequest;
+    }
 
     createNewProfile(
         teamId: number,

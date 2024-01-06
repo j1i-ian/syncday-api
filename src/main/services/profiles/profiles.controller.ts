@@ -103,15 +103,18 @@ export class ProfilesController {
     @Roles(Role.OWNER, Role.MANAGER)
     updateRole(
         @AuthProfile('id') profileId: number,
-        @AuthProfile('roles') roles: Role[],
+        @AuthProfile('roles') authRoles: Role[],
         @AuthProfile('teamId') teamId: number,
         @Param('profileId') targetProfileId: number,
         @Body() patchProfileRolesRequest: PatchProfileRolesRequest
     ): Observable<boolean> {
+
+        // TODO: it should be extracted as decorator
+        this.profileService.validateRoleUpdateRequest(authRoles, patchProfileRolesRequest.roles);
+
         return this.profileService.updateRoles(
             teamId,
             profileId,
-            roles,
             targetProfileId,
             patchProfileRolesRequest.roles
         );

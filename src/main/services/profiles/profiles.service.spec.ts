@@ -3,10 +3,12 @@ import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom, of } from 'rxjs';
 import { ForbiddenException } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Role } from '@interfaces/profiles/role.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
+import { UtilService } from '@services/util/util.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { User } from '@entity/users/user.entity';
@@ -20,6 +22,7 @@ describe('ProfilesService', () => {
 
     let module: TestingModule;
 
+    let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
     let notificationServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
 
@@ -31,6 +34,7 @@ describe('ProfilesService', () => {
 
     before(async () => {
 
+        utilServiceStub = sinon.createStubInstance(UtilService);
         userServiceStub = sinon.createStubInstance(UserService);
         notificationServiceStub = sinon.createStubInstance(NotificationsService);
 
@@ -41,6 +45,10 @@ describe('ProfilesService', () => {
         module = await Test.createTestingModule({
             providers: [
                 ProfilesService,
+                {
+                    provide: UtilService,
+                    useValue: utilServiceStub
+                },
                 {
                     provide: NotificationsService,
                     useValue: notificationServiceStub
@@ -60,6 +68,10 @@ describe('ProfilesService', () => {
                 {
                     provide: getRepositoryToken(Profile),
                     useValue: profileRepositoryStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: TestMockUtil.getLoggerStub()
                 }
             ]
         }).compile();
@@ -282,59 +294,119 @@ describe('ProfilesService', () => {
         profilesRedisRepositoryStub.setInvitedNewTeamMembers.reset();
     });
 
-    it('should be patched for profile', async () => {
-        const profileIdMock = 123;
+    describe('Test Profile Patching', () => {
 
-        const profileMock = stubOne(Profile);
+        let serviceSandbox: sinon.SinonSandbox;
 
-        const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
-
-        profileRepositoryStub.update.resolves(updateResultStub);
-
-        const updateResult = await firstValueFrom(service.patch(profileIdMock, profileMock));
-        expect(updateResult).ok;
-        expect(profileRepositoryStub.update.called).true;
-    });
-
-    describe('Update profile roles', () => {
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
 
         afterEach(() => {
-            profileRepositoryStub.findOneByOrFail.reset();
             profileRepositoryStub.update.reset();
+
+            serviceSandbox.restore();
+        });
+
+        it('coverage fill: patch', async () => {
+
+            const profileMock = stubOne(Profile);
+
+            serviceSandbox.stub(service, '_patch').returns(of(true));
+
+            const updateResult = await firstValueFrom(service.patch(profileMock.id, profileMock));
+            expect(updateResult).ok;
+        });
+
+        it('should be patched for profile', async () => {
+            const profileIdMock = 123;
+
+            const profileMock = stubOne(Profile);
+
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            profileRepositoryStub.update.resolves(updateResultStub);
+
+            const updateResult = await firstValueFrom(
+                service._patch(
+                    datasourceMock as unknown as EntityManager,
+                    profileIdMock,
+                    profileMock
+                )
+            );
+            expect(updateResult).ok;
+            expect(profileRepositoryStub.update.called).true;
+        });
+    });
+
+    describe('Test Profile Roles Update', () => {
+
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            utilServiceStub.convertUpdateResultToBoolean.reset();
+
+            profileRepositoryStub.update.reset();
+
+            serviceSandbox.restore();
+        });
+
+        it('coverage fill: updateRoles', async () => {
+
+            const teamIdMock = stubOne(Team).id;
+            const authProfileIdMock = stubOne(Profile).id;
+            const targetProfileIdMock = stubOne(Profile).id;
+
+            serviceSandbox.stub(service, '_updateRoles').returns(of(true));
+
+            const updateResult = await firstValueFrom(
+                service.updateRoles(
+                    teamIdMock,
+                    authProfileIdMock,
+                    targetProfileIdMock,
+                    [Role.MANAGER]
+                )
+            );
+
+            expect(updateResult).true;
         });
 
         it('should be updated the role to manager by manager for member', async () => {
 
             const profileMock = stubOne(Profile, {
-                roles: [Role.MEMBER, Role.MANAGER]
+                roles: [Role.MANAGER]
             });
             const targetProfileStub = stubOne(Profile, {
                 roles: [Role.MEMBER]
             });
-            const desireRoles = [Role.MANAGER];
+            const desireRoles = [Role.MEMBER];
 
             const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-            profileRepositoryStub.findOneByOrFail.resolves(targetProfileStub);
+            utilServiceStub.convertUpdateResultToBoolean.returns(true);
             profileRepositoryStub.update.resolves(updateResultStub);
 
-            const result = await firstValueFrom(service.updateRoles(
+            const result = await firstValueFrom(service._updateRoles(
+                datasourceMock as unknown as EntityManager,
                 profileMock.teamId,
                 profileMock.id,
-                profileMock.roles,
                 targetProfileStub.id,
                 desireRoles
             ));
 
             expect(result).ok;
-            expect(profileRepositoryStub.findOneByOrFail.called).true;
+            expect(utilServiceStub.convertUpdateResultToBoolean.called).true;
             expect(profileRepositoryStub.update.called).true;
         });
 
-        it('should be updated the role to owner by previous owner for member or manager', async () => {
+        it('should be migrated the owner role to new owner by previous owner for member', async () => {
 
             const profileMock = stubOne(Profile, {
-                roles: [Role.MEMBER, Role.MANAGER, Role.OWNER]
+                roles: [Role.OWNER]
             });
             const targetProfileStub = stubOne(Profile, {
                 roles: [Role.MEMBER]
@@ -343,72 +415,20 @@ describe('ProfilesService', () => {
 
             const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-            profileRepositoryStub.findOneByOrFail.resolves(targetProfileStub);
+            utilServiceStub.convertUpdateResultToBoolean.returns(true);
             profileRepositoryStub.update.resolves(updateResultStub);
 
-            const result = await firstValueFrom(service.updateRoles(
+            const result = await firstValueFrom(service._updateRoles(
+                datasourceMock as unknown as EntityManager,
                 profileMock.teamId,
                 profileMock.id,
-                profileMock.roles,
                 targetProfileStub.id,
                 desireRoles
             ));
 
             expect(result).ok;
-            expect(profileRepositoryStub.findOneByOrFail.called).true;
+            expect(utilServiceStub.convertUpdateResultToBoolean.calledTwice).true;
             expect(profileRepositoryStub.update.calledTwice).true;
-        });
-
-        it('should be not updated as promote the role to owner by manager for manager', async () => {
-
-            const profileMock = stubOne(Profile, {
-                roles: [Role.MEMBER, Role.MANAGER]
-            });
-            const targetProfileStub = stubOne(Profile, {
-                roles: [Role.MEMBER, Role.MANAGER]
-            });
-            const desireRoles = [Role.OWNER];
-
-            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
-
-            profileRepositoryStub.findOneByOrFail.resolves(targetProfileStub);
-            profileRepositoryStub.update.resolves(updateResultStub);
-
-            await expect(
-                firstValueFrom(service.updateRoles(
-                    profileMock.teamId,
-                    profileMock.id,
-                    profileMock.roles,
-                    targetProfileStub.id,
-                    desireRoles
-                ))
-            ).rejectedWith(ForbiddenException);
-        });
-
-        it('should be not updated as demote the role to manager by manager for owner', async () => {
-
-            const profileMock = stubOne(Profile, {
-                roles: [Role.MEMBER, Role.MANAGER]
-            });
-            const targetProfileStub = stubOne(Profile, {
-                roles: [Role.MEMBER, Role.MANAGER, Role.OWNER]
-            });
-            const desireRoles = [Role.MEMBER, Role.MANAGER];
-
-            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
-
-            profileRepositoryStub.findOneByOrFail.resolves(targetProfileStub);
-            profileRepositoryStub.update.resolves(updateResultStub);
-
-            await expect(
-                firstValueFrom(service.updateRoles(
-                    profileMock.teamId,
-                    profileMock.id,
-                    profileMock.roles,
-                    targetProfileStub.id,
-                    desireRoles
-                ))
-            ).rejectedWith(ForbiddenException);
         });
     });
 
@@ -438,6 +458,45 @@ describe('ProfilesService', () => {
                 teamIdMock,
                 profileIdMock
             ));
+        });
+    });
+
+    describe('Test validate a role update rqeuest', () => {
+
+        afterEach(() => {
+            utilServiceStub.isValidRoleUpdateRequest.reset();
+        });
+
+        it('should be passed the validation when request is valid', () => {
+
+            const authRolesMock = [Role.OWNER];
+            const targetRolesMock = [Role.OWNER];
+
+            const roleUpdateRequestValidStub = true;
+            utilServiceStub.isValidRoleUpdateRequest.returns(roleUpdateRequestValidStub);
+
+            expect(() => service.validateRoleUpdateRequest(
+                authRolesMock,
+                targetRolesMock
+            )).not.throw();
+
+            expect(utilServiceStub.isValidRoleUpdateRequest.called).true;
+        });
+
+        it('should be thrown an forbidden exception for invalid request', () => {
+
+            const authRolesMock = [Role.MANAGER];
+            const targetRolesMock = [Role.OWNER];
+
+            const roleUpdateRequestInvalidStub = false;
+            utilServiceStub.isValidRoleUpdateRequest.returns(roleUpdateRequestInvalidStub);
+
+            expect(() => service.validateRoleUpdateRequest(
+                authRolesMock,
+                targetRolesMock
+            )).throw(ForbiddenException);
+
+            expect(utilServiceStub.isValidRoleUpdateRequest.called).true;
         });
     });
 

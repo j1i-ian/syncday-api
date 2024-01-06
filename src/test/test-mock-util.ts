@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/unified-signatures */
 import 'reflect-metadata';
 
-import { SinonSandbox } from 'sinon';
+import { SinonSandbox, SinonStub } from 'sinon';
 
 import { ArgumentsHost } from '@nestjs/common';
 import { DeleteResult, UpdateResult } from 'typeorm';
@@ -11,6 +11,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Auth, calendar_v3, oauth2_v2 } from 'googleapis';
 import { DAVCalendar, DAVClient, DAVObject } from 'tsdav';
 import { Request } from 'express';
+import { Logger } from 'winston';
 import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -82,6 +83,17 @@ export class TestMockUtil {
         };
 
         return datasourceMock;
+    }
+
+    static getLoggerStub(): SinonStub {
+
+        const loggerStub = sinon.stub({
+            debug: () => {},
+            info: () => {},
+            error: () => {}
+        } as unknown as Logger) as unknown as SinonStub;
+
+        return loggerStub;
     }
 
     static get faker(): Faker {

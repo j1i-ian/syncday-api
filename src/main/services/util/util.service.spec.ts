@@ -6,6 +6,7 @@ import { TextTemplate } from '@core/interfaces/notifications/text-template.enum'
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
+import { Role } from '@interfaces/profiles/role.enum';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
@@ -19,7 +20,13 @@ import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
+import { TestMockUtil } from '@test/test-mock-util';
 import { UtilService } from './util.service';
+
+interface RoleUpdateTestParameters {
+    authRole: Role;
+    desireRole: Role;
+}
 
 describe('UtilService', () => {
     let service: UtilService;
@@ -44,6 +51,70 @@ describe('UtilService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    describe('Test the conversion of the update result to a boolean value', () => {
+
+        it('should be converted to true for valid update result', () => {
+
+            const updatedResultMock = TestMockUtil.getTypeormUpdateResultMock();
+
+            const actual = service.convertUpdateResultToBoolean(updatedResultMock);
+
+            expect(actual).to.be.true;
+
+        });
+
+        it('should be converted to false for invalid update result', () => {
+
+            const zeroUpdatedResultMock = TestMockUtil.getTypeormUpdateResultMock(0);
+
+            const actual = service.convertUpdateResultToBoolean(zeroUpdatedResultMock);
+
+            expect(actual).to.be.false;
+        });
+    });
+
+
+    describe('Test role update request validation', () => {
+
+        [
+            {
+                getMessage: ({ desireRole }: RoleUpdateTestParameters) => `should be possible for the owner to update the ${desireRole} role`,
+                authRoles: [Role.OWNER],
+                desireRoles: [Role.MEMBER, Role.MANAGER, Role.OWNER],
+                expectedResult: true
+            },
+            {
+                getMessage: ({ authRole }: RoleUpdateTestParameters) => `should be impossible for the ${authRole} to update the owner role`,
+                authRoles: [Role.MANAGER, Role.MEMBER],
+                desireRoles: [Role.OWNER],
+                expectedResult: false
+            },
+            {
+                getMessage: ({ desireRole }: RoleUpdateTestParameters) => `should be possible for the manager to update the ${desireRole} role`,
+                authRoles: [Role.MANAGER],
+                desireRoles: [Role.MANAGER, Role.MEMBER],
+                expectedResult: true
+            }
+        ]
+            .forEach(function({
+                getMessage,
+                authRoles,
+                desireRoles,
+                expectedResult
+            }) {
+                authRoles.forEach((authRole) => {
+                    desireRoles.forEach((desireRole) => {
+                        it(getMessage({ authRole, desireRole }), () => {
+                            const result = service.isValidRoleUpdateRequest([authRole], [desireRole]);
+
+                            expect(result).equals(expectedResult);
+                        });
+
+                    });
+                });
+            });
     });
 
     describe('Test ensure integration context', () => {
@@ -398,7 +469,8 @@ describe('UtilService', () => {
                 emailMock,
                 profileNameMock,
                 {
-                    randomSuffix: false
+                    randomSuffix: false,
+                    uuidWorkspace: false
                 }
             );
 
@@ -417,7 +489,8 @@ describe('UtilService', () => {
                 emailMock,
                 profileNameMock,
                 {
-                    randomSuffix: true
+                    randomSuffix: true,
+                    uuidWorkspace: false
                 }
             );
 
@@ -437,7 +510,8 @@ describe('UtilService', () => {
                 emailMock,
                 profileNameMock,
                 {
-                    randomSuffix: true
+                    randomSuffix: true,
+                    uuidWorkspace: false
                 }
             );
 
