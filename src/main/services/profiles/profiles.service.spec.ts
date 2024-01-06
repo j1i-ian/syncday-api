@@ -1,10 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
+import { EntityManager, FindOptionsWhere, Repository, SelectQueryBuilder } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom, of } from 'rxjs';
 import { ForbiddenException } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Role } from '@interfaces/profiles/role.enum';
+import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
@@ -83,39 +84,103 @@ describe('ProfilesService', () => {
         expect(service).ok;
     });
 
-    describe('Test profile fetching', () => {
+    describe('Profile Search Test', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        let profileSearchQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Profile>>;
+
+        beforeEach(() => {
+
+            serviceSandbox = sinon.createSandbox();
+
+            const profileStubs = stub(Profile);
+
+            profileSearchQueryBuilderStub = stubQueryBuilder(
+                serviceSandbox,
+                Profile,
+                profileStubs
+            );
+            profileRepositoryStub.createQueryBuilder.returns(profileSearchQueryBuilderStub);
+        });
+
+        afterEach(() => {
+            profileSearchQueryBuilderStub.where.reset();
+            profileSearchQueryBuilderStub.andWhere.reset();
+            profileSearchQueryBuilderStub.getMany.reset();
+        });
+
+        [
+            {
+                description: 'should be searched profiles without any search options',
+                searchOptionMock: {} as Partial<SearchByProfileOption>,
+                whereCall: false,
+                andWhereCall: false,
+                addSelectCallCount: 1,
+                leftJoinCall: false,
+                orderByCall: true,
+                getManyCall: true
+            },
+            {
+                description: 'should be searched profiles by user id',
+                searchOptionMock: { userId: 1 } as Partial<SearchByProfileOption>,
+                whereCall: true,
+                andWhereCall: false,
+                addSelectCallCount: 1,
+                leftJoinCall: false,
+                orderByCall: true,
+                getManyCall: true
+            },
+            {
+                description: 'should be searched profiles by team id',
+                searchOptionMock: { teamId: 1 } as Partial<SearchByProfileOption>,
+                whereCall: false,
+                andWhereCall: true,
+                addSelectCallCount: 1,
+                leftJoinCall: false,
+                orderByCall: true,
+                getManyCall: true
+            },
+            {
+                description: 'should be searched profiles with withUserData option',
+                searchOptionMock: { withUserData: true } as Partial<SearchByProfileOption>,
+                whereCall: false,
+                andWhereCall: false,
+                addSelectCallCount: 2,
+                leftJoinCall: true,
+                orderByCall: true,
+                getManyCall: true
+            }
+        ].forEach(function ({
+            description,
+            searchOptionMock,
+            whereCall,
+            andWhereCall,
+            addSelectCallCount,
+            leftJoinCall,
+            orderByCall,
+            getManyCall
+        }) {
+
+            it(description, async () => {
+                const loadedProfiles =  await firstValueFrom(service.search(searchOptionMock));
+
+                expect(loadedProfiles).ok;
+                expect(loadedProfiles.length).greaterThan(0);
+                expect(profileSearchQueryBuilderStub.where.called).equals(whereCall);
+                expect(profileSearchQueryBuilderStub.andWhere.called).equals(andWhereCall);
+                expect(profileSearchQueryBuilderStub.addSelect.callCount).equals(addSelectCallCount);
+                expect(profileSearchQueryBuilderStub.leftJoin.called).equals(leftJoinCall);
+                expect(profileSearchQueryBuilderStub.orderBy.called).equals(orderByCall);
+                expect(profileSearchQueryBuilderStub.getMany.called).equals(getManyCall);
+            });
+
+        });
+    });
+
+    describe('Profile Fetch Test', () => {
 
         afterEach(() => {
             profileRepositoryStub.findOneOrFail.reset();
-            profileRepositoryStub.find.reset();
-        });
-
-        it('should be searched profiles by team id', async () => {
-            const teamIdMock = stubOne(Team).id;
-            const profileStubs = stub(Profile);
-
-            profileRepositoryStub.find.resolves(profileStubs);
-
-            const loadedProfiles =  await firstValueFrom(service.searchByTeamId(teamIdMock));
-
-            expect(loadedProfiles).ok;
-            expect(loadedProfiles.length).greaterThan(0);
-            expect(profileRepositoryStub.find.called).true;
-        });
-
-        it('should be searched profiles by user id', async () => {
-            const userIdMock = stubOne(User).id;
-            const profileStubs = stub(Profile);
-
-            profileRepositoryStub.find.resolves(profileStubs);
-
-            const loadedProfiles =  await firstValueFrom(service.searchByUserId({
-                userId: userIdMock
-            }));
-
-            expect(loadedProfiles).ok;
-            expect(loadedProfiles.length).greaterThan(0);
-            expect(profileRepositoryStub.find.called).true;
         });
 
         it('should be found profile by profile id', async () => {

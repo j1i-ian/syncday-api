@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, Repository, UpdateResult } from 'typeorm';
-import { Observable, combineLatest, defer, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, toArray, zip } from 'rxjs';
+import { DataSource, EntityManager, Repository, UpdateResult } from 'typeorm';
+import { Observable, combineLatest, defer, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray, zip } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
@@ -28,15 +28,7 @@ export class ProfilesService {
         @InjectRepository(Profile) private readonly profileRepository: Repository<Profile>
     ) {}
 
-    searchByTeamId(teamId: number): Observable<Profile[]> {
-        return from(this.profileRepository.find({
-            where: {
-                teamId
-            }
-        }));
-    }
-
-    searchByUserId(
+    search(
         {
             userId,
             teamId,
@@ -44,18 +36,48 @@ export class ProfilesService {
         }: Partial<SearchByProfileOption>
     ): Observable<Profile[]> {
 
-        const withUserDataOption = withUserData
-            ? this._getWithUserData()
-            : {};
-
-        return from(this.profileRepository.find({
-            ...withUserDataOption,
-            where: {
-                userId,
-                teamId
-            },
-            take: 20
-        }));
+        return of(this.profileRepository.createQueryBuilder('profile'))
+            .pipe(
+                tap((searchQueryBuilder) => {
+                    if (userId) {
+                        searchQueryBuilder.where('profile.userId = :userId', { userId });
+                    }
+                }),
+                tap((searchQueryBuilder) => {
+                    if (teamId) {
+                        searchQueryBuilder.andWhere('profile.teamId = :teamId', { teamId });
+                    }
+                }),
+                tap((searchQueryBuilder) => {
+                    if (withUserData) {
+                        searchQueryBuilder.addSelect([
+                            'user.id',
+                            'user.email',
+                            'user.phone'
+                        ]).leftJoin(
+                            'profile.user',
+                            'user'
+                        );
+                    }
+                }),
+                tap((searchQueryBuilder) => {
+                    searchQueryBuilder
+                        .addSelect(
+                            `CASE
+                                WHEN profile.roles LIKE :ownerRole THEN 1
+                                WHEN profile.roles LIKE :managerRole THEN 2
+                                ELSE 3
+                            END`,
+                            'orderCondition'
+                        ).orderBy('orderCondition', 'ASC')
+                        .setParameter('ownerRole', Role.OWNER)
+                        .setParameter('managerRole', Role.MANAGER);
+                }),
+                tap((searchQueryBuilder) => {
+                    searchQueryBuilder.take(20);
+                }),
+                mergeMap((searchQueryBuilder) => searchQueryBuilder.getMany())
+            );
     }
 
     findProfile(searchByProfileOption: Partial<SearchByProfileOption>): Observable<Profile> {
@@ -291,24 +313,5 @@ export class ProfilesService {
         if (isForbiddenPermissionRequest) {
             throw new ForbiddenException('Permission denied');
         }
-    }
-
-    _getWithUserData(): {
-        relations: FindOptionsRelations<Profile>;
-        select: FindOptionsSelect<Profile>;
-    } {
-
-        const relations = ['user'] as FindOptionsRelations<Profile>;
-        const select = {
-            user: {
-                email: true,
-                phone: true
-            }
-        };
-
-        return {
-            relations,
-            select
-        };
     }
 }

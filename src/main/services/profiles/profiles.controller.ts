@@ -36,7 +36,7 @@ export class ProfilesController {
             searchOptions
         );
 
-        return this.profileService.searchByUserId(options).pipe(
+        return this.profileService.search(options).pipe(
             map((searchedProfiles) =>
                 searchedProfiles.map(
                     (_searchedProfile) =>
