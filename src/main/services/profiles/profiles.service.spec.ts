@@ -84,7 +84,7 @@ describe('ProfilesService', () => {
         expect(service).ok;
     });
 
-    describe.only('Profile Filter Text', () => {
+    describe('Profile Filter Text', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
         let profileQueryBuilderStub: sinon.SinonStubbedInstance<SelectQueryBuilder<Profile>>;

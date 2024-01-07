@@ -26,7 +26,7 @@ export class PaymentMethodService {
     bootpayConfiguration: BootpayConfiguration;
 
     create(
-        newPaymentMethod: Pick<PaymentMethod, 'creditCard'>,
+        newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teams'>>,
         buyer: Buyer,
         orderUUID: string
     ): Observable<PaymentMethod> {
@@ -44,7 +44,7 @@ export class PaymentMethodService {
 
     async _create(
         transactionManager: EntityManager,
-        newPaymentMethod: Pick<PaymentMethod, 'creditCard'>,
+        newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teams'>>,
         buyer: Buyer,
         orderUUID: string
     ): Promise<PaymentMethod> {
@@ -65,6 +65,10 @@ export class PaymentMethodService {
         );
 
         createdPaymentMethod.billing = bootpayService.billing;
+
+        if (newPaymentMethod.teams) {
+            createdPaymentMethod.teams = newPaymentMethod.teams;
+        }
 
         const savedPaymentMethod = await _paymentMethodRepository.save(createdPaymentMethod);
 

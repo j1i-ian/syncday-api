@@ -97,7 +97,7 @@ export class TeamService {
 
     create(
         newOrder: Partial<Order> & Pick<Order, 'unit' | 'price'>,
-        newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teamId'>>,
+        newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teams'>>,
         newTeam: Partial<Team>,
         newTeamSetting: Pick<TeamSetting, 'workspace' | 'greetings'>,
         teamMembers: InvitedNewTeamMember[],
@@ -139,7 +139,7 @@ export class TeamService {
                         newTeamSetting
                     );
 
-                    newPaymentMethod.teamId = _createdTeam.id;
+                    newPaymentMethod.teams = [{ id: _createdTeam.id } as Team];
 
                     const _buyer = {
                         name: _createdTeam.name,
