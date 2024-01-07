@@ -6,13 +6,22 @@ import { ForbiddenException } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Role } from '@interfaces/profiles/role.enum';
 import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.interface';
+import { Orderer } from '@interfaces/orders/orderer.interface';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { UtilService } from '@services/util/util.service';
+import { ProductsService } from '@services/products/products.service';
+import { OrdersService } from '@services/orders/orders.service';
+import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
+import { PaymentsService } from '@services/payments/payments.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { User } from '@entity/users/user.entity';
+import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { Product } from '@entity/products/product.entity';
+import { Order } from '@entity/orders/order.entity';
+import { Payment } from '@entity/payments/payment.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { ProfilesService } from './profiles.service';
 
@@ -25,6 +34,10 @@ describe('ProfilesService', () => {
 
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
+    let productsServiceStub: sinon.SinonStubbedInstance<ProductsService>;
+    let ordersServiceStub: sinon.SinonStubbedInstance<OrdersService>;
+    let paymentMethodServiceStub: sinon.SinonStubbedInstance<PaymentMethodService>;
+    let paymentsServiceStub: sinon.SinonStubbedInstance<PaymentsService>;
     let notificationServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
 
     let profilesRedisRepositoryStub: sinon.SinonStubbedInstance<ProfilesRedisRepository>;
@@ -37,6 +50,10 @@ describe('ProfilesService', () => {
 
         utilServiceStub = sinon.createStubInstance(UtilService);
         userServiceStub = sinon.createStubInstance(UserService);
+        productsServiceStub = sinon.createStubInstance(ProductsService);
+        ordersServiceStub = sinon.createStubInstance(OrdersService);
+        paymentMethodServiceStub = sinon.createStubInstance(PaymentMethodService);
+        paymentsServiceStub = sinon.createStubInstance(PaymentsService);
         notificationServiceStub = sinon.createStubInstance(NotificationsService);
 
         profilesRedisRepositoryStub = sinon.createStubInstance<ProfilesRedisRepository>(ProfilesRedisRepository);
@@ -57,6 +74,26 @@ describe('ProfilesService', () => {
                 {
                     provide: UserService,
                     useValue: userServiceStub
+                },
+                {
+                    provide: ProductsService,
+                    useValue: productsServiceStub
+                },
+                {
+                    provide: UserService,
+                    useValue: userServiceStub
+                },
+                {
+                    provide: PaymentMethodService,
+                    useValue: paymentMethodServiceStub
+                },
+                {
+                    provide: OrdersService,
+                    useValue: ordersServiceStub
+                },
+                {
+                    provide: PaymentsService,
+                    useValue: paymentsServiceStub
                 },
                 {
                     provide: ProfilesRedisRepository,
@@ -303,19 +340,39 @@ describe('ProfilesService', () => {
 
             expect(loadedUser).equal(profileStub);
         });
+
+        it('should be fetched the team owner profile with team name, user email, phone', async () => {
+
+            const teamIdMock = stubOne(Team).id;
+            const profileStub = stubOne(Profile);
+
+            profileRepositoryStub.findOneOrFail.resolves(profileStub);
+
+            const ownerProfile = await firstValueFrom(service._fetchTeamOwnerProfile(teamIdMock));
+
+            expect(ownerProfile).ok;
+            expect(profileRepositoryStub.findOneOrFail.called).true;
+        });
     });
 
-    describe('Test creating a profile for invitation', () => {
+    describe('Test bulk creating of profiles for invitation purposes', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
         beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
-
         });
 
         afterEach(() => {
+            paymentMethodServiceStub.fetch.reset();
 
+            productsServiceStub.findTeamPlanProduct.reset();
             userServiceStub.search.reset();
+            ordersServiceStub._create.reset();
+            paymentsServiceStub._create.reset();
+            ordersServiceStub._updateOrderStatus.reset();
+            utilServiceStub.createNewProfile.reset();
+
+            utilServiceStub.filterInvitedNewUsers.reset();
 
             notificationServiceStub.sendTeamInvitationForNewUsers.reset();
 
@@ -324,59 +381,103 @@ describe('ProfilesService', () => {
 
         [
             {
-                description: 'should be created a profile as invitation for sync user',
-                createInvitedProfilesCall: true,
-                sendTeamInvitationForNewUsersCall: false,
+                description: 'should be bulk creating of profiles for sync user',
                 getSearchedUserStubs: () => {
                     const syncUserStub = stubOne(User);
                     return [ syncUserStub ];
-                }
+                },
+                getFilterInvitedNewUsersStubs: () => [],
+                saveInvitedNewTeamMemberCall: false,
+                sendTeamInvitationForNewUsersCall: false,
+                createNewProfileCall: true
             },
             {
-                description: 'should be created a profile as invitation for new user',
-                createInvitedProfilesCall: false,
+                description: 'should be bulk creating of invitations without profiles for new user',
+                getSearchedUserStubs: () => [],
+                getFilterInvitedNewUsersStubs: (teamIdMock: number) => {
+                    const nonAppUserInvitations = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
+
+                    return nonAppUserInvitations;
+                },
+                saveInvitedNewTeamMemberCall: true,
                 sendTeamInvitationForNewUsersCall: true,
-                getSearchedUserStubs: () => []
+                createNewProfileCall: false
             }
         ].forEach(function({
             description,
-            createInvitedProfilesCall,
+            getSearchedUserStubs,
+            getFilterInvitedNewUsersStubs,
+            saveInvitedNewTeamMemberCall,
             sendTeamInvitationForNewUsersCall,
-            getSearchedUserStubs
+            createNewProfileCall
         }) {
 
             it(description, async () => {
 
-                const invitiedNewUserMock = stubOne(User);
                 const teamIdMock = stubOne(Team).id;
                 const profileStub = stubOne(Profile);
                 const userStubs = getSearchedUserStubs();
+                const invitedNewUsersStubs = getFilterInvitedNewUsersStubs(teamIdMock);
+                const ordererMock = stubOne(Profile);
 
+                const paymentMethodStub = stubOne(PaymentMethod);
+                const proudctStub = stubOne(Product);
+
+                const teamOwnerProfileStub = stubOne(Profile, {
+                    user: stubOne(User)
+                });
+
+                const orderStub = stubOne(Order);
+                const paymentStub = stubOne(Payment);
+                const newInvitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
+
+                paymentMethodServiceStub.fetch.resolves(paymentMethodStub);
+                const fetchTeamOwnerProfileStub = serviceSandbox.stub(service, '_fetchTeamOwnerProfile');
+                fetchTeamOwnerProfileStub.returns(of(teamOwnerProfileStub));
+
+                productsServiceStub.findTeamPlanProduct.resolves(proudctStub);
                 userServiceStub.search.resolves(userStubs);
+                ordersServiceStub._create.resolves(orderStub);
+                paymentsServiceStub._create.resolves(paymentStub);
 
-                const saveInvitedNewTeamMemberStub = serviceSandbox.stub(
+                ordersServiceStub._updateOrderStatus.resolves(true);
+                utilServiceStub.createNewProfile.returns(profileStub);
+
+                const _createStub = serviceSandbox.stub(
                     service,
-                    'saveInvitedNewTeamMember'
-                ).returns(of(true));
+                    '_create'
+                );
 
-                const createInvitedProfilesStub = serviceSandbox.stub(
-                    service,
-                    'createInvitedProfiles'
-                ).returns(of([profileStub]));
-
+                utilServiceStub.filterInvitedNewUsers.returns(invitedNewUsersStubs);
+                const saveInvitedNewTeamMemberStub = serviceSandbox.stub(service, 'saveInvitedNewTeamMember');
+                saveInvitedNewTeamMemberStub.returns(of(true));
                 notificationServiceStub.sendTeamInvitationForNewUsers.returns(of(true));
 
                 const createdProfile = await firstValueFrom(
-                    service.create(
+                    service.createBulk(
                         teamIdMock,
-                        invitiedNewUserMock
+                        newInvitedNewTeamMemberMocks,
+                        ordererMock as Orderer
                     )
                 );
 
-                expect(createdProfile).ok;
+                expect(createdProfile).true;
+
+                expect(paymentMethodServiceStub.fetch.called).true;
+                expect(fetchTeamOwnerProfileStub.called).true;
+
+                expect(productsServiceStub.findTeamPlanProduct.called).true;
                 expect(userServiceStub.search.called).true;
-                expect(saveInvitedNewTeamMemberStub.called).true;
-                expect(createInvitedProfilesStub.called).equals(createInvitedProfilesCall);
+                expect(ordersServiceStub._create.called).true;
+                expect(paymentsServiceStub._create.called).true;
+
+                expect(ordersServiceStub._updateOrderStatus.called).true;
+                expect(utilServiceStub.createNewProfile.called).equals(createNewProfileCall);
+
+                expect(_createStub.called).true;
+
+                expect(utilServiceStub.filterInvitedNewUsers.called).true;
+                expect(saveInvitedNewTeamMemberStub.called).equals(saveInvitedNewTeamMemberCall);
                 expect(notificationServiceStub.sendTeamInvitationForNewUsers.called).equals(sendTeamInvitationForNewUsersCall);
             });
         });

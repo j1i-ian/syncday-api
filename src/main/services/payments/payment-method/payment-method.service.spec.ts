@@ -9,6 +9,7 @@ import { BootpayService } from '@services/payments/bootpay/bootpay.service';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { User } from '@entity/users/user.entity';
 import { Order } from '@entity/orders/order.entity';
+import { Team } from '@entity/teams/team.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { PaymentMethodService } from './payment-method.service';
 
@@ -55,6 +56,28 @@ describe('PaymentMethodService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    describe('Fetching Payment Method Detail Test', () => {
+
+        afterEach(() => {
+            paymentMethodRepositoryStub.findOneOrFail.reset();
+        });
+
+        it('should be fecthed the payment method which is connected the given team id', async () => {
+
+            const teamIdMock = stubOne(Team).id;
+            const paymentMethodStub = stubOne(PaymentMethod);
+
+            paymentMethodRepositoryStub.findOneOrFail.resolves(paymentMethodStub);
+
+            const loadedPaymentMethod = await firstValueFrom(service.fetch({
+                teamId: teamIdMock
+            }));
+
+            expect(loadedPaymentMethod).ok;
+            expect(paymentMethodRepositoryStub.findOneOrFail.called).true;
+        });
     });
 
     describe('Test payment method creating', () => {

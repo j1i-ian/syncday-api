@@ -335,6 +335,7 @@ describe('TeamService', () => {
             ordersServiceStub._create.resolves(orderMockStub);
             paymentsServiceStub._create.resolves(paymentStub);
             ordersServiceStub._updateOrderStatus.resolves(true);
+
             utilServiceStub.createNewProfile.resolves(profileStubs);
             profilesServiceStub._create.resolves(profileStubs);
 

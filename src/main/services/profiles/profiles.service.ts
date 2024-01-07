@@ -1,26 +1,37 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, EntityManager, Repository, UpdateResult } from 'typeorm';
+import { Brackets, DataSource, EntityManager, Raw, Repository, UpdateResult } from 'typeorm';
 import { Observable, combineLatest, defer, filter, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { Role } from '@interfaces/profiles/role.enum';
 import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.interface';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
+import { OrderStatus } from '@interfaces/orders/order-status.enum';
+import { Orderer } from '@interfaces/orders/orderer.interface';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { UtilService } from '@services/util/util.service';
-import { Profile } from '@entity/profiles/profile.entity';
+import { ProductsService } from '@services/products/products.service';
+import { OrdersService } from '@services/orders/orders.service';
+import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
+import { PaymentsService } from '@services/payments/payments.service';
 import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 
 @Injectable()
 export class ProfilesService {
 
     constructor(
         private readonly utilService: UtilService,
-        private readonly profilesRedisRepository: ProfilesRedisRepository,
+        private readonly productsService: ProductsService,
+        private readonly ordersService: OrdersService,
+        private readonly paymentMethodService: PaymentMethodService,
+        private readonly paymentsService: PaymentsService,
         private readonly notificationsService: NotificationsService,
+        private readonly profilesRedisRepository: ProfilesRedisRepository,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
@@ -137,14 +148,15 @@ export class ProfilesService {
         } = profileSearchOption;
 
         return from(this.profileRepository.findOneOrFail({
-            relations: [
-                'user',
-                'user.oauth2Accounts',
-                'team',
-                'googleIntergrations',
-                'appleCalDAVIntegrations',
-                'zoomIntegrations'
-            ],
+            relations: {
+                user: {
+                    oauth2Accounts: true
+                },
+                team: true,
+                googleIntergrations: true,
+                appleCalDAVIntegrations: true,
+                zoomIntegrations: true
+            },
             where: {
                 id,
                 teamId,
@@ -153,35 +165,106 @@ export class ProfilesService {
         }));
     }
 
-    create(
-        teamId: number,
-        invitedNewUser: Pick<Partial<User>, 'email' | 'phone'>
-    ): Observable<Profile | InvitedNewTeamMember> {
+    _fetchTeamOwnerProfile(teamId: number): Observable<Profile> {
+        return from(this.profileRepository.findOneOrFail({
+            select: {
+                id: true,
+                user: { email: true, phone: true },
+                team: { name: true }
+            },
+            relations: {
+                user: true,
+                team: true
+            },
+            where: {
+                teamId,
+                roles: Raw((alias) => `${alias} LIKE '%${Role.OWNER}%'`)
+            }
+        }));
+    }
 
-        return from(this.userService.search({
-            email: invitedNewUser.email,
-            phone: invitedNewUser.phone
-        })).pipe(
-            map((searchedUsers) => searchedUsers.length > 0 ? searchedUsers.pop() : null),
-            map((searchedUser) =>
-                [
-                    searchedUser,
-                    [{ teamId, ...invitedNewUser }] as InvitedNewTeamMember[]
-                ] as [User, InvitedNewTeamMember[]]),
-            mergeMap(([ searchedUser, invitedNewTeamMembers ]: [User, InvitedNewTeamMember[]]) => (
-                this.saveInvitedNewTeamMember(teamId, invitedNewTeamMembers)
-                    .pipe(
-                        mergeMap(() =>
-                            searchedUser
-                                // create a profile then link to the user
-                                ? this.createInvitedProfiles(searchedUser)
-                                // create a profile for new user
-                                : this.notificationsService.sendTeamInvitationForNewUsers(invitedNewTeamMembers)
-                                    .pipe(map(() => invitedNewTeamMembers))
-                        ),
-                        map((createdProfiles) => createdProfiles[0])
-                    )
-            ))
+    createBulk(
+        teamId: number,
+        newInvitedNewMembers: Array<Pick<Partial<User>, 'email' | 'phone'>>,
+        orderer: Orderer
+    ): Observable<boolean> {
+
+        const emailBulk = newInvitedNewMembers
+            .map((_newInvitationTeamMember) => _newInvitationTeamMember.email)
+            .filter((bulkElement) => !!bulkElement) as string[];
+
+        const phoneNumberBulk = newInvitedNewMembers.map((_newInvite) => _newInvite.phone)
+            .filter((bulkElement) => !!bulkElement) as string[];
+
+        const teamPaymentMethod$ = from(this.paymentMethodService.fetch({ teamId }));
+        const buyer$ = this._fetchTeamOwnerProfile(teamId)
+            .pipe(
+                map((ownerProfile) => ({
+                    name: ownerProfile.name,
+                    email: ownerProfile.user.email,
+                    phone: ownerProfile.user.phone
+                } as Buyer))
+            );
+
+        const orderUnit = newInvitedNewMembers.length;
+
+        return combineLatest([
+            // product id 2 is 'invitation'
+            this.productsService.findTeamPlanProduct(2),
+            from(this.userService.search({
+                emails: emailBulk,
+                phones: phoneNumberBulk
+            })),
+            buyer$,
+            teamPaymentMethod$
+        ]).pipe(
+            mergeMap(([
+                loadedProduct,
+                searchedUsers,
+                buyer,
+                teamPaymentMethod
+            ]) => this.datasource.transaction(async (transactionManager) => {
+
+                const _createdOrder = await this.ordersService._create(
+                    transactionManager,
+                    loadedProduct,
+                    orderUnit,
+                    teamId,
+                    orderer
+                );
+
+                await this.paymentsService._create(
+                    transactionManager,
+                    _createdOrder,
+                    teamPaymentMethod,
+                    buyer
+                );
+
+                await this.ordersService._updateOrderStatus(
+                    transactionManager,
+                    _createdOrder.id,
+                    OrderStatus.PLACED
+                );
+
+                const _allProfiles = searchedUsers.map((_user) => this.utilService.createNewProfile(teamId, _user.id));
+
+                await this._create(transactionManager, _allProfiles, {
+                    reload: false
+                }) as Profile[];
+
+                return searchedUsers;
+            })),
+            mergeMap((searchedUsers) => {
+
+                const invitedNewUsers = this.utilService.filterInvitedNewUsers(newInvitedNewMembers, searchedUsers);
+
+                return invitedNewUsers.length > 0 ?
+                    this.saveInvitedNewTeamMember(teamId, invitedNewUsers)
+                        .pipe(
+                            mergeMap(() => this.notificationsService.sendTeamInvitationForNewUsers(invitedNewUsers)),
+                            map(() => true)
+                        ) : of(true);
+            })
         );
     }
 
@@ -204,14 +287,21 @@ export class ProfilesService {
 
     async _create(
         transactionManager: EntityManager,
-        newProfile: Partial<Profile> | Array<Partial<Profile>>
+        newProfile: Partial<Profile> | Array<Partial<Profile>>,
+        {
+            reload
+        } = {
+            reload: true
+        }
     ): Promise<Profile | Profile[]> {
         const profileRepository = transactionManager.getRepository(Profile);
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
         const createdProfile = profileRepository.create(newProfile as any);
 
-        const savedProfile = await profileRepository.save(createdProfile);
+        const savedProfile = await profileRepository.save(createdProfile, {
+            reload
+        });
 
         return savedProfile;
     }

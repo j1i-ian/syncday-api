@@ -19,8 +19,8 @@ describe('PaymentsService', () => {
 
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
-    let bootpayServicePatchBootpayStub: sinon.SinonStub;
     let bootpayServicePlaceOrderStub: sinon.SinonStub;
+    let bootpayServiceInitStub: sinon.SinonStub;
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
 
@@ -69,17 +69,18 @@ describe('PaymentsService', () => {
 
         beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
+
             bootpayServicePlaceOrderStub = serviceSandbox.stub(BootpayService.prototype, 'placeOrder');
 
-            bootpayServicePatchBootpayStub = serviceSandbox.stub(BootpayService.prototype, 'patchBootpay');
+            bootpayServiceInitStub = serviceSandbox.stub(BootpayService.prototype, 'init');
         });
 
         afterEach(() => {
             paymentRepositoryStub.create.reset();
             paymentRepositoryStub.save.reset();
 
-            bootpayServicePatchBootpayStub.reset();
             bootpayServicePlaceOrderStub.reset();
+            bootpayServiceInitStub.reset();
 
             paymentRedisRepository.setPGPaymentResult.reset();
 
@@ -117,8 +118,8 @@ describe('PaymentsService', () => {
             expect(paymentRepositoryStub.create.called).true;
             expect(paymentRepositoryStub.save.called).true;
 
-            expect(bootpayServicePatchBootpayStub.called).true;
             expect(bootpayServicePlaceOrderStub.called).true;
+            expect(bootpayServiceInitStub.called).true;
 
             expect(paymentRedisRepository.setPGPaymentResult.called).true;
         });

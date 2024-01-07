@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Observable, from } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
@@ -13,7 +13,8 @@ import { PaymentMethod } from '@entity/payments/payment-method.entity';
 export class PaymentMethodService {
     constructor(
         private readonly configService: ConfigService,
-        @InjectDataSource() private readonly datasource: DataSource
+        @InjectDataSource() private readonly datasource: DataSource,
+        @InjectRepository(PaymentMethod) private readonly paymentMethodRepository: Repository<PaymentMethod>
     ) {
         const bootpaySetting = AppConfigService.getBootpaySetting(this.configService);
 
@@ -24,6 +25,23 @@ export class PaymentMethodService {
     }
 
     bootpayConfiguration: BootpayConfiguration;
+
+    fetch({
+        teamId
+    }: {
+        teamId: number;
+    }): Observable<PaymentMethod> {
+        return from(this.paymentMethodRepository.findOneOrFail({
+            relations: {
+                teams: true
+            },
+            where: {
+                teams: {
+                    id: teamId
+                }
+            }
+        }));
+    }
 
     create(
         newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teams'>>,

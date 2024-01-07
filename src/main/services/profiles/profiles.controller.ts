@@ -1,26 +1,29 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query } from '@nestjs/common';
-import { Observable, filter, map, mergeMap, tap, toArray } from 'rxjs';
+import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Inject, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.interface';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
+import { Orderer } from '@interfaces/orders/orderer.interface';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PatchProfileRequestDto } from '@dto/profiles/patch-profile-request.dto';
 import { FetchProfileResponseDto } from '@dto/profiles/fetch-profile-response.dto';
 import { PatchAllProfileRequestDto } from '@dto/profiles/patch-all-profile-request.dto';
 import { PatchProfileRolesRequest } from '@dto/profiles/patch-profile-roles-request.dto';
-import { CreateProfileRequestDto } from '@dto/profiles/create-profile-request.dto';
-import { NoNewbieMemberInBulkException } from '@app/exceptions/profiles/no-newbie-member-in-bulk.exception';
+import { CreateProfileBulkRequestDto } from '@dto/profiles/create-profile-bulk-request.dto';
 
 @Controller()
 export class ProfilesController {
 
     constructor(
-        private readonly profileService: ProfilesService
+        private readonly profileService: ProfilesService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
     /**
@@ -83,27 +86,34 @@ export class ProfilesController {
 
     @Post()
     @Roles(Role.OWNER, Role.MANAGER)
-    create(
-        @AuthProfile('teamId') teamId: number,
-        @Body() createProfileRequestDto: CreateProfileRequestDto
-    ): Observable<Profile | InvitedNewTeamMember> {
+    @Header('Content-type', 'application/json')
+    createBulk(
+        @AuthProfile() authProfile: AppJwtPayload,
+        @Body() createProfileBulkRequestDto: CreateProfileBulkRequestDto
+    ): Observable<boolean> {
 
-        return this.profileService.checkAlreadyInvited(createProfileRequestDto, teamId)
-            .pipe(
-                filter((alreadyInvited) => alreadyInvited === false),
-                toArray(),
-                tap((alreadyInvitedResults) => {
-                    const hasNoNewbieMemberInBulk = alreadyInvitedResults.length === 0;
+        const { teamId } = authProfile;
 
-                    if (hasNoNewbieMemberInBulk) {
-                        throw new NoNewbieMemberInBulkException();
-                    }
-                }),
-                mergeMap(() => this.profileService.create(
-                    teamId,
-                    createProfileRequestDto
-                ))
-            );
+        const orderer = {
+            name: authProfile.name,
+            roles: authProfile.roles,
+            teamId: authProfile.teamId
+        } as Orderer;
+
+        const { invitedMembers, order } = createProfileBulkRequestDto;
+
+        this.logger.info({
+            message: 'Invitation is ordered',
+            teamId,
+            order,
+            totalCount: createProfileBulkRequestDto.invitedMembers.length
+        });
+
+        return this.profileService.createBulk(
+            teamId,
+            invitedMembers,
+            orderer
+        );
     }
 
     /**

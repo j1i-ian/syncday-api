@@ -14,13 +14,21 @@ export class BootpayService {
     private _billing: Billing;
     private Bootpay: BootpayBackendNodejs;
 
+    async init(bootpayConfig: BootpayConfiguration): Promise<void> {
+        await this.patchBootpay();
+
+        this.setConfig(bootpayConfig);
+
+        await this.Bootpay.getAccessToken();
+    }
+
     async patchBootpay(): Promise<void> {
         const { Bootpay } = (await import('@bootpay/backend-js'));
 
         this.Bootpay = Bootpay;
     }
 
-    setConfig(bootpayConfig: BootpayConfiguration): BootpayService {
+    setConfig(bootpayConfig: BootpayConfiguration): this {
         this.Bootpay.setConfiguration(bootpayConfig);
 
         return this;

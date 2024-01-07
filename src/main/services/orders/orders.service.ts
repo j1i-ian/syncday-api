@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
+import { Orderer } from '@interfaces/orders/orderer.interface';
 import { Order } from '@entity/orders/order.entity';
 import { Product } from '@entity/products/product.entity';
 
@@ -13,7 +14,8 @@ export class OrdersService {
         transactionManager: EntityManager,
         product: Product,
         unit: number,
-        teamId: number
+        teamId: number,
+        orderer?: Orderer
     ): Promise<Order> {
         const orderRepository = transactionManager.getRepository(Order);
 
@@ -27,6 +29,7 @@ export class OrdersService {
             productId: product.id,
             status: OrderStatus.CHECKOUT,
             memo,
+            orderer,
             teamId
         });
 

@@ -51,7 +51,7 @@ export class PaymentsService {
 
         const bootpayService = new BootpayService();
 
-        await bootpayService.patchBootpay();
+        await bootpayService.init(this.bootpayConfiguration);
 
         const pgPaymentResult = await bootpayService.placeOrder(
             relatedOrder,

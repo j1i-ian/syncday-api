@@ -22,7 +22,6 @@ import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
-import { Order } from '@entity/orders/order.entity';
 import { Product } from '@entity/products/product.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { User } from '@entity/users/user.entity';
@@ -95,8 +94,19 @@ export class TeamService {
         );
     }
 
+    /**
+     * Create a team with associated payment information
+     *
+     * @param orderUnit
+     * @param newPaymentMethod newPaymentMethod.teams are patched in create method
+     * @param newTeam
+     * @param newTeamSetting
+     * @param teamMembers
+     * @param ownerUserId
+     * @returns
+     */
     create(
-        newOrder: Partial<Order> & Pick<Order, 'unit' | 'price'>,
+        orderUnit: number,
         newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teams'>>,
         newTeam: Partial<Team>,
         newTeamSetting: Pick<TeamSetting, 'workspace' | 'greetings'>,
@@ -126,6 +136,7 @@ export class TeamService {
 
         return checkAlreadyUsedWorkspaceIn$.pipe(
             mergeMap(() => combineLatest([
+                // product id 1 is Team Plan Product
                 this.productsService.findTeamPlanProduct(1),
                 this.userService.search({ emails: allMemberEmails, phones: allMemberPhones }),
                 this.userService.findUserById(ownerUserId)
@@ -150,7 +161,7 @@ export class TeamService {
                     const _createdOrder = await this.ordersService._create(
                         transactionManager,
                         loadedProduct,
-                        newOrder.unit,
+                        orderUnit,
                         _createdTeam.id
                     );
 

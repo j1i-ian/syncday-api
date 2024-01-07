@@ -5,6 +5,9 @@ import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repos
 import { SyncdayRedisModule } from '@services/syncday-redis/syncday-redis.module';
 import { UserModule } from '@services/users/user.module';
 import { NotificationsModule } from '@services/notifications/notifications.module';
+import { OrdersModule } from '@services/orders/orders.module';
+import { ProductsModule } from '@services/products/products.module';
+import { PaymentsModule } from '@services/payments/payments.module';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ProfilesService } from './profiles.service';
 
@@ -12,6 +15,9 @@ import { ProfilesService } from './profiles.service';
     imports: [
         TypeOrmModule.forFeature([ Profile ]),
         SyncdayRedisModule,
+        ProductsModule,
+        OrdersModule,
+        PaymentsModule,
         forwardRef(() => UserModule),
         forwardRef(() => NotificationsModule)
     ],

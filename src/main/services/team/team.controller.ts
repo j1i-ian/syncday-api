@@ -60,7 +60,7 @@ export class TeamController {
         @Body() createTeamRequestDto: CreateTeamRequestDto
     ): Observable<Team> {
 
-        const newOrder = createTeamRequestDto.order;
+        const { unit: orderUnit } = createTeamRequestDto.order;
         const newTeam = {
             name: createTeamRequestDto.name,
             logo: createTeamRequestDto.logo
@@ -73,12 +73,12 @@ export class TeamController {
         const newPaymentMethod = createTeamRequestDto.paymentMethod;
         const newTeamMembers = createTeamRequestDto.invitedMembers;
 
-        if (newOrder.unit !== newTeamMembers.length + 1) {
+        if (orderUnit !== newTeamMembers.length + 1) {
             throw new BadRequestException('Order unit is invalid. Plase check your order option');
         }
 
         return this.teamService.create(
-            newOrder,
+            orderUnit,
             newPaymentMethod,
             newTeam,
             newTeamSetting,
