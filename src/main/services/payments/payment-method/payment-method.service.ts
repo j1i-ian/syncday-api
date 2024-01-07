@@ -72,8 +72,7 @@ export class PaymentMethodService {
 
         const bootpayService = new BootpayService();
 
-        await bootpayService.patchBootpay();
-        bootpayService.setConfig(this.bootpayConfiguration);
+        await bootpayService.init(this.bootpayConfiguration);
 
         await bootpayService.issueBillingKey(
             orderUUID,

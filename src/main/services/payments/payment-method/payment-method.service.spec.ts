@@ -20,8 +20,7 @@ describe('PaymentMethodService', () => {
 
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
-    let bootpayServicePatchBootpayStub: sinon.SinonStub;
-    let bootpayServiceSetConfigStub: sinon.SinonStub;
+    let bootpayServiceInitStub: sinon.SinonStub;
     let bootpayServiceIssueBillingKeyStub: sinon.SinonStub;
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
@@ -86,8 +85,7 @@ describe('PaymentMethodService', () => {
         beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
 
-            bootpayServicePatchBootpayStub = serviceSandbox.stub(BootpayService.prototype, 'patchBootpay');
-            bootpayServiceSetConfigStub = serviceSandbox.stub(BootpayService.prototype, 'setConfig');
+            bootpayServiceInitStub = serviceSandbox.stub(BootpayService.prototype, 'init');
             bootpayServiceIssueBillingKeyStub = serviceSandbox.stub(BootpayService.prototype, 'issueBillingKey');
             serviceSandbox.stub(BootpayService.prototype, 'billing').get(() => ({
                 key: '',
@@ -98,8 +96,7 @@ describe('PaymentMethodService', () => {
         afterEach(() => {
             paymentMethodRepositoryStub.save.reset();
 
-            bootpayServicePatchBootpayStub.reset();
-            bootpayServiceSetConfigStub.reset();
+            bootpayServiceInitStub.reset();
             bootpayServiceIssueBillingKeyStub.reset();
 
             serviceSandbox.restore();
@@ -128,8 +125,7 @@ describe('PaymentMethodService', () => {
             expect(saved).ok;
             expect(saved).deep.equals(paymentMethodMockStub);
 
-            expect(bootpayServicePatchBootpayStub.called).true;
-            expect(bootpayServiceSetConfigStub.called).true;
+            expect(bootpayServiceInitStub.called).true;
             expect(bootpayServiceIssueBillingKeyStub.called).true;
 
             expect(paymentMethodRepositoryStub.save.called).true;
@@ -159,8 +155,7 @@ describe('PaymentMethodService', () => {
             expect(saved).ok;
             expect(saved).deep.equals(paymentMethodMockStub);
 
-            expect(bootpayServicePatchBootpayStub.called).true;
-            expect(bootpayServiceSetConfigStub.called).true;
+            expect(bootpayServiceInitStub.called).true;
             expect(bootpayServiceIssueBillingKeyStub.called).true;
 
             expect(paymentMethodRepositoryStub.save.called).true;

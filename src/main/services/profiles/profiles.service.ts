@@ -20,6 +20,7 @@ import { PaymentMethodService } from '@services/payments/payment-method/payment-
 import { PaymentsService } from '@services/payments/payments.service';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { PaymentMethod } from '@entity/payments/payment-method.entity';
 
 @Injectable()
 export class ProfilesService {
@@ -186,7 +187,8 @@ export class ProfilesService {
     createBulk(
         teamId: number,
         newInvitedNewMembers: Array<Pick<Partial<User>, 'email' | 'phone'>>,
-        orderer: Orderer
+        orderer: Orderer,
+        newPaymentMethod?: PaymentMethod | undefined
     ): Observable<boolean> {
 
         const emailBulk = newInvitedNewMembers
@@ -196,11 +198,14 @@ export class ProfilesService {
         const phoneNumberBulk = newInvitedNewMembers.map((_newInvite) => _newInvite.phone)
             .filter((bulkElement) => !!bulkElement) as string[];
 
-        const teamPaymentMethod$ = from(this.paymentMethodService.fetch({ teamId }));
+        const teamPaymentMethod$ = newPaymentMethod
+            ? of(null)
+            : from(this.paymentMethodService.fetch({ teamId }));
+
         const buyer$ = this._fetchTeamOwnerProfile(teamId)
             .pipe(
                 map((ownerProfile) => ({
-                    name: ownerProfile.name,
+                    name: ownerProfile.team.name,
                     email: ownerProfile.user.email,
                     phone: ownerProfile.user.phone
                 } as Buyer))
@@ -225,6 +230,13 @@ export class ProfilesService {
                 teamPaymentMethod
             ]) => this.datasource.transaction(async (transactionManager) => {
 
+                this.logger.info({
+                    message: 'Invitation transaction is started',
+                    productId: loadedProduct.id,
+                    newPaymentMethod,
+                    buyer
+                });
+
                 const _createdOrder = await this.ordersService._create(
                     transactionManager,
                     loadedProduct,
@@ -233,12 +245,32 @@ export class ProfilesService {
                     orderer
                 );
 
+                this.logger.info({
+                    message: 'Invitation transaction: Order is created sucessfully'
+                });
+
+                const ensuredPaymentMethod = newPaymentMethod
+                    ? await this.paymentMethodService._create(
+                        transactionManager,
+                        newPaymentMethod,
+                        buyer,
+                        _createdOrder.uuid
+                    ) : teamPaymentMethod as PaymentMethod;
+
+                this.logger.info({
+                    message: 'Invitation transaction: PaymentMethod is created sucessfully'
+                });
+
                 await this.paymentsService._create(
                     transactionManager,
                     _createdOrder,
-                    teamPaymentMethod,
+                    ensuredPaymentMethod,
                     buyer
                 );
+
+                this.logger.info({
+                    message: 'Invitation transaction: Payment is created sucessfully'
+                });
 
                 await this.ordersService._updateOrderStatus(
                     transactionManager,

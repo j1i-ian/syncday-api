@@ -12,6 +12,7 @@ import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { Profile } from '@entity/profiles/profile.entity';
+import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { PatchProfileRequestDto } from '@dto/profiles/patch-profile-request.dto';
 import { FetchProfileResponseDto } from '@dto/profiles/fetch-profile-response.dto';
 import { PatchAllProfileRequestDto } from '@dto/profiles/patch-all-profile-request.dto';
@@ -100,7 +101,11 @@ export class ProfilesController {
             teamId: authProfile.teamId
         } as Orderer;
 
-        const { invitedMembers, order } = createProfileBulkRequestDto;
+        const {
+            invitedMembers,
+            order,
+            paymentMethod: newPaymentMethod
+        } = createProfileBulkRequestDto;
 
         this.logger.info({
             message: 'Invitation is ordered',
@@ -112,7 +117,8 @@ export class ProfilesController {
         return this.profileService.createBulk(
             teamId,
             invitedMembers,
-            orderer
+            orderer,
+            newPaymentMethod as PaymentMethod
         );
     }
 

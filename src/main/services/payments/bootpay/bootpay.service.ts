@@ -65,7 +65,7 @@ export class BootpayService {
 
     async issueBillingKey(
         orderId: string,
-        teamName: string,
+        placedOrderName: string,
         creditCard: CreditCard,
         buyer: {
             name: string;
@@ -88,7 +88,7 @@ export class BootpayService {
         } = await this.Bootpay.requestSubscribeBillingKey({
             pg,
             subscription_id: orderId,
-            order_name: teamName,
+            order_name: placedOrderName,
             card_no: creditCard.serialNumber,
             card_pw: creditCard.password,
             card_identity_no: creditCard.identification,

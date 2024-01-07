@@ -121,7 +121,7 @@ describe('ProfilesService', () => {
         expect(service).ok;
     });
 
-    describe('Profile Filter Text', () => {
+    describe('Profile Filter Test', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
         let profileQueryBuilderStub: sinon.SinonStubbedInstance<SelectQueryBuilder<Profile>>;
@@ -368,6 +368,7 @@ describe('ProfilesService', () => {
             productsServiceStub.findTeamPlanProduct.reset();
             userServiceStub.search.reset();
             ordersServiceStub._create.reset();
+            paymentMethodServiceStub._create.reset();
             paymentsServiceStub._create.reset();
             ordersServiceStub._updateOrderStatus.reset();
             utilServiceStub.createNewProfile.reset();
@@ -382,6 +383,7 @@ describe('ProfilesService', () => {
         [
             {
                 description: 'should be bulk creating of profiles for sync user',
+                newPaymentMethodMock: undefined,
                 getSearchedUserStubs: () => {
                     const syncUserStub = stubOne(User);
                     return [ syncUserStub ];
@@ -393,6 +395,20 @@ describe('ProfilesService', () => {
             },
             {
                 description: 'should be bulk creating of invitations without profiles for new user',
+                newPaymentMethodMock: undefined,
+                getSearchedUserStubs: () => [],
+                getFilterInvitedNewUsersStubs: (teamIdMock: number) => {
+                    const nonAppUserInvitations = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
+
+                    return nonAppUserInvitations;
+                },
+                saveInvitedNewTeamMemberCall: true,
+                sendTeamInvitationForNewUsersCall: true,
+                createNewProfileCall: false
+            },
+            {
+                description: 'should be bulk creating of invitations with creating payment method for initial deault team',
+                newPaymentMethodMock: stubOne(PaymentMethod),
                 getSearchedUserStubs: () => [],
                 getFilterInvitedNewUsersStubs: (teamIdMock: number) => {
                     const nonAppUserInvitations = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
@@ -405,6 +421,7 @@ describe('ProfilesService', () => {
             }
         ].forEach(function({
             description,
+            newPaymentMethodMock,
             getSearchedUserStubs,
             getFilterInvitedNewUsersStubs,
             saveInvitedNewTeamMemberCall,
@@ -413,6 +430,8 @@ describe('ProfilesService', () => {
         }) {
 
             it(description, async () => {
+
+                const createNewPaymentMethod = !!newPaymentMethodMock;
 
                 const teamIdMock = stubOne(Team).id;
                 const profileStub = stubOne(Profile);
@@ -424,6 +443,7 @@ describe('ProfilesService', () => {
                 const proudctStub = stubOne(Product);
 
                 const teamOwnerProfileStub = stubOne(Profile, {
+                    team: stubOne(Team),
                     user: stubOne(User)
                 });
 
@@ -438,6 +458,7 @@ describe('ProfilesService', () => {
                 productsServiceStub.findTeamPlanProduct.resolves(proudctStub);
                 userServiceStub.search.resolves(userStubs);
                 ordersServiceStub._create.resolves(orderStub);
+                paymentMethodServiceStub._create.resolves(paymentMethodStub);
                 paymentsServiceStub._create.resolves(paymentStub);
 
                 ordersServiceStub._updateOrderStatus.resolves(true);
@@ -457,18 +478,20 @@ describe('ProfilesService', () => {
                     service.createBulk(
                         teamIdMock,
                         newInvitedNewTeamMemberMocks,
-                        ordererMock as Orderer
+                        ordererMock as Orderer,
+                        newPaymentMethodMock
                     )
                 );
 
                 expect(createdProfile).true;
 
-                expect(paymentMethodServiceStub.fetch.called).true;
+                expect(paymentMethodServiceStub.fetch.called).not.equals(createNewPaymentMethod);
                 expect(fetchTeamOwnerProfileStub.called).true;
 
                 expect(productsServiceStub.findTeamPlanProduct.called).true;
                 expect(userServiceStub.search.called).true;
                 expect(ordersServiceStub._create.called).true;
+                expect(paymentMethodServiceStub._create.called).equals(createNewPaymentMethod);
                 expect(paymentsServiceStub._create.called).true;
 
                 expect(ordersServiceStub._updateOrderStatus.called).true;
