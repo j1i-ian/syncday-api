@@ -8,6 +8,7 @@ import { ProfilesModule } from '@services/profiles/profiles.module';
 import { NotificationsModule } from '@services/notifications/notifications.module';
 import { EventsModule } from '@services/events/events.module';
 import { AvailabilityModule } from '@services/availability/availability.module';
+import { PaymentMethodModule } from '@services/payments/payment-method/payment-method.module';
 import { Team } from '@entity/teams/team.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { TeamSettingModule } from './team-setting/team-setting.module';
@@ -24,6 +25,7 @@ import { TeamController } from './team.controller';
         OrdersModule,
         forwardRef(() => NotificationsModule),
         PaymentsModule,
+        PaymentMethodModule,
         EventsModule,
         AvailabilityModule
     ],

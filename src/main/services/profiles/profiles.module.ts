@@ -8,6 +8,7 @@ import { NotificationsModule } from '@services/notifications/notifications.modul
 import { OrdersModule } from '@services/orders/orders.module';
 import { ProductsModule } from '@services/products/products.module';
 import { PaymentsModule } from '@services/payments/payments.module';
+import { PaymentMethodModule } from '@services/payments/payment-method/payment-method.module';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ProfilesService } from './profiles.service';
 
@@ -18,6 +19,7 @@ import { ProfilesService } from './profiles.service';
         ProductsModule,
         OrdersModule,
         PaymentsModule,
+        PaymentMethodModule,
         forwardRef(() => UserModule),
         forwardRef(() => NotificationsModule)
     ],
