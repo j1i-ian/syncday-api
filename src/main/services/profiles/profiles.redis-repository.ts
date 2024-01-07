@@ -3,9 +3,9 @@ import { Cluster } from 'ioredis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Observable, from, map, mergeMap, of, tap, toArray } from 'rxjs';
+import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
-import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 
 @Injectable()
 export class ProfilesRedisRepository {
@@ -14,6 +14,26 @@ export class ProfilesRedisRepository {
         @AppInjectCluster() private readonly cluster: Cluster,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
+
+    async filterAlreadyInvited(teamId: number, emailOrPhoneBulk: string[]): Promise<string[]> {
+
+        const checkPipeline = this.cluster.pipeline();
+
+        emailOrPhoneBulk.forEach((emailOrPhone) => {
+
+            const invitedNewMemberKey = this.syncdayRedisService.getInvitedNewMemberKey(emailOrPhone);
+
+            checkPipeline.sismember(invitedNewMemberKey, teamId);
+        });
+
+        const pipelineResults = await checkPipeline.exec();
+
+        const alreadyInvitedMembers = pipelineResults?.flatMap((_pipelineResult) => _pipelineResult[1] as number)
+            .map((result, index) => result === 1 ? emailOrPhoneBulk[index] : null)
+            .filter((_alreadyInvitedOrNull) => !!_alreadyInvitedOrNull) as string[];
+
+        return alreadyInvitedMembers ?? [];
+    }
 
     getInvitedTeamIds(emailOrPhone: string): Observable<number[]> {
 
@@ -45,7 +65,7 @@ export class ProfilesRedisRepository {
                             map((_invitedNewMemberKey) => this.syncdayRedisService.getInvitedNewMemberKey(_invitedNewMemberKey)),
                             tap((_invitedNewMemberRedisKey) => setAddPipeline.sadd(_invitedNewMemberRedisKey, createdTeamId)),
                             toArray(),
-                            mergeMap(() => setAddPipeline.exec())
+                            mergeMap(() => from(setAddPipeline.exec()))
                         )
                 ),
                 map((pipelineResults) => pipelineResults?.filter((_pipelineResult) => _pipelineResult[0]) || []),

@@ -32,7 +32,7 @@ import { EventSetting } from '@interfaces/events/event-setting';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
-import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
+import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { Schedule } from '@entity/schedules/schedule.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';

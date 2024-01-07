@@ -6,8 +6,8 @@ import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.interface';
+import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { ProfilesService } from '@services/profiles/profiles.service';
-import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PatchProfileRequestDto } from '@dto/profiles/patch-profile-request.dto';
 import { FetchProfileResponseDto } from '@dto/profiles/fetch-profile-response.dto';
@@ -22,6 +22,25 @@ export class ProfilesController {
     constructor(
         private readonly profileService: ProfilesService
     ) {}
+
+    /**
+     * this api method should be custom http method 'FILTER'.
+     * But Nest.js is not support custom http method.
+     *
+     * @returns
+     */
+    @Post('filters')
+    @Roles(Role.OWNER, Role.MANAGER)
+    filter(
+        @AuthProfile('teamId') teamId: number,
+        @Body() invitedNewTeamMembers: InvitedNewTeamMember[]
+    ): Observable<InvitedNewTeamMember[]> {
+
+        return this.profileService.filterProfiles(
+            teamId,
+            invitedNewTeamMembers
+        );
+    }
 
     @Get()
     search(

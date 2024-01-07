@@ -84,6 +84,112 @@ describe('ProfilesService', () => {
         expect(service).ok;
     });
 
+    describe.only('Profile Filter Text', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        let profileQueryBuilderStub: sinon.SinonStubbedInstance<SelectQueryBuilder<Profile>>;
+
+        beforeEach(() => {
+
+            serviceSandbox = sinon.createSandbox();
+
+            profileQueryBuilderStub = stubQueryBuilder(serviceSandbox, Profile);
+
+            // Complement typeorm-faker
+            profileQueryBuilderStub.groupBy.returns(profileQueryBuilderStub);
+            profileQueryBuilderStub.addGroupBy.returns(profileQueryBuilderStub);
+
+            profileRepositoryStub.createQueryBuilder.returns(profileQueryBuilderStub);
+        });
+
+        afterEach(() => {
+            profilesRedisRepositoryStub.filterAlreadyInvited.reset();
+            utilServiceStub.convertToInvitedNewTeamMember.reset();
+
+            serviceSandbox.restore();
+        });
+
+        [
+            {
+                description: 'should be filtered already invited email or phone by new user invitation sending is detected (NoSQL check)',
+                getInvitedNewTeamMemberMocks: (teamIdMock: number) => testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock),
+                getNewInvitationTeamMemberMocks: (teamIdMock: number) => testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock),
+                getAlreadyJoinedTeamProfilesMock: () => [],
+                convertToInvitedNewTeamMemberCall: true
+            },
+            {
+                description: 'should be filtered already invited email or phone by oldby user profile is detected (RDB check)',
+                getInvitedNewTeamMemberMocks: () => [],
+                getNewInvitationTeamMemberMocks: (teamIdMock: number) => {
+                    const invitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
+                    invitedNewTeamMemberMocks[0].email = 'emailStub';
+                    invitedNewTeamMemberMocks[1].phone = 'phoneStub';
+
+                    return invitedNewTeamMemberMocks;
+                },
+                getAlreadyJoinedTeamProfilesMock: () => {
+
+                    const userStubs = [
+                        stubOne(User, {
+                            email: 'emailStub'
+                        }),
+                        stubOne(User, {
+                            phone: 'phoneStub'
+                        })
+                    ];
+                    const alreadyJoinedTeamProfilesMock = [
+                        stubOne(Profile, { user: userStubs[0] }),
+                        stubOne(Profile, { user: userStubs[1] })
+                    ];
+
+                    return alreadyJoinedTeamProfilesMock;
+                },
+                convertToInvitedNewTeamMemberCall: false
+            }
+
+        ].forEach(function({
+            description,
+            getInvitedNewTeamMemberMocks,
+            getNewInvitationTeamMemberMocks,
+            getAlreadyJoinedTeamProfilesMock,
+            convertToInvitedNewTeamMemberCall
+        }) {
+
+            it(description, async () => {
+
+                const teamIdMock = stubOne(Team).id;
+
+                const newInvitationTeamMemberMocks = getNewInvitationTeamMemberMocks(teamIdMock);
+                const invitedNewTeamMemberMocks = getInvitedNewTeamMemberMocks(teamIdMock);
+
+                const alreadyInvitedEmailOrPhoneArray = invitedNewTeamMemberMocks.map((_invitedNewTeamMemberMock) => (_invitedNewTeamMemberMock.email || _invitedNewTeamMemberMock.phone) as string);
+
+                const alreadyJoinedTeamProfilesMock = getAlreadyJoinedTeamProfilesMock();
+
+                profilesRedisRepositoryStub.filterAlreadyInvited.resolves(alreadyInvitedEmailOrPhoneArray);
+                utilServiceStub.convertToInvitedNewTeamMember.returns(invitedNewTeamMemberMocks[0]);
+
+                profileQueryBuilderStub.getMany.resolves(alreadyJoinedTeamProfilesMock);
+
+                const alreadySentInvitations = await firstValueFrom(
+                    service.filterProfiles(
+                        teamIdMock,
+                        newInvitationTeamMemberMocks
+                    )
+                );
+
+                expect(alreadySentInvitations).ok;
+                expect(alreadySentInvitations.length).greaterThan(0);
+
+                expect(profilesRedisRepositoryStub.filterAlreadyInvited.called).true;
+                expect(utilServiceStub.convertToInvitedNewTeamMember.called).equals(convertToInvitedNewTeamMemberCall);
+
+                expect(profileQueryBuilderStub.getMany.called).true;
+            });
+
+        });
+    });
+
     describe('Profile Search Test', () => {
         let serviceSandbox: sinon.SinonSandbox;
 

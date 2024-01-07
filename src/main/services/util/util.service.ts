@@ -18,8 +18,8 @@ import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { Role } from '@interfaces/profiles/role.enum';
+import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
-import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { DateTimeOrderFormat } from '@entity/users/date-time-format-order.enum';
@@ -64,6 +64,12 @@ type EventDetailInit = Omit<EventDetail,
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
+
+    convertToInvitedNewTeamMember(emailOrPhone: string): InvitedNewTeamMember {
+        return emailOrPhone.includes('@')
+            ? { email: emailOrPhone }
+            : { phone: emailOrPhone };
+    }
 
     convertUpdateResultToBoolean(updateResult: UpdateResult): boolean {
         return Boolean(

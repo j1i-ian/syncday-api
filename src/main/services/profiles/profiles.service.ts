@@ -1,13 +1,13 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository, UpdateResult } from 'typeorm';
-import { Observable, combineLatest, defer, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray } from 'rxjs';
+import { Brackets, DataSource, EntityManager, Repository, UpdateResult } from 'typeorm';
+import { Observable, combineLatest, defer, filter, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Role } from '@interfaces/profiles/role.enum';
 import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.interface';
+import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
-import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { UtilService } from '@services/util/util.service';
@@ -27,6 +27,54 @@ export class ProfilesService {
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(Profile) private readonly profileRepository: Repository<Profile>
     ) {}
+
+    filterProfiles(
+        teamId: number,
+        newInvitationTeamMembers: InvitedNewTeamMember[]
+    ): Observable<InvitedNewTeamMember[]> {
+
+        const emailBulk = newInvitationTeamMembers.map((_newInvite) => _newInvite.email)
+            .filter((bulkElement) => !!bulkElement) as string[];
+        const phoneNumberBulk = newInvitationTeamMembers.map((_newInvite) => _newInvite.phone)
+            .filter((bulkElement) => !!bulkElement) as string[];
+
+        const emailOrPhoneBulk = emailBulk.concat(phoneNumberBulk);
+
+        // check nosql db
+        const invitedNewTeamMembers$ = from(this.profilesRedisRepository.filterAlreadyInvited(teamId, emailOrPhoneBulk))
+            .pipe(
+                mergeMap((alreadyInvitedEmailOrPhoneBulk) => from(alreadyInvitedEmailOrPhoneBulk)),
+                map((alreadyInvitedEmailOrPhone) => this.utilService.convertToInvitedNewTeamMember(alreadyInvitedEmailOrPhone))
+            );
+
+        const alreadyJoinedTeamProfiles$ = from(
+            this.profileRepository.createQueryBuilder('profile')
+                .select([
+                    'profile.id',
+                    'user.email',
+                    'user.phone'
+                ])
+                .leftJoinAndSelect('profile.user', 'user')
+                .where('profile.teamId = :teamId', { teamId })
+                .andWhere(new Brackets((qb) => {
+                    qb.where('user.email IN (:...emailBulk)', { emailBulk })
+                        .orWhere('user.phone IN (:...phoneNumberBulk)', { phoneNumberBulk });
+                }))
+                .groupBy('user.email')
+                .addGroupBy('user.phone')
+                .getMany()
+        ).pipe(
+            mergeMap((_profiles) => from(_profiles)),
+            map(({ user: profileUser }) => [profileUser.email, profileUser.phone]),
+            filter(([email, phone]) => emailBulk.includes(email) || phoneNumberBulk.includes(phone)),
+            map(([email, phone]) => ({ email, phone } as InvitedNewTeamMember))
+        );
+
+        return merge(invitedNewTeamMembers$, alreadyJoinedTeamProfiles$)
+            .pipe(
+                reduce((acc, curr) => acc.concat(curr), [] as InvitedNewTeamMember[])
+            );
+    }
 
     search(
         {

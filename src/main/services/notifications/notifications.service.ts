@@ -10,11 +10,11 @@ import { TextTemplate } from '@core/interfaces/notifications/text-template.enum'
 import { AppConfigService } from '@config/app-config.service';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
+import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
-import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
 import { Language } from '@app/enums/language.enum';
 

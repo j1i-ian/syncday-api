@@ -7,7 +7,7 @@ import { IntegrationContext } from '@interfaces/integrations/integration-context
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { Role } from '@interfaces/profiles/role.enum';
-import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
+import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { Schedule } from '@entity/schedules/schedule.entity';
@@ -51,6 +51,26 @@ describe('UtilService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    describe('Conversion Test', () => {
+        it('should be converted of the email invitation to a invited new team member dto', () => {
+            const emailMock = 'sample@sync.day';
+
+            const conveted = service.convertToInvitedNewTeamMember(emailMock);
+
+            expect(conveted).ok;
+            expect(conveted.email).ok;
+        });
+
+        it('should be converted of the phone invitation to a invited new team member dto', () => {
+            const phoneMock = '+821012345678';
+
+            const conveted = service.convertToInvitedNewTeamMember(phoneMock);
+
+            expect(conveted).ok;
+            expect(conveted.phone).ok;
+        });
     });
 
     describe('Test the conversion of the update result to a boolean value', () => {

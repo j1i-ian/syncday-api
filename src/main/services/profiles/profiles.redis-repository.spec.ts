@@ -57,6 +57,7 @@ describe('Profiles Redis Repository Test', () => {
         expect(service).ok;
     });
 
+
     describe('Profiles Redis Repository', () => {
 
         let serviceSandbox: sinon.SinonSandbox;
@@ -73,11 +74,45 @@ describe('Profiles Redis Repository Test', () => {
         afterEach(() => {
             syncdayRedisServiceStub.getInvitedNewMemberKey.reset();
 
+            pipelineStub.sismember.reset();
+            pipelineStub.exec.reset();
+
             clusterStub.smembers.reset();
             clusterStub.pipeline.reset();
 
             serviceSandbox.restore();
         });
+
+
+        it('should be filtered to already invited profiles', async () => {
+
+            const teamIdMock = stubOne(Team).id;
+            const invitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(0);
+
+            const emailOrPhoneBulkMock = invitedNewTeamMemberMocks.map((_invitedNewTeamMemberMock) => (_invitedNewTeamMemberMock.email || _invitedNewTeamMemberMock.phone) as string);
+
+            const alreadyInvitedProfilePiepelineResultStub = [null, 1] as [error: Error | null, result: number];
+            const pipelineResultStub = Array(emailOrPhoneBulkMock.length - 1).fill([null, 0]);
+
+            const allPipelineResultStub = [alreadyInvitedProfilePiepelineResultStub].concat(pipelineResultStub);
+
+            syncdayRedisServiceStub.getInvitedNewMemberKey.returnsArg(0);
+            pipelineStub.sismember.returns(pipelineStub);
+            pipelineStub.exec.resolves(allPipelineResultStub as Array<[error: Error | null, result: number]>);
+
+            const filtered = await service.filterAlreadyInvited(
+                teamIdMock,
+                emailOrPhoneBulkMock
+            );
+
+            expect(filtered).ok;
+            expect(filtered.length).greaterThan(0);
+
+            expect(pipelineStub.sismember.called).true;
+            expect(pipelineStub.exec.called).true;
+            expect(syncdayRedisServiceStub.getInvitedNewMemberKey.called).true;
+        });
+
 
         it('should be got invited team id list', async () => {
 
