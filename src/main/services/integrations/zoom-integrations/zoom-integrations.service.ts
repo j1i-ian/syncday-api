@@ -10,7 +10,6 @@ import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/
 import { AppConfigService } from '@config/app-config.service';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
-import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/conference-link-integration-wrapper-service.interface';
 import { ZoomConferenceLinkIntegrationsService } from '@services/integrations/zoom-integrations/zoom-conference-link-integrations/zoom-conference-link-integrations.service';
@@ -49,7 +48,7 @@ export class ZoomIntegrationsService implements
         throw new Error('Method not implemented.');
     }
 
-    async search(profileSearchOption: Partial<SearchByProfileOption>): Promise<Integration[]> {
+    async search(profileSearchOption: IntegrationSearchOption): Promise<Integration[]> {
 
         const { profileId } = profileSearchOption;
 

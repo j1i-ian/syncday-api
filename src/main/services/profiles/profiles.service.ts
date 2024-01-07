@@ -1,11 +1,11 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository, UpdateResult } from 'typeorm';
-import { Observable, combineLatest, defer, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray, zip } from 'rxjs';
+import { Observable, combineLatest, defer, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { Role } from '@interfaces/profiles/role.enum';
+import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.interface';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { UserService } from '@services/users/user.service';
@@ -33,7 +33,7 @@ export class ProfilesService {
             userId,
             teamId,
             withUserData
-        }: Partial<SearchByProfileOption>
+        }: Partial<ProfileSearchOption>
     ): Observable<Profile[]> {
 
         return of(this.profileRepository.createQueryBuilder('profile'))
@@ -80,13 +80,13 @@ export class ProfilesService {
             );
     }
 
-    findProfile(searchByProfileOption: Partial<SearchByProfileOption>): Observable<Profile> {
+    fetch(profileSearchOption: Partial<ProfileSearchOption>): Observable<Profile> {
 
         const {
-            profileId,
+            id,
             teamId,
             userId
-        } = searchByProfileOption;
+        } = profileSearchOption;
 
         return from(this.profileRepository.findOneOrFail({
             relations: [
@@ -98,7 +98,7 @@ export class ProfilesService {
                 'zoomIntegrations'
             ],
             where: {
-                id: profileId,
+                id,
                 teamId,
                 userId
             }
@@ -109,10 +109,11 @@ export class ProfilesService {
         teamId: number,
         invitedNewUser: Pick<Partial<User>, 'email' | 'phone'>
     ): Observable<Profile | InvitedNewTeamMember> {
-        return from(this.userService.searchByEmailOrPhone([
-            { email: invitedNewUser.email },
-            { phone: invitedNewUser.phone }
-        ])).pipe(
+
+        return from(this.userService.search({
+            email: invitedNewUser.email,
+            phone: invitedNewUser.phone
+        })).pipe(
             map((searchedUsers) => searchedUsers.length > 0 ? searchedUsers.pop() : null),
             map((searchedUser) =>
                 [
@@ -121,12 +122,13 @@ export class ProfilesService {
                 ] as [User, InvitedNewTeamMember[]]),
             mergeMap(([ searchedUser, invitedNewTeamMembers ]: [User, InvitedNewTeamMember[]]) => (
                 this.saveInvitedNewTeamMember(teamId, invitedNewTeamMembers)
-                // create a profile then link to the user
                     .pipe(
                         mergeMap(() =>
-                            searchedUser ? this.createInvitedProfiles(searchedUser)
-                                : // create a profile for new user
-                                this.notificationsService.sendTeamInvitationForNewUsers(invitedNewTeamMembers)
+                            searchedUser
+                                // create a profile then link to the user
+                                ? this.createInvitedProfiles(searchedUser)
+                                // create a profile for new user
+                                : this.notificationsService.sendTeamInvitationForNewUsers(invitedNewTeamMembers)
                                     .pipe(map(() => invitedNewTeamMembers))
                         ),
                         map((createdProfiles) => createdProfiles[0])
@@ -139,11 +141,10 @@ export class ProfilesService {
         user: Pick<User, 'id' | 'email' | 'phone'>
     ): Observable<Profile[]> {
 
-        return zip(
-            this.profilesRedisRepository.getInvitedTeamIds(user.email),
-            this.profilesRedisRepository.getInvitedTeamIds(user.phone)
-        ).pipe(
-            mergeMap(([_emailTeamIds, _phoneTeamIds]) => from(_emailTeamIds.concat(_phoneTeamIds))),
+        const emailOrPhone = user.email || user.phone;
+
+        return this.profilesRedisRepository.getInvitedTeamIds(emailOrPhone).pipe(
+            mergeMap((allTeamIds) => from(allTeamIds)),
             map((_teamId) => (this.profileRepository.create({
                 teamId: _teamId,
                 userId: user.id
@@ -165,6 +166,22 @@ export class ProfilesService {
         const savedProfile = await profileRepository.save(createdProfile);
 
         return savedProfile;
+    }
+
+    checkAlreadyInvited(
+        invitedNewTeamMember: InvitedNewTeamMember,
+        teamId: number
+    ): Observable<boolean> {
+        const invitedNewUserEmailOrPhone = (invitedNewTeamMember.email || invitedNewTeamMember.phone) as string;
+
+        return this.profilesRedisRepository.getInvitedTeamIds(invitedNewUserEmailOrPhone)
+            .pipe(
+                map((invitedTeamIds) => {
+                    const alreadyInvited = invitedTeamIds.includes(teamId);
+
+                    return alreadyInvited;
+                })
+            );
     }
 
     saveInvitedNewTeamMember(

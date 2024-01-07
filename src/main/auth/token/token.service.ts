@@ -248,7 +248,7 @@ export class TokenService {
 
         const decoedProfileByRefreshToken$ = isNewProfileTokenRequest ?
             from(
-                this.profileService.findProfile({
+                this.profileService.fetch({
                     teamId,
                     userId
                 })

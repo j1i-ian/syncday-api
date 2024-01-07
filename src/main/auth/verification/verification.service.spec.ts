@@ -151,7 +151,7 @@ describe('VerificationService', () => {
                     userServiceStub.findUserByLocalAuth.resolves(null);
                 } else {
                     syncdayRedisServiceStub.getPhoneVerificationKey.returns(fakeKeyStubValue);
-                    userServiceStub.searchByEmailOrPhone.resolves([]);
+                    userServiceStub.search.resolves([]);
                 }
 
                 serviceSandbox.stub(service, 'publishSyncdayNotification').resolves(true);

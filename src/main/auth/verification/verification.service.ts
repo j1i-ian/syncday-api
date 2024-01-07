@@ -51,7 +51,7 @@ export class VerificationService {
             isSignUpVerification = !!alreadySignedUpUser;
         } else {
             verificationRedisKey = this.syncdayRedisService.getPhoneVerificationKey(phoneNumber as string);
-            const alreadySignedUpUsers = await this.userService.searchByEmailOrPhone([{ phone: phoneNumber }]);
+            const alreadySignedUpUsers = await this.userService.search({ phone: phoneNumber });
 
             isSignUpVerification = !!alreadySignedUpUsers[0];
         }

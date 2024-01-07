@@ -5,7 +5,7 @@ import { firstValueFrom, of } from 'rxjs';
 import { ForbiddenException } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Role } from '@interfaces/profiles/role.enum';
-import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
+import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.interface';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
@@ -112,7 +112,7 @@ describe('ProfilesService', () => {
         [
             {
                 description: 'should be searched profiles without any search options',
-                searchOptionMock: {} as Partial<SearchByProfileOption>,
+                searchOptionMock: {} as Partial<ProfileSearchOption>,
                 whereCall: false,
                 andWhereCall: false,
                 addSelectCallCount: 1,
@@ -122,7 +122,7 @@ describe('ProfilesService', () => {
             },
             {
                 description: 'should be searched profiles by user id',
-                searchOptionMock: { userId: 1 } as Partial<SearchByProfileOption>,
+                searchOptionMock: { userId: 1 } as Partial<ProfileSearchOption>,
                 whereCall: true,
                 andWhereCall: false,
                 addSelectCallCount: 1,
@@ -132,7 +132,7 @@ describe('ProfilesService', () => {
             },
             {
                 description: 'should be searched profiles by team id',
-                searchOptionMock: { teamId: 1 } as Partial<SearchByProfileOption>,
+                searchOptionMock: { teamId: 1 } as Partial<ProfileSearchOption>,
                 whereCall: false,
                 andWhereCall: true,
                 addSelectCallCount: 1,
@@ -142,7 +142,7 @@ describe('ProfilesService', () => {
             },
             {
                 description: 'should be searched profiles with withUserData option',
-                searchOptionMock: { withUserData: true } as Partial<SearchByProfileOption>,
+                searchOptionMock: { withUserData: true } as Partial<ProfileSearchOption>,
                 whereCall: false,
                 andWhereCall: false,
                 addSelectCallCount: 2,
@@ -188,8 +188,8 @@ describe('ProfilesService', () => {
 
             profileRepositoryStub.findOneOrFail.resolves(profileStub);
 
-            const loadedUser =  await firstValueFrom(service.findProfile({
-                profileId: profileStub.id
+            const loadedUser =  await firstValueFrom(service.fetch({
+                id: profileStub.id
             }));
 
             const actualPassedParam = profileRepositoryStub.findOneOrFail.getCall(0).args[0];
@@ -209,7 +209,7 @@ describe('ProfilesService', () => {
 
         afterEach(() => {
 
-            userServiceStub.searchByEmailOrPhone.reset();
+            userServiceStub.search.reset();
 
             notificationServiceStub.sendTeamInvitationForNewUsers.reset();
 
@@ -246,7 +246,7 @@ describe('ProfilesService', () => {
                 const profileStub = stubOne(Profile);
                 const userStubs = getSearchedUserStubs();
 
-                userServiceStub.searchByEmailOrPhone.resolves(userStubs);
+                userServiceStub.search.resolves(userStubs);
 
                 const saveInvitedNewTeamMemberStub = serviceSandbox.stub(
                     service,
@@ -268,7 +268,7 @@ describe('ProfilesService', () => {
                 );
 
                 expect(createdProfile).ok;
-                expect(userServiceStub.searchByEmailOrPhone.called).true;
+                expect(userServiceStub.search.called).true;
                 expect(saveInvitedNewTeamMemberStub.called).true;
                 expect(createInvitedProfilesStub.called).equals(createInvitedProfilesCall);
                 expect(notificationServiceStub.sendTeamInvitationForNewUsers.called).equals(sendTeamInvitationForNewUsersCall);
@@ -327,7 +327,7 @@ describe('ProfilesService', () => {
             const userMock = stubOne(User);
             const teamIdMocks = stub(Team).map((_team) => _team.id);
 
-            profilesRedisRepositoryStub.getInvitedTeamIds.resolves(teamIdMocks);
+            profilesRedisRepositoryStub.getInvitedTeamIds.returns(of(teamIdMocks));
 
             profileRepositoryStub.create.returnsArg(0);
             profileRepositoryStub.save.resolvesArg(0);
@@ -341,7 +341,48 @@ describe('ProfilesService', () => {
 
             expect(profileRepositoryStub.create.called).true;
             expect(profileRepositoryStub.save.called).true;
-            expect(profilesRedisRepositoryStub.getInvitedTeamIds.calledTwice).true;
+            expect(profilesRedisRepositoryStub.getInvitedTeamIds.called).true;
+        });
+    });
+
+    describe('Test check duplicated invitation', () => {
+
+        afterEach(() => {
+            profilesRedisRepositoryStub.getInvitedTeamIds.reset();
+        });
+
+        it('should be invited user', async () => {
+            const invitedTeamIdsStub = stub(Team).map((team) => team.id);
+            const teamIdMock = invitedTeamIdsStub[0];
+
+            const userMock = stubOne(User);
+
+            profilesRedisRepositoryStub.getInvitedTeamIds.returns(of(invitedTeamIdsStub));
+
+            const result = await firstValueFrom(service.checkAlreadyInvited(
+                userMock,
+                teamIdMock
+            ));
+
+            expect(result).true;
+            expect(profilesRedisRepositoryStub.getInvitedTeamIds.called).true;
+        });
+
+        it('should be not invited user if he has been invited alerady', async () => {
+            const invitedTeamIdsStub = stub(Team).map((team) => team.id);
+            const teamIdMock = invitedTeamIdsStub.pop() as number;
+
+            const userMock = stubOne(User);
+
+            profilesRedisRepositoryStub.getInvitedTeamIds.returns(of(invitedTeamIdsStub));
+
+            const result = await firstValueFrom(service.checkAlreadyInvited(
+                userMock,
+                teamIdMock
+            ));
+
+            expect(result).false;
+            expect(profilesRedisRepositoryStub.getInvitedTeamIds.called).true;
         });
     });
 

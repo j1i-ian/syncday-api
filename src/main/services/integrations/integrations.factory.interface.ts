@@ -31,13 +31,13 @@ export interface IntegrationsFactory {
         syncdayGoogleOAuthTokenResponseOrSyncdayAccessToken?: string | SyncdayOAuth2TokenResponse
     ): string;
 
-    search(profileSearchOption: IntegrationSearchOption): Promise<Integration[]>;
+    search(integrationSearchOption: IntegrationSearchOption): Promise<Integration[]>;
 
     validate(loadedIntegration: Integration): Observable<boolean>;
 
-    count(profileSearchOption: IntegrationSearchOption): Promise<number>;
+    count(integrationSearchOption: IntegrationSearchOption): Promise<number>;
 
-    findOne(profileSearchOption: IntegrationSearchOption): Promise<(Integration) | null>;
+    findOne(integrationSearchOption: IntegrationSearchOption): Promise<(Integration) | null>;
 
     create(...argument: (ZoomIntegrationRequest | GoogleIntegrationRequest | AppleIntegrationRequest)): Promise<Integration>;
 

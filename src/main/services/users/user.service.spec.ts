@@ -205,7 +205,11 @@ describe('Test User Service', () => {
 
             userRepositoryStub.findBy.resolves(userStubs);
 
-            const loadedUsers = await service.searchByEmailOrPhone(userStubs);
+            const emails = userStubs.map((_user) => _user.email);
+
+            const loadedUsers = await service.search({
+                emails
+            });
 
             expect(loadedUsers).ok;
             expect(loadedUsers.length).ok;
@@ -592,10 +596,10 @@ describe('Test User Service', () => {
             const availabilityStub = stubOne(Availability);
             const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
 
-            const searchByEmailOrPhoneStub = serviceSandbox.stub(service, 'searchByEmailOrPhone');
+            const searchStub = serviceSandbox.stub(service, 'search');
 
             verificationServiceStub.isVerifiedUser.resolves(true);
-            searchByEmailOrPhoneStub.resolves([]);
+            searchStub.resolves([]);
             teamSettingServiceStub.fetchTeamWorkspaceStatus.resolves(true);
             utilServiceStub.getUserDefaultSetting.returns(defaultUserSettingStub);
             utilServiceStub.hash.returns(userStub.hashedPassword);
@@ -631,7 +635,7 @@ describe('Test User Service', () => {
             );
 
             expect(verificationServiceStub.isVerifiedUser.called).true;
-            expect(searchByEmailOrPhoneStub.called).true;
+            expect(searchStub.called).true;
             expect(teamServiceStub._create.called).true;
             expect(userRepositoryStub.create.called).true;
             expect(teamSettingServiceStub.fetchTeamWorkspaceStatus.called).true;
@@ -666,7 +670,7 @@ describe('Test User Service', () => {
             });
             const plainPasswordDummy = 'test';
             const languageDummy = Language.ENGLISH;
-            serviceSandbox.stub(service, 'searchByEmailOrPhone').resolves([alreadySignedUpUser]);
+            serviceSandbox.stub(service, 'search').resolves([alreadySignedUpUser]);
 
             const userStub = stubOne(User);
             const profileNameMock = 'bar';

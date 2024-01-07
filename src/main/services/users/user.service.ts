@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, FindOptionsWhere, In, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { Observable, firstValueFrom, from, map, mergeMap, of } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
@@ -11,6 +11,7 @@ import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { Role } from '@interfaces/profiles/role.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
+import { UserSearchOption } from '@interfaces/users/user-search-option.interface';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -20,7 +21,6 @@ import { TeamSettingService } from '@services/team/team-setting/team-setting.ser
 import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { TeamService } from '@services/team/team.service';
-import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { OAuth2MetaInfo } from '@services/users/oauth2-metainfo.interface';
 import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { OAuth2UserProfile } from '@services/users/oauth2-user-profile.interface';
@@ -84,22 +84,28 @@ export class UserService {
         @InjectRepository(User) private readonly userRepository: Repository<User>
     ) {}
 
-    async searchByEmailOrPhone(users: InvitedNewTeamMember[]): Promise<User[]> {
+    async search({
+        email,
+        emails,
+        phone,
+        phones
+    }: Partial<UserSearchOption>): Promise<User[]> {
 
-        const emails = users
-            .filter((_user) => _user.email)
-            .map((_user) => _user.email);
+        const findOptions: Array<FindOptionsWhere<User>> = [];
 
-        const phones = users
-            .filter((_user) => _user.phone)
-            .map((_user) => _user.phone);
+        if (email) {
+            findOptions.push({ email });
+        } else if (emails) {
+            findOptions.push({ email: In(emails) });
+        }
 
-        const loadedUsers = await this.userRepository.findBy(
-            [
-                { email: In(emails) },
-                { phone: In(phones) }
-            ]
-        );
+        if (phone) {
+            findOptions.push({ phone });
+        } else if (phones) {
+            findOptions.push({ phone: In(phones) });
+        }
+
+        const loadedUsers = await this.userRepository.findBy(findOptions);
 
         return loadedUsers;
     }
@@ -401,7 +407,7 @@ export class UserService {
         }
 
         if (alreadySignedUpUserCheckByPhone) {
-            const alreadySignedUsers = await this.searchByEmailOrPhone([{ phone: newUser.phone }]);
+            const alreadySignedUsers = await this.search({ phone: newUser.phone });
             const alreadySignedUser = alreadySignedUsers[0];
 
             if (alreadySignedUser) {

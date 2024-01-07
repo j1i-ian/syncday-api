@@ -203,7 +203,7 @@ describe('TokenService', () => {
             expect(signed).ok;
             expect(signed.accessToken).equal(issuedTokenStub.accessToken);
             expect(signed.refreshToken).equal(issuedTokenStub.refreshToken);
-            expect(profileServiceStub.findProfile.called).false;
+            expect(profileServiceStub.fetch.called).false;
         });
 
         it('should be issued token for team switching', async () => {
@@ -224,7 +224,7 @@ describe('TokenService', () => {
 
             const issueTokenStub = serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
 
-            profileServiceStub.findProfile.returns(of(profileStub));
+            profileServiceStub.fetch.returns(of(profileStub));
 
             const signed = await firstValueFrom(
                 service.issueTokenByRefreshToken(
@@ -238,7 +238,7 @@ describe('TokenService', () => {
             expect(signed).ok;
             expect(signed.accessToken).equal(issuedTokenStub.accessToken);
             expect(signed.refreshToken).equal(issuedTokenStub.refreshToken);
-            expect(profileServiceStub.findProfile.called).true;
+            expect(profileServiceStub.fetch.called).true;
         });
     });
 

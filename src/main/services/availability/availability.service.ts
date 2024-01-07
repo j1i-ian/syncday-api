@@ -4,9 +4,9 @@ import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs'
 import { DataSource, EntityManager, FindOptionsWhere, Repository } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
-import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { Role } from '@interfaces/profiles/role.enum';
-import { SearchTeamsWithOptions } from '@interfaces/teams/search-teams-with-options.interface';
+import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface';
+import { KeySearchOption } from '@interfaces/key-search-option.type';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsService } from '@services/events/events.service';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
@@ -19,6 +19,8 @@ import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-
 import { CannotDeleteDefaultAvailabilityException } from '@app/exceptions/availability/cannot-delete-default-availability.exception';
 import { CannotUnlinkDefaultAvailabilityException } from '@app/exceptions/availability/cannot-unlink-default-availability.exception';
 
+type AvailabilitySearchOption = KeySearchOption<'team'> & KeySearchOption<'profile'>;
+
 @Injectable()
 export class AvailabilityService {
     constructor(
@@ -30,7 +32,7 @@ export class AvailabilityService {
     ) {}
 
     search(
-        searchOption: SearchTeamsWithOptions | Partial<SearchByProfileOption>,
+        searchOption: AvailabilitySearchOption,
         roles: Role[]
     ): Observable<Availability[]> {
 
@@ -39,10 +41,10 @@ export class AvailabilityService {
         const availabilityCondition: FindOptionsWhere<Availability> = hasTeamPermission ?
             {
                 profile: {
-                    teamId: (searchOption as SearchTeamsWithOptions).teamId
+                    teamId: searchOption.teamId
                 }
             } : {
-                profileId: (searchOption as Partial<SearchByProfileOption>).profileId
+                profileId: searchOption.profileId
             };
 
         return forkJoin({
@@ -56,7 +58,7 @@ export class AvailabilityService {
                 })
             ),
             availabilityBodyRecord: from(
-                this.availabilityRedisRepository.getAvailabilityBodyRecord((searchOption as SearchTeamsWithOptions).teamUUID)
+                this.availabilityRedisRepository.getAvailabilityBodyRecord((searchOption as TeamSearchOption).teamUUID)
             )
         }).pipe(
             map(({ availabilityEntities, availabilityBodyRecord }) =>

@@ -14,7 +14,6 @@ import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
@@ -73,7 +72,7 @@ export class GoogleIntegrationsService implements
         });
     }
 
-    findOne(profileSearchOption: Partial<SearchByProfileOption>): Promise<Integration | null> {
+    findOne(profileSearchOption: Partial<IntegrationSearchOption>): Promise<Integration | null> {
         return this.googleIntegrationRepository.findOne({
             where: {
                 profiles: {

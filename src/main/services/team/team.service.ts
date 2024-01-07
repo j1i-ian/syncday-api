@@ -6,7 +6,7 @@ import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { Role } from '@interfaces/profiles/role.enum';
-import { SearchTeamsWithOptions } from '@interfaces/teams/search-teams-with-options.interface';
+import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ProductsService } from '@services/products/products.service';
 import { OrdersService } from '@services/orders/orders.service';
@@ -54,7 +54,7 @@ export class TeamService {
         @InjectRepository(Team) private readonly teamRepository: Repository<Team>
     ) {}
 
-    search(userId: number, option: Partial<SearchTeamsWithOptions>): Observable<Team[]> {
+    search(userId: number, option: Partial<TeamSearchOption>): Observable<Team[]> {
 
         const teamQueryBuilder = this.teamRepository.createQueryBuilder('team');
 
@@ -68,7 +68,7 @@ export class TeamService {
     get(
         teamId: number,
         userId: number,
-        option: Partial<SearchTeamsWithOptions>
+        option: Partial<TeamSearchOption>
     ): Observable<Team> {
 
         const teamQueryBuilder = this.teamRepository.createQueryBuilder('team');
@@ -116,10 +116,18 @@ export class TeamService {
             })
         );
 
+        const allMemberEmails = teamMembers
+            .filter((_member) => _member.email)
+            .map((_member) => _member.email as string);
+
+        const allMemberPhones = teamMembers
+            .filter((_member) => _member.phone)
+            .map((_member) => _member.phone as string);
+
         return checkAlreadyUsedWorkspaceIn$.pipe(
             mergeMap(() => combineLatest([
                 this.productsService.findTeamPlanProduct(1),
-                this.userService.searchByEmailOrPhone(teamMembers),
+                this.userService.search({ emails: allMemberEmails, phones: allMemberPhones }),
                 this.userService.findUserById(ownerUserId)
             ])),
             mergeMap(([loadedProduct, searchedUsers, owner]: [Product, User[], User]) =>
@@ -317,7 +325,7 @@ export class TeamService {
     }
 
     __getTeamOptionQuery(
-        option: Partial<SearchTeamsWithOptions>,
+        option: Partial<TeamSearchOption>,
         userId: number,
         teamQueryBuilder: SelectQueryBuilder<Team>
     ): SelectQueryBuilder<Team> {

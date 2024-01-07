@@ -4,7 +4,7 @@ import { firstValueFrom, of } from 'rxjs';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { stubQueryBuilder } from 'typeorm-faker';
 import { Role } from '@interfaces/profiles/role.enum';
-import { SearchTeamsWithOptions } from '@interfaces/teams/search-teams-with-options.interface';
+import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { UserService } from '@services/users/user.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
@@ -173,7 +173,7 @@ describe('TeamService', () => {
 
         it('should be searched teams by profile id', async () => {
             const userIdMock = stubOne(User).id;
-            const optionMock = {} as SearchTeamsWithOptions;
+            const optionMock = {} as TeamSearchOption;
 
             serviceSandbox.stub(service, '__getTeamOptionQuery')
                 .returns(teamQueryBuilderStub);
@@ -276,7 +276,7 @@ describe('TeamService', () => {
 
             teamSettingServiceStub.fetchTeamWorkspaceStatus.reset();
             productsServiceStub.findTeamPlanProduct.reset();
-            userServiceStub.searchByEmailOrPhone.reset();
+            userServiceStub.search.reset();
             paymentMethodServiceStub._create.reset();
             ordersServiceStub._create.reset();
             paymentsServiceStub._create.reset();
@@ -325,7 +325,7 @@ describe('TeamService', () => {
 
             teamSettingServiceStub.fetchTeamWorkspaceStatus.resolves(false);
             productsServiceStub.findTeamPlanProduct.resolves(productStub);
-            userServiceStub.searchByEmailOrPhone.resolves(searchedTeamMemberMocksStubs);
+            userServiceStub.search.resolves(searchedTeamMemberMocksStubs);
             userServiceStub.findUserById.resolves(ownerUserMockStub);
 
             const _createStub = serviceSandbox.stub(service, '_create');
@@ -360,7 +360,7 @@ describe('TeamService', () => {
 
             expect(teamSettingServiceStub.fetchTeamWorkspaceStatus.called).true;
             expect(productsServiceStub.findTeamPlanProduct.called).true;
-            expect(userServiceStub.searchByEmailOrPhone.called).true;
+            expect(userServiceStub.search.called).true;
 
             expect(_createStub.called).true;
 
@@ -453,7 +453,7 @@ describe('TeamService', () => {
 
             expect(teamSettingServiceStub.fetchTeamWorkspaceStatus.called).true;
             expect(productsServiceStub.findTeamPlanProduct.called).false;
-            expect(userServiceStub.searchByEmailOrPhone.called).false;
+            expect(userServiceStub.search.called).false;
             expect(paymentMethodServiceStub._create.called).false;
             expect(ordersServiceStub._create.called).false;
             expect(paymentsServiceStub._create.called).false;
@@ -509,7 +509,7 @@ describe('TeamService', () => {
             {
                 optionsMock: {
                     userId: 1
-                } as Partial<SearchTeamsWithOptions>,
+                } as Partial<TeamSearchOption>,
                 expectation: (_teamQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Team>>) => {
                     expect(_teamQueryBuilderStub.leftJoin.called).true;
                     expect(_teamQueryBuilderStub.leftJoinAndSelect.called).true;
@@ -519,7 +519,7 @@ describe('TeamService', () => {
             {
                 optionsMock: {
                     withMemberCounts: true
-                } as Partial<SearchTeamsWithOptions>,
+                } as Partial<TeamSearchOption>,
                 expectation: (_teamQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Team>>) => {
                     expect(_teamQueryBuilderStub.loadRelationCountAndMap.called).true;
                 }

@@ -1,11 +1,11 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query } from '@nestjs/common';
-import { Observable, map } from 'rxjs';
+import { Observable, filter, map, mergeMap, tap, toArray } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
-import { SearchByProfileOption } from '@interfaces/profiles/search-by-profile-option.interface';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
+import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.interface';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { InvitedNewTeamMember } from '@services/team/invited-new-team-member.type';
 import { Profile } from '@entity/profiles/profile.entity';
@@ -14,6 +14,7 @@ import { FetchProfileResponseDto } from '@dto/profiles/fetch-profile-response.dt
 import { PatchAllProfileRequestDto } from '@dto/profiles/patch-all-profile-request.dto';
 import { PatchProfileRolesRequest } from '@dto/profiles/patch-profile-roles-request.dto';
 import { CreateProfileRequestDto } from '@dto/profiles/create-profile-request.dto';
+import { NoNewbieMemberInBulkException } from '@app/exceptions/profiles/no-newbie-member-in-bulk.exception';
 
 @Controller()
 export class ProfilesController {
@@ -25,7 +26,7 @@ export class ProfilesController {
     @Get()
     search(
         @AuthProfile() authProfile: AppJwtPayload,
-        @Query() searchOptions: Partial<SearchByProfileOption>,
+        @Query() searchOptions: Partial<ProfileSearchOption>,
         @Query('withUserData') withUserDataString: string | boolean | undefined
     ): Observable<FetchProfileResponseDto[]> {
 
@@ -50,10 +51,10 @@ export class ProfilesController {
 
     @Get(':profileId(\\d+)')
     get(
-        @AuthProfile('id') profileId: number
+        @AuthProfile('id') id: number
     ): Observable<FetchProfileResponseDto> {
-        return this.profileService.findProfile({
-            profileId
+        return this.profileService.fetch({
+            id
         }).pipe(
             map((loadedProfile) => plainToInstance(FetchProfileResponseDto, loadedProfile, {
                 excludeExtraneousValues: true
@@ -68,10 +69,22 @@ export class ProfilesController {
         @Body() createProfileRequestDto: CreateProfileRequestDto
     ): Observable<Profile | InvitedNewTeamMember> {
 
-        return this.profileService.create(teamId, {
-            email: createProfileRequestDto.email,
-            phone: createProfileRequestDto.phone
-        });
+        return this.profileService.checkAlreadyInvited(createProfileRequestDto, teamId)
+            .pipe(
+                filter((alreadyInvited) => alreadyInvited === false),
+                toArray(),
+                tap((alreadyInvitedResults) => {
+                    const hasNoNewbieMemberInBulk = alreadyInvitedResults.length === 0;
+
+                    if (hasNoNewbieMemberInBulk) {
+                        throw new NoNewbieMemberInBulkException();
+                    }
+                }),
+                mergeMap(() => this.profileService.create(
+                    teamId,
+                    createProfileRequestDto
+                ))
+            );
     }
 
     /**
@@ -142,8 +155,8 @@ export class ProfilesController {
             teamId,
             userId,
             withUserData
-        }: Partial<SearchByProfileOption>
-    ): Partial<SearchByProfileOption> {
+        }: Partial<ProfileSearchOption>
+    ): Partial<ProfileSearchOption> {
 
         const teamIdOption = teamId ? authTeamId : undefined;
 
