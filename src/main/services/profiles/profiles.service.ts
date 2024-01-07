@@ -128,8 +128,9 @@ export class ProfilesService {
                                 WHEN profile.roles LIKE :managerRole THEN 2
                                 ELSE 3
                             END`,
-                            'orderCondition'
-                        ).orderBy('orderCondition', 'ASC')
+                            'rolePriority'
+                        ).orderBy('rolePriority', 'ASC')
+                        .addOrderBy('profile.createdAt', 'ASC')
                         .setParameter('ownerRole', Role.OWNER)
                         .setParameter('managerRole', Role.MANAGER);
                 }),
