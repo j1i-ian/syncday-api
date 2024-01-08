@@ -53,13 +53,13 @@ export class ProfilesService {
         const emailOrPhoneBulk = emailBulk.concat(phoneNumberBulk);
 
         // check nosql db
-        const invitedNewTeamMembers$ = from(this.profilesRedisRepository.filterAlreadyInvited(teamId, emailOrPhoneBulk))
+        const invitedNewTeamMembers$ = defer(() => from(this.profilesRedisRepository.filterAlreadyInvited(teamId, emailOrPhoneBulk)))
             .pipe(
                 mergeMap((alreadyInvitedEmailOrPhoneBulk) => from(alreadyInvitedEmailOrPhoneBulk)),
                 map((alreadyInvitedEmailOrPhone) => this.utilService.convertToInvitedNewTeamMember(alreadyInvitedEmailOrPhone))
             );
 
-        const alreadyJoinedTeamProfiles$ = from(
+        const alreadyJoinedTeamProfiles$ = defer(() => from(
             this.profileRepository.createQueryBuilder('profile')
                 .select([
                     'profile.id',
@@ -69,23 +69,33 @@ export class ProfilesService {
                 .leftJoinAndSelect('profile.user', 'user')
                 .where('profile.teamId = :teamId', { teamId })
                 .andWhere(new Brackets((qb) => {
-                    qb.where('user.email IN (:...emailBulk)', { emailBulk })
-                        .orWhere('user.phone IN (:...phoneNumberBulk)', { phoneNumberBulk });
+
+                    if (emailBulk.length > 0) {
+                        qb.where('user.email IN (:...emailBulk)', { emailBulk });
+                    }
+
+                    if (phoneNumberBulk.length > 0) {
+                        qb.orWhere('user.phone IN (:...phoneNumberBulk)', { phoneNumberBulk });
+                    }
                 }))
                 .groupBy('user.email')
                 .addGroupBy('user.phone')
                 .getMany()
-        ).pipe(
+        )).pipe(
             mergeMap((_profiles) => from(_profiles)),
             map(({ user: profileUser }) => [profileUser.email, profileUser.phone]),
             filter(([email, phone]) => emailBulk.includes(email) || phoneNumberBulk.includes(phone)),
             map(([email, phone]) => ({ email, phone } as InvitedNewTeamMember))
         );
 
-        return merge(invitedNewTeamMembers$, alreadyJoinedTeamProfiles$)
-            .pipe(
-                reduce((acc, curr) => acc.concat(curr), [] as InvitedNewTeamMember[])
-            );
+        const filtered$ = newInvitationTeamMembers.length > 0
+            ? merge(invitedNewTeamMembers$, alreadyJoinedTeamProfiles$)
+                .pipe(
+                    reduce((acc, curr) => acc.concat(curr), [] as InvitedNewTeamMember[])
+                )
+            : of([]);
+
+        return filtered$;
     }
 
     search(

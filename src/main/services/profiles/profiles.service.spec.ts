@@ -152,6 +152,7 @@ describe('ProfilesService', () => {
                 getInvitedNewTeamMemberMocks: (teamIdMock: number) => testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock),
                 getNewInvitationTeamMemberMocks: (teamIdMock: number) => testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock),
                 getAlreadyJoinedTeamProfilesMock: () => [],
+                expectedAlreadySentInvitations: true,
                 convertToInvitedNewTeamMemberCall: true
             },
             {
@@ -181,14 +182,47 @@ describe('ProfilesService', () => {
 
                     return alreadyJoinedTeamProfilesMock;
                 },
+                expectedAlreadySentInvitations: true,
+                convertToInvitedNewTeamMemberCall: false
+            },
+            {
+                description: 'should be filtered only for email bulk',
+                getInvitedNewTeamMemberMocks: () => [],
+                getNewInvitationTeamMemberMocks: (teamIdMock: number) => {
+                    const invitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
+
+                    const invitedNewTeamMember = invitedNewTeamMemberMocks[0];
+                    invitedNewTeamMember.email = 'emailStub';
+                    invitedNewTeamMember.phone = undefined;
+
+                    return [invitedNewTeamMember];
+                },
+                getAlreadyJoinedTeamProfilesMock: () => [],
+                expectedAlreadySentInvitations: false,
+                convertToInvitedNewTeamMemberCall: false
+            },
+            {
+                description: 'should be filtered only for phone bulk',
+                getInvitedNewTeamMemberMocks: () => [],
+                getNewInvitationTeamMemberMocks: (teamIdMock: number) => {
+                    const invitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
+
+                    const invitedNewTeamMember = invitedNewTeamMemberMocks[0];
+                    invitedNewTeamMember.email = undefined;
+                    invitedNewTeamMember.phone = 'phoneStub';
+
+                    return [invitedNewTeamMember];
+                },
+                getAlreadyJoinedTeamProfilesMock: () => [],
+                expectedAlreadySentInvitations: false,
                 convertToInvitedNewTeamMemberCall: false
             }
-
         ].forEach(function({
             description,
             getInvitedNewTeamMemberMocks,
             getNewInvitationTeamMemberMocks,
             getAlreadyJoinedTeamProfilesMock,
+            expectedAlreadySentInvitations,
             convertToInvitedNewTeamMemberCall
         }) {
 
@@ -216,14 +250,43 @@ describe('ProfilesService', () => {
                 );
 
                 expect(alreadySentInvitations).ok;
-                expect(alreadySentInvitations.length).greaterThan(0);
+
+                if (expectedAlreadySentInvitations) {
+                    expect(alreadySentInvitations.length).greaterThan(0);
+                } else {
+                    expect(alreadySentInvitations.length).equals(0);
+                }
 
                 expect(profilesRedisRepositoryStub.filterAlreadyInvited.called).true;
                 expect(utilServiceStub.convertToInvitedNewTeamMember.called).equals(convertToInvitedNewTeamMemberCall);
 
                 expect(profileQueryBuilderStub.getMany.called).true;
             });
+        });
 
+        // Test Empty Array or one bulk type profiles
+        it('should be returned empty array for empty array body', async () => {
+
+            const teamIdMock = 1;
+            profilesRedisRepositoryStub.filterAlreadyInvited.resolves([]);
+
+            const invitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
+            utilServiceStub.convertToInvitedNewTeamMember.returns(invitedNewTeamMemberMocks[0]);
+
+            profileQueryBuilderStub.getMany.resolves([]);
+
+            const alreadySentInvitations = await firstValueFrom(
+                service.filterProfiles(
+                    teamIdMock,
+                    []
+                )
+            );
+
+            expect(alreadySentInvitations.length).equals(0);
+
+            expect(profilesRedisRepositoryStub.filterAlreadyInvited.called).false;
+            expect(utilServiceStub.convertToInvitedNewTeamMember.called).false;
+            expect(profileQueryBuilderStub.getMany.called).false;
         });
     });
 
