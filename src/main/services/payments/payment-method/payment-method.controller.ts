@@ -8,7 +8,7 @@ import { PaymentMethodService } from '@services/payments/payment-method/payment-
 import { CreditCard } from '@entity/payments/credit-card.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 
-type InsensitivePaymentMethod = Pick<PaymentMethod, 'id'> & { creditCard: Pick<CreditCard, 'serialNumber'> };
+type NonSensitivePaymentMethod = Pick<PaymentMethod, 'id'> & { creditCard: Pick<CreditCard, 'serialNumber'> };
 
 @Controller()
 export class PaymentMethodController {
@@ -21,7 +21,7 @@ export class PaymentMethodController {
     @Roles(Role.OWNER, Role.MANAGER)
     fetchTeamPaymentMethod(
         @AuthProfile('teamId') teamId: number
-    ): Observable<InsensitivePaymentMethod | null> {
+    ): Observable<NonSensitivePaymentMethod | null> {
         console.log(teamId);
         return this.paymentMethodSevice.fetch({ teamId })
             .pipe(
