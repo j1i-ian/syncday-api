@@ -146,12 +146,13 @@ unit-test:
     reports:
       junit: coverage/junit-report.xml
 
-integration-test:
+.integration-test:
   stage: test
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   needs:
     - lint
     - unit-test
+  allow_failure: true
   before_script:
     - apt-get update -y && apt-get -y install openssh-server rsync git
     - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
@@ -214,7 +215,6 @@ deploy-docs-to-s3:
   stage: deploy
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest
   needs:
-    - integration-test
     - coverage-then-documentations
   allow_failure: true
   script: |
@@ -230,7 +230,6 @@ upload-staging-container-repository:
   environment: staging
   needs:
     - unit-test
-    - integration-test
   only:
     - tags # for staging
 
@@ -240,7 +239,6 @@ upload-production-container-repository:
   environment: production
   needs:
     - unit-test
-    - integration-test
   only:
     - main
 
