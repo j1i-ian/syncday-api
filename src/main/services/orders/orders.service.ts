@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { EntityManager } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
+import { Observable, from } from 'rxjs';
+import { InjectRepository } from '@nestjs/typeorm';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { Order } from '@entity/orders/order.entity';
@@ -8,7 +10,29 @@ import { Product } from '@entity/products/product.entity';
 @Injectable()
 export class OrdersService {
 
-    constructor() {}
+    constructor(
+        @InjectRepository(Order)
+        private readonly orderRepository: Repository<Order>
+    ) {}
+
+    search({
+        teamId,
+        page = 0,
+        take = 50
+    }: {
+        teamId: number;
+        page: number;
+        take: number;
+    }): Observable<Order[]> {
+
+        const skip = page * take;
+
+        return from(this.orderRepository.find({
+            where: { teamId },
+            skip,
+            take
+        }));
+    }
 
     async _create(
         transactionManager: EntityManager,

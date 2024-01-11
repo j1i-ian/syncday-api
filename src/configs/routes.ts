@@ -15,6 +15,7 @@ import { TeamModule } from '@services/team/team.module';
 import { TeamSettingModule } from '@services/team/team-setting/team-setting.module';
 import { ProfilesModule } from '@services/profiles/profiles.module';
 import { PaymentMethodModule } from '@services/payments/payment-method/payment-method.module';
+import { OrdersModule } from '@services/orders/orders.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
@@ -106,5 +107,9 @@ export const routes: Routes = [
     {
         path: 'payment-methods',
         module: PaymentMethodModule
+    },
+    {
+        path: 'orders',
+        module: OrdersModule
     }
 ];

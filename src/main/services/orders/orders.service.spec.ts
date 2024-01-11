@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { firstValueFrom } from 'rxjs';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { Order } from '@entity/orders/order.entity';
 import { Product } from '@entity/products/product.entity';
@@ -39,6 +40,24 @@ describe('OrdersService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    it('should be searched the order list', async () => {
+
+        const teamIdMock = 1;
+
+        const orderStubs = stub(Order);
+
+        orderRepositoryStub.find.resolves(orderStubs);
+
+        const loadedOrders = await firstValueFrom(service.search({
+            teamId: teamIdMock,
+            page: 0,
+            take: 50
+        }));
+
+        expect(loadedOrders).ok;
+        expect(loadedOrders.length).greaterThan(0);
     });
 
     describe('Test order creating with product', () => {
