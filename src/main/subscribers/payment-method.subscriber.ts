@@ -1,4 +1,4 @@
-import { EventSubscriber, EntitySubscriberInterface, InsertEvent } from 'typeorm';
+import { EventSubscriber, EntitySubscriberInterface, InsertEvent, UpdateEvent } from 'typeorm';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 
 @EventSubscriber()
@@ -8,9 +8,21 @@ export class PaymentMethodSubscriber implements EntitySubscriberInterface<Paymen
         return PaymentMethod;
     }
 
+    beforeUpdate(event: UpdateEvent<PaymentMethod>): void {
+
+        const updatePaymentMethod = event.entity as PaymentMethod;
+
+        this.maskingSensitiveData(updatePaymentMethod);
+    }
+
     beforeInsert(event: InsertEvent<PaymentMethod>): void {
 
         const newPaymentMethod = event.entity;
+
+        this.maskingSensitiveData(newPaymentMethod);
+    }
+
+    maskingSensitiveData(newPaymentMethod: PaymentMethod): void {
 
         const creditCard = newPaymentMethod.creditCard;
         const {

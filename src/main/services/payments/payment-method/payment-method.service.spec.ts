@@ -167,4 +167,30 @@ describe('PaymentMethodService', () => {
         });
     });
 
+    describe('Test update payment method', () => {
+        it('should be updated a payment method', async () => {
+
+            const teamIdMock = stubOne(Team).id;
+            const paymentMethodMockStub = stubOne(PaymentMethod);
+
+            const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+
+            paymentMethodRepositoryStub.findOneByOrFail.resolves(paymentMethodMockStub);
+
+            paymentMethodRepositoryStub.update.resolves(updateResultMock);
+
+            const result = await firstValueFrom(
+                service.update(
+                    paymentMethodMockStub.id,
+                    teamIdMock,
+                    paymentMethodMockStub
+                )
+            );
+
+            expect(result).true;
+
+            expect(paymentMethodRepositoryStub.findOneByOrFail.called).true;
+            expect(paymentMethodRepositoryStub.update.called).true;
+        });
+    });
 });

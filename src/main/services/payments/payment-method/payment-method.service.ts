@@ -121,4 +121,23 @@ export class PaymentMethodService {
 
         return savedPaymentMethod;
     }
+
+    update(
+        id: number,
+        teamId: number,
+        updatePaymentMethod: Pick<PaymentMethod, 'creditCard'>
+    ): Observable<boolean> {
+        return from(this.paymentMethodRepository.findOneByOrFail({
+            id,
+            teams: { id: teamId }
+        })).pipe(
+            mergeMap((loadedPaymentMethod) =>
+                this.paymentMethodRepository.update(
+                    loadedPaymentMethod.id,
+                    updatePaymentMethod
+                )
+            ),
+            map((updateResult) => !!(updateResult?.affected && updateResult?.affected > 0))
+        );
+    }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, Post, Put } from '@nestjs/common';
 import { Observable, catchError, map, of } from 'rxjs';
 import { EntityNotFoundError } from 'typeorm';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
@@ -12,6 +12,7 @@ import { CreatePaymentMethodRequestDto } from '@dto/payments/create-payment-meth
 type NonSensitivePaymentMethod = Pick<PaymentMethod, 'id'> & { creditCard: Pick<CreditCard, 'serialNumber'> };
 
 @Controller()
+@Roles(Role.OWNER, Role.MANAGER)
 export class PaymentMethodController {
 
     constructor(
@@ -19,7 +20,6 @@ export class PaymentMethodController {
     ) {}
 
     @Get('/team')
-    @Roles(Role.OWNER, Role.MANAGER)
     fetchTeamPaymentMethod(
         @AuthProfile('teamId') teamId: number
     ): Observable<NonSensitivePaymentMethod | null> {
@@ -49,12 +49,32 @@ export class PaymentMethodController {
      * @returns {boolean} Don't expose sensitive information, so returns true
      */
     @Post()
-    @Roles(Role.OWNER, Role.MANAGER)
+    @Header('Content-type', 'application/json')
     create(
         @AuthProfile('teamId') teamId: number,
         @Body() createPaymentMethodRequestDto: CreatePaymentMethodRequestDto
     ): Observable<boolean> {
         return this.paymentMethodSevice.create(teamId, createPaymentMethodRequestDto as PaymentMethod)
             .pipe(map(() => true));
+    }
+
+    /**
+     * @param teamId
+     * @param updatePaymentMethodRequestDto
+     * @returns {boolean} Don't expose sensitive information, so returns true
+     */
+    @Put(':paymentMethodId(\\d+)')
+    @Roles(Role.OWNER, Role.MANAGER)
+    @Header('Content-type', 'application/json')
+    update(
+        @AuthProfile('teamId') teamId: number,
+        @Param('paymentMethodId') paymentMethodId: number,
+        @Body() updatePaymentMethodRequestDto: CreatePaymentMethodRequestDto
+    ): Observable<boolean> {
+        return this.paymentMethodSevice.update(
+            paymentMethodId,
+            teamId,
+            updatePaymentMethodRequestDto as PaymentMethod
+        );
     }
 }
