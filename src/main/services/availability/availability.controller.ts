@@ -32,12 +32,10 @@ import { CloneAvailabilityRequestDto } from '@dto/availability/clone-availabilit
 import { AvailabilityService } from './availability.service';
 
 @Controller()
-@Roles(Role.OWNER, Role.MANAGER)
 export class AvailabilityController {
     constructor(private readonly availabilityService: AvailabilityService) {}
 
     @Get()
-    @Roles(Role.MEMBER)
     searchAvailabilities(
         @AuthProfile('id') profileId: number,
         @AuthProfile('uuid') profileUUID: string,
