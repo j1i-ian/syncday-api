@@ -37,6 +37,7 @@ export class AvailabilityController {
     constructor(private readonly availabilityService: AvailabilityService) {}
 
     @Get()
+    @Roles(Role.MEMBER)
     searchAvailabilities(
         @AuthProfile('id') profileId: number,
         @AuthProfile('uuid') profileUUID: string,
@@ -61,6 +62,7 @@ export class AvailabilityController {
     }
 
     @Get(':availabilityId')
+    @Roles(Role.MEMBER)
     fetchAvailabilityDetail(
         @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @AuthProfile('id') profileId: number,

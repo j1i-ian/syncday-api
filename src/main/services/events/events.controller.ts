@@ -35,6 +35,7 @@ export class EventsController {
     constructor(private readonly eventsService: EventsService) {}
 
     @Get()
+    @Roles(Role.MEMBER)
     findAll(@AuthProfile('teamId') teamId: number): Observable<FetchEventResponseDto[]> {
         return this.eventsService
             .search({
@@ -50,6 +51,7 @@ export class EventsController {
     }
 
     @Get(':eventId')
+    @Roles(Role.MEMBER)
     findOne(
         @AuthProfile('teamId') teamId: number,
         @Param('eventId', ParseIntPipe) eventId: number
