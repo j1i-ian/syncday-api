@@ -30,12 +30,10 @@ import { UpdateEventRequestDto } from '@dto/event-groups/events/update-event-req
 import { EventsService } from './events.service';
 
 @Controller()
-@Roles(Role.OWNER, Role.MANAGER)
 export class EventsController {
     constructor(private readonly eventsService: EventsService) {}
 
     @Get()
-    @Roles(Role.MEMBER)
     findAll(@AuthProfile('teamId') teamId: number): Observable<FetchEventResponseDto[]> {
         return this.eventsService
             .search({
@@ -51,7 +49,6 @@ export class EventsController {
     }
 
     @Get(':eventId')
-    @Roles(Role.MEMBER)
     findOne(
         @AuthProfile('teamId') teamId: number,
         @Param('eventId', ParseIntPipe) eventId: number
@@ -60,6 +57,7 @@ export class EventsController {
     }
 
     @Post()
+    @Roles(Role.OWNER, Role.MANAGER)
     create(
         @AuthProfile('teamUUID') teamUUID: string,
         @AuthProfile('teamId') teamId: number,
@@ -70,6 +68,7 @@ export class EventsController {
 
     @Patch(':eventId')
     @HttpCode(HttpStatus.NO_CONTENT)
+    @Roles(Role.OWNER, Role.MANAGER)
     async patch(
         @AuthProfile('teamUUID') teamUUID: string,
         @AuthProfile('teamId') teamId: number,
@@ -86,6 +85,7 @@ export class EventsController {
 
     @Put(':eventId')
     @HttpCode(HttpStatus.NO_CONTENT)
+    @Roles(Role.OWNER, Role.MANAGER)
     async update(
         @AuthProfile('teamUUID') teamUUID: string,
         @AuthProfile('teamId') teamId: number,
@@ -102,6 +102,7 @@ export class EventsController {
 
     @Delete(':eventId')
     @HttpCode(HttpStatus.NO_CONTENT)
+    @Roles(Role.OWNER, Role.MANAGER)
     async remove(
         @AuthProfile('teamId') teamId: number,
         @Param('eventId', ParseIntPipe) eventId: number
@@ -127,6 +128,7 @@ export class EventsController {
      * @see {@link [related stackoverflow thread](https://stackoverflow.com/questions/75513412/how-to-handle-http-copy-link-methods-in-nestjs-controller)}
      */
     @All(['', ':eventId'])
+    @Roles(Role.OWNER, Role.MANAGER)
     async others(
         @Req() req: Request,
         @Res() response: Response,

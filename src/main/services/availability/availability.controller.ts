@@ -13,14 +13,14 @@ import {
     All,
     Req,
     Res,
-    NotImplementedException
+    NotImplementedException,
+    ForbiddenException
 } from '@nestjs/common';
 import { Observable, from, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { Request, Response } from 'express';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
-import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
 import { Availability } from '@entity/availability/availability.entity';
 import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
@@ -60,7 +60,6 @@ export class AvailabilityController {
     }
 
     @Get(':availabilityId')
-    @Roles(Role.MEMBER)
     fetchAvailabilityDetail(
         @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @AuthProfile('id') profileId: number,
@@ -182,6 +181,7 @@ export class AvailabilityController {
         @AuthProfile('id') profileId: number,
         @AuthProfile('teamId') teamId: number,
         @AuthProfile('teamUUID') teamUUID: string,
+        @AuthProfile('roles') roles: Role[],
         @Body() requestBody?: CloneAvailabilityRequestDto,
         @Matrix({
             key: 'eventId',
@@ -212,6 +212,9 @@ export class AvailabilityController {
                 statusCode = HttpStatus.CREATED;
                 break;
             case 'LINK':
+
+                this._checkPermission(roles);
+
                 responseBody = await this.linkToEvents(
                     teamId,
                     profileId,
@@ -221,6 +224,9 @@ export class AvailabilityController {
                 statusCode = HttpStatus.NO_CONTENT;
                 break;
             case 'UNLINK':
+
+                this._checkPermission(roles);
+
                 await this.unlinkToEvents(profileId, parsedAvailabilityId);
                 statusCode = HttpStatus.NO_CONTENT;
                 break;
@@ -233,5 +239,14 @@ export class AvailabilityController {
             response.json(responseBody);
         }
         response.end();
+    }
+
+    _checkPermission(roles: Role[]): void {
+        if (
+            roles.includes(Role.OWNER) === false
+            && roles.includes(Role.MANAGER) === false
+        ) {
+            throw new ForbiddenException('Only owner or manager can perform link, unlink actions');
+        }
     }
 }
