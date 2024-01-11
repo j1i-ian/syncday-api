@@ -44,7 +44,7 @@ export class PaymentsService {
         const _paymentRepository = transactionManager.getRepository(Payment);
 
         const createdPayment = _paymentRepository.create({
-            amount: relatedOrder.price,
+            amount: relatedOrder.amount,
             orderId: relatedOrder.id,
             paymentMethodId: paymentMethod.id
         });
@@ -55,7 +55,7 @@ export class PaymentsService {
 
         const pgPaymentResult = await bootpayService.placeOrder(
             relatedOrder,
-            relatedOrder.price,
+            relatedOrder.amount,
             buyer,
             paymentMethod.billing
         );

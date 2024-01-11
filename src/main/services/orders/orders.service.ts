@@ -25,7 +25,7 @@ export class OrdersService {
         const createdOrder = orderRepository.create({
             name: product.name,
             unit,
-            price: totalPrice,
+            amount: totalPrice,
             productId: product.id,
             status: OrderStatus.CHECKOUT,
             memo,
