@@ -326,7 +326,7 @@ describe('TeamService', () => {
             teamSettingServiceStub.fetchTeamWorkspaceStatus.resolves(false);
             productsServiceStub.findTeamPlanProduct.resolves(productStub);
             userServiceStub.search.resolves(searchedTeamMemberMocksStubs);
-            userServiceStub.findUserById.resolves(ownerUserMockStub);
+            userServiceStub.findUser.resolves(ownerUserMockStub);
 
             const _createStub = serviceSandbox.stub(service, '_create');
             _createStub.resolves(teamMockStub);

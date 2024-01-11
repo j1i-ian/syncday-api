@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, FindOptionsWhere, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { Observable, firstValueFrom, from, map, mergeMap, of } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
@@ -110,11 +110,48 @@ export class UserService {
         return loadedUsers;
     }
 
-    async findUserById(userId: number): Promise<User> {
-        const loadedUser = await this.userRepository.findOneOrFail({
-            where: {
+    async findUser({
+        userId,
+        teamId,
+        role
+    }: {
+        userId?: number;
+        teamId?: number;
+        role?: Role;
+    }): Promise<User> {
+
+        let findWhereOption: FindOptionsWhere<User> = {};
+
+        if (userId) {
+            findWhereOption = {
                 id: userId
-            },
+            } as FindOptionsWhere<User>;
+        }
+
+        if (teamId) {
+            findWhereOption = {
+                ...findWhereOption,
+                team: {
+                    id: teamId
+                }
+            } as FindOptionsWhere<User>;
+        }
+
+        if (role) {
+            findWhereOption = {
+                ...findWhereOption,
+                profiles: {
+                    roles: Like(role)
+                }
+            } as FindOptionsWhere<User>;
+        }
+
+        if (!userId && !teamId) {
+            throw new BadRequestException('Invalid option for user finding');
+        }
+
+        const loadedUser = await this.userRepository.findOneOrFail({
+            where: findWhereOption,
             relations: {
                 userSetting: true
             }

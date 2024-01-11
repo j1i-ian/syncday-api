@@ -139,7 +139,7 @@ export class TeamService {
                 // product id 1 is Team Plan Product
                 this.productsService.findTeamPlanProduct(1),
                 this.userService.search({ emails: allMemberEmails, phones: allMemberPhones }),
-                this.userService.findUserById(ownerUserId)
+                this.userService.findUser({ userId: ownerUserId })
             ])),
             mergeMap(([loadedProduct, searchedUsers, owner]: [Product, User[], User]) =>
                 this.datasource.transaction(async (transactionManager) => {

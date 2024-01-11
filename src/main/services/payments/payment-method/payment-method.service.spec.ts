@@ -6,10 +6,12 @@ import { ConfigService } from '@nestjs/config';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { Billing } from '@core/interfaces/payments/billing.interface';
 import { BootpayService } from '@services/payments/bootpay/bootpay.service';
+import { ProfilesService } from '@services/profiles/profiles.service';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { User } from '@entity/users/user.entity';
 import { Order } from '@entity/orders/order.entity';
 import { Team } from '@entity/teams/team.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { PaymentMethodService } from './payment-method.service';
 
@@ -24,11 +26,13 @@ describe('PaymentMethodService', () => {
     let bootpayServiceIssueBillingKeyStub: sinon.SinonStub;
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
+    let profilesServiceStub: sinon.SinonStubbedInstance<ProfilesService>;
 
     let paymentMethodRepositoryStub: sinon.SinonStubbedInstance<Repository<PaymentMethod>>;
 
     beforeEach(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
+        profilesServiceStub = sinon.createStubInstance(ProfilesService);
 
         paymentMethodRepositoryStub = sinon.createStubInstance<Repository<PaymentMethod>>(Repository);
 
@@ -38,6 +42,10 @@ describe('PaymentMethodService', () => {
                 {
                     provide: ConfigService,
                     useValue: configServiceStub
+                },
+                {
+                    provide: ProfilesService,
+                    useValue: profilesServiceStub
                 },
                 {
                     provide: getDataSourceToken(),
@@ -104,31 +112,28 @@ describe('PaymentMethodService', () => {
 
         it('should be saved a payment method', async () => {
 
-            const paymentMethodMockStub = stubOne(PaymentMethod);
-            const userStub = stubOne(User);
-            const buyerMock = {
-                name: 'sample',
-                email: userStub.email,
-                phone: userStub.phone
-            } as Buyer;
-            const orderUUIDMock = stubOne(Order).uuid;
+            const paymentMethodStub = stubOne(PaymentMethod);
+            const ownerStub = stubOne(User);
+            const ownerProfileStub = stubOne(Profile, {
+                user: ownerStub
+            });
+            const teamIdMock = stubOne(Team).id;
 
-            paymentMethodRepositoryStub.create.resolves(paymentMethodMockStub);
-            paymentMethodRepositoryStub.save.resolves(paymentMethodMockStub);
+            profilesServiceStub.fetch.resolves(ownerProfileStub);
+
+            const _createdStub = serviceSandbox.stub(service, '_create');
+            _createdStub.resolves(paymentMethodStub);
 
             const saved = await firstValueFrom(service.create(
-                paymentMethodMockStub,
-                buyerMock,
-                orderUUIDMock
+                teamIdMock,
+                paymentMethodStub
             ));
 
             expect(saved).ok;
-            expect(saved).deep.equals(paymentMethodMockStub);
+            expect(saved).deep.equals(paymentMethodStub);
 
-            expect(bootpayServiceInitStub.called).true;
-            expect(bootpayServiceIssueBillingKeyStub.called).true;
-
-            expect(paymentMethodRepositoryStub.save.called).true;
+            expect(profilesServiceStub.fetch.called).true;
+            expect(_createdStub.called).true;
         });
 
         it('should be saved a payment method with transactional interface', async () => {

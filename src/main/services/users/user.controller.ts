@@ -33,7 +33,7 @@ export class UserController {
 
     @Get(':userId(\\d+)')
     async fetchUser(@AuthProfile('userId') userId: number): Promise<User> {
-        const loadedUser = await this.userService.findUserById(userId);
+        const loadedUser = await this.userService.findUser({ userId });
 
         return loadedUser;
     }

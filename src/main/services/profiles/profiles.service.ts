@@ -1,6 +1,6 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, EntityManager, Raw, Repository, UpdateResult } from 'typeorm';
+import { Brackets, DataSource, EntityManager, FindOptionsWhere, Like, Raw, Repository, UpdateResult } from 'typeorm';
 import { Observable, combineLatest, defer, filter, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -156,8 +156,38 @@ export class ProfilesService {
         const {
             id,
             teamId,
-            userId
+            userId,
+            role
         } = profileSearchOption;
+
+        let findWhereOption: FindOptionsWhere<Profile> = {};
+
+        if (id) {
+            findWhereOption = {
+                id
+            } as FindOptionsWhere<Profile>;
+        }
+
+        if (userId) {
+            findWhereOption = {
+                ...findWhereOption,
+                userId
+            } as FindOptionsWhere<Profile>;
+        }
+
+        if (teamId) {
+            findWhereOption = {
+                ...findWhereOption,
+                teamId
+            } as FindOptionsWhere<Profile>;
+        }
+
+        if (role) {
+            findWhereOption = {
+                ...findWhereOption,
+                roles: Like(role)
+            } as FindOptionsWhere<Profile>;
+        }
 
         return from(this.profileRepository.findOneOrFail({
             relations: {
@@ -169,11 +199,7 @@ export class ProfilesService {
                 appleCalDAVIntegrations: true,
                 zoomIntegrations: true
             },
-            where: {
-                id,
-                teamId,
-                userId
-            }
+            where: findWhereOption
         }));
     }
 

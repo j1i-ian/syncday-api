@@ -1,18 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { Observable, from } from 'rxjs';
+import { Observable, from, map, mergeMap } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { AppConfigService } from '@config/app-config.service';
+import { Role } from '@interfaces/profiles/role.enum';
 import { BootpayService } from '@services/payments/bootpay/bootpay.service';
 import { BootpayConfiguration } from '@services/payments/bootpay/bootpay-configuration.interface';
+import { ProfilesService } from '@services/profiles/profiles.service';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { Team } from '@entity/teams/team.entity';
 
 @Injectable()
 export class PaymentMethodService {
     constructor(
         private readonly configService: ConfigService,
+        @Inject(forwardRef(() => ProfilesService))
+        private readonly profilesService: ProfilesService,
         @InjectDataSource() private readonly datasource: DataSource,
         @InjectRepository(PaymentMethod) private readonly paymentMethodRepository: Repository<PaymentMethod>
     ) {
@@ -44,17 +49,42 @@ export class PaymentMethodService {
     }
 
     create(
-        newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teams'>>,
-        buyer: Buyer,
-        orderUUID: string
+        teamId: number,
+        newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teams'>>
     ): Observable<PaymentMethod> {
-        return from(
-            this.datasource.transaction((transactionManager) =>
-                this._create(
-                    transactionManager,
-                    newPaymentMethod,
+
+        newPaymentMethod.teams = [{ id: teamId }] as Team[];
+
+        return from(this.profilesService.fetch({
+            teamId,
+            role: Role.OWNER,
+            withUserData: true
+        })).pipe(
+            map((ownerProfile) => {
+
+                const ownerName = ownerProfile.name
+                    || ownerProfile.user.email
+                    || ownerProfile.user.phone;
+
+                const buyer: Buyer = {
+                    email: ownerProfile.user.email,
+                    phone: ownerProfile.user.phone,
+                    name: ownerName
+                };
+
+                return {
                     buyer,
-                    orderUUID
+                    uuid: ownerProfile.uuid
+                };
+            }),
+            mergeMap(({ buyer, uuid: ownerUUID }) =>
+                this.datasource.transaction((transactionManager) =>
+                    this._create(
+                        transactionManager,
+                        newPaymentMethod,
+                        buyer,
+                        ownerUUID
+                    )
                 )
             )
         );

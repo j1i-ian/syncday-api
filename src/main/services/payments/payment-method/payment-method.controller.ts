@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { Observable, catchError, map, of } from 'rxjs';
 import { EntityNotFoundError } from 'typeorm';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
@@ -7,6 +7,7 @@ import { Role } from '@interfaces/profiles/role.enum';
 import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
 import { CreditCard } from '@entity/payments/credit-card.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { CreatePaymentMethodRequestDto } from '@dto/payments/create-payment-method-request.dto';
 
 type NonSensitivePaymentMethod = Pick<PaymentMethod, 'id'> & { creditCard: Pick<CreditCard, 'serialNumber'> };
 
@@ -40,5 +41,20 @@ export class PaymentMethodController {
                     }
                 })
             );
+    }
+
+    /**
+     * @param teamId
+     * @param createPaymentMethodRequestDto
+     * @returns {boolean} Don't expose sensitive information, so returns true
+     */
+    @Post()
+    @Roles(Role.OWNER, Role.MANAGER)
+    create(
+        @AuthProfile('teamId') teamId: number,
+        @Body() createPaymentMethodRequestDto: CreatePaymentMethodRequestDto
+    ): Observable<boolean> {
+        return this.paymentMethodSevice.create(teamId, createPaymentMethodRequestDto as PaymentMethod)
+            .pipe(map(() => true));
     }
 }

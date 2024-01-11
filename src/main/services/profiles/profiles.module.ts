@@ -18,8 +18,8 @@ import { ProfilesService } from './profiles.service';
         SyncdayRedisModule,
         ProductsModule,
         OrdersModule,
-        PaymentsModule,
-        PaymentMethodModule,
+        forwardRef(() => PaymentsModule),
+        forwardRef(() => PaymentMethodModule),
         forwardRef(() => UserModule),
         forwardRef(() => NotificationsModule)
     ],

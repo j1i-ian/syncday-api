@@ -227,7 +227,9 @@ describe('Test User Service', () => {
 
             userRepositoryStub.findOneOrFail.resolves(userStub);
 
-            const loadedUser = await service.findUserById(userStub.id);
+            const loadedUser = await service.findUser({
+                userId: userStub.id
+            });
 
             const actualPassedParam = userRepositoryStub.findOneOrFail.getCall(0).args[0];
             expect((actualPassedParam.where as FindOptionsWhere<User>).id).equals(userStub.id);
