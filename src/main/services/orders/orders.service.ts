@@ -39,12 +39,13 @@ export class OrdersService {
         product: Product,
         unit: number,
         teamId: number,
+        proration = 0,
         orderer?: Orderer
     ): Promise<Order> {
         const orderRepository = transactionManager.getRepository(Order);
 
-        const totalPrice = unit * product.price;
-        const memo = `${product.name}, ${product.price} * ${unit} = ${totalPrice}`;
+        const totalPrice = product.price * unit  - proration;
+        const memo = `${product.name}, ${product.price} * ${unit} - ${proration} = ${totalPrice}`;
 
         const createdOrder = orderRepository.create({
             name: product.name,

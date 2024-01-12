@@ -15,6 +15,7 @@ import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { Role } from '@interfaces/profiles/role.enum';
+import { Orderer } from '@interfaces/orders/orderer.interface';
 import { TeamService } from '@services/team/team.service';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
@@ -77,12 +78,19 @@ export class TeamController {
             throw new BadRequestException('Order unit is invalid. Plase check your order option');
         }
 
+        const orderer = {
+            name: authProfile.name,
+            roles: authProfile.roles,
+            teamId: authProfile.teamId
+        } as Orderer;
+
         return this.teamService.create(
             orderUnit,
             newPaymentMethod,
             newTeam,
             newTeamSetting,
             newTeamMembers,
+            orderer,
             authProfile.userId
         );
     }

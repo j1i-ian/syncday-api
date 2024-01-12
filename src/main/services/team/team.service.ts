@@ -8,6 +8,7 @@ import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { Role } from '@interfaces/profiles/role.enum';
 import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
+import { Orderer } from '@interfaces/orders/orderer.interface';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ProductsService } from '@services/products/products.service';
 import { OrdersService } from '@services/orders/orders.service';
@@ -111,6 +112,7 @@ export class TeamService {
         newTeam: Partial<Team>,
         newTeamSetting: Pick<TeamSetting, 'workspace' | 'greetings'>,
         teamMembers: InvitedNewTeamMember[],
+        orderer: Orderer,
         ownerUserId: number
     ): Observable<Team> {
 
@@ -158,11 +160,15 @@ export class TeamService {
                         phone: owner.phone
                     } as Buyer;
 
+                    const proration = 0;
+
                     const _createdOrder = await this.ordersService._create(
                         transactionManager,
                         loadedProduct,
                         orderUnit,
-                        _createdTeam.id
+                        _createdTeam.id,
+                        proration,
+                        orderer
                     );
 
                     const _createdPaymentMethod = await this.paymentMethodService._create(
@@ -174,6 +180,7 @@ export class TeamService {
 
                     await this.paymentsService._create(
                         transactionManager,
+                        proration,
                         _createdOrder,
                         _createdPaymentMethod,
                         _buyer

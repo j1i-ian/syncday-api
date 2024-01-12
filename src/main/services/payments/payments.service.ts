@@ -37,6 +37,7 @@ export class PaymentsService {
      */
     async _create(
         transactionManager: EntityManager,
+        proration: number,
         relatedOrder: Order,
         paymentMethod: PaymentMethod,
         buyer: Buyer
@@ -46,6 +47,7 @@ export class PaymentsService {
         const createdPayment = _paymentRepository.create({
             amount: relatedOrder.amount,
             orderId: relatedOrder.id,
+            proration,
             paymentMethodId: paymentMethod.id
         });
 

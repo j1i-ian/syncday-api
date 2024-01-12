@@ -244,7 +244,8 @@ export class ProfilesService {
                 map((ownerProfile) => ({
                     name: ownerProfile.team.name,
                     email: ownerProfile.user.email,
-                    phone: ownerProfile.user.phone
+                    phone: ownerProfile.user.phone,
+                    period: ownerProfile.team.createdAt
                 } as Buyer))
             );
 
@@ -274,11 +275,17 @@ export class ProfilesService {
                     buyer
                 });
 
+                const proration = this.utilService.getProrations(
+                    loadedProduct.price * orderUnit,
+                    buyer.period as Date
+                );
+
                 const _createdOrder = await this.ordersService._create(
                     transactionManager,
                     loadedProduct,
                     orderUnit,
                     teamId,
+                    proration,
                     orderer
                 );
 
@@ -300,6 +307,7 @@ export class ProfilesService {
 
                 await this.paymentsService._create(
                     transactionManager,
+                    proration,
                     _createdOrder,
                     ensuredPaymentMethod,
                     buyer

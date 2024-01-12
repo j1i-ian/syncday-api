@@ -77,7 +77,7 @@ describe('OrdersService', () => {
             });
             const teamIdMock = stubOne(Team).id;
             const expectedTotalPrice = productMock.price * orderStub.unit;
-            const expectedMemo = `${productMock.name}, ${productMock.price} * ${orderStub.unit} = ${expectedTotalPrice}`;
+            const expectedMemo = `${productMock.name}, ${productMock.price} * ${orderStub.unit} - 0 = ${expectedTotalPrice}`;
             const createOrderStub = stubOne(Order, {
                 unit,
                 amount: expectedTotalPrice,

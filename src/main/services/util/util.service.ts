@@ -65,6 +65,31 @@ type EventDetailInit = Omit<EventDetail,
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
 
+    getProrations(
+        amount: number,
+        paymentPeriod: Date
+    ): number {
+
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const paymentPeriodDate = new Date(paymentPeriod).getDate();
+        const periodDate = new Date(new Date().setDate(paymentPeriodDate));
+
+        const nextPeriod = tomorrow.getTime() < periodDate.getTime()
+            ? new Date(periodDate)
+            : new Date(periodDate.setMonth(periodDate.getMonth() + 1));
+
+        const previousPeriod = new Date(nextPeriod);
+        previousPeriod.setMonth(previousPeriod.getMonth() - 1);
+
+        const totalPeriod = (nextPeriod.getTime() - previousPeriod.getTime()) / (1000 * 60 * 60 * 24);
+
+        const prorationDate = (nextPeriod.getTime() - tomorrow.getTime()) / (1000 * 60 * 60 * 24);
+
+        return Math.floor(amount / totalPeriod * prorationDate);
+    }
+
     convertToInvitedNewTeamMember(emailOrPhone: string): InvitedNewTeamMember {
         return emailOrPhone.includes('@')
             ? { email: emailOrPhone }

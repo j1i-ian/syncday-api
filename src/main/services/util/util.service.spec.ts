@@ -53,6 +53,27 @@ describe('UtilService', () => {
         expect(service).ok;
     });
 
+    describe('Proration Test', () => {
+        it('should be calculated the proration', () => {
+            // 93 is divisible by either 30 or 31
+            const amountMock = 93000;
+
+            const _15daysAfterPaymentPeriodMock = new Date();
+            _15daysAfterPaymentPeriodMock.setDate(_15daysAfterPaymentPeriodMock.getDate() + 15);
+
+            const nextPeriod = new Date(_15daysAfterPaymentPeriodMock);
+            nextPeriod.setMonth(nextPeriod.getMonth() + 1);
+
+            // 30 or 31
+            const diffDays = (nextPeriod.getTime() - _15daysAfterPaymentPeriodMock.getTime()) / (1000 * 60 * 60 * 24);
+
+            const actual = service.getProrations(amountMock, _15daysAfterPaymentPeriodMock);
+
+            expect(actual).ok;
+            expect(actual).equals(amountMock / diffDays * 14);
+        });
+    });
+
     describe('Conversion Test', () => {
         it('should be converted of the email invitation to a invited new team member dto', () => {
             const emailMock = 'sample@sync.day';
