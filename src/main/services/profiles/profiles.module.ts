@@ -9,6 +9,7 @@ import { OrdersModule } from '@services/orders/orders.module';
 import { ProductsModule } from '@services/products/products.module';
 import { PaymentsModule } from '@services/payments/payments.module';
 import { PaymentMethodModule } from '@services/payments/payment-method/payment-method.module';
+import { TeamModule } from '@services/team/team.module';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ProfilesService } from './profiles.service';
 
@@ -18,6 +19,7 @@ import { ProfilesService } from './profiles.service';
         SyncdayRedisModule,
         ProductsModule,
         OrdersModule,
+        forwardRef(() => TeamModule),
         forwardRef(() => PaymentsModule),
         forwardRef(() => PaymentMethodModule),
         forwardRef(() => UserModule),

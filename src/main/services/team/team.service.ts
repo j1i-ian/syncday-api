@@ -166,6 +166,7 @@ export class TeamService {
                         transactionManager,
                         loadedProduct,
                         orderUnit,
+                        { teamId: _createdTeam.id },
                         _createdTeam.id,
                         proration,
                         orderer

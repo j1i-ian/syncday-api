@@ -156,15 +156,16 @@ describe('Profiles Redis Repository Test', () => {
 
     it('should be removed team invitations for invitation complete', async () => {
 
+        const teamIdMock = stubOne(Team).id;
         const userEmail = stubOne(User).email;
 
-        clusterStub.del.resolves(1);
+        clusterStub.srem.resolves(1);
 
-        const deleteSuccess = await firstValueFrom(service.deleteTeamInvitations(userEmail));
+        const deleteSuccess = await firstValueFrom(service.deleteTeamInvitations(teamIdMock, userEmail));
 
         expect(deleteSuccess).true;
 
-        expect(clusterStub.del.called).true;
+        expect(clusterStub.srem.called).true;
 
         clusterStub.del.reset();
     });

@@ -60,6 +60,21 @@ describe('OrdersService', () => {
         expect(loadedOrders.length).greaterThan(0);
     });
 
+    it('should be found an order by team id', async () => {
+
+        const teamIdMock = 1;
+        const orderStub = stubOne(Order);
+
+        orderRepositoryStub.findOneOrFail.resolves(orderStub);
+
+        const loaded = await firstValueFrom(service.fetch({
+            teamId: teamIdMock
+        }));
+
+        expect(loaded).ok;
+        expect(orderRepositoryStub.findOneOrFail.called).true;
+    });
+
     describe('Test order creating with product', () => {
 
         beforeEach(() => {

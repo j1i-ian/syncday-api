@@ -3,6 +3,7 @@ import { EntityManager } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { AppConfigService } from '@config/app-config.service';
+import { PaymentStatus } from '@interfaces/payments/payment-status.enum';
 import { PaymentRedisRepository } from '@services/payments/payment.redis-repository';
 import { BootpayService } from '@services/payments/bootpay/bootpay.service';
 import { BootpayConfiguration } from '@services/payments/bootpay/bootpay-configuration.interface';
@@ -65,6 +66,48 @@ export class PaymentsService {
         await this.paymentRedisRepository.setPGPaymentResult(
             relatedOrder.uuid,
             pgPaymentResult
+        );
+
+        const savedPayment = await _paymentRepository.save(createdPayment);
+
+        return savedPayment;
+    }
+
+    async _refund(
+        transactionManager: EntityManager,
+        relatedOrder: Order,
+        canceler: string,
+        message: string,
+        proratedRefundUnitPrice: number,
+        isPartialCancelation: boolean
+    ): Promise<Payment> {
+
+        const _paymentRepository = transactionManager.getRepository(Payment);
+
+        const createdPayment = _paymentRepository.create({
+            amount: proratedRefundUnitPrice * -1,
+            orderId: relatedOrder.id,
+            status: PaymentStatus.PARTIAL_REFUNDED
+        });
+
+        const pgPaymentResult = await this.paymentRedisRepository.getPGPaymentResult(relatedOrder.uuid);
+
+        const bootpayService = new BootpayService();
+
+        await bootpayService.init(this.bootpayConfiguration);
+
+        const result = await bootpayService.refund(
+            relatedOrder.uuid,
+            pgPaymentResult.receipt_id,
+            canceler,
+            message,
+            proratedRefundUnitPrice,
+            isPartialCancelation
+        );
+
+        await this.paymentRedisRepository.setPGPaymentResult(
+            relatedOrder.uuid,
+            result
         );
 
         const savedPayment = await _paymentRepository.save(createdPayment);

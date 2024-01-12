@@ -22,4 +22,11 @@ export class PaymentRedisRepository {
 
         return result === 'OK';
     }
+
+    async getPGPaymentResult(orderUUID: string): Promise<ReceiptResponseParameters> {
+        const pgPaymentKey = this.syncdayRedisService.getPGPaymentKey(orderUUID);
+        const bootpayPaymentResultJsonString = await this.cluster.get(pgPaymentKey);
+
+        return JSON.parse(bootpayPaymentResultJsonString as string) as ReceiptResponseParameters;
+    }
 }

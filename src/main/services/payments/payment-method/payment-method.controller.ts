@@ -7,7 +7,7 @@ import { Role } from '@interfaces/profiles/role.enum';
 import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
 import { CreditCard } from '@entity/payments/credit-card.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
-import { CreatePaymentMethodRequestDto } from '@dto/payments/create-payment-method-request.dto';
+import { PaymentMethodRequestDto } from '@dto/payments/payment-method-request.dto';
 
 type NonSensitivePaymentMethod = Pick<PaymentMethod, 'id'> & { creditCard: Pick<CreditCard, 'serialNumber'> };
 
@@ -23,7 +23,6 @@ export class PaymentMethodController {
     fetchTeamPaymentMethod(
         @AuthProfile('teamId') teamId: number
     ): Observable<NonSensitivePaymentMethod | null> {
-        console.log(teamId);
         return this.paymentMethodSevice.fetch({ teamId })
             .pipe(
                 map((teamPaymentMethod) => ({
@@ -52,7 +51,7 @@ export class PaymentMethodController {
     @Header('Content-type', 'application/json')
     create(
         @AuthProfile('teamId') teamId: number,
-        @Body() createPaymentMethodRequestDto: CreatePaymentMethodRequestDto
+        @Body() createPaymentMethodRequestDto: PaymentMethodRequestDto
     ): Observable<boolean> {
         return this.paymentMethodSevice.create(teamId, createPaymentMethodRequestDto as PaymentMethod)
             .pipe(map(() => true));
@@ -69,7 +68,7 @@ export class PaymentMethodController {
     update(
         @AuthProfile('teamId') teamId: number,
         @Param('paymentMethodId') paymentMethodId: number,
-        @Body() updatePaymentMethodRequestDto: CreatePaymentMethodRequestDto
+        @Body() updatePaymentMethodRequestDto: PaymentMethodRequestDto
     ): Observable<boolean> {
         return this.paymentMethodSevice.update(
             paymentMethodId,

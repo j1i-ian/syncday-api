@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Brackets, DataSource, EntityManager, FindOptionsWhere, Like, Raw, Repository, UpdateResult } from 'typeorm';
-import { Observable, combineLatest, defer, filter, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray } from 'rxjs';
+import { Observable, combineLatest, defer, filter, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray, zip } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
@@ -18,9 +18,13 @@ import { ProductsService } from '@services/products/products.service';
 import { OrdersService } from '@services/orders/orders.service';
 import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
 import { PaymentsService } from '@services/payments/payments.service';
+import { TeamService } from '@services/team/team.service';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { Order } from '@entity/orders/order.entity';
+import { Team } from '@entity/teams/team.entity';
+import { Availability } from '@entity/availability/availability.entity';
 
 @Injectable()
 export class ProfilesService {
@@ -32,6 +36,7 @@ export class ProfilesService {
         private readonly paymentMethodService: PaymentMethodService,
         private readonly paymentsService: PaymentsService,
         private readonly notificationsService: NotificationsService,
+        private readonly teamService: TeamService,
         private readonly profilesRedisRepository: ProfilesRedisRepository,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @Inject(forwardRef(() => UserService))
@@ -208,7 +213,7 @@ export class ProfilesService {
             select: {
                 id: true,
                 user: { email: true, phone: true },
-                team: { name: true }
+                team: { name: true, createdAt: true }
             },
             relations: {
                 user: true,
@@ -239,14 +244,19 @@ export class ProfilesService {
             ? of(null)
             : from(this.paymentMethodService.fetch({ teamId }));
 
-        const buyer$ = this._fetchTeamOwnerProfile(teamId)
+        const buyerTeam$ = this._fetchTeamOwnerProfile(teamId)
             .pipe(
-                map((ownerProfile) => ({
-                    name: ownerProfile.team.name,
-                    email: ownerProfile.user.email,
-                    phone: ownerProfile.user.phone,
-                    period: ownerProfile.team.createdAt
-                } as Buyer))
+                mergeMap((ownerProfile) =>
+                    zip(
+                        of(({
+                            name: ownerProfile.team.name,
+                            email: ownerProfile.user.email,
+                            phone: ownerProfile.user.phone,
+                            period: ownerProfile.team.createdAt
+                        } as Buyer)),
+                        of(ownerProfile.team)
+                    )
+                )
             );
 
         const orderUnit = newInvitedNewMembers.length;
@@ -258,13 +268,13 @@ export class ProfilesService {
                 emails: emailBulk,
                 phones: phoneNumberBulk
             })),
-            buyer$,
+            buyerTeam$,
             teamPaymentMethod$
         ]).pipe(
             mergeMap(([
                 loadedProduct,
                 searchedUsers,
-                buyer,
+                [buyer, team],
                 teamPaymentMethod
             ]) => this.datasource.transaction(async (transactionManager) => {
 
@@ -277,13 +287,26 @@ export class ProfilesService {
 
                 const proration = this.utilService.getProrations(
                     loadedProduct.price * orderUnit,
-                    buyer.period as Date
+                    team.createdAt
                 );
+                const _allProfiles = searchedUsers.map((_user) => this.utilService.createNewProfile(teamId, _user.id));
+
+                const createdProfiles = await this._create(transactionManager, _allProfiles) as Profile[];
+
+                this.logger.info({
+                    message: 'Invitation transaction: Profile Bulk creating is sucess',
+                    productPrice: loadedProduct.price,
+                    orderUnit,
+                    proration
+                });
+
+                const createdProfileIds = createdProfiles.map((_profile) => _profile.id);
 
                 const _createdOrder = await this.ordersService._create(
                     transactionManager,
                     loadedProduct,
                     orderUnit,
+                    { profileIds: createdProfileIds },
                     teamId,
                     proration,
                     orderer
@@ -322,12 +345,6 @@ export class ProfilesService {
                     _createdOrder.id,
                     OrderStatus.PLACED
                 );
-
-                const _allProfiles = searchedUsers.map((_user) => this.utilService.createNewProfile(teamId, _user.id));
-
-                await this._create(transactionManager, _allProfiles, {
-                    reload: false
-                }) as Profile[];
 
                 return searchedUsers;
             })),
@@ -512,21 +529,122 @@ export class ProfilesService {
     }
 
     completeInvitation(
+        teamId: number,
         user: Pick<User, 'id' | 'email' | 'phone'>
     ): Observable<boolean> {
         return combineLatest([
-            this.profilesRedisRepository.deleteTeamInvitations(user.email),
-            this.profilesRedisRepository.deleteTeamInvitations(user.phone)
+            this.profilesRedisRepository.deleteTeamInvitations(teamId, user.email),
+            this.profilesRedisRepository.deleteTeamInvitations(teamId, user.phone)
         ]).pipe(map(() => true));
     }
 
-    remove(teamId: number, profileId: number): Observable<boolean> {
-        return from(
-            this.profileRepository.delete({
-                id: profileId,
-                teamId
-            })
-        ).pipe(
+    /**
+     * Member request is validated on validateProfileDeleteRequest
+     * So, we should check target profile roles can be changed by requester
+     *
+     * @param teamId
+     * @param profileId
+     * @returns
+     */
+    remove(
+        teamId: number,
+        authProfile: Profile,
+        profileId: number
+    ): Observable<boolean> {
+
+        const {
+            id: authProfileId,
+            roles: authRoles,
+            name: canceler
+        } = authProfile;
+
+        // check profile roles and validate it.
+        return from(this.profileRepository.findOneByOrFail({
+            id: profileId,
+            teamId
+        })).pipe(
+            tap((deleteTargetProfile) => {
+
+                if (deleteTargetProfile.roles.includes(Role.OWNER)) {
+                    throw new ForbiddenException('Owner cannot be deleted');
+                } else if (
+                    deleteTargetProfile.roles.includes(Role.MANAGER)
+                    && authRoles.includes(Role.MANAGER)
+                    && authProfileId !== profileId
+                ) {
+                    throw new ForbiddenException('Invalid permission request');
+                }
+            }),
+            mergeMap((deleteTargetProfile) => combineLatest([
+                of(deleteTargetProfile),
+                this._fetchTeamOwnerProfile(teamId),
+                this.teamService.get(teamId, authProfile.userId, {}),
+                this.ordersService.fetch({
+                    teamId,
+                    orderOption: {
+                        profileIds: [deleteTargetProfile.id]
+                    }
+                })
+            ])),
+            tap(([
+                deleteTargetProfile,
+                ownerProfile,
+                loadedTeam,
+                relatedOrder
+            ]) => {
+                this.logger.info({
+                    message: 'Profile Remove: Start transaction',
+                    relatedOrder,
+                    loadedTeam,
+                    deleteTargetProfile,
+                    ownerProfile
+                });
+            }),
+            mergeMap(([
+                deleteTargetProfile,
+                ownerProfile,
+                loadedTeam,
+                relatedOrder
+            ]: [Profile, Profile, Team, Order]) => this.datasource.transaction(async (transactionManager) => {
+
+                const unitPrice = Math.floor(relatedOrder.amount / relatedOrder.unit);
+                const proration = this.utilService.getProrations(
+                    unitPrice,
+                    loadedTeam.createdAt
+                );
+                const profileName = deleteTargetProfile.name || deleteTargetProfile.id;
+                const refundMessage = `Profile ${profileName} is removed by ${canceler || authProfileId}`;
+
+                const isPartialCancelation = relatedOrder.unit > 1;
+
+                await this.paymentsService._refund(
+                    transactionManager,
+                    relatedOrder,
+                    canceler as string,
+                    refundMessage,
+                    proration,
+                    isPartialCancelation
+                );
+
+                const _profileRepository = transactionManager.getRepository(Profile);
+                const _availabilityRepository = transactionManager.getRepository(Availability);
+
+                await _availabilityRepository.softDelete({
+                    profileId: deleteTargetProfile.id
+                });
+
+                await _availabilityRepository.update(
+                    { profileId: deleteTargetProfile.id },
+                    { profileId: ownerProfile.id }
+                );
+
+                const deleteResult = await _profileRepository.delete({
+                    id: profileId,
+                    teamId
+                });
+
+                return deleteResult;
+            })),
             map((deleteResult) =>!!(deleteResult &&
                 deleteResult.affected &&
                 deleteResult.affected > 0))
@@ -545,5 +663,29 @@ export class ProfilesService {
         if (isForbiddenPermissionRequest) {
             throw new ForbiddenException('Permission denied');
         }
+    }
+
+    validateProfileDeleteRequest(
+        authProfileId: number,
+        profileId: number,
+        roles: Role[]
+    ): boolean {
+
+        const isResignationSelf = authProfileId === profileId;
+
+        if (isResignationSelf) {
+            if (roles.includes(Role.OWNER)) {
+                throw new ForbiddenException('Owner cannot remove himself');
+            }
+        } else {
+            if (
+                roles.includes(Role.OWNER) === false
+                && roles.includes(Role.MANAGER) === false
+            ) {
+                throw new ForbiddenException('Only owner or manager can remove other profiles');
+            }
+        }
+
+        return true;
     }
 }

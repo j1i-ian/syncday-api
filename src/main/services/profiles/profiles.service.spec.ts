@@ -15,6 +15,7 @@ import { ProductsService } from '@services/products/products.service';
 import { OrdersService } from '@services/orders/orders.service';
 import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
 import { PaymentsService } from '@services/payments/payments.service';
+import { TeamService } from '@services/team/team.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { User } from '@entity/users/user.entity';
@@ -22,6 +23,7 @@ import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { Product } from '@entity/products/product.entity';
 import { Order } from '@entity/orders/order.entity';
 import { Payment } from '@entity/payments/payment.entity';
+import { Availability } from '@entity/availability/availability.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { ProfilesService } from './profiles.service';
 
@@ -39,10 +41,12 @@ describe('ProfilesService', () => {
     let paymentMethodServiceStub: sinon.SinonStubbedInstance<PaymentMethodService>;
     let paymentsServiceStub: sinon.SinonStubbedInstance<PaymentsService>;
     let notificationServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
+    let teamServiceStub: sinon.SinonStubbedInstance<TeamService>;
 
     let profilesRedisRepositoryStub: sinon.SinonStubbedInstance<ProfilesRedisRepository>;
 
     let profileRepositoryStub: sinon.SinonStubbedInstance<Repository<Profile>>;
+    let availabilityRepositoryStub: sinon.SinonStubbedInstance<Repository<Availability>>;
 
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
@@ -55,10 +59,12 @@ describe('ProfilesService', () => {
         paymentMethodServiceStub = sinon.createStubInstance(PaymentMethodService);
         paymentsServiceStub = sinon.createStubInstance(PaymentsService);
         notificationServiceStub = sinon.createStubInstance(NotificationsService);
+        teamServiceStub = sinon.createStubInstance(TeamService);
 
         profilesRedisRepositoryStub = sinon.createStubInstance<ProfilesRedisRepository>(ProfilesRedisRepository);
 
         profileRepositoryStub = sinon.createStubInstance<Repository<Profile>>(Repository);
+        availabilityRepositoryStub = sinon.createStubInstance<Repository<Availability>>(Repository);
 
         module = await Test.createTestingModule({
             providers: [
@@ -96,6 +102,10 @@ describe('ProfilesService', () => {
                     useValue: paymentsServiceStub
                 },
                 {
+                    provide: TeamService,
+                    useValue: teamServiceStub
+                },
+                {
                     provide: ProfilesRedisRepository,
                     useValue: profilesRedisRepositoryStub
                 },
@@ -106,6 +116,10 @@ describe('ProfilesService', () => {
                 {
                     provide: getRepositoryToken(Profile),
                     useValue: profileRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(Availability),
+                    useValue: availabilityRepositoryStub
                 },
                 {
                     provide: WINSTON_MODULE_PROVIDER,
@@ -834,29 +848,198 @@ describe('ProfilesService', () => {
     it('should be completed a invitation for new user', async () => {
         profilesRedisRepositoryStub.deleteTeamInvitations.returns(of(true));
 
+        const teamIdMock = stubOne(Team).id;
         const userMock = stubOne(User);
 
-        await firstValueFrom(service.completeInvitation(userMock));
+        await firstValueFrom(service.completeInvitation(teamIdMock, userMock));
 
         expect(profilesRedisRepositoryStub.deleteTeamInvitations.calledTwice).true;
 
         profilesRedisRepositoryStub.deleteTeamInvitations.reset();
     });
 
-    describe('Test Profile Delete', () => {
+    describe.only('Test Profile Delete', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            profileRepositoryStub.findOneByOrFail.reset();
+            profileRepositoryStub.delete.reset();
+
+            serviceSandbox.restore();
+        });
+
         it('should be removed a profile for kick a user from the team', async () => {
 
-            const teamIdMock = stubOne(Team).id;
+            const teamStub = stubOne(Team);
+            const relatedOrderStub = stubOne(Order);
+            const authProfile = stubOne(Profile, {
+                roles: [Role.OWNER]
+            });
             const profileIdMock = stubOne(Profile).id;
+            const deleteTargetProfileStub = stubOne(Profile, {
+                roles: [Role.MEMBER]
+            });
+
+            profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
+
+            serviceSandbox.stub(service, '_fetchTeamOwnerProfile').returns(of(authProfile));
+            teamServiceStub.get.resolves(teamStub);
+            ordersServiceStub.fetch.resolves(relatedOrderStub);
+
+            utilServiceStub.getProrations.returns(0);
+            paymentsServiceStub._refund.resolves();
+
+            availabilityRepositoryStub.softDelete.resolves();
+            availabilityRepositoryStub.update.resolves();
 
             const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
-
             profileRepositoryStub.delete.resolves(deleteResultStub);
 
             await firstValueFrom(service.remove(
-                teamIdMock,
+                teamStub.id,
+                authProfile,
                 profileIdMock
             ));
+
+            expect(teamServiceStub.get.called).true;
+            expect(ordersServiceStub.fetch.called).true;
+            expect(utilServiceStub.getProrations.called).true;
+            expect(paymentsServiceStub._refund.called).true;
+            expect(availabilityRepositoryStub.softDelete.called).true;
+            expect(availabilityRepositoryStub.update.called).true;
+            expect(profileRepositoryStub.delete.called).true;
+
+            expect(profileRepositoryStub.findOneByOrFail.called).true;
+            expect(profileRepositoryStub.delete.called).true;
+        });
+
+        it('should be removed a manager profile by request himself', async () => {
+
+            const teamStub = stubOne(Team);
+            const relatedOrderStub = stubOne(Order);
+            const authProfile = stubOne(Profile);
+            const deleteTargetProfileStub = stubOne(Profile, {
+                id: authProfile.id,
+                roles: [Role.MANAGER]
+            });
+
+            profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
+
+            serviceSandbox.stub(service, '_fetchTeamOwnerProfile').returns(of(authProfile));
+            teamServiceStub.get.resolves(teamStub);
+            ordersServiceStub.fetch.resolves(relatedOrderStub);
+
+            utilServiceStub.getProrations.returns(0);
+            paymentsServiceStub._refund.resolves();
+
+            availabilityRepositoryStub.softDelete.resolves();
+            availabilityRepositoryStub.update.resolves();
+
+            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            profileRepositoryStub.delete.resolves(deleteResultStub);
+
+            await firstValueFrom(service.remove(
+                teamStub.id,
+                authProfile,
+                deleteTargetProfileStub.id
+            ));
+
+            expect(teamServiceStub.get.called).true;
+            expect(ordersServiceStub.fetch.called).true;
+            expect(utilServiceStub.getProrations.called).true;
+            expect(paymentsServiceStub._refund.called).true;
+            expect(availabilityRepositoryStub.softDelete.called).true;
+            expect(availabilityRepositoryStub.update.called).true;
+            expect(profileRepositoryStub.delete.called).true;
+
+            expect(profileRepositoryStub.findOneByOrFail.called).true;
+            expect(profileRepositoryStub.delete.called).true;
+        });
+
+        it('should be thrown an error when a manager requests to delete other manager profile', async () => {
+
+            const teamIdMock = stubOne(Team).id;
+            const authProfile = stubOne(Profile, {
+                roles: [Role.MANAGER]
+            });
+            const profileIdMock = authProfile.id + 1;
+            const deleteTargetProfileStub = stubOne(Profile, {
+                id: profileIdMock,
+                roles: [Role.MANAGER]
+            });
+
+            profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
+
+            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            profileRepositoryStub.delete.resolves(deleteResultStub);
+
+            await expect(firstValueFrom(service.remove(
+                teamIdMock,
+                authProfile,
+                profileIdMock
+            ))).rejectedWith(ForbiddenException);
+
+            expect(profileRepositoryStub.findOneByOrFail.called).true;
+            expect(profileRepositoryStub.delete.called).false;
+        });
+
+        it('should be thrown an error when manager to try remove owner profile', async () => {
+
+            const teamIdMock = stubOne(Team).id;
+            const authProfile = stubOne(Profile, {
+                roles: [Role.MANAGER]
+            });
+            const profileIdMock = authProfile.id + 1;
+            const deleteTargetProfileStub = stubOne(Profile, {
+                roles: [Role.OWNER]
+            });
+
+
+            profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
+
+            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            profileRepositoryStub.delete.resolves(deleteResultStub);
+
+            await expect(firstValueFrom(service.remove(
+                teamIdMock,
+                authProfile,
+                profileIdMock
+            ))).rejectedWith(ForbiddenException);
+
+            expect(profileRepositoryStub.findOneByOrFail.called).true;
+            expect(profileRepositoryStub.delete.called).false;
+        });
+
+        it('should be thrown an error when manager to try remove manager profile', async () => {
+
+            const teamIdMock = stubOne(Team).id;
+            const authProfile = stubOne(Profile, {
+                roles: [Role.MANAGER]
+            });
+            const profileIdMock = authProfile.id + 1;
+            const deleteTargetProfileStub = stubOne(Profile, {
+                id: profileIdMock,
+                roles: [Role.MANAGER]
+            });
+
+
+            profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
+
+            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            profileRepositoryStub.delete.resolves(deleteResultStub);
+
+            await expect(firstValueFrom(service.remove(
+                teamIdMock,
+                authProfile,
+                profileIdMock
+            ))).rejectedWith(ForbiddenException);
+
+            expect(profileRepositoryStub.findOneByOrFail.called).true;
+            expect(profileRepositoryStub.delete.called).false;
         });
     });
 
@@ -902,12 +1085,77 @@ describe('ProfilesService', () => {
     it('should be completed a invitation for new user', async () => {
         profilesRedisRepositoryStub.deleteTeamInvitations.returns(of(true));
 
+        const teamIdMock = stubOne(Team).id;
         const userMock = stubOne(User);
 
-        await firstValueFrom(service.completeInvitation(userMock));
+        await firstValueFrom(service.completeInvitation(teamIdMock, userMock));
 
         expect(profilesRedisRepositoryStub.deleteTeamInvitations.calledTwice).true;
 
         profilesRedisRepositoryStub.deleteTeamInvitations.reset();
+    });
+
+    describe('Test validateProfileDeleteRequest', () => {
+        [
+            {
+                description: 'should be passed the validation when owner requests to delete a manager or member',
+                authProfileId: 1,
+                deleteTargetProfileId: 2,
+                roles: [Role.OWNER],
+                expectedThrow: false
+            },
+            {
+                description: 'should be thrown an error when owner requests to delete himself',
+                authProfileId: 1,
+                deleteTargetProfileId: 1,
+                roles: [Role.OWNER],
+                expectedThrow: true
+            },
+            {
+                description: 'should be passed the validation when manager requests to delete himself',
+                authProfileId: 1,
+                deleteTargetProfileId: 1,
+                roles: [Role.MANAGER],
+                expectedThrow: false
+            },
+            {
+                description: 'should be passed the validation when member requests to delete himself',
+                authProfileId: 1,
+                deleteTargetProfileId: 1,
+                roles: [Role.MEMBER],
+                expectedThrow: false
+            },
+            {
+                description: 'shoshould be thrown an error when member requests to delete others',
+                authProfileId: 1,
+                deleteTargetProfileId: 2,
+                roles: [Role.MEMBER],
+                expectedThrow: true
+            }
+        ].forEach(function({
+            description,
+            authProfileId,
+            deleteTargetProfileId,
+            roles,
+            expectedThrow
+        }) {
+            it(description, () => {
+
+                if (expectedThrow) {
+                    expect(() => service.validateProfileDeleteRequest(
+                        authProfileId,
+                        deleteTargetProfileId,
+                        roles
+                    )).throws(ForbiddenException);
+                } else {
+                    expect(() => service.validateProfileDeleteRequest(
+                        authProfileId,
+                        deleteTargetProfileId,
+                        roles
+                    )).not.throws();
+                }
+            });
+
+        });
     });
 });

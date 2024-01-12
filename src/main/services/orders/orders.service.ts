@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, FindOptionsWhere, Raw, Repository } from 'typeorm';
 import { Observable, from } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { Order } from '@entity/orders/order.entity';
 import { Product } from '@entity/products/product.entity';
+import { OrderOption } from '@entity/orders/order-option.entity';
 
 @Injectable()
 export class OrdersService {
@@ -29,8 +30,51 @@ export class OrdersService {
 
         return from(this.orderRepository.find({
             where: { teamId },
+            order: {
+                createdAt: 'DESC'
+            },
             skip,
             take
+        }));
+    }
+
+    fetch(searchOptions: {
+        teamId?: number;
+        orderOption: OrderOption;
+    }): Observable<Order> {
+
+        const {
+            teamId,
+            orderOption
+        } = searchOptions;
+
+        let findOptionsWhere: FindOptionsWhere<Order> = {};
+
+        if(teamId) {
+            findOptionsWhere.teamId = searchOptions.teamId;
+        }
+
+        if (
+            orderOption
+            && orderOption.profileIds
+            && orderOption.profileIds.length > 0
+        ) {
+            findOptionsWhere = {
+                ...findOptionsWhere,
+                option: {
+                    profileIds: Raw(
+                        (alias) =>
+                            (orderOption.profileIds as number[])
+                                .map(
+                                    (profileId) => `FIND_IN_SET('${profileId}', ${alias})`
+                                ).join(' OR '))
+                }
+            } as FindOptionsWhere<Order>;
+        }
+
+        return from(this.orderRepository.findOneOrFail({
+            relations: ['team'],
+            where: findOptionsWhere
         }));
     }
 
@@ -38,19 +82,21 @@ export class OrdersService {
         transactionManager: EntityManager,
         product: Product,
         unit: number,
+        option: OrderOption,
         teamId: number,
         proration = 0,
         orderer?: Orderer
     ): Promise<Order> {
         const orderRepository = transactionManager.getRepository(Order);
 
-        const totalPrice = product.price * unit  - proration;
+        const totalPrice = product.price * unit - proration;
         const memo = `${product.name}, ${product.price} * ${unit} - ${proration} = ${totalPrice}`;
 
         const createdOrder = orderRepository.create({
             name: product.name,
             unit,
             amount: totalPrice,
+            option,
             productId: product.id,
             status: OrderStatus.CHECKOUT,
             memo,

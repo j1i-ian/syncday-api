@@ -163,8 +163,11 @@ export class TokenService {
                     this.profileService.createInvitedProfiles(createdUser)
                         .pipe(
                             map((_profiles) => _profiles ? [ createdProfile ].concat(_profiles) : [createdProfile]),
-                            mergeMap((_profiles) => this.profileService.completeInvitation(createdUser)
-                                .pipe(map(() => _profiles))
+                            mergeMap((_profiles) =>
+                                this.profileService.completeInvitation(
+                                    createdTeam.id,
+                                    createdUser
+                                ).pipe(map(() => _profiles))
                             )
                         )
                 );

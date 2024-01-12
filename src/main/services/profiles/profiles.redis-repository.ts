@@ -81,10 +81,13 @@ export class ProfilesRedisRepository {
             );
     }
 
-    deleteTeamInvitations(emailOrPhone: string): Observable<boolean> {
+    deleteTeamInvitations(
+        teamId: number,
+        emailOrPhone: string
+    ): Observable<boolean> {
         const memberKey = this.syncdayRedisService.getInvitedNewMemberKey(emailOrPhone);
 
-        return from(this.cluster.del(memberKey))
+        return from(this.cluster.srem(memberKey, teamId))
             .pipe(
                 map((deletedCount) => deletedCount > 0)
             );

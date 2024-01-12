@@ -9,7 +9,10 @@ import { Payment } from '@entity/payments/payment.entity';
 import { Order } from '@entity/orders/order.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { TestMockUtil } from '@test/test-mock-util';
+// eslint-disable-next-line import/no-internal-modules
+import { ReceiptResponseParameters } from '@bootpay/backend-js/lib/response';
 import { PaymentsService } from './payments.service';
 
 describe('PaymentsService', () => {
@@ -20,6 +23,7 @@ describe('PaymentsService', () => {
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
     let bootpayServicePlaceOrderStub: sinon.SinonStub;
+    let bootpayServiceRefundStub: sinon.SinonStub;
     let bootpayServiceInitStub: sinon.SinonStub;
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
@@ -89,10 +93,11 @@ describe('PaymentsService', () => {
 
         it('should be saved a payment method with transactional interface', async () => {
 
+            const prorationMock = 0;
             const orderMock = stubOne(Order);
             const paymentMethodMock = stubOne(PaymentMethod);
             const paymentStub = stubOne(Payment, {
-                amount: orderMock.price,
+                amount: orderMock.amount,
                 orderId: orderMock.id
             });
             const userStub = stubOne(User);
@@ -107,6 +112,7 @@ describe('PaymentsService', () => {
 
             const saved = await service._create(
                 datasourceMock as unknown as EntityManager,
+                prorationMock,
                 orderMock,
                 paymentMethodMock,
                 buyerMock
@@ -121,6 +127,70 @@ describe('PaymentsService', () => {
             expect(bootpayServicePlaceOrderStub.called).true;
             expect(bootpayServiceInitStub.called).true;
 
+            expect(paymentRedisRepository.setPGPaymentResult.called).true;
+        });
+    });
+
+    describe('Test payment method refund', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+
+            bootpayServiceRefundStub = serviceSandbox.stub(BootpayService.prototype, 'refund');
+
+            bootpayServiceInitStub = serviceSandbox.stub(BootpayService.prototype, 'init');
+        });
+
+        afterEach(() => {
+            paymentRepositoryStub.create.reset();
+            paymentRepositoryStub.save.reset();
+
+            bootpayServiceRefundStub.reset();
+            bootpayServiceInitStub.reset();
+
+            paymentRedisRepository.getPGPaymentResult.reset();
+            paymentRedisRepository.setPGPaymentResult.reset();
+
+            serviceSandbox.restore();
+        });
+
+        it('should be refunded a payment with transaction', async () => {
+
+            const orderMock = stubOne(Order);
+            const paymentStub = stubOne(Payment, {
+                amount: orderMock.amount,
+                orderId: orderMock.id
+            });
+            const refundUnitPriceMock = 5000;
+            const cancelerMock = stubOne(Profile).name as string;
+            const messageMock = '';
+
+            paymentRepositoryStub.create.returns(paymentStub);
+
+            paymentRedisRepository.getPGPaymentResult.resolves({ receipt_id: '' } as ReceiptResponseParameters);
+
+            paymentRepositoryStub.save.resolves(paymentStub);
+
+            const refundedPayment = await service._refund(
+                datasourceMock as unknown as EntityManager,
+                orderMock,
+                cancelerMock,
+                messageMock,
+                refundUnitPriceMock,
+                false
+            );
+
+            expect(refundedPayment).ok;
+            expect(refundedPayment).deep.equals(paymentStub);
+
+            expect(paymentRepositoryStub.create.called).true;
+            expect(paymentRepositoryStub.save.called).true;
+
+            expect(bootpayServiceRefundStub.called).true;
+            expect(bootpayServiceInitStub.called).true;
+
+            expect(paymentRedisRepository.getPGPaymentResult.called).true;
             expect(paymentRedisRepository.setPGPaymentResult.called).true;
         });
     });

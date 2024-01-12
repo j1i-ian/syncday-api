@@ -326,7 +326,7 @@ export class UserService {
 
         const createdProfileByInvitations = await firstValueFrom(
             this.profilesService.createInvitedProfiles(createdUser).pipe(
-                mergeMap((_profiles) => this.profilesService.completeInvitation(createdUser)
+                mergeMap((_profiles) => this.profilesService.completeInvitation(createdTeam.id, createdUser)
                     .pipe(map(() => _profiles))
                 )
             )
@@ -389,7 +389,7 @@ export class UserService {
 
         const createdProfileByInvitations = await firstValueFrom(
             this.profilesService.createInvitedProfiles(createdUser).pipe(
-                mergeMap((_profiles) => this.profilesService.completeInvitation(createdUser)
+                mergeMap((_profiles) => this.profilesService.completeInvitation(createdTeam.id, createdUser)
                     .pipe(map(() => _profiles))
                 )
             )

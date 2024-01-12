@@ -170,12 +170,22 @@ export class ProfilesController {
 
     @Delete(':profileId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
-    @Roles(Role.OWNER, Role.MANAGER)
     remove(
         @Param('profileId') profileId: number,
-        @AuthProfile('teamId') teamId: number
+        @AuthProfile() authProfile: Profile
     ): Observable<boolean> {
-        return this.profileService.remove(teamId, profileId);
+
+        this.profileService.validateProfileDeleteRequest(
+            authProfile.id,
+            profileId,
+            authProfile.roles
+        );
+
+        return this.profileService.remove(
+            authProfile.teamId,
+            authProfile,
+            profileId
+        );
     }
 
     /**

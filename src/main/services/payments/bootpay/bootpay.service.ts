@@ -5,6 +5,8 @@ import { BootpayConfiguration } from '@services/payments/bootpay/bootpay-configu
 import { CreditCard } from '@entity/payments/credit-card.entity';
 import { Order } from '@entity/orders/order.entity';
 import { BootpayBackendNodejs, ReceiptResponseParameters } from '@typings/bootpay';
+// eslint-disable-next-line import/no-internal-modules
+import { CancelPaymentParameters } from '@bootpay/backend-js/lib/response';
 
 @Injectable({
     scope: Scope.REQUEST
@@ -111,6 +113,37 @@ export class BootpayService {
 
         return this;
     }
+    async refund(
+        orderUUID: string,
+        receiptId: string,
+        canceler: string,
+        message: string,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        refundPrice: number,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        partialCancelation: boolean
+    ): Promise<ReceiptResponseParameters> {
+
+        await this._getAccessToken();
+
+        const cancelPaymentOptions: CancelPaymentParameters = {
+            receipt_id: receiptId,
+            cancel_tax_free: 0,
+            cancel_id: orderUUID,
+            cancel_username: canceler,
+            cancel_message: message
+        };
+
+        // TODO: Patial Cancellation Issue is migrated to #703
+        // if (!partialCancelation) {
+        //     cancelPaymentOptions.cancel_price = refundPrice;
+        // }
+
+        const response = await this.Bootpay.cancelPayment(cancelPaymentOptions);
+
+        return response;
+    }
+
 
     async _getAccessToken(): Promise<void> {
         await this.Bootpay.getAccessToken();
