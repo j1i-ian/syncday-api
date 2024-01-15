@@ -8,9 +8,9 @@ import { plainToInstance } from 'class-transformer';
 import { Observable } from 'rxjs';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
-import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
 import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
 import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
+import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
@@ -19,7 +19,7 @@ import { GoogleConverterService } from '@services/integrations/google-integratio
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
-import { IntegrationScheduleWrapperService } from '@services/integrations/integration-schedule-wrapper-service.interface';
+import { IntegrationScheduledEventsWrapperService } from '@services/integrations/integration-scheduled-events-wrapper-service.interface';
 import { CalendarIntegrationWrapperService } from '@services/integrations/calendar-integration-wrapper-service.interface';
 import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/conference-link-integration-wrapper-service.interface';
 import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
@@ -27,7 +27,7 @@ import { GoogleIntegration } from '@entity/integrations/google/google-integratio
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Integration } from '@entity/integrations/integration.entity';
-import { Host } from '@entity/schedules/host.entity';
+import { Host } from '@entity/scheduled-events/host.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
@@ -36,7 +36,7 @@ import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-crea
 @Injectable()
 export class GoogleIntegrationsService implements
     IntegrationsFactory,
-    IntegrationScheduleWrapperService,
+    IntegrationScheduledEventsWrapperService,
     CalendarIntegrationWrapperService,
     ConferenceLinkIntegrationWrapperService
 {
@@ -333,7 +333,7 @@ export class GoogleIntegrationsService implements
         return true;
     }
 
-    getIntegrationSchedulesService(): IntegrationSchedulesService {
+    getIntegrationScheduledEventsService(): IntegrationScheduledEventsService {
         return this.googleIntegrationSchedulesService;
     }
 

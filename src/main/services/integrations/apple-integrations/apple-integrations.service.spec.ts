@@ -13,7 +13,7 @@ import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-
 import { User } from '@entity/users/user.entity';
 import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
@@ -184,17 +184,17 @@ describe('AppleIntegrationsService', () => {
                 appleCalDAVCalendarIntegrations: appleCalDavCalendarIntegrationStubs
             });
             const convertedAppleCalDAVCalndarIntegrationStub = stub(AppleCalDAVCalendarIntegration);
-            const appleCalDAVIntegrationScheduleStubs = stub(AppleCalDAVIntegrationSchedule);
+            const appleCalDAVIntegrationScheduleStubs = stub(AppleCalDAVIntegrationScheduledEvent);
             const calDAVCalendarStubs = testMockUtil.getCalDavCalendarMocks();
             const calDAVCalendarObjectStubs = testMockUtil.getCalDavObjectMocks();
 
             appleCalDAVIntegrationRepositoryStub.save.resolves(appleCalDavIntegrationStub);
             appleCalDAVIntegrationRepositoryStub.findOneBy.resolves(null);
             appleConverterServiceStub.convertCalDAVCalendarToAppleCalendarIntegration.resolves(convertedAppleCalDAVCalndarIntegrationStub);
-            appleConverterServiceStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules.resolves(appleCalDAVIntegrationScheduleStubs);
+            appleConverterServiceStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents.resolves(appleCalDAVIntegrationScheduleStubs);
 
             appleIntegrationFacadeServiceStub.searchCalendars.resolves(calDAVCalendarStubs);
-            appleIntegrationFacadeServiceStub.searchSchedules.resolves(calDAVCalendarObjectStubs);
+            appleIntegrationFacadeServiceStub.searchScheduledEvents.resolves(calDAVCalendarObjectStubs);
 
             await service.create(
                 profileMock,
@@ -205,10 +205,10 @@ describe('AppleIntegrationsService', () => {
             );
 
             expect(appleConverterServiceStub.convertCalDAVCalendarToAppleCalendarIntegration.called).true;
-            expect(appleConverterServiceStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules.called).true;
+            expect(appleConverterServiceStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents.called).true;
             expect(appleCalDAVIntegrationRepositoryStub.save.called).true;
             expect(appleIntegrationFacadeServiceStub.searchCalendars.called).true;
-            expect(appleIntegrationFacadeServiceStub.searchSchedules.called).true;
+            expect(appleIntegrationFacadeServiceStub.searchScheduledEvents.called).true;
         });
 
         it('should be thrown a AlreadyIntegratedCalendar', async () => {

@@ -7,13 +7,13 @@ import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.e
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { UtilService } from '@services/util/util.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
-import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
+import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { QuestionInputType } from '@entity/invitee-questions/question-input-type.enum';
-import { Host } from '@entity/schedules/host.entity';
+import { Host } from '@entity/scheduled-events/host.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleConverterService } from './google-converter.service';
 
@@ -230,7 +230,7 @@ describe('GoogleConverterService', () => {
                 description: 'should be converted to google calendar event from sync scheduled event',
                 hostTimezoneMock: stubOne(UserSetting).preferredTimezone,
                 googleCalendarIntegrationEmailMock: stubOne(GoogleCalendarIntegration).name,
-                scheduleMock: stubOne(Schedule, {
+                scheduledEventMock: stubOne(ScheduledEvent, {
                     scheduledTime: stubOne(ScheduledTimeset),
                     scheduledNotificationInfo: {
                         invitee: [
@@ -263,7 +263,7 @@ describe('GoogleConverterService', () => {
                 description: 'should be converted to google calendar event from sync scheduled event when event detail descript is null',
                 hostTimezoneMock: stubOne(UserSetting).preferredTimezone,
                 googleCalendarIntegrationEmailMock: stubOne(GoogleCalendarIntegration).name,
-                scheduleMock: stubOne(Schedule, {
+                scheduledEventMock: stubOne(ScheduledEvent, {
                     scheduledTime: stubOne(ScheduledTimeset),
                     scheduledNotificationInfo: {
                         invitee: [
@@ -296,7 +296,7 @@ describe('GoogleConverterService', () => {
                 description: 'should be converted to google calendar event from sync scheduled event with conference link when event contact is zoom link',
                 hostTimezoneMock: stubOne(UserSetting).preferredTimezone,
                 googleCalendarIntegrationEmailMock: stubOne(GoogleCalendarIntegration).name,
-                scheduleMock: stubOne(Schedule, {
+                scheduledEventMock: stubOne(ScheduledEvent, {
                     scheduledTime: stubOne(ScheduledTimeset),
                     scheduledNotificationInfo: {
                         invitee: [
@@ -329,7 +329,7 @@ describe('GoogleConverterService', () => {
                 description: 'should be converted to google calendar event from sync scheduled event without conference link when event contact is not link method',
                 hostTimezoneMock: stubOne(UserSetting).preferredTimezone,
                 googleCalendarIntegrationEmailMock: stubOne(GoogleCalendarIntegration).name,
-                scheduleMock: stubOne(Schedule, {
+                scheduledEventMock: stubOne(ScheduledEvent, {
                     scheduledTime: stubOne(ScheduledTimeset),
                     scheduledNotificationInfo: {
                         invitee: [
@@ -362,7 +362,7 @@ describe('GoogleConverterService', () => {
             description,
             hostTimezoneMock,
             googleCalendarIntegrationEmailMock,
-            scheduleMock,
+            scheduledEventMock,
             expectedPropertyConvertedGoogleScheduleContain,
             expectedPropertyConvertedGoogleScheduleNotContain
         }) {
@@ -370,7 +370,7 @@ describe('GoogleConverterService', () => {
                 const convertedGoogleSchedule = service.convertScheduledEventToGoogleCalendarEvent(
                     hostTimezoneMock,
                     googleCalendarIntegrationEmailMock,
-                    scheduleMock
+                    scheduledEventMock
                 );
 
                 const {
@@ -385,8 +385,8 @@ describe('GoogleConverterService', () => {
                 const convertedEndDatetime = new Date(convertedEndDatetimeString.dateTime as string);
 
                 expect(convertedGoogleSchedule).ok;
-                expect(convertedStartDatetime.getTime()).equals(scheduleMock.scheduledTime.startTimestamp.getTime());
-                expect(convertedEndDatetime.getTime()).equals(scheduleMock.scheduledTime.endTimestamp.getTime());
+                expect(convertedStartDatetime.getTime()).equals(scheduledEventMock.scheduledTime.startTimestamp.getTime());
+                expect(convertedEndDatetime.getTime()).equals(scheduledEventMock.scheduledTime.endTimestamp.getTime());
                 expect(convertedGoogleSchedule).ok;
 
                 expect(utilServiceStub.generateUUID.called).true;
@@ -396,11 +396,11 @@ describe('GoogleConverterService', () => {
             });
         });
 
-        it('should be converted google integration schedules from google schedule although google schedule has no summary', () => {
+        it('should be converted google integration schedules from google scheduled event although google scheduled event has no summary', () => {
             const calendarIdMock = 'alan@sync.day';
             const googleScheduleMock = testMockUtil.getGoogleScheduleMock();
             googleScheduleMock.summary = null;
-            const googleIntegrationScheduleStub = stubOne(GoogleIntegrationSchedule, {
+            const googleIntegrationScheduleStub = stubOne(GoogleIntegrationScheduledEvent, {
                 iCalUID: googleScheduleMock.iCalUID as string
             });
 
@@ -420,11 +420,11 @@ describe('GoogleConverterService', () => {
             expect(convertedSchedule.name).ok;
         });
 
-        it('should be converted google integration schedules from google schedule', () => {
+        it('should be converted google integration schedules from google scheduled event', () => {
             const recurrenceRulesString = 'RRULE:FREQ=YEARLY';
             const googleScheduleMock = testMockUtil.getGoogleScheduleMock(recurrenceRulesString);
             const calendarIdMock = 'alan@sync.day';
-            const googleIntegrationScheduleStub = stubOne(GoogleIntegrationSchedule, {
+            const googleIntegrationScheduleStub = stubOne(GoogleIntegrationScheduledEvent, {
                 iCalUID: googleScheduleMock.iCalUID as string
             });
 
@@ -459,7 +459,7 @@ describe('GoogleConverterService', () => {
             expect(convertedGoogleIntegrationSchedule.iCalUID).ok;
         });
 
-        it('should be converted google integration schedule with source date time', () => {
+        it('should be converted google integration scheduled event with source date time', () => {
             const recurrenceRulesString = 'RRULE:FREQ=DAILY';
             const googleScheduleMock = testMockUtil.getGoogleScheduleMock(recurrenceRulesString);
             const calendarIdMock = 'alan@sync.day';
@@ -470,7 +470,7 @@ describe('GoogleConverterService', () => {
                     endDatetime: new Date('2023-07-18T00:00:00+09:00')
                 }
             ];
-            const googleIntegrationScheduleStub = stubOne(GoogleIntegrationSchedule, {
+            const googleIntegrationScheduleStub = stubOne(GoogleIntegrationScheduledEvent, {
                 iCalUID: googleScheduleMock.iCalUID as string,
                 scheduledTime: {
                     startTimestamp: convertedDatesStubs[0].startDatetime,

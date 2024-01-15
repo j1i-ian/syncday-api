@@ -4,12 +4,12 @@ import { plainToInstance } from 'class-transformer';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { Language } from '@interfaces/users/language.enum';
 import { BookingsService } from '@services/bookings/bookings.service';
-import { Schedule } from '@entity/schedules/schedule.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { FetchHostResponseDto } from '@dto/bookings/fetch-host-response.dto';
 import { HostEventDto } from '@dto/bookings/host-event.dto';
 import { HostAvailabilityDto } from '@dto/bookings/host-availability.dto';
-import { CreateScheduledRequestDto } from '@dto/schedules/create-scheduled-request.dto';
-import { ScheduledEventResponseDto } from '@dto/schedules/scheduled-event-response.dto';
+import { CreateScheduledRequestDto } from '@dto/scheduled-events/create-scheduled-request.dto';
+import { ScheduledEventResponseDto } from '@dto/scheduled-events/scheduled-event-response.dto';
 import { SearchScheduledEventResponseDto } from '@dto/bookings/search-scheduled-event-response.dto';
 import { Public } from '@app/auth/strategy/jwt/public.decorator';
 import { ValidateQueryParamPipe } from '@app/pipes/validate-query-param/validate-query-param.pipe';
@@ -118,7 +118,7 @@ export class BookingsController {
         @BCP47AcceptLanguage() language: Language
     ): Observable<ScheduledEventResponseDto> {
 
-        const newScheduledEvent = plainToInstance(Schedule, createScheduleRequestDto, {
+        const newScheduledEvent = plainToInstance(ScheduledEvent, createScheduleRequestDto, {
             strategy: 'exposeAll',
             exposeDefaultValues: true
         });

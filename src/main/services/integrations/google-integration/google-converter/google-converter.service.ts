@@ -9,7 +9,7 @@ import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { Notification } from '@interfaces/notifications/notification';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
-import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
+import { ScheduledReminder } from '@interfaces/scheduled-events/scheduled-reminder';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { UtilService } from '@services/util/util.service';
@@ -17,8 +17,8 @@ import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { OAuth2Converter } from '@services/integrations/oauth2-converter.interface';
 import { CreateUserWithOAuth2DTO } from '@services/users/interfaces/create-user-with-oauth2-dto.interface';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 
 @Injectable()
@@ -105,7 +105,7 @@ export class GoogleConverterService implements OAuth2Converter {
             );
     }
 
-    convertToGoogleIntegrationSchedules(googleCalendarScheduleBody: GoogleCalendarScheduleBody): GoogleIntegrationSchedule[] {
+    convertToGoogleIntegrationSchedules(googleCalendarScheduleBody: GoogleCalendarScheduleBody): GoogleIntegrationScheduledEvent[] {
 
         return Object.entries(googleCalendarScheduleBody)
             .flatMap(([_calendarId, _googleSchedules]) =>
@@ -114,7 +114,7 @@ export class GoogleConverterService implements OAuth2Converter {
                     .reduce((_allSchedules, _googleSchedule) => {
 
 
-                        let convertedSchedules: GoogleIntegrationSchedule[] = [];
+                        let convertedSchedules: GoogleIntegrationScheduledEvent[] = [];
 
                         const { startDatetime, endDatetime } = this.convertGoogleScheduleToDateTimes(_googleSchedule);
 
@@ -146,7 +146,7 @@ export class GoogleConverterService implements OAuth2Converter {
                         }
 
                         return _allSchedules.concat(convertedSchedules);
-                    }, [] as GoogleIntegrationSchedule[])
+                    }, [] as GoogleIntegrationScheduledEvent[])
             );
     }
 
@@ -190,7 +190,7 @@ export class GoogleConverterService implements OAuth2Converter {
         googleSchedule: calendar_v3.Schema$Event,
         startDate: Date,
         endDate: Date
-    ): GoogleIntegrationSchedule[] {
+    ): GoogleIntegrationScheduledEvent[] {
         const recurrenceRulesString = (googleSchedule.recurrence as string[])[0];
 
         const diffTimestamp = endDate.getTime() - startDate.getTime();
@@ -251,19 +251,19 @@ export class GoogleConverterService implements OAuth2Converter {
     convertScheduledEventToGoogleCalendarEvent(
         hostTimezone: string,
         organizerEmail: string,
-        schedule: Schedule
+        scheduledEvent: ScheduledEvent
     ): calendar_v3.Schema$Event {
-        const { startTimestamp, endTimestamp } = schedule.scheduledTime;
+        const { startTimestamp, endTimestamp } = scheduledEvent.scheduledTime;
 
-        const inviteeEmailAnswer = (schedule.scheduledNotificationInfo.invitee as Notification[]).find((_item) => _item.type === NotificationType.EMAIL) as Notification;
+        const inviteeEmailAnswer = (scheduledEvent.scheduledNotificationInfo.invitee as Notification[]).find((_item) => _item.type === NotificationType.EMAIL) as Notification;
         const inviteeEmail = (inviteeEmailAnswer.reminders[0] as ScheduledReminder).typeValue;
 
-        const summary = schedule.summary;
-        const selectedContact = schedule.contacts[0];
+        const summary = scheduledEvent.summary;
+        const selectedContact = scheduledEvent.contacts[0];
         const generatedUUID = this.utilService.generateUUID();
         const eventRequestBody: calendar_v3.Schema$Event = {
             summary,
-            description: schedule.description,
+            description: scheduledEvent.description,
             attendees: [
                 {
                     email: organizerEmail,
@@ -297,7 +297,7 @@ export class GoogleConverterService implements OAuth2Converter {
                 }
             };
         } else {
-            eventRequestBody.location = schedule.location.join('\n');
+            eventRequestBody.location = scheduledEvent.location.join('\n');
         }
 
         return eventRequestBody;
@@ -312,11 +312,11 @@ export class GoogleConverterService implements OAuth2Converter {
         googleSchedule: calendar_v3.Schema$Event,
         startDatetime: Date,
         endDatetime: Date
-    ): GoogleIntegrationSchedule {
+    ): GoogleIntegrationScheduledEvent {
         const defaultName = 'No Title: ' + calendarId;
         const ensuredName = googleSchedule.summary || defaultName;
 
-        const newSchedule: GoogleIntegrationSchedule = {
+        const newSchedule: GoogleIntegrationScheduledEvent = {
             name: ensuredName,
             iCalUID: googleSchedule.iCalUID,
             scheduledTime: {
@@ -325,7 +325,7 @@ export class GoogleConverterService implements OAuth2Converter {
             },
             originatedCalendarId: calendarId,
             raw: googleSchedule
-        } as GoogleIntegrationSchedule;
+        } as GoogleIntegrationScheduledEvent;
 
         return newSchedule;
     }

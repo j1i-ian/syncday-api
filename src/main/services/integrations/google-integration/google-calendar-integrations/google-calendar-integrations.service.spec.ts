@@ -13,14 +13,14 @@ import { GoogleCalendarEventListService } from '@services/integrations/google-in
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { User } from '@entity/users/user.entity';
-import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
-import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
+import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleCalendarIntegrationsService } from './google-calendar-integrations.service';
@@ -39,10 +39,10 @@ describe('GoogleCalendarIntegrationsService', () => {
     let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
     let integrationsRedisRepositoryStub: sinon.SinonStubbedInstance<IntegrationsRedisRepository>;
 
-    let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
+    let scheduledEventRepositoryStub: sinon.SinonStubbedInstance<Repository<ScheduledEvent>>;
     let scheduledEventNotificationStub: sinon.SinonStubbedInstance<Repository<ScheduledEventNotification>>;
     let googleIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegration>>;
-    let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
+    let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationScheduledEvent>>;
     let googleCalendarIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleCalendarIntegration>>;
 
     const _getRepository = (EntityClass: new () => any) =>
@@ -68,10 +68,10 @@ describe('GoogleCalendarIntegrationsService', () => {
 
         integrationsRedisRepositoryStub = sinon.createStubInstance<IntegrationsRedisRepository>(IntegrationsRedisRepository);
 
-        scheduleRepositoryStub = sinon.createStubInstance<Repository<Schedule>>(Repository);
+        scheduledEventRepositoryStub = sinon.createStubInstance<Repository<ScheduledEvent>>(Repository);
         scheduledEventNotificationStub = sinon.createStubInstance<Repository<ScheduledEventNotification>>(Repository);
         googleIntegrationRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegration>>(Repository);
-        googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationSchedule>>(Repository);
+        googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationScheduledEvent>>(Repository);
         googleCalendarIntegrationRepositoryStub =
             sinon.createStubInstance<Repository<GoogleCalendarIntegration>>(Repository);
 
@@ -111,15 +111,15 @@ describe('GoogleCalendarIntegrationsService', () => {
                     useValue: datasourceMock
                 },
                 {
-                    provide: getRepositoryToken(Schedule),
-                    useValue: scheduleRepositoryStub
+                    provide: getRepositoryToken(ScheduledEvent),
+                    useValue: scheduledEventRepositoryStub
                 },
                 {
                     provide: getRepositoryToken(ScheduledEventNotification),
                     useValue: scheduledEventNotificationStub
                 },
                 {
-                    provide: getRepositoryToken(GoogleIntegrationSchedule),
+                    provide: getRepositoryToken(GoogleIntegrationScheduledEvent),
                     useValue: googleIntegrationScheduleRepositoryStub
                 },
                 {
@@ -158,8 +158,8 @@ describe('GoogleCalendarIntegrationsService', () => {
             googleIntegrationScheduleRepositoryStub.save.reset();
             googleIntegrationScheduleRepositoryStub.delete.reset();
 
-            scheduleRepositoryStub.find.reset();
-            scheduleRepositoryStub.softDelete.reset();
+            scheduledEventRepositoryStub.find.reset();
+            scheduledEventRepositoryStub.softDelete.reset();
 
             serviceSandbox.restore();
         });
@@ -226,7 +226,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                     googleOAuthClient: {} as Auth.OAuth2Client
                 },
                 googleScheduleStubValue: testMockUtil.getGoogleScheduleMock(),
-                deleteTargetScheduleStubsValue: stub(Schedule, 10, {
+                deleteTargetScheduleStubsValue: stub(ScheduledEvent, 10, {
                     scheduledEventNotifications: stub(ScheduledEventNotification)
                 }),
                 sendCancellationMessagesStubValue: true
@@ -261,8 +261,8 @@ describe('GoogleCalendarIntegrationsService', () => {
             it(description, async () => {
                 const googleCalendarEventListServiceSearchStub = serviceSandbox.stub(GoogleCalendarEventListService.prototype, 'search').resolves(googleScheduleStubValue);
 
-                const oldGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
-                const newGoogleIntegrationScheduleStubs = stub(GoogleIntegrationSchedule);
+                const oldGoogleIntegrationScheduleStubs = stub(GoogleIntegrationScheduledEvent);
+                const newGoogleIntegrationScheduleStubs = stub(GoogleIntegrationScheduledEvent);
                 newGoogleIntegrationScheduleStubs[0] = oldGoogleIntegrationScheduleStubs[0];
                 newGoogleIntegrationScheduleStubs[1] = oldGoogleIntegrationScheduleStubs[1];
                 newGoogleIntegrationScheduleStubs[2] = oldGoogleIntegrationScheduleStubs[2];
@@ -270,7 +270,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                 googleIntegrationScheduleRepositoryStub.findBy.resolves(oldGoogleIntegrationScheduleStubs);
                 googleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(newGoogleIntegrationScheduleStubs);
 
-                scheduleRepositoryStub.find.resolves(deleteTargetScheduleStubsValue);
+                scheduledEventRepositoryStub.find.resolves(deleteTargetScheduleStubsValue);
 
                 notificationsServiceStub.sendCancellationMessages.resolves(sendCancellationMessagesStubValue);
 
@@ -290,12 +290,12 @@ describe('GoogleCalendarIntegrationsService', () => {
                 expect(googleIntegrationScheduleRepositoryStub.save.called).true;
                 expect(googleIntegrationScheduleRepositoryStub.delete.called).true;
 
-                expect(scheduleRepositoryStub.find.called).true;
+                expect(scheduledEventRepositoryStub.find.called).true;
 
                 expect(notificationsServiceStub.sendCancellationMessages.called).equals(sendCancellationMessagesStubValue);
 
-                expect(scheduleRepositoryStub.update.called).true;
-                expect(scheduleRepositoryStub.softDelete.called).true;
+                expect(scheduledEventRepositoryStub.update.called).true;
+                expect(scheduledEventRepositoryStub.softDelete.called).true;
             });
         });
 

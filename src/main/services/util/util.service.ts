@@ -12,7 +12,7 @@ import { EventType } from '@interfaces/events/event-type.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 import { Notification } from '@interfaces/notifications/notification';
-import { ScheduledReminder } from '@interfaces/schedules/scheduled-reminder';
+import { ScheduledReminder } from '@interfaces/scheduled-events/scheduled-reminder';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
@@ -28,13 +28,13 @@ import { BufferTime } from '@entity/events/buffer-time.entity';
 import { DateRange } from '@entity/events/date-range.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
-import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
-import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
-import { NotificationTarget } from '@entity/schedules/notification-target.enum';
+import { ScheduledStatus } from '@entity/scheduled-events/scheduled-status.enum';
+import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
+import { NotificationTarget } from '@entity/scheduled-events/notification-target.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
-import { Host } from '@entity/schedules/host.entity';
+import { Host } from '@entity/scheduled-events/host.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { Language } from '@app/enums/language.enum';
 import { NewProfile } from '@app/interfaces/profiles/new-profile.type';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
@@ -58,7 +58,7 @@ type EventDetailInit = Omit<EventDetail,
 | 'event'
 | 'interval'
 | 'minimumNotice'
-| 'schedules'
+| 'scheduledEvents'
 >;
 
 @Injectable()
@@ -193,7 +193,7 @@ export class UtilService {
 
         const notificationData = {
             template,
-            scheduleId: scheduleNotification.scheduleId
+            scheduledEventId: scheduleNotification.scheduledEventId
         } as SyncdayAwsSnsRequest;
 
         const notificationDataAndPublishKey = {
@@ -416,44 +416,44 @@ export class UtilService {
         host: User,
         hostProfile: Profile,
         sourceEvent: Event,
-        newSchedule: Schedule,
+        newScheduledEvent: ScheduledEvent,
         workspace: string,
         timezone: string
-    ): Schedule {
-        newSchedule.uuid = this.generateUUID();
-        newSchedule.name = sourceEvent.name;
-        newSchedule.color = sourceEvent.color;
-        newSchedule.status = ScheduledStatus.OPENED;
-        newSchedule.contacts = sourceEvent.contacts;
-        newSchedule.type = sourceEvent.type;
-        newSchedule.eventDetailId = sourceEvent.eventDetail.id;
+    ): ScheduledEvent {
+        newScheduledEvent.uuid = this.generateUUID();
+        newScheduledEvent.name = sourceEvent.name;
+        newScheduledEvent.color = sourceEvent.color;
+        newScheduledEvent.status = ScheduledStatus.OPENED;
+        newScheduledEvent.contacts = sourceEvent.contacts;
+        newScheduledEvent.type = sourceEvent.type;
+        newScheduledEvent.eventDetailId = sourceEvent.eventDetail.id;
 
-        newSchedule.additionalDescription = sourceEvent.eventDetail.description;
+        newScheduledEvent.additionalDescription = sourceEvent.eventDetail.description;
 
-        newSchedule.scheduledNotificationInfo.host = sourceEvent.eventDetail.notificationInfo?.host;
-        newSchedule.conferenceLinks = [];
+        newScheduledEvent.scheduledNotificationInfo.host = sourceEvent.eventDetail.notificationInfo?.host;
+        newScheduledEvent.conferenceLinks = [];
 
-        newSchedule.host = {
+        newScheduledEvent.host = {
             uuid: hostProfile.uuid,
             name: hostProfile.name,
             workspace,
             timezone
         } as Host;
 
-        newSchedule.scheduledEventNotifications = this.getPatchedScheduleNotification(
+        newScheduledEvent.scheduledEventNotifications = this.getPatchedScheduleNotification(
             host,
-            newSchedule,
+            newScheduledEvent,
             sourceEvent.eventDetail.notificationInfo,
-            newSchedule.scheduledNotificationInfo
+            newScheduledEvent.scheduledNotificationInfo
         );
 
-        return newSchedule;
+        return newScheduledEvent;
     }
 
     // FIXME: it should be replaced with scheduled event notification creating directly.
     getPatchedScheduleNotification(
         host: User,
-        schedule: Schedule,
+        scheduledEvent: ScheduledEvent,
         sourceNotificationInfo: NotificationInfo,
         notificationInfo: NotificationInfo
     ): ScheduledEventNotification[] {
@@ -510,7 +510,7 @@ export class UtilService {
                                     _notification.type
                                 ) : (__reminder as ScheduledReminder).typeValue;
 
-                            const remindAt = new Date(schedule.scheduledTime.startTimestamp);
+                            const remindAt = new Date(scheduledEvent.scheduledTime.startTimestamp);
 
                             if (__reminder.remindBefore) {
                                 const [ hour, minute ] = (__reminder.remindBefore as string).split(':');

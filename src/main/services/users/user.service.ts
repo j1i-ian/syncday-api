@@ -760,7 +760,7 @@ export class UserService {
                         eventGroup: {
                             events: {
                                 eventDetail: {
-                                    schedules: true
+                                    scheduledEvents: true
                                 }
                             }
                         },

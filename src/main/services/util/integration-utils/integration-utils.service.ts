@@ -3,7 +3,7 @@ import { Auth, calendar_v3, google } from 'googleapis';
 import { ConfigService } from '@nestjs/config';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { ConferenceLink } from '@entity/schedules/conference-link.entity';
+import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity';
 
 @Injectable()
 export class IntegrationUtilsService {

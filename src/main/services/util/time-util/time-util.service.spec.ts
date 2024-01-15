@@ -4,10 +4,10 @@ import { BadRequestException } from '@nestjs/common';
 import { QuestionInputType } from '@interfaces/events/invitee/question-input-type';
 import { Weekday } from '@interfaces/availability/weekday.enum';
 import { AvailableTime } from '@interfaces/availability/available-time';
-import { Schedule } from '@entity/schedules/schedule.entity';
-import { Host } from '@entity/schedules/host.entity';
+import { Host } from '@entity/scheduled-events/host.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { TimeUtilService } from './time-util.service';
 
@@ -116,7 +116,7 @@ describe('TimeUtilService', () => {
     it('should be converted to ics string', () => {
         const uuidMock = 'AABBCCDDEEFF';
         const organizerEmailMock = TestMockUtil.faker.internet.email();
-        const scheduleMock = stubOne(Schedule, {
+        const scheduledEventMock = stubOne(ScheduledEvent, {
             scheduledTime: {
                 startTimestamp: new Date(),
                 endTimestamp: new Date()
@@ -144,7 +144,7 @@ describe('TimeUtilService', () => {
         const convertedICSString = service.convertToICSString(
             uuidMock,
             organizerEmailMock,
-            scheduleMock
+            scheduledEventMock
         );
 
         expect(convertedICSString).ok;
@@ -153,7 +153,7 @@ describe('TimeUtilService', () => {
     it('should be converted to ics string without METHOD: string for RFC ', () => {
         const uuidMock = 'AABBCCDDEEFF';
         const organizerEmailMock = TestMockUtil.faker.internet.email();
-        const scheduleMock = stubOne(Schedule, {
+        const scheduledEventMock = stubOne(ScheduledEvent, {
             scheduledTime: {
                 startTimestamp: new Date(),
                 endTimestamp: new Date()
@@ -182,7 +182,7 @@ describe('TimeUtilService', () => {
         const actualConvertedICSString = service.convertToICSString(
             uuidMock,
             organizerEmailMock,
-            scheduleMock
+            scheduledEventMock
         );
 
         expect(actualConvertedICSString).ok;
@@ -192,7 +192,7 @@ describe('TimeUtilService', () => {
     it('should be thrown an error for ics converting error', () => {
         const uuidMock = 'AABBCCDDEEFF';
         const organizerEmailMock = TestMockUtil.faker.internet.email();
-        const scheduleMock = stubOne(Schedule, {
+        const scheduledEventMock = stubOne(ScheduledEvent, {
             scheduledTime: {
                 startTimestamp: new Date(),
                 endTimestamp: new Date()
@@ -218,7 +218,7 @@ describe('TimeUtilService', () => {
         expect(() => service.convertToICSString(
             uuidMock,
             organizerEmailMock,
-            scheduleMock
+            scheduledEventMock
         )).throws(BadRequestException);
     });
 
@@ -231,22 +231,22 @@ describe('TimeUtilService', () => {
         expect(actualGMTString).equals(expectedGMTString);
     });
 
-    describe('Test for ensured schedule start time and end time compare with now test', () => {
+    describe('Test for ensured scheduled event start time and end time compare with now test', () => {
         [
             {
-                description: 'should be returned true if the ensured schedule start time is earlier than now',
+                description: 'should be returned true if the ensured scheduled event start time is earlier than now',
                 startDateTimestampMock: Date.now() - _1Hour,
                 ensuredEndDateTimestampMock: Date.now() + _1Hour,
                 expectedResult: true
             },
             {
-                description: 'should be returned true if the ensured schedule end time is earlier than now',
+                description: 'should be returned true if the ensured scheduled event end time is earlier than now',
                 startDateTimestampMock: Date.now() + _1Hour,
                 ensuredEndDateTimestampMock: Date.now() - _1Hour,
                 expectedResult: true
             },
             {
-                description: 'should be returned false if both the ensured schedule start time and end time are later than now',
+                description: 'should be returned false if both the ensured scheduled event start time and end time are later than now',
                 startDateTimestampMock: Date.now() + _1Hour,
                 ensuredEndDateTimestampMock: Date.now() + 2 * _1Hour,
                 expectedResult: false
@@ -283,7 +283,7 @@ describe('TimeUtilService', () => {
             serviceSandbox.restore();
         });
 
-        // expected result true means request schedule data is invalid.
+        // expected result true means request scheduled event data is invalid.
         [
             {
                 description: 'should be returned false if there is overrided availability but they have no time range without overlapping',
@@ -422,8 +422,8 @@ describe('TimeUtilService', () => {
                         day: testUTCDate.getUTCDay() as Weekday,
                         timeRanges: [
                             {
-                                startTime: testDateTimestamp - 3 * _1Hour,
-                                endTime: testDateTimestamp - 2 * _1Hour
+                                startTime: new Date(testDateTimestamp - 3 * _1Hour).toISOString(),
+                                endTime: new Date(testDateTimestamp - 2 * _1Hour).toISOString()
                             } as TimeRange
                         ]
                     } as AvailableTime
@@ -442,8 +442,8 @@ describe('TimeUtilService', () => {
                         day: testUTCDate.getUTCDay() as Weekday,
                         timeRanges: [
                             {
-                                startTime: testDateTimestamp - 3 * _1Hour,
-                                endTime: testDateTimestamp + 2 * _1Hour
+                                startTime: new Date(testDateTimestamp - 3 * _1Hour).toISOString(),
+                                endTime: new Date(testDateTimestamp + 2 * _1Hour).toISOString()
                             } as TimeRange
                         ]
                     } as AvailableTime
@@ -462,8 +462,8 @@ describe('TimeUtilService', () => {
                         day: testUTCDate.getUTCDay() as Weekday,
                         timeRanges: [
                             {
-                                startTime: testDateTimestamp - 3 * _1Hour,
-                                endTime: testDateTimestamp + 2 * _1Hour
+                                startTime: new Date(testDateTimestamp - 3 * _1Hour).toISOString(),
+                                endTime: new Date(testDateTimestamp + 2 * _1Hour).toISOString()
                             } as TimeRange
                         ]
                     } as AvailableTime
@@ -482,8 +482,8 @@ describe('TimeUtilService', () => {
                         day: testUTCDate.getUTCDay() as Weekday,
                         timeRanges: [
                             {
-                                startTime: testDateTimestamp - 2 * _1Hour,
-                                endTime: testDateTimestamp + 2 * _1Hour
+                                startTime: new Date(testDateTimestamp - 2 * _1Hour).toISOString(),
+                                endTime: new Date(testDateTimestamp + 2 * _1Hour).toISOString()
                             } as TimeRange
                         ]
                     } as AvailableTime

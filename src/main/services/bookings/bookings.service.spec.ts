@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
-import { GlobalSchedulesService } from '@services/schedules/global-schedules.service';
+import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
 import { TeamService } from '@services/team/team.service';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
@@ -15,14 +15,14 @@ describe('BookingsService', () => {
     let teamServiceStub: sinon.SinonStubbedInstance<TeamService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
     let availabilityServiceStub: sinon.SinonStubbedInstance<AvailabilityService>;
-    let schedulesServiceStub: sinon.SinonStubbedInstance<GlobalSchedulesService>;
+    let schedulesServiceStub: sinon.SinonStubbedInstance<GlobalScheduledEventsService>;
 
     before(async () => {
 
         teamServiceStub = sinon.createStubInstance(TeamService);
         availabilityServiceStub = sinon.createStubInstance(AvailabilityService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
-        schedulesServiceStub = sinon.createStubInstance(GlobalSchedulesService);
+        schedulesServiceStub = sinon.createStubInstance(GlobalScheduledEventsService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -40,7 +40,7 @@ describe('BookingsService', () => {
                     useValue: availabilityServiceStub
                 },
                 {
-                    provide: GlobalSchedulesService,
+                    provide: GlobalScheduledEventsService,
                     useValue: schedulesServiceStub
                 }
             ]

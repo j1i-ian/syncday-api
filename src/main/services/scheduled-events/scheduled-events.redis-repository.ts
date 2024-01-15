@@ -4,11 +4,11 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Observable, from, map } from 'rxjs';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
-import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
-import { CannotFindScheduleBody } from '@app/exceptions/schedules/cannot-find-schedule-body.exception';
+import { ScheduleBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
+import { CannotFindScheduleBody } from '@app/exceptions/scheduled-events/cannot-find-schedule-body.exception';
 
 @Injectable()
-export class SchedulesRedisRepository {
+export class ScheduledEventsRedisRepository {
     constructor(
         private readonly syncdayRedisService: SyncdayRedisService,
         @AppInjectCluster() private readonly cluster: Cluster

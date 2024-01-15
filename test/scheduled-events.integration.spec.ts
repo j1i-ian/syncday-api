@@ -15,7 +15,7 @@ import { User } from '@entity/users/user.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { Event } from '@entity/events/event.entity';
 import { BufferTime } from '@entity/events/buffer-time.entity';
-import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
+import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
 import { TestIntegrationUtil } from './test-integration-util';
 
 const testIntegrationUtil = new TestIntegrationUtil();

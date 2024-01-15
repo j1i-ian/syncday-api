@@ -4,8 +4,8 @@ import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.e
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Contact } from '@entity/events/contact.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
-import { ConferenceLink } from '@entity/schedules/conference-link.entity';
+import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { ZoomConferenceLinkIntegrationsService } from './zoom-conference-link-integrations.service';
 
@@ -98,7 +98,7 @@ describe('ZoomConferenceLinkIntegrationsService', () => {
 
                 const zoomIntegrationMock = stubOne(ZoomIntegration);
                 const contactMocks = getContactMocks();
-                const scheduleMock = stubOne(Schedule, {
+                const scheduledEventMock = stubOne(ScheduledEvent, {
                     scheduledTime: {
                         startTimestamp: new Date(),
                         endTimestamp: new Date()
@@ -109,7 +109,7 @@ describe('ZoomConferenceLinkIntegrationsService', () => {
                 const confereceLink = await service.createMeeting(
                     zoomIntegrationMock,
                     contactMocks,
-                    scheduleMock,
+                    scheduledEventMock,
                     timezoneMock
                 );
 

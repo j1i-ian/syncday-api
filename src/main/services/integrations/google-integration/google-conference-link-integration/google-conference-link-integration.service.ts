@@ -6,8 +6,8 @@ import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.e
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { Contact } from '@entity/events/contact.entity';
 import { Integration } from '@entity/integrations/integration.entity';
-import { ConferenceLink } from '@entity/schedules/conference-link.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
+import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 
 @Injectable()
 export class GoogleConferenceLinkIntegrationService implements ConferenceLinkIntegrationService {
@@ -22,7 +22,7 @@ export class GoogleConferenceLinkIntegrationService implements ConferenceLinkInt
     createMeeting(
         _integration: Integration,
         contacts: Contact[],
-        _schedule: Schedule,
+        _scheduledEvent: ScheduledEvent,
         _timezone: string,
         createdCalendarEvent: CreatedCalendarEvent & { raw: calendar_v3.Schema$Event }
     ): Promise<ConferenceLink | null> {

@@ -21,7 +21,7 @@ import { IntegrationsModule } from './main/services/integrations/integrations.mo
 import { AvailabilityModule } from './main/services/availability/availability.module';
 import { EventsModule } from './main/services/events/events.module';
 import { BookingsModule } from './main/services/bookings/bookings.module';
-import { SchedulesModule } from './main/services/schedules/schedules.module';
+import { ScheduledEventsModule } from './main/services/scheduled-events/scheduled-events.module';
 import { OAuth2Module } from './main/services/oauth2/oauth2.module';
 import { TeamModule } from './main/services/team/team.module';
 import { ProfilesModule } from './main/services/profiles/profiles.module';
@@ -56,7 +56,7 @@ import { ProductsModule } from './main/services/products/products.module';
 
         SyncdayAwsSdkClientModule,
         BookingsModule,
-        SchedulesModule,
+        ScheduledEventsModule,
         OAuth2Module,
         ProfilesModule,
         PaymentsModule,

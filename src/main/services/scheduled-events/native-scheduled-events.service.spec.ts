@@ -2,31 +2,31 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
-import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.interface';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
-import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
+import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
-import { Schedule } from '@entity/schedules/schedule.entity';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
-import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
-import { ScheduledBufferTime } from '@entity/schedules/scheduled-buffer-time.entity';
-import { NativeSchedulesService } from './native-schedules.service';
+import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.entity';
+import { ScheduledBufferTime } from '@entity/scheduled-events/scheduled-buffer-time.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { NativeScheduledEventsService } from './native-scheduled-events.service';
 
 describe('NativeSchedulesService', () => {
-    let service: NativeSchedulesService;
+    let service: NativeScheduledEventsService;
 
     let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let timeUtilServiceStub: sinon.SinonStubbedInstance<TimeUtilService>;
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
 
-    let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<SchedulesRedisRepository>;
+    let scheduledEventsRedisRepositoryStub: sinon.SinonStubbedInstance<ScheduledEventsRedisRepository>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
-    let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
+    let scheduledEventRepositoryStub: sinon.SinonStubbedInstance<Repository<ScheduledEvent>>;
 
     before(async () => {
 
@@ -35,13 +35,13 @@ describe('NativeSchedulesService', () => {
         timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
 
-        schedulesRedisRepositoryStub = sinon.createStubInstance(SchedulesRedisRepository);
+        scheduledEventsRedisRepositoryStub = sinon.createStubInstance(ScheduledEventsRedisRepository);
         availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
-        scheduleRepositoryStub = sinon.createStubInstance<Repository<Schedule>>(Repository);
+        scheduledEventRepositoryStub = sinon.createStubInstance<Repository<ScheduledEvent>>(Repository);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                NativeSchedulesService,
+                NativeScheduledEventsService,
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
@@ -59,21 +59,21 @@ describe('NativeSchedulesService', () => {
                     useValue: integrationsServiceLocatorStub
                 },
                 {
-                    provide: SchedulesRedisRepository,
-                    useValue: schedulesRedisRepositoryStub
+                    provide: ScheduledEventsRedisRepository,
+                    useValue: scheduledEventsRedisRepositoryStub
                 },
                 {
                     provide: AvailabilityRedisRepository,
                     useValue: availabilityRedisRepositoryStub
                 },
                 {
-                    provide: getRepositoryToken(Schedule),
-                    useValue: scheduleRepositoryStub
+                    provide: getRepositoryToken(ScheduledEvent),
+                    useValue: scheduledEventRepositoryStub
                 }
             ]
         }).compile();
 
-        service = module.get<NativeSchedulesService>(NativeSchedulesService);
+        service = module.get<NativeScheduledEventsService>(NativeScheduledEventsService);
     });
 
     it('should be defined', () => {
@@ -95,12 +95,12 @@ describe('NativeSchedulesService', () => {
             integrationsServiceLocatorStub.getIntegrationFactory.reset();
             integrationsServiceLocatorStub.getFacade.reset();
 
-            schedulesRedisRepositoryStub.save.reset();
-            scheduleRepositoryStub.save.reset();
-            scheduleRepositoryStub.findBy.reset();
-            scheduleRepositoryStub.findOneBy.reset();
-            scheduleRepositoryStub.findOneByOrFail.reset();
-            scheduleRepositoryStub.update.reset();
+            scheduledEventsRedisRepositoryStub.save.reset();
+            scheduledEventRepositoryStub.save.reset();
+            scheduledEventRepositoryStub.findBy.reset();
+            scheduledEventRepositoryStub.findOneBy.reset();
+            scheduledEventRepositoryStub.findOneByOrFail.reset();
+            scheduledEventRepositoryStub.update.reset();
 
             availabilityRedisRepositoryStub.getAvailabilityBody.reset();
 
@@ -111,11 +111,11 @@ describe('NativeSchedulesService', () => {
 
             const hostUUIDMock = stubOne(User).uuid;
             const eventUUIDMock = stubOne(Event).uuid;
-            const scheduleStubs = stub(Schedule);
+            const scheduleStubs = stub(ScheduledEvent);
 
 
             afterEach(() => {
-                scheduleRepositoryStub.findBy.reset();
+                scheduledEventRepositoryStub.findBy.reset();
             });
 
             [
@@ -157,7 +157,7 @@ describe('NativeSchedulesService', () => {
                 it(description, async () => {
 
 
-                    scheduleRepositoryStub.findBy.resolves(scheduleStubs);
+                    scheduledEventRepositoryStub.findBy.resolves(scheduleStubs);
 
                     const searchedSchedules = await firstValueFrom(
                         service.search(searchOption)
@@ -165,9 +165,9 @@ describe('NativeSchedulesService', () => {
 
                     expect(searchedSchedules).ok;
                     expect(searchedSchedules.length).greaterThan(0);
-                    expect(scheduleRepositoryStub.findBy.called).true;
+                    expect(scheduledEventRepositoryStub.findBy.called).true;
 
-                    const actualComposedScheduledEventSearchOptions = scheduleRepositoryStub.findBy.getCall(0).args[0] as Array<FindOptionsWhere<Schedule>>;
+                    const actualComposedScheduledEventSearchOptions = scheduledEventRepositoryStub.findBy.getCall(0).args[0] as Array<FindOptionsWhere<ScheduledEvent>>;
 
                     expect((actualComposedScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).startTimestamp).ok;
                     expect((actualComposedScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).endTimestamp).ok;

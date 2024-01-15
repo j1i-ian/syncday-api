@@ -9,13 +9,14 @@ import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.e
 import { AppleIntegrationFacadeService } from '@services/integrations/apple-integrations/apple-integration-facade.service';
 import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
-import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
 import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
+
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 
 @Injectable()
@@ -61,13 +62,13 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
             password: integration.appSpecificPassword
         });
 
-        const calDAVSchedules = await this.appleIntegrationFacade.searchSchedules(
+        const calDAVSchedules = await this.appleIntegrationFacade.searchScheduledEvents(
             client,
             calendarIntegration.calDavUrl
         );
 
         const schedules = calDAVSchedules.flatMap((_calDAVSchedule) =>
-            this.appleConverter.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
+            this.appleConverter.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents(
                 profile,
                 userSetting,
                 teamSetting,
@@ -76,7 +77,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         );
         const iCalUIDs = schedules.map((_schedule) => _schedule.iCalUID);
 
-        const appleCalDAVIntegrationScheduleRepository = manager.getRepository(AppleCalDAVIntegrationSchedule);
+        const appleCalDAVIntegrationScheduleRepository = manager.getRepository(AppleCalDAVIntegrationScheduledEvent);
 
         const remainedSchedules = await appleCalDAVIntegrationScheduleRepository.findBy({
             iCalUID: In(iCalUIDs),
@@ -169,7 +170,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
 
         await this.datasource.transaction(async (_transactionManager) => {
             const _calendarIntegrationRepository = _transactionManager.getRepository(AppleCalDAVCalendarIntegration);
-            const _integrationScheduleRepository = _transactionManager.getRepository(AppleCalDAVIntegrationSchedule);
+            const _integrationScheduleRepository = _transactionManager.getRepository(AppleCalDAVIntegrationScheduledEvent);
 
             const _outboundResetSuccess = await firstValueFrom(this._resetOutboundSetting(
                 _transactionManager,
@@ -237,7 +238,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         integration: AppleCalDAVIntegration,
         calendarIntegration: AppleCalDAVCalendarIntegration,
         availabilityTimezone: string,
-        patchedSchedule: Schedule
+        patchedSchedule: ScheduledEvent
     ): Promise<CreatedCalendarEvent> {
 
         const abstractedIntegration = integration.toIntegration();
@@ -266,7 +267,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
     async patchCalendarEvent(
         integration: AppleCalDAVIntegration,
         _calendarIntegration: AppleCalDAVCalendarIntegration,
-        patchedSchedule: Schedule,
+        patchedScheduledEvent: ScheduledEvent,
         calendarEvent: CreatedCalendarEvent
     ): Promise<boolean> {
 
@@ -278,7 +279,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         const updateSuccess = await this.appleIntegrationFacade.updateCalendarEvent(
             client,
             calendarEvent.generatedEventUrl,
-            patchedSchedule
+            patchedScheduledEvent
         );
 
         return updateSuccess;

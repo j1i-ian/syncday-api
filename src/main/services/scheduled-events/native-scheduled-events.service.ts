@@ -2,19 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { Observable, defer, from } from 'rxjs';
 import { FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
-import { SchedulesService } from '@core/interfaces/schedules/schedules.service.interface';
-import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
-import { Schedule } from '@entity/schedules/schedule.entity';
+import { ScheduledEventsService } from '@core/interfaces/scheduled-events/scheduled-events.service.interface';
+import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee-scheduled-events.interface';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.interface';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 
 @Injectable()
-export class NativeSchedulesService implements SchedulesService {
+export class NativeScheduledEventsService implements ScheduledEventsService {
 
     constructor(
-        @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>
+        @InjectRepository(ScheduledEvent) private readonly scheduleRepository: Repository<ScheduledEvent>
     ) {}
 
-    search(scheduleSearchOption: Partial<ScheduledEventSearchOption>): Observable<InviteeSchedule[]> {
+    search(scheduleSearchOption: Partial<ScheduledEventSearchOption>): Observable<InviteeScheduledEvent[]> {
 
         const {
             hostUUID,
@@ -27,7 +27,7 @@ export class NativeSchedulesService implements SchedulesService {
         const ensuredSinceDateTime = since ? new Date(since) : new Date();
         const ensuredUntilDateTime = until ? new Date(until) : defaultUntilDateTime;
 
-        const nativeScheduleDefaultOption: FindOptionsWhere<Schedule> = {
+        const nativeScheduleDefaultOption: FindOptionsWhere<ScheduledEvent> = {
             host: {
                 uuid: hostUUID
             },
@@ -38,7 +38,7 @@ export class NativeSchedulesService implements SchedulesService {
             }
         };
 
-        const nativeScheduleConditionOptions: Array<FindOptionsWhere<Schedule>> = [
+        const nativeScheduleConditionOptions: Array<FindOptionsWhere<ScheduledEvent>> = [
             {
                 scheduledTime: {
                     startTimestamp: MoreThanOrEqual(ensuredSinceDateTime),

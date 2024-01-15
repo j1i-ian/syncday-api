@@ -24,13 +24,13 @@ import { GoogleCalendarEventCreateService } from '@services/integrations/google-
 import { GoogleCalendarEventPatchService } from '@services/integrations/google-integration/facades/google-calendar-event-patch.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { ScheduledStatus } from '@entity/schedules/scheduled-status.enum';
+import { ScheduledStatus } from '@entity/scheduled-events/scheduled-status.enum';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
 
@@ -43,8 +43,8 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         private readonly integrationsRedisRepository: IntegrationsRedisRepository,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @InjectDataSource() private readonly datasource: DataSource,
-        @InjectRepository(GoogleIntegrationSchedule)
-        private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
+        @InjectRepository(GoogleIntegrationScheduledEvent)
+        private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationScheduledEvent>,
         @InjectRepository(GoogleCalendarIntegration)
         private readonly googleCalendarIntegrationRepository: Repository<GoogleCalendarIntegration>
     ) {
@@ -118,7 +118,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
 
         const remainedGoogleIntegrationScheduleEntries =
             remainedGoogleIntegrationSchedules.map((_previousGoogleIntegrationSchedule) => [_previousGoogleIntegrationSchedule.iCalUID, _previousGoogleIntegrationSchedule] );
-        const remainedGoogleIntegrationScheduleMap = new Map(remainedGoogleIntegrationScheduleEntries as Array<[string, GoogleIntegrationSchedule]>);
+        const remainedGoogleIntegrationScheduleMap = new Map(remainedGoogleIntegrationScheduleEntries as Array<[string, GoogleIntegrationScheduledEvent]>);
 
         const newEvents: GoogleCalendarEvent[] = [];
 
@@ -148,8 +148,8 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             return _newSchedule;
         });
 
-        const _scheduleRepository = manager.getRepository(Schedule);
-        const _googleIntegrationScheduleRepository = manager.getRepository(GoogleIntegrationSchedule);
+        const _scheduledEventRepository = manager.getRepository(ScheduledEvent);
+        const _googleIntegrationScheduleRepository = manager.getRepository(GoogleIntegrationScheduledEvent);
 
         // create new schedules
         if (newSchedules.length > 0) {
@@ -175,7 +175,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
          * TODO: We should find a way to improve soft delete for schedules with removing notifications
          */
         const now = new Date();
-        const schedules = await _scheduleRepository.find({
+        const schedules = await _scheduledEventRepository.find({
             relations: ['scheduledEventNotifications'],
             where: {
                 iCalUID: In(deleteICalUIDs),
@@ -185,19 +185,19 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             }
         });
 
-        const scheduledEventNotifications = schedules.flatMap((schedule) => schedule.scheduledEventNotifications);
+        const scheduledEventNotifications = schedules.flatMap((scheduledEvent) => scheduledEvent.scheduledEventNotifications);
 
         await this.notificationsService.sendCancellationMessages(scheduledEventNotifications);
 
-        const canceledScheduleIds = schedules.map((_schedule) => _schedule.id);
+        const canceledScheduledEventIds = schedules.map((_scheduledEvent) => _scheduledEvent.id);
 
-        await _scheduleRepository.update(
-            { id: In(canceledScheduleIds) },
+        await _scheduledEventRepository.update(
+            { id: In(canceledScheduledEventIds) },
             { status: ScheduledStatus.CANCELED }
         );
 
-        await _scheduleRepository.softDelete({
-            id: In(canceledScheduleIds)
+        await _scheduledEventRepository.softDelete({
+            id: In(canceledScheduledEventIds)
         });
     }
 
@@ -279,7 +279,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
 
         await this.datasource.transaction(async (_transactionManager) => {
             const _googleCalendarIntegrationRepo = _transactionManager.getRepository(GoogleCalendarIntegration);
-            const _googleIntegrationScheduleRepo = _transactionManager.getRepository(GoogleIntegrationSchedule);
+            const _googleIntegrationScheduleRepo = _transactionManager.getRepository(GoogleIntegrationScheduledEvent);
 
             const _resetSuccess = await firstValueFrom(this._resetOutboundSetting(
                 _transactionManager,
@@ -364,7 +364,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         googleIntegration: GoogleIntegration,
         googleCalendarIntegration: GoogleCalendarIntegration,
         hostTimezone: string,
-        schedule: Schedule
+        scheduledEvent: ScheduledEvent
     ): Promise<CreatedCalendarEvent> {
 
         const calendarId = googleCalendarIntegration.name;
@@ -376,12 +376,12 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         );
 
         /**
-         * TODO: PreferredTimezone should be replaced as schedule value.
+         * TODO: PreferredTimezone should be replaced as scheduled event value.
          */
         const newGoogleEventBody = this.googleConverterService.convertScheduledEventToGoogleCalendarEvent(
             hostTimezone,
             googleCalendarIntegration.name,
-            schedule
+            scheduledEvent
         );
 
         const googleCalendarEventCreateService = new GoogleCalendarEventCreateService();
@@ -405,7 +405,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
     async patchCalendarEvent(
         googleIntegration: GoogleIntegration,
         googleCalendarIntegration: GoogleCalendarIntegration,
-        patchedSchedule: Schedule,
+        patchedScheduledEvent: ScheduledEvent,
         createdCalendarEvent: CreatedCalendarEvent & { raw: calendar_v3.Schema$Event & { id: string } }
     ): Promise<boolean> {
 
@@ -426,7 +426,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             calendarId,
             googleCalendarEvent.id,
             {
-                description: patchedSchedule.description
+                description: patchedScheduledEvent.description
             }
         );
 

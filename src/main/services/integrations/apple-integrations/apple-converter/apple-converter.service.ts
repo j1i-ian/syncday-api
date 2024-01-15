@@ -4,11 +4,11 @@ import { plainToInstance } from 'class-transformer';
 import { DAVCalendar, DAVObject } from 'tsdav';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
-import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { ParsedICSBody } from '@app/interfaces/integrations/parsed-ics-body.interface';
 
 interface ParsedICS { [iCalUID: string]: ParsedICSBody }
@@ -22,13 +22,13 @@ export class AppleConverterService {
 
     convertScheduleToICalICSString(
         organizerEmail: string,
-        schedule: Schedule
+        scheduledEvent: ScheduledEvent
     ): string {
 
         return this.timeUtilService.convertToICSString(
-            schedule.uuid,
+            scheduledEvent.uuid,
             organizerEmail,
-            schedule
+            scheduledEvent
         );
     }
 
@@ -56,12 +56,12 @@ export class AppleConverterService {
         } as AppleCalDAVCalendarIntegration);
     }
 
-    convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
+    convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents(
         profile: Profile,
         userSetting: UserSetting,
         teamSetting: TeamSetting,
         calDAVObject: DAVObject
-    ): AppleCalDAVIntegrationSchedule[] {
+    ): AppleCalDAVIntegrationScheduledEvent[] {
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const parsedICS = ical.parseICS(calDAVObject.data) as unknown as ParsedICS;
@@ -75,7 +75,7 @@ export class AppleConverterService {
             const startDate = new Date(`${ _parsedSchedule.start as string }${gmtString}`);
             const endDate = new Date(`${_parsedSchedule.end as string }${gmtString}`);
 
-            return plainToInstance(AppleCalDAVIntegrationSchedule, {
+            return plainToInstance(AppleCalDAVIntegrationScheduledEvent, {
                 name: _parsedSchedule.summary,
                 host: {
                     uuid: profile.uuid,
@@ -92,7 +92,7 @@ export class AppleConverterService {
                     endBufferTimestamp: null
                 },
                 iCalUID: _parsedSchedule.uid
-            } as AppleCalDAVIntegrationSchedule);
+            } as AppleCalDAVIntegrationScheduledEvent);
         });
 
         return convertedAppleSchedules;

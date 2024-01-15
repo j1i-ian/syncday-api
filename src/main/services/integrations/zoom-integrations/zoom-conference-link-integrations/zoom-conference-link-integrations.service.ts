@@ -3,10 +3,10 @@ import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
-import { ConferenceLink } from '@entity/schedules/conference-link.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
+import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity';
 import { Contact } from '@entity/events/contact.entity';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
 import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
 
@@ -18,7 +18,7 @@ export class ZoomConferenceLinkIntegrationsService implements ConferenceLinkInte
     async createMeeting(
         integration: ZoomIntegration,
         contacts: Contact[],
-        schedule: Schedule,
+        scheduledEvent: ScheduledEvent,
         timezone: string
     ): Promise<ConferenceLink | null> {
 
@@ -33,13 +33,13 @@ export class ZoomConferenceLinkIntegrationsService implements ConferenceLinkInte
             const oauth2UserToken = await this.zoomIntegrationFacade.issueTokenByRefreshToken(refreshToken);
 
             const createdZoomMeeting = await this.zoomIntegrationFacade.createMeeting(oauth2UserToken.accessToken, {
-                agenda: schedule.name,
+                agenda: scheduledEvent.name,
                 default_password: false,
                 duration: '2',
                 timezone,
                 type: MeetingType.Scheduled,
-                topic: schedule.name,
-                start_time: schedule.scheduledTime.startTimestamp
+                topic: scheduledEvent.name,
+                start_time: scheduledEvent.scheduledTime.startTimestamp
             });
 
             generatedConferenceLink = this.getConferenceLinkFromVendorCalendarEvent(createdZoomMeeting);

@@ -74,7 +74,7 @@ describe('AppleConverterService', () => {
 
             icalModuleParseICSStub.returns(calDAVCalendarObjectMock);
 
-            const convertedAppleCalendarIntegrationSchedules = service.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
+            const convertedAppleCalendarIntegrationSchedules = service.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents(
                 profileStub,
                 userSettingStub,
                 teamSettingStub,
@@ -104,7 +104,7 @@ describe('AppleConverterService', () => {
 
             icalModuleParseICSStub.returns(calDAVCalendarObjectMock);
 
-            const convertedAppleCalendarIntegrationSchedules = service.convertCalDAVCalendarObjectToAppleCalDAVIntegrationSchedules(
+            const convertedAppleCalendarIntegrationSchedules = service.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents(
                 profileStub,
                 userSettingStub,
                 teamSettingStub,

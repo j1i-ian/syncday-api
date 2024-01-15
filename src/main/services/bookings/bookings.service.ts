@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { Observable, from, map, mergeMap } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
-import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.interface';
 import { HostEvent } from '@interfaces/bookings/host-event';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
-import { GlobalSchedulesService } from '@services/schedules/global-schedules.service';
+import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
 import { TeamService } from '@services/team/team.service';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { EventStatus } from '@entity/events/event-status.enum';
 import { Team } from '@entity/teams/team.entity';
-import { ScheduledEventResponseDto } from '@dto/schedules/scheduled-event-response.dto';
+import { ScheduledEventResponseDto } from '@dto/scheduled-events/scheduled-event-response.dto';
 
 @Injectable()
 export class BookingsService {
@@ -21,7 +21,7 @@ export class BookingsService {
         private readonly teamService: TeamService,
         private readonly availabilityService: AvailabilityService,
         private readonly eventService: EventsService,
-        private readonly scheduleService: GlobalSchedulesService
+        private readonly scheduledEventsService: GlobalScheduledEventsService
     ) {}
 
     fetchHost(teamWorkspace: string): Observable<Team> {
@@ -55,26 +55,26 @@ export class BookingsService {
     }
 
     searchScheduledEvents(searchOption: ScheduledEventSearchOption): Observable<ScheduledEventResponseDto[]> {
-        return this.scheduleService.search(searchOption).pipe(
-            map((schedules) => schedules.map(
-                (_schedule) => plainToInstance(ScheduledEventResponseDto, _schedule))
+        return this.scheduledEventsService.search(searchOption).pipe(
+            map((scheduledEvents) => scheduledEvents.map(
+                (_scheduledEvent) => plainToInstance(ScheduledEventResponseDto, _scheduledEvent))
             )
         );
     }
 
-    fetchScheduledEventOne(scheduleUUID: string): Observable<Schedule> {
-        return this.scheduleService.findOne(scheduleUUID);
+    fetchScheduledEventOne(scheduleUUID: string): Observable<ScheduledEvent> {
+        return this.scheduledEventsService.findOne(scheduleUUID);
     }
 
-    createScheduledEvent(teamWorkspace: string, eventUUID: string, newSchedule: Schedule): Observable<Schedule> {
+    createScheduledEvent(teamWorkspace: string, eventUUID: string, newScheduledEvent: ScheduledEvent): Observable<ScheduledEvent> {
 
         return from(this.teamService.findByWorkspace(teamWorkspace))
             .pipe(
                 mergeMap(
-                    (loadedTeam) => this.scheduleService.create(
+                    (loadedTeam) => this.scheduledEventsService.create(
                         teamWorkspace,
                         eventUUID,
-                        newSchedule,
+                        newScheduledEvent,
                         loadedTeam,
                         loadedTeam.profiles[0].user,
                         loadedTeam.profiles[0]

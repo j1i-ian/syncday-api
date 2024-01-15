@@ -8,7 +8,7 @@ import { AppleCalendarEventListService } from '@services/integrations/apple-inte
 import { AppleCalendarEventCreateService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-create.service';
 import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 import { AppleCalendarEventPatchService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-patch.service';
-import { Schedule } from '@entity/schedules/schedule.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 
 @Injectable()
 export class AppleIntegrationFacadeService {
@@ -30,7 +30,7 @@ export class AppleIntegrationFacadeService {
         return this.appleCalendarListService.search(client);
     }
 
-    searchSchedules(
+    searchScheduledEvents(
         client: DAVClient,
         calendarDAVUrl: string,
         until?: Date | undefined
@@ -53,24 +53,24 @@ export class AppleIntegrationFacadeService {
     async createCalendarEvent(
         client: DAVClient,
         calendarDAVUrl: string,
-        schedule: Schedule
+        scheduledEvent: ScheduledEvent
     ): Promise<CreatedCalendarEvent> {
 
         const organizerEmail = client.credentials.username as string;
         const iCalICSString = this.appleConverterService.convertScheduleToICalICSString(
             organizerEmail,
-            schedule
+            scheduledEvent
         );
 
         const generatedCalDavEventUrl = await this.appleCalendarEventCreateService.create(
             client,
             calendarDAVUrl,
-            schedule,
+            scheduledEvent,
             iCalICSString
         );
 
         return {
-            iCalUID: schedule.uuid,
+            iCalUID: scheduledEvent.uuid,
             generatedEventUrl: generatedCalDavEventUrl
         } as CreatedCalendarEvent;
     }
@@ -78,13 +78,13 @@ export class AppleIntegrationFacadeService {
     async updateCalendarEvent(
         client: DAVClient,
         calendarEventUrl: string,
-        schedule: Schedule
+        scheduledEvent: ScheduledEvent
     ): Promise<boolean> {
 
         const organizerEmail = client.credentials.username as string;
         const patchedICalICSString = this.appleConverterService.convertScheduleToICalICSString(
             organizerEmail,
-            schedule
+            scheduledEvent
         );
 
         const updated = await this.appleCalendarEventPatchService.patch(

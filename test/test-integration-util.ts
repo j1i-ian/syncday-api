@@ -27,7 +27,7 @@ import { AvailabilityModule } from '@services/availability/availability.module';
 import { EventsModule } from '@services/events/events.module';
 import { SyncdayAwsSdkClientModule } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.module';
 import { BookingsModule } from '@services/bookings/bookings.module';
-import { SchedulesModule } from '@services/schedules/schedules.module';
+import { ScheduledEventsModule } from '@services/scheduled-events/scheduled-events.module';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
 import { GoogleOAuthTokenService } from '@services/integrations/google-integration/facades/google-oauth-token.service';
 import { GoogleOAuthUserService } from '@services/integrations/google-integration/facades/google-oauth-user.service';
@@ -54,14 +54,13 @@ import { NotificationsService } from '@services/notifications/notifications.serv
 import { User } from '@entity/users/user.entity';
 import { Verification } from '@entity/verifications/verification.interface';
 import { QuestionInputType } from '@entity/invitee-questions/question-input-type.enum';
-import { Schedule } from '@entity/schedules/schedule.entity';
-import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
-import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { CreateTemporaryUserRequestDto } from '@dto/users/create-temporary-user-request.dto';
-import { CreateScheduledRequestDto } from '@dto/schedules/create-scheduled-request.dto';
-import { ScheduledEventResponseDto } from '@dto/schedules/scheduled-event-response.dto';
+import { CreateScheduledRequestDto } from '@dto/scheduled-events/create-scheduled-request.dto';
+import { ScheduledEventResponseDto } from '@dto/scheduled-events/scheduled-event-response.dto';
 import { CreateAppleCalDAVRequestDto } from '@dto/integrations/apple/create-apple-cal-dav-request.dto';
 import { CreateUserWithEmailVerificationDto } from '@dto/users/create-user-with-email-verification.dto';
 import { AuthModule } from '@app/auth/auth.module';
@@ -129,8 +128,8 @@ export class TestIntegrationUtil {
     appleCalendarEventPatchServiceStub: sinon.SinonStubbedInstance<AppleCalendarEventPatchService>;
 
     scheduleRepository: Repository<Schedule>;
-    googleScheduleRepository: Repository<GoogleIntegrationSchedule>;
-    appleScheduleRepository: Repository<AppleCalDAVIntegrationSchedule>;
+    googleScheduleRepository: Repository<GoogleIntegrationScheduledEvent>;
+    appleScheduleRepository: Repository<AppleCalDAVIntegrationScheduledEvent>;
 
     async initializeApp(): Promise<INestApplication> {
 
@@ -158,8 +157,8 @@ export class TestIntegrationUtil {
             this.googleCalendarIntegrationsService = this.app.get<GoogleCalendarIntegrationsService>(GoogleCalendarIntegrationsService);
 
             this.scheduleRepository = this.app.get(getRepositoryToken(Schedule));
-            this.googleScheduleRepository = this.app.get(getRepositoryToken(GoogleIntegrationSchedule));
-            this.appleScheduleRepository = this.app.get(getRepositoryToken(AppleCalDAVIntegrationSchedule));
+            this.googleScheduleRepository = this.app.get(getRepositoryToken(GoogleIntegrationScheduledEvent));
+            this.appleScheduleRepository = this.app.get(getRepositoryToken(AppleCalDAVIntegrationScheduledEvent));
         }
 
 
@@ -751,7 +750,7 @@ export class TestIntegrationUtil {
 
                 SyncdayAwsSdkClientModule,
                 BookingsModule,
-                SchedulesModule
+                ScheduledEventsModule
             ]
         })
             .overrideProvider(ZoomOauthTokenService)

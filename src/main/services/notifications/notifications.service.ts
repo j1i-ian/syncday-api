@@ -15,7 +15,7 @@ import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-clien
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
-import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
+import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
 import { Language } from '@app/enums/language.enum';
 
 @Injectable()

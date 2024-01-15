@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { DAVClient, DAVResponse, getBasicAuthHeaders } from 'tsdav';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Schedule } from '@entity/schedules/schedule.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 
 @Injectable()
 export class AppleCalendarEventCreateService {
@@ -13,11 +13,11 @@ export class AppleCalendarEventCreateService {
     async create(
         client: DAVClient,
         calDavUrl: string,
-        schedule: Schedule,
+        scheduledEvent: ScheduledEvent,
         iCalICSEventString: string
     ): Promise<string> {
 
-        const filename = `${schedule.uuid}.ics`;
+        const filename = `${scheduledEvent.uuid}.ics`;
         const headers = getBasicAuthHeaders(client.credentials);
 
         const response: DAVResponse & { url: string } = await client.createCalendarObject({

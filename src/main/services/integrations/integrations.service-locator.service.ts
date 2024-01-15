@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
+import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
 import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
 import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
@@ -74,11 +74,11 @@ export class IntegrationsServiceLocator {
         ];
     }
 
-    getAllIntegrationSchedulesService(): IntegrationSchedulesService[] {
+    getAllIntegrationScheduledEventsService(): IntegrationScheduledEventsService[] {
 
         return [
-            this.googleIntegrationsService.getIntegrationSchedulesService(),
-            this.appleIntegrationService.getIntegrationSchedulesService()
+            this.googleIntegrationsService.getIntegrationScheduledEventsService(),
+            this.appleIntegrationService.getIntegrationScheduledEventsService()
         ];
     }
 

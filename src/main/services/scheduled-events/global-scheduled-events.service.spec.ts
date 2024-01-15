@@ -3,16 +3,16 @@ import { firstValueFrom, of } from 'rxjs';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
-import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
+import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
-import { NativeSchedulesService } from '@services/schedules/native-schedules.service';
+import { NativeScheduledEventsService } from '@services/scheduled-events/native-scheduled-events.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
 import { AppleIntegrationsSchedulesService } from '@services/integrations/apple-integrations/apple-integrations-schedules/apple-integrations-schedules.service';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
@@ -21,41 +21,41 @@ import { GoogleIntegrationsService } from '@services/integrations/google-integra
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { Availability } from '@entity/availability/availability.entity';
-import { ScheduledBufferTime } from '@entity/schedules/scheduled-buffer-time.entity';
-import { ScheduledTimeset } from '@entity/schedules/scheduled-timeset.entity';
-import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
+import { ScheduledBufferTime } from '@entity/scheduled-events/scheduled-buffer-time.entity';
+import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.entity';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
-import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
 import { TestMockUtil } from '@test/test-mock-util';
-import { GlobalSchedulesService } from './global-schedules.service';
+import { GlobalScheduledEventsService } from './global-scheduled-events.service';
 
 const testMockUtil = new TestMockUtil();
 
-describe('SchedulesService', () => {
-    let service: GlobalSchedulesService;
+describe('ScheduledEventsService', () => {
+    let service: GlobalScheduledEventsService;
 
     let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let timeUtilServiceStub: sinon.SinonStubbedInstance<TimeUtilService>;
 
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
-    let nativeSchedulesServiceStub: sinon.SinonStubbedInstance<NativeSchedulesService>;
+    let nativeSchedulesServiceStub: sinon.SinonStubbedInstance<NativeScheduledEventsService>;
     let calendarIntegrationsServiceLocatorStub: sinon.SinonStubbedInstance<CalendarIntegrationsServiceLocator>;
 
     let googleCalendarIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleCalendarIntegrationsService>;
-    let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<SchedulesRedisRepository>;
+    let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<ScheduledEventsRedisRepository>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
-    let scheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<Schedule>>;
-    let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
-    let appleCalDAVIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<AppleCalDAVIntegrationSchedule>>;
+    let scheduledEventRepositoryStub: sinon.SinonStubbedInstance<Repository<ScheduledEvent>>;
+    let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationScheduledEvent>>;
+    let appleCalDAVIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<AppleCalDAVIntegrationScheduledEvent>>;
 
     let googleIntegrationSchedulesServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationSchedulesService>;
     let appleIntegrationsSchedulesServiceStub: sinon.SinonStubbedInstance<AppleIntegrationsSchedulesService>;
@@ -70,23 +70,23 @@ describe('SchedulesService', () => {
         timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
 
         eventsServiceStub = sinon.createStubInstance(EventsService);
-        nativeSchedulesServiceStub = sinon.createStubInstance(NativeSchedulesService);
+        nativeSchedulesServiceStub = sinon.createStubInstance(NativeScheduledEventsService);
         calendarIntegrationsServiceLocatorStub = sinon.createStubInstance(CalendarIntegrationsServiceLocator);
 
         googleCalendarIntegrationsServiceStub = sinon.createStubInstance(GoogleCalendarIntegrationsService);
-        schedulesRedisRepositoryStub = sinon.createStubInstance(SchedulesRedisRepository);
+        schedulesRedisRepositoryStub = sinon.createStubInstance(ScheduledEventsRedisRepository);
         availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
-        scheduleRepositoryStub = sinon.createStubInstance<Repository<Schedule>>(Repository);
-        googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationSchedule>>(
+        scheduledEventRepositoryStub = sinon.createStubInstance<Repository<ScheduledEvent>>(Repository);
+        googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationScheduledEvent>>(
             Repository
         );
-        appleCalDAVIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<AppleCalDAVIntegrationSchedule>>(
+        appleCalDAVIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<AppleCalDAVIntegrationScheduledEvent>>(
             Repository
         );
 
         googleIntegrationSchedulesServiceStub = sinon.createStubInstance(GoogleIntegrationSchedulesService);
         appleIntegrationsSchedulesServiceStub = sinon.createStubInstance(AppleIntegrationsSchedulesService);
-        integrationsServiceLocatorStub.getAllIntegrationSchedulesService.returns([
+        integrationsServiceLocatorStub.getAllIntegrationScheduledEventsService.returns([
             googleIntegrationSchedulesServiceStub,
             appleIntegrationsSchedulesServiceStub
         ]);
@@ -95,7 +95,7 @@ describe('SchedulesService', () => {
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                GlobalSchedulesService,
+                GlobalScheduledEventsService,
                 {
                     provide: UtilService,
                     useValue: utilServiceStub
@@ -109,7 +109,7 @@ describe('SchedulesService', () => {
                     useValue: eventsServiceStub
                 },
                 {
-                    provide: NativeSchedulesService,
+                    provide: NativeScheduledEventsService,
                     useValue: nativeSchedulesServiceStub
                 },
                 {
@@ -125,7 +125,7 @@ describe('SchedulesService', () => {
                     useValue: integrationsServiceLocatorStub
                 },
                 {
-                    provide: SchedulesRedisRepository,
+                    provide: ScheduledEventsRedisRepository,
                     useValue: schedulesRedisRepositoryStub
                 },
                 {
@@ -133,15 +133,15 @@ describe('SchedulesService', () => {
                     useValue: availabilityRedisRepositoryStub
                 },
                 {
-                    provide: getRepositoryToken(Schedule),
-                    useValue: scheduleRepositoryStub
+                    provide: getRepositoryToken(ScheduledEvent),
+                    useValue: scheduledEventRepositoryStub
                 },
                 {
-                    provide: getRepositoryToken(GoogleIntegrationSchedule),
+                    provide: getRepositoryToken(GoogleIntegrationScheduledEvent),
                     useValue: googleIntegrationScheduleRepositoryStub
                 },
                 {
-                    provide: getRepositoryToken(AppleCalDAVIntegrationSchedule),
+                    provide: getRepositoryToken(AppleCalDAVIntegrationScheduledEvent),
                     useValue: appleCalDAVIntegrationScheduleRepositoryStub
                 },
                 {
@@ -154,7 +154,7 @@ describe('SchedulesService', () => {
             ]
         }).compile();
 
-        service = module.get<GlobalSchedulesService>(GlobalSchedulesService);
+        service = module.get<GlobalScheduledEventsService>(GlobalScheduledEventsService);
     });
 
     after(() => {
@@ -185,11 +185,11 @@ describe('SchedulesService', () => {
             googleCalendarIntegrationsServiceStub.createCalendarEvent.reset();
             googleCalendarIntegrationsServiceStub.patchCalendarEvent.reset();
             schedulesRedisRepositoryStub.save.reset();
-            scheduleRepositoryStub.save.reset();
-            scheduleRepositoryStub.findBy.reset();
-            scheduleRepositoryStub.findOneBy.reset();
-            scheduleRepositoryStub.findOneByOrFail.reset();
-            scheduleRepositoryStub.update.reset();
+            scheduledEventRepositoryStub.save.reset();
+            scheduledEventRepositoryStub.findBy.reset();
+            scheduledEventRepositoryStub.findOneBy.reset();
+            scheduledEventRepositoryStub.findOneByOrFail.reset();
+            scheduledEventRepositoryStub.update.reset();
             googleIntegrationScheduleRepositoryStub.findOneBy.reset();
             appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.reset();
 
@@ -202,10 +202,10 @@ describe('SchedulesService', () => {
 
             const hostUUIDMock = stubOne(User).uuid;
             const eventUUIDMock = stubOne(Event).uuid;
-            const scheduleStubs = stub(Schedule);
+            const scheduledEventStubs = stub(ScheduledEvent);
 
             afterEach(() => {
-                scheduleRepositoryStub.findBy.reset();
+                scheduledEventRepositoryStub.findBy.reset();
                 googleIntegrationSchedulesServiceStub.search.reset();
                 appleIntegrationsSchedulesServiceStub.search.reset();
             });
@@ -248,10 +248,10 @@ describe('SchedulesService', () => {
 
                 it(description, async () => {
 
-                    const googleIntegartionScheduleStubs = stub(GoogleIntegrationSchedule);
-                    const appleIntegartionScheduleStubs = stub(AppleCalDAVIntegrationSchedule);
+                    const googleIntegartionScheduleStubs = stub(GoogleIntegrationScheduledEvent);
+                    const appleIntegartionScheduleStubs = stub(AppleCalDAVIntegrationScheduledEvent);
 
-                    nativeSchedulesServiceStub.search.returns(of(scheduleStubs));
+                    nativeSchedulesServiceStub.search.returns(of(scheduledEventStubs));
                     googleIntegrationSchedulesServiceStub.search.resolves(googleIntegartionScheduleStubs);
                     appleIntegrationsSchedulesServiceStub.search.resolves(appleIntegartionScheduleStubs);
 
@@ -272,29 +272,29 @@ describe('SchedulesService', () => {
 
         it('should be fetched scheduled event one', async () => {
 
-            const scheduleStub = stubOne(Schedule);
+            const scheduledEventStub = stubOne(ScheduledEvent);
             const scheduleBodyStub = testMockUtil.getScheduleBodyMock();
 
-            scheduleRepositoryStub.findOneByOrFail.resolves(scheduleStub);
+            scheduledEventRepositoryStub.findOneByOrFail.resolves(scheduledEventStub);
             schedulesRedisRepositoryStub.getScheduleBody.returns(of(scheduleBodyStub));
 
             const fetchedScheduledEvent = await firstValueFrom(
-                service.findOne(scheduleStub.uuid)
+                service.findOne(scheduledEventStub.uuid)
             );
 
             expect(fetchedScheduledEvent).ok;
-            expect(scheduleRepositoryStub.findOneByOrFail.called).true;
+            expect(scheduledEventRepositoryStub.findOneByOrFail.called).true;
         });
 
         /**
          * need to reorganize
          */
         describe
-        ('Test schedule creating', () => {
+        ('Test scheduled event creating', () => {
 
             [
                 {
-                    description: 'should be ensured that a scheduled event is created when both Google Calendar and Zoom are integrated, and a Google Meet link associated with Zoom exists',
+                    description: 'should be ensured that a scheduled event event is created when both Google Calendar and Zoom are integrated, and a Google Meet link associated with Zoom exists',
                     getEventStub: () => {
 
                         const availabilityMock = stubOne(Availability);
@@ -311,7 +311,7 @@ describe('SchedulesService', () => {
                     getScheduleStub: () => {
 
                         const scheduledTimesetStub = testMockUtil.getScheduledTimesetMock();
-                        const scheduleStub = stubOne(Schedule, {
+                        const scheduledEventStub = stubOne(ScheduledEvent, {
                             scheduledTime: scheduledTimesetStub,
                             contacts: [
                                 { type: ContactType.ZOOM, value: 'https://zoomFakeLink' },
@@ -320,7 +320,7 @@ describe('SchedulesService', () => {
                             conferenceLinks: []
                         });
 
-                        return scheduleStub;
+                        return scheduledEventStub;
                     },
                     outboundGoogleCalendarIntegrationStub: stubOne(GoogleCalendarIntegration),
                     expectedGoogleMeetLinkGeneration: true
@@ -389,13 +389,13 @@ describe('SchedulesService', () => {
 
                     googleCalendarIntegrationsServiceStub.patchCalendarEvent.resolves();
 
-                    scheduleRepositoryStub.save.resolves(scheduleStub);
+                    scheduledEventRepositoryStub.save.resolves(scheduleStub);
                     schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
 
                     const createdSchedule = await firstValueFrom(
                         service._create(
                             {
-                                getRepository: () => scheduleRepositoryStub
+                                getRepository: () => scheduledEventRepositoryStub
                             } as unknown as any,
                             teamSettingMock.workspace,
                             eventStub.uuid,
@@ -419,7 +419,7 @@ describe('SchedulesService', () => {
                     expect(googleCalendarIntegrationsServiceStub.createCalendarEvent.called).equals(expectedGoogleMeetLinkGeneration);
                     expect(googleCalendarIntegrationsServiceStub.patchCalendarEvent.called).equals(expectedGoogleMeetLinkGeneration);
 
-                    expect(scheduleRepositoryStub.save.called).true;
+                    expect(scheduledEventRepositoryStub.save.called).true;
                     expect(schedulesRedisRepositoryStub.save.called).true;
                 });
             });
@@ -427,30 +427,30 @@ describe('SchedulesService', () => {
 
         it('should be updated scheduled event', async () => {
 
-            const scheduleStub = stubOne(Schedule);
+            const scheduledEventStub = stubOne(ScheduledEvent);
 
             const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
-            scheduleRepositoryStub.update.resolves(updateResultMock);
+            scheduledEventRepositoryStub.update.resolves(updateResultMock);
 
             const scheduleUpdateResult = await firstValueFrom(
                 service._update(
                     {
-                        getRepository: () => scheduleRepositoryStub
+                        getRepository: () => scheduledEventRepositoryStub
                     } as unknown as any,
-                    scheduleStub.id,
+                    scheduledEventStub.id,
                     {
                         color: '#000000'
                     }
                 )
             );
 
-            expect(scheduleRepositoryStub.update.called).true;
+            expect(scheduledEventRepositoryStub.update.called).true;
             expect(scheduleUpdateResult).true;
 
         });
     });
 
-    describe('Test for Validation in Creating a Schedule', () => {
+    describe('Test for Validation in Creating a Scheduled Event', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
         beforeEach(() => {
@@ -468,23 +468,23 @@ describe('SchedulesService', () => {
             googleCalendarIntegrationsServiceStub.createCalendarEvent.reset();
             googleCalendarIntegrationsServiceStub.patchCalendarEvent.reset();
             schedulesRedisRepositoryStub.save.reset();
-            scheduleRepositoryStub.save.reset();
-            scheduleRepositoryStub.findBy.reset();
-            scheduleRepositoryStub.findOneBy.reset();
-            scheduleRepositoryStub.findOneByOrFail.reset();
-            scheduleRepositoryStub.update.reset();
+            scheduledEventRepositoryStub.save.reset();
+            scheduledEventRepositoryStub.findBy.reset();
+            scheduledEventRepositoryStub.findOneBy.reset();
+            scheduledEventRepositoryStub.findOneByOrFail.reset();
+            scheduledEventRepositoryStub.update.reset();
             googleIntegrationScheduleRepositoryStub.findOneBy.reset();
             appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.reset();
 
             serviceSandbox.restore();
         });
 
-        describe('Test schedule validate method', () => {
+        describe('Test scheduled event validate method', () => {
             [
                 {
-                    description: 'should be passed if the schedule has no conflicts for all conditions',
+                    description: 'should be passed if the scheduled event has no conflicts for all conditions',
                     timezoneMock: stubOne(Availability).timezone,
-                    scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
+                    scheduledEventMock: stubOne(ScheduledEvent, testMockUtil.getScheduleTimeMock()),
                     availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
                     findOverlappingDateOverrideStubValue: undefined,
                     isPastTimestampStubValue: false,
@@ -496,9 +496,9 @@ describe('SchedulesService', () => {
                     vendorIntegrationScheduleStub: null
                 },
                 {
-                    description: 'should be passed if the schedule is not within available time but is within the available override time',
+                    description: 'should be passed if the scheduled event is not within available time but is within the available override time',
                     timezoneMock: stubOne(Availability).timezone,
-                    scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
+                    scheduledEventMock: stubOne(ScheduledEvent, testMockUtil.getScheduleTimeMock()),
                     availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
                     findOverlappingDateOverrideStubValue: testMockUtil.getOverridedAvailabilityTimeMock(),
                     isPastTimestampStubValue: false,
@@ -510,9 +510,9 @@ describe('SchedulesService', () => {
                     vendorIntegrationScheduleStub: null
                 },
                 {
-                    description: 'should be passed if the schedule is within available time but is not within the unavailable override availability time',
+                    description: 'should be passed if the scheduled event is within available time but is not within the unavailable override availability time',
                     timezoneMock: stubOne(Availability).timezone,
-                    scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
+                    scheduledEventMock: stubOne(ScheduledEvent, testMockUtil.getScheduleTimeMock()),
                     availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
                     findOverlappingDateOverrideStubValue: undefined,
                     isPastTimestampStubValue: false,
@@ -526,7 +526,7 @@ describe('SchedulesService', () => {
             ].forEach(function ({
                 description,
                 timezoneMock,
-                scheduleMock,
+                scheduledEventMock,
                 availabilityBodyMock,
                 findOverlappingDateOverrideStubValue,
                 isPastTimestampStubValue,
@@ -545,20 +545,20 @@ describe('SchedulesService', () => {
                     timeUtilServiceStub.isTimeOverlappingWithAvailableTimeOverrides.returns(isTimeOverlappingWithAvailableTimeOverridesStubValue);
                     timeUtilServiceStub.isTimeOverlappingWithAvailableTimes.returns(isTimeOverlappingWithAvailableTimesStubValue);
 
-                    scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
+                    scheduledEventRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
                     googleIntegrationScheduleRepositoryStub.findOneBy.resolves(vendorIntegrationScheduleStub);
                     appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.resolves(vendorIntegrationScheduleStub);
 
                     const validatedSchedule = await firstValueFrom(
                         service.validate(
-                            scheduleMock,
+                            scheduledEventMock,
                             timezoneMock,
                             availabilityBodyMock
                         )
                     );
 
                     expect(validatedSchedule).ok;
-                    expect(scheduleRepositoryStub.findOneBy.called).true;
+                    expect(scheduledEventRepositoryStub.findOneBy.called).true;
                     expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
                     expect(appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.called).false;
 
@@ -572,7 +572,7 @@ describe('SchedulesService', () => {
         describe('Test to Validation Does Not Pass With Conflict', () => {
             [
                 {
-                    description: 'should be not passed if the ensured schedule start time or ensured end time is earlier than now',
+                    description: 'should be not passed if the ensured scheduled event start time or ensured end time is earlier than now',
                     timezoneMock: stubOne(Availability).timezone,
                     scheduleTimeMock: testMockUtil.getScheduleTimeMock(new Date(Date.now() - _1Hour)),
                     availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
@@ -586,7 +586,7 @@ describe('SchedulesService', () => {
                     vendorIntegrationScheduleStub: null
                 },
                 {
-                    description: 'should be not passed if the ensured schedule start time is earlier than the ensured end time: scheduledTime',
+                    description: 'should be not passed if the ensured scheduled event start time is earlier than the ensured end time: scheduledTime',
                     timezoneMock: stubOne(Availability).timezone,
                     scheduleTimeMock: {
                         scheduledBufferTime : {
@@ -609,7 +609,7 @@ describe('SchedulesService', () => {
                     vendorIntegrationScheduleStub: null
                 },
                 {
-                    description: 'should be not passed if the ensured schedule start time is earlier than the ensured end time: scheduledBufferTime',
+                    description: 'should be not passed if the ensured scheduled event start time is earlier than the ensured end time: scheduledBufferTime',
                     timezoneMock: stubOne(Availability).timezone,
                     scheduleTimeMock: {
                         scheduledBufferTime : {
@@ -632,7 +632,7 @@ describe('SchedulesService', () => {
                     vendorIntegrationScheduleStub: null
                 },
                 {
-                    description: 'should be not passed if the schedule is not within the availability of the event to be scheduled and is also not within the override availability time',
+                    description: 'should be not passed if the scheduled event is not within the availability of the event to be scheduled and is also not within the override availability time',
                     timezoneMock: stubOne(Availability).timezone,
                     scheduleTimeMock: testMockUtil.getScheduleTimeMock(),
                     availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
@@ -660,7 +660,7 @@ describe('SchedulesService', () => {
                 vendorIntegrationScheduleStub
             }) {
                 it(description, () => {
-                    const scheduleMock = stubOne(Schedule, scheduleTimeMock);
+                    const scheduledEventMock = stubOne(ScheduledEvent, scheduleTimeMock);
 
                     timeUtilServiceStub.isPastTimestamp.returns(isPastTimestampStubValue);
                     timeUtilServiceStub.findOverlappingDateOverride.returns(findOverlappingDateOverrideStubValue);
@@ -668,13 +668,13 @@ describe('SchedulesService', () => {
                     timeUtilServiceStub.isTimeOverlappingWithAvailableTimeOverrides.returns(isTimeOverlappingWithAvailableTimeOverridesStubValue);
                     timeUtilServiceStub.isTimeOverlappingWithAvailableTimes.returns(isTimeOverlappingWithAvailableTimesStubValue);
 
-                    scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
+                    scheduledEventRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
                     googleIntegrationScheduleRepositoryStub.findOneBy.resolves(vendorIntegrationScheduleStub);
                     appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.resolves(vendorIntegrationScheduleStub);
 
-                    expect(() => service.validate(scheduleMock, timezoneMock, availabilityBodyMock)).throws(CannotCreateByInvalidTimeRange);
+                    expect(() => service.validate(scheduledEventMock, timezoneMock, availabilityBodyMock)).throws(CannotCreateByInvalidTimeRange);
 
-                    expect(scheduleRepositoryStub.findOneBy.called).false;
+                    expect(scheduledEventRepositoryStub.findOneBy.called).false;
                     expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;
                     expect(appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.called).false;
 
@@ -685,25 +685,25 @@ describe('SchedulesService', () => {
             });
         });
 
-        describe('Test to Validation Does Not Pass if a Schedule Already Exists or if a Schedule Exists Google Integration', () => {
+        describe('Test to Validation Does Not Pass if a ScheduledEvent Already Exists or if a ScheduledEvent Exists Google Integration', () => {
             [
                 {
-                    description: 'should not be passed if the schedule overlaps with an existing schedule',
+                    description: 'should not be passed if the scheduledEvent overlaps with an existing scheduledEvent',
                     timezoneMock: stubOne(Availability).timezone,
-                    scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
+                    scheduledEventMock: stubOne(ScheduledEvent, testMockUtil.getScheduleTimeMock()),
                     availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
                     isPastTimestampStubValue: false,
                     findOverlappingDateOverrideStubValue: undefined,isTimeOverlappingWithAvailableTimeOverridesCall: false,
                     isTimeOverlappingWithAvailableTimeOverridesStubValue: false,
                     isTimeOverlappingWithAvailableTimesStubCall: true,
                     isTimeOverlappingWithAvailableTimesStubValue: true,
-                    conflictedScheduleStub: stubOne(Schedule),
+                    conflictedScheduleStub: stubOne(ScheduledEvent),
                     googleCalendarIntegrationMock: null
                 },
                 {
-                    description: 'should not be passed if the schedule overlaps with a Google-integrated schedule',
+                    description: 'should not be passed if the scheduled event overlaps with a Google-integrated scheduled event',
                     timezoneMock: stubOne(Availability).timezone,
-                    scheduleMock: stubOne(Schedule, testMockUtil.getScheduleTimeMock()),
+                    scheduledEventMock: stubOne(ScheduledEvent, testMockUtil.getScheduleTimeMock()),
                     availabilityBodyMock: testMockUtil.getAvailabilityBodyMock(),
                     isPastTimestampStubValue: false,                    findOverlappingDateOverrideStubValue: undefined,isTimeOverlappingWithAvailableTimeOverridesCall: false,
                     isTimeOverlappingWithAvailableTimeOverridesStubValue: false,
@@ -715,7 +715,7 @@ describe('SchedulesService', () => {
             ].forEach(function ({
                 description,
                 timezoneMock,
-                scheduleMock,
+                scheduledEventMock,
                 availabilityBodyMock,
                 findOverlappingDateOverrideStubValue,
                 isPastTimestampStubValue,
@@ -734,17 +734,17 @@ describe('SchedulesService', () => {
                     timeUtilServiceStub.isTimeOverlappingWithAvailableTimeOverrides.returns(isTimeOverlappingWithAvailableTimeOverridesStubValue);
                     timeUtilServiceStub.isTimeOverlappingWithAvailableTimes.returns(isTimeOverlappingWithAvailableTimesStubValue);
 
-                    const googleIntegrationScheduleStub = stubOne(GoogleIntegrationSchedule, {
+                    const googleIntegrationScheduleStub = stubOne(GoogleIntegrationScheduledEvent, {
                         googleCalendarIntegration: googleCalendarIntegrationMock ?? undefined,
                         googleCalendarIntegrationId: googleCalendarIntegrationMock?.id
                     });
 
-                    scheduleRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
+                    scheduledEventRepositoryStub.findOneBy.resolves(conflictedScheduleStub);
                     googleIntegrationScheduleRepositoryStub.findOneBy.resolves(googleIntegrationScheduleStub);
 
                     await expect(firstValueFrom(
                         service.validate(
-                            scheduleMock,
+                            scheduledEventMock,
                             timezoneMock,
                             availabilityBodyMock,
                             googleCalendarIntegrationMock
@@ -752,7 +752,7 @@ describe('SchedulesService', () => {
                     )
                     ).rejectedWith(CannotCreateByInvalidTimeRange);
 
-                    expect(scheduleRepositoryStub.findOneBy.called).true;
+                    expect(scheduledEventRepositoryStub.findOneBy.called).true;
 
                     if (conflictedScheduleStub){
                         expect(googleIntegrationScheduleRepositoryStub.findOneBy.called).false;

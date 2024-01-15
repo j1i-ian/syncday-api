@@ -545,6 +545,7 @@ describe('ProfilesService', () => {
                     service,
                     '_create'
                 );
+                _createStub.returnsArg(1);
 
                 utilServiceStub.filterInvitedNewUsers.returns(invitedNewUsersStubs);
                 const saveInvitedNewTeamMemberStub = serviceSandbox.stub(service, 'saveInvitedNewTeamMember');
@@ -858,7 +859,7 @@ describe('ProfilesService', () => {
         profilesRedisRepositoryStub.deleteTeamInvitations.reset();
     });
 
-    describe.only('Test Profile Delete', () => {
+    describe('Test Profile Delete', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
         beforeEach(() => {

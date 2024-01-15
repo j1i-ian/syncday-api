@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Attendee, DateArray, createEvent } from 'ics';
 import { TimezoneOffset } from '@core/interfaces/integrations/timezone-offset.interface';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
-import { Schedule } from '@entity/schedules/schedule.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
@@ -89,8 +89,8 @@ export class TimeUtilService {
      *
      * @param timezone
      * @param overrides
-     * @param requestedStartDateTimestamp The schedule start time requested by the invitee
-     * @param requestedEndDateTimestamp The schedule end time requested by the invitee
+     * @param requestedStartDateTimestamp The scheduled event start time requested by the invitee
+     * @param requestedEndDateTimestamp The scheduled event end time requested by the invitee
      * @returns true: overlapping / false: not overlapping
      */
     isTimeOverlappingWithAvailableTimeOverrides(
@@ -395,7 +395,7 @@ export class TimeUtilService {
     convertToICSString(
         uuid: string,
         organizerEmail: string,
-        schedule: Schedule
+        scheduledEvent: ScheduledEvent
     ): string {
         const {
             summary,
@@ -408,7 +408,7 @@ export class TimeUtilService {
             host,
             inviteeAnswers,
             scheduledEventNotifications
-        } = schedule;
+        } = scheduledEvent;
 
         const startDate = new Date(startTimestamp);
         const endDate = new Date(endTimestamp);

@@ -13,7 +13,7 @@ import { GoogleConferenceLinkIntegrationService } from '@services/integrations/g
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
@@ -167,7 +167,7 @@ describe('GoogleIntegrationsService', () => {
                 ],
                 googleIntegrationBodyMock: testMockUtil.getGoogleIntegrationBodyMock(),
                 googleOAuthTokenMock: testMockUtil.getGoogleOAuthTokenMock(),
-                googleSchedules: stub(GoogleIntegrationSchedule),
+                googleSchedules: stub(GoogleIntegrationScheduledEvent),
                 options: undefined,
                 expectedOutboundCalendarCount: 1
             },
@@ -186,7 +186,7 @@ describe('GoogleIntegrationsService', () => {
                 }),
                 googleIntegrationBodyMock: testMockUtil.getGoogleIntegrationBodyMock(),
                 googleOAuthTokenMock: testMockUtil.getGoogleOAuthTokenMock(),
-                googleSchedules: stub(GoogleIntegrationSchedule),
+                googleSchedules: stub(GoogleIntegrationScheduledEvent),
                 options: {
                     isFirstIntegration: true
                 } as CalendarCreateOption,
@@ -207,7 +207,7 @@ describe('GoogleIntegrationsService', () => {
                 }),
                 googleIntegrationBodyMock: testMockUtil.getGoogleIntegrationBodyMock(),
                 googleOAuthTokenMock: testMockUtil.getGoogleOAuthTokenMock(),
-                googleSchedules: stub(GoogleIntegrationSchedule),
+                googleSchedules: stub(GoogleIntegrationScheduledEvent),
                 options: {
                     isFirstIntegration: false
                 } as CalendarCreateOption,

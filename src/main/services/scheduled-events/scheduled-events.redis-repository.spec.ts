@@ -4,17 +4,17 @@ import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { firstValueFrom } from 'rxjs';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
-import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
-import { Schedule } from '@entity/schedules/schedule.entity';
-import { CannotFindScheduleBody } from '@app/exceptions/schedules/cannot-find-schedule-body.exception';
-import { ScheduleBody } from '@app/interfaces/schedules/schedule-body.interface';
+import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { CannotFindScheduleBody } from '@app/exceptions/scheduled-events/cannot-find-schedule-body.exception';
+import { ScheduleBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { TestMockUtil } from '@test/test-mock-util';
 
 const testMockUtil = new TestMockUtil();
 
-describe('Schedules Redis Repository Test', () => {
-    let service: SchedulesRedisRepository;
+describe('Scheduled Events Redis Repository Test', () => {
+    let service: ScheduledEventsRedisRepository;
 
     let clusterStub: sinon.SinonStubbedInstance<Cluster>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
@@ -40,11 +40,11 @@ describe('Schedules Redis Repository Test', () => {
                     provide: WINSTON_MODULE_PROVIDER,
                     useValue: loggerStub
                 },
-                SchedulesRedisRepository
+                ScheduledEventsRedisRepository
             ]
         }).compile();
 
-        service = module.get<SchedulesRedisRepository>(SchedulesRedisRepository);
+        service = module.get<ScheduledEventsRedisRepository>(ScheduledEventsRedisRepository);
     });
 
     describe('Test Scheduled Event on Redis Repository', () => {
@@ -62,13 +62,13 @@ describe('Schedules Redis Repository Test', () => {
 
         it('should be fetched schedule body', async () => {
 
-            const sceduleStub = stubOne(Schedule);
+            const scheduledEventStub = stubOne(ScheduledEvent);
             const scheduleBodyStub = testMockUtil.getScheduleBodyMock();
 
             syncdayRedisServiceStub._getScheduleBodyKey.returns('SCHEDULE_BODY_KEY');
             clusterStub.get.resolves(JSON.stringify(scheduleBodyStub));
 
-            const scheduleBody = await firstValueFrom(service.getScheduleBody(sceduleStub.uuid));
+            const scheduleBody = await firstValueFrom(service.getScheduleBody(scheduledEventStub.uuid));
 
             expect(scheduleBody).deep.equals(scheduleBodyStub);
             expect(clusterStub.get.called).true;
@@ -76,7 +76,7 @@ describe('Schedules Redis Repository Test', () => {
 
         it('should be thrown error when schedule body is null', async () => {
 
-            const sceduleStub = stubOne(Schedule);
+            const scheduledEventStub = stubOne(ScheduledEvent);
             const scheduleBodyStub = null;
 
             syncdayRedisServiceStub._getScheduleBodyKey.returns('SCHEDULE_BODY_KEY');
@@ -84,7 +84,7 @@ describe('Schedules Redis Repository Test', () => {
 
             await expect(
                 firstValueFrom(
-                    service.getScheduleBody(sceduleStub.uuid)
+                    service.getScheduleBody(scheduledEventStub.uuid)
                 )
             ).rejectedWith(CannotFindScheduleBody);
 
@@ -122,7 +122,7 @@ describe('Schedules Redis Repository Test', () => {
 
             it('should be saved scheduled event', async () => {
                 const setStub = serviceSandbox.stub(service, 'set');
-                const scheduleUUIDMock = stubOne(Schedule).uuid;
+                const scheduleUUIDMock = stubOne(ScheduledEvent).uuid;
                 const scheduleBodyMock = testMockUtil.getScheduleBodyMock();
 
                 setStub.resolves(true);

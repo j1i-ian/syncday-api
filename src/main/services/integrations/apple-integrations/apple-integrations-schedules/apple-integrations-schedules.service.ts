@@ -1,25 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
-import { IntegrationSchedule } from '@entity/schedules/integration-schedule.entity';
-import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
+import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
+import { IntegrationScheduledEvent } from '@entity/scheduled-events/integration-scheduled-event.entity';
 
 @Injectable()
-export class AppleIntegrationsSchedulesService extends IntegrationSchedulesService {
+export class AppleIntegrationsSchedulesService extends IntegrationScheduledEventsService {
 
     constructor(
-        @InjectRepository(AppleCalDAVIntegrationSchedule) private readonly integrationScheduleRepository: Repository<AppleCalDAVIntegrationSchedule>
+        @InjectRepository(AppleCalDAVIntegrationScheduledEvent) private readonly integrationScheduleRepository: Repository<AppleCalDAVIntegrationScheduledEvent>
     ) {
         super();
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _saveAll(_manager: EntityManager, _rawSchedules: IntegrationSchedule[]): Promise<boolean> {
+    _saveAll(_manager: EntityManager, _rawSchedules: IntegrationScheduledEvent[]): Promise<boolean> {
         throw new Error('Method not implemented.');
     }
 
-    getInjectedRepository(): Repository<IntegrationSchedule> {
+    getInjectedRepository(): Repository<IntegrationScheduledEvent> {
         return this.integrationScheduleRepository;
     }
 }

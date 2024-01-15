@@ -10,14 +10,14 @@ import { Role } from '@interfaces/profiles/role.enum';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
-import { Schedule } from '@entity/schedules/schedule.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Availability } from '@entity/availability/availability.entity';
-import { ScheduledEventNotification } from '@entity/schedules/scheduled-event-notification.entity';
+import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
-import { NotificationTarget } from '@entity/schedules/notification-target.enum';
+import { NotificationTarget } from '@entity/scheduled-events/notification-target.enum';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { TestMockUtil } from '@test/test-mock-util';
@@ -419,7 +419,7 @@ describe('UtilService', () => {
             serviceSandbox.restore();
         });
 
-        it('should be got patched schedule with source event', () => {
+        it('should be got patched scheduled event with source event', () => {
             const userMock = stubOne(User);
             const profileMock = stubOne(Profile);
             const eventDetailMock = stubOne(EventDetail);
@@ -431,7 +431,7 @@ describe('UtilService', () => {
                 contacts: [],
                 eventDetail: eventDetailMock
             });
-            const newScheduleMock = stubOne(Schedule, {
+            const newScheduledEventMock = stubOne(ScheduledEvent, {
                 scheduledNotificationInfo: {}
             });
             const scheduledEventNotificationStubs = stub(ScheduledEventNotification);
@@ -442,7 +442,7 @@ describe('UtilService', () => {
                 userMock,
                 profileMock,
                 eventMock,
-                newScheduleMock,
+                newScheduledEventMock,
                 teamSetting.workspace,
                 availability.timezone
             );

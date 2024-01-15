@@ -4,56 +4,55 @@ import { Observable, bufferCount, combineLatest, concatMap, defer, forkJoin, fro
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { InviteeSchedule } from '@core/interfaces/schedules/invitee-schedule.interface';
-import { IntegrationSchedulesService } from '@core/interfaces/integrations/integration-schedules.abstract-service';
-import { ScheduledEventSearchOption } from '@interfaces/schedules/scheduled-event-search-option.interface';
+import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
+import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee-scheduled-events.interface';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { EventsService } from '@services/events/events.service';
-import { SchedulesRedisRepository } from '@services/schedules/schedules.redis-repository';
+import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
 import { UtilService } from '@services/util/util.service';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
-import { NativeSchedulesService } from '@services/schedules/native-schedules.service';
+import { NativeScheduledEventsService } from '@services/scheduled-events/native-scheduled-events.service';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
-import { Schedule } from '@entity/schedules/schedule.entity';
 import { User } from '@entity/users/user.entity';
-import { InviteeAnswer } from '@entity/schedules/invitee-answer.entity';
-import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
-import { AppleCalDAVIntegrationSchedule } from '@entity/integrations/apple/apple-caldav-integration-schedule.entity';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { Contact } from '@entity/events/contact.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
-import { CannotCreateByInvalidTimeRange } from '@app/exceptions/schedules/cannot-create-by-invalid-time-range.exception';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
 /**
  * TODO: Apply prototype design pattern
  */
 @Injectable()
-export class GlobalSchedulesService {
+export class GlobalScheduledEventsService {
 
     constructor(
         private readonly integrationsServiceLocator: IntegrationsServiceLocator,
         private readonly utilService: UtilService,
         private readonly timeUtilService: TimeUtilService,
         private readonly eventsService: EventsService,
-        private readonly nativeSchedulesService: NativeSchedulesService,
+        private readonly nativeSchedulesService: NativeScheduledEventsService,
         private readonly calendarIntegrationsServiceLocator: CalendarIntegrationsServiceLocator,
-        private readonly scheduleRedisRepository: SchedulesRedisRepository,
+        private readonly scheduleRedisRepository: ScheduledEventsRedisRepository,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
-        @InjectRepository(Schedule) private readonly scheduleRepository: Repository<Schedule>,
-        @InjectRepository(GoogleIntegrationSchedule) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationSchedule>,
-        @InjectRepository(AppleCalDAVIntegrationSchedule) private readonly appleCalDAVIntegrationScheduleRepository: Repository<AppleCalDAVIntegrationSchedule>,
+        @InjectRepository(ScheduledEvent) private readonly scheduleRepository: Repository<ScheduledEvent>,
+        @InjectRepository(GoogleIntegrationScheduledEvent) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationScheduledEvent>,
+        @InjectRepository(AppleCalDAVIntegrationScheduledEvent) private readonly appleCalDAVIntegrationScheduleRepository: Repository<AppleCalDAVIntegrationScheduledEvent>,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
-        this.allIntegrationSchedulesServices = this.integrationsServiceLocator.getAllIntegrationSchedulesService();
+        this.allIntegrationSchedulesServices = this.integrationsServiceLocator.getAllIntegrationScheduledEventsService();
     }
 
-    allIntegrationSchedulesServices: IntegrationSchedulesService[];
+    allIntegrationSchedulesServices: IntegrationScheduledEventsService[];
 
-    search(scheduleSearchOption: Partial<ScheduledEventSearchOption>): Observable<InviteeSchedule[]> {
+    search(scheduleSearchOption: Partial<ScheduledEventSearchOption>): Observable<InviteeScheduledEvent[]> {
 
         const syncNativeSchedule$ = this.nativeSchedulesService.search(scheduleSearchOption);
 
@@ -74,7 +73,7 @@ export class GlobalSchedulesService {
         );
     }
 
-    findOne(scheduleUUID: string): Observable<Schedule> {
+    findOne(scheduleUUID: string): Observable<ScheduledEvent> {
         return from(this.scheduleRepository.findOneByOrFail({
             uuid: scheduleUUID
         })).pipe(
@@ -92,16 +91,16 @@ export class GlobalSchedulesService {
     create(
         teamWorkspace: string,
         eventUUID: string,
-        newSchedule: Schedule,
+        newScheduledEvent: ScheduledEvent,
         team: Team,
         host: User,
         hostProfile: Profile
-    ): Observable<Schedule> {
+    ): Observable<ScheduledEvent> {
         return this._create(
             this.scheduleRepository.manager,
             teamWorkspace,
             eventUUID,
-            newSchedule,
+            newScheduledEvent,
             team,
             host,
             hostProfile
@@ -112,13 +111,13 @@ export class GlobalSchedulesService {
         entityManager: EntityManager,
         teamWorkspace: string,
         eventUUID: string,
-        newSchedule: Schedule,
+        newScheduledEvent: ScheduledEvent,
         team: Team,
         host: User,
         hostProfile: Profile
-    ): Observable<Schedule> {
+    ): Observable<ScheduledEvent> {
 
-        const _scheduleRepository = entityManager.getRepository(Schedule);
+        const _scheduledEventRepository = entityManager.getRepository(ScheduledEvent);
 
         const loadedEventByTeamWorkspace$ = from(
             this.eventsService.findOneByTeamWorkspaceAndUUID(teamWorkspace, eventUUID)
@@ -149,7 +148,7 @@ export class GlobalSchedulesService {
                         host,
                         hostProfile,
                         event,
-                        newSchedule,
+                        newScheduledEvent,
                         teamWorkspace,
                         event.availability.timezone
                     )),
@@ -162,23 +161,23 @@ export class GlobalSchedulesService {
             concatMap(
                 ([
                     availabilityBody,
-                    patchedSchedule,
+                    patchedScheduledEvent,
                     loadedOutboundCalendarIntegrationOrNull,
                     availabilityTimezone,
                     contacts
                 ]) =>
                     this.validate(
-                        patchedSchedule,
+                        patchedScheduledEvent,
                         availabilityTimezone,
                         availabilityBody,
                         loadedOutboundCalendarIntegrationOrNull
                     ).pipe(
                         map(() => [
-                            patchedSchedule,
+                            patchedScheduledEvent,
                             loadedOutboundCalendarIntegrationOrNull,
                             availabilityTimezone,
                             contacts
-                        ] as [Schedule, CalendarIntegration | null, string, Contact[]])
+                        ] as [ScheduledEvent, CalendarIntegration | null, string, Contact[]])
                     )
             ),
             /**
@@ -268,13 +267,13 @@ export class GlobalSchedulesService {
                 }
             ),
             last(),
-            mergeMap((patchedSchedule) => from(_scheduleRepository.save(patchedSchedule))),
+            mergeMap((patchedSchedule) => from(_scheduledEventRepository.save(patchedSchedule))),
             mergeMap((createdSchedule) =>
                 this.scheduleRedisRepository.save(createdSchedule.uuid, {
-                    inviteeAnswers: newSchedule.inviteeAnswers,
-                    scheduledNotificationInfo: newSchedule.scheduledNotificationInfo
+                    inviteeAnswers: newScheduledEvent.inviteeAnswers,
+                    scheduledNotificationInfo: newScheduledEvent.scheduledNotificationInfo
                 }).pipe(map((_createdScheduleBody) => {
-                    createdSchedule.inviteeAnswers = _createdScheduleBody.inviteeAnswers as InviteeAnswer[];
+                    createdSchedule.inviteeAnswers = _createdScheduleBody.inviteeAnswers ;
                     createdSchedule.scheduledNotificationInfo = _createdScheduleBody.scheduledNotificationInfo;
 
                     return createdSchedule;
@@ -286,25 +285,25 @@ export class GlobalSchedulesService {
     _update(
         entityManager: EntityManager,
         scheduleId: number,
-        partialSchedule: Partial<Schedule>
+        partialScheduledEvent: Partial<ScheduledEvent>
     ): Observable<boolean> {
 
-        const _scheduleRepository = entityManager.getRepository(Schedule);
+        const _scheduleRepository = entityManager.getRepository(ScheduledEvent);
 
-        return from(_scheduleRepository.update(scheduleId, partialSchedule))
+        return from(_scheduleRepository.update(scheduleId, partialScheduledEvent))
             .pipe(
                 map((updateResult) => !!updateResult.affected && updateResult.affected > 0)
             );
     }
 
     validate(
-        schedule: Schedule,
+        scheduledEvent: ScheduledEvent,
         availabilityTimezone: string,
         availabilityBody: AvailabilityBody,
         calendarIntegrationOrNull?: CalendarIntegration | null
-    ): Observable<Schedule> {
+    ): Observable<ScheduledEvent> {
 
-        const { scheduledTime, scheduledBufferTime } = schedule;
+        const { scheduledTime, scheduledBufferTime } = scheduledEvent;
         const { startBufferTimestamp, endBufferTimestamp } = scheduledBufferTime;
         const { startTimestamp, endTimestamp } = scheduledTime;
 
@@ -394,7 +393,7 @@ export class GlobalSchedulesService {
             ensuredStartDateTime,
             ensuredEndDateTime,
             {
-                eventDetailId: schedule.eventDetailId
+                eventDetailId: scheduledEvent.eventDetailId
             }
         );
 
@@ -403,14 +402,14 @@ export class GlobalSchedulesService {
             scheduleConditionOptions
         )));
 
-        const scheduleObservables = [loadedSchedules$] as Array<Observable<Schedule | GoogleIntegrationSchedule | AppleCalDAVIntegrationSchedule | null>>;
+        const scheduleObservables = [loadedSchedules$] as Array<Observable<ScheduledEvent | GoogleIntegrationScheduledEvent | AppleCalDAVIntegrationScheduledEvent | null>>;
 
         if (calendarIntegrationOrNull) {
 
             const integrationVendor = calendarIntegrationOrNull.getIntegrationVendor();
 
             let vendorIntegrationIdCondition;
-            let repository: Repository<GoogleIntegrationSchedule> | Repository<AppleCalDAVIntegrationSchedule>;
+            let repository: Repository<GoogleIntegrationScheduledEvent> | Repository<AppleCalDAVIntegrationScheduledEvent>;
 
             if (integrationVendor === IntegrationVendor.GOOGLE) {
                 repository = this.googleIntegrationScheduleRepository;
@@ -424,7 +423,7 @@ export class GlobalSchedulesService {
                 };
 
             } else {
-                throw new BadRequestException('Unsupported integration vendor type for schedule validation');
+                throw new BadRequestException('Unsupported integration vendor type for scheduled event validation');
             }
 
             const vendorIntegrationScheduleConditionOptions = this._getScheduleConflictCheckOptions(
@@ -452,7 +451,7 @@ export class GlobalSchedulesService {
                 const _isValidSchedule = !loadedScheduleOrNull && !loadedVendorIntegrationScheduleOrNull;
 
                 if (_isValidSchedule) {
-                    return schedule;
+                    return scheduledEvent;
                 } else {
                     throw new CannotCreateByInvalidTimeRange();
                 }
@@ -463,14 +462,14 @@ export class GlobalSchedulesService {
     _getScheduleConflictCheckOptions(
         startDateTime: Date,
         endDateTime: Date,
-        additionalOptionsWhere?: FindOptionsWhere<Schedule> |
-            FindOptionsWhere<GoogleIntegrationSchedule> |
-            FindOptionsWhere<AppleCalDAVIntegrationSchedule>
+        additionalOptionsWhere?: FindOptionsWhere<ScheduledEvent> |
+            FindOptionsWhere<GoogleIntegrationScheduledEvent> |
+            FindOptionsWhere<AppleCalDAVIntegrationScheduledEvent>
         | undefined,
         options = {
             exclusivly: true
         }
-    ): Array<FindOptionsWhere<InviteeSchedule>> {
+    ): Array<FindOptionsWhere<InviteeScheduledEvent>> {
 
         const _startDateTime = new Date(startDateTime);
         const _endDateTime = new Date(endDateTime);

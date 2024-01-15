@@ -122,13 +122,13 @@ describe('AppleIntegrationFacadeService', () => {
         });
     });
 
-    describe('Test Schedules Search', () => {
+    describe('Test Scheduled events Search', () => {
 
         afterEach(() => {
             appleCalendarEventListServiceStub.search.reset();
         });
 
-        it('should be searched for schedules', async () => {
+        it('should be searched for scheduled events', async () => {
 
             const davClientMock = testMockUtil.getCalDavClientMock();
             const davCalendarObjectStubs = testMockUtil.getCalDavObjectMocks();
@@ -136,7 +136,7 @@ describe('AppleIntegrationFacadeService', () => {
 
             appleCalendarEventListServiceStub.search.resolves(davCalendarObjectStubs);
 
-            const searchedCalendars = await service.searchSchedules(
+            const searchedCalendars = await service.searchScheduledEvents(
                 davClientMock,
                 calendarDAVUrlMock
             );
@@ -146,7 +146,7 @@ describe('AppleIntegrationFacadeService', () => {
             expect(appleCalendarEventListServiceStub.search.called).true;
         });
 
-        it('should be searched for schedules up to 3 months in the future defaultly', async () => {
+        it('should be searched for scheduled events up to 3 months in the future defaultly', async () => {
 
             const davClientMock = testMockUtil.getCalDavClientMock();
             const davCalendarObjectStubs = testMockUtil.getCalDavObjectMocks();
@@ -154,13 +154,13 @@ describe('AppleIntegrationFacadeService', () => {
 
             appleCalendarEventListServiceStub.search.resolves(davCalendarObjectStubs);
 
-            const searchedSchedules = await service.searchSchedules(
+            const searchedScheduledEvents = await service.searchScheduledEvents(
                 davClientMock,
                 calendarDAVUrlMock
             );
 
-            expect(searchedSchedules).ok;
-            expect(searchedSchedules.length).greaterThan(0);
+            expect(searchedScheduledEvents).ok;
+            expect(searchedScheduledEvents.length).greaterThan(0);
 
             expect(appleCalendarEventListServiceStub.search.called).true;
 
@@ -169,7 +169,7 @@ describe('AppleIntegrationFacadeService', () => {
             expect(defalutUntilDate.getTime()).greaterThan(Date.now());
         });
 
-        it('should be searched for schedules up to user-specific months', async () => {
+        it('should be searched for scheduled events up to user-specific months', async () => {
 
             const davClientMock = testMockUtil.getCalDavClientMock();
             const davCalendarObjectStubs = testMockUtil.getCalDavObjectMocks();
@@ -178,7 +178,7 @@ describe('AppleIntegrationFacadeService', () => {
 
             appleCalendarEventListServiceStub.search.resolves(davCalendarObjectStubs);
 
-            const searchedSchedules = await service.searchSchedules(
+            const searchedSchedules = await service.searchScheduledEvents(
                 davClientMock,
                 calendarDAVUrlMock,
                 today

@@ -1,23 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { GoogleIntegrationSchedule } from '@entity/integrations/google/google-integration-schedule.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { GoogleIntegrationSchedulesService } from './google-integration-schedules.service';
 
 describe('GoogleIntegrationSchedulesService', () => {
     let service: GoogleIntegrationSchedulesService;
 
-    let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationSchedule>>;
+    let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationScheduledEvent>>;
 
     beforeEach(async () => {
 
-        googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationSchedule>>(Repository);
+        googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationScheduledEvent>>(Repository);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 GoogleIntegrationSchedulesService,
                 {
-                    provide: getRepositoryToken(GoogleIntegrationSchedule),
+                    provide: getRepositoryToken(GoogleIntegrationScheduledEvent),
                     useValue: googleIntegrationScheduleRepositoryStub
                 }
             ]
@@ -30,7 +30,7 @@ describe('GoogleIntegrationSchedulesService', () => {
         expect(service).ok;
     });
 
-    it('should be got a schedule repository', () => {
+    it('should be got a scheduled event repository', () => {
         const scheduleRepository = service.getInjectedRepository();
 
         expect(scheduleRepository).ok;
