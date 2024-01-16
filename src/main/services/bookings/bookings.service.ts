@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Observable, from, map, mergeMap } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
-import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.interface';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { HostEvent } from '@interfaces/bookings/host-event';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
@@ -54,7 +54,7 @@ export class BookingsService {
         return this.availabilityService.fetchDetailByTeamWorkspaceAndLink(teamWorkspace, eventLink);
     }
 
-    searchScheduledEvents(searchOption: ScheduledEventSearchOption): Observable<ScheduledEventResponseDto[]> {
+    searchScheduledEvents(searchOption: Partial<ScheduledEventSearchOption>): Observable<ScheduledEventResponseDto[]> {
         return this.scheduledEventsService.search(searchOption).pipe(
             map((scheduledEvents) => scheduledEvents.map(
                 (_scheduledEvent) => plainToInstance(ScheduledEventResponseDto, _scheduledEvent))

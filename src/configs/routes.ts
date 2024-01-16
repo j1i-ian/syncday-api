@@ -16,6 +16,7 @@ import { TeamSettingModule } from '@services/team/team-setting/team-setting.modu
 import { ProfilesModule } from '@services/profiles/profiles.module';
 import { PaymentMethodModule } from '@services/payments/payment-method/payment-method.module';
 import { OrdersModule } from '@services/orders/orders.module';
+import { ScheduledEventsModule } from '@services/scheduled-events/scheduled-events.module';
 import { TokenModule } from '../main/auth/token/token.module';
 import { VerificationModule } from '../main/auth/verification/verification.module';
 import { IntegrationsModule } from '../main/services/integrations/integrations.module';
@@ -111,5 +112,9 @@ export const routes: Routes = [
     {
         path: 'orders',
         module: OrdersModule
+    },
+    {
+        path: 'scheduled-events',
+        module: ScheduledEventsModule
     }
 ];

@@ -11,6 +11,7 @@ import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { ProfilesService } from '@services/profiles/profiles.service';
+import { UtilService } from '@services/util/util.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { PatchProfileRequestDto } from '@dto/profiles/patch-profile-request.dto';
@@ -24,6 +25,7 @@ export class ProfilesController {
 
     constructor(
         private readonly profileService: ProfilesService,
+        private readonly utilService: UtilService,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
@@ -55,12 +57,16 @@ export class ProfilesController {
 
         searchOptions.withUserData = withUserDataString === 'true' || withUserDataString === true;
 
-        const options = this._parseSearchOption(
-            authProfile,
-            searchOptions
+        const patchedSearchOption = this.utilService.patchSearchOption(
+            searchOptions,
+            authProfile
         );
 
-        return this.profileService.search(options).pipe(
+        return this.profileService.search({
+            withUserData: searchOptions.withUserData,
+            teamId: patchedSearchOption.teamId,
+            userId: patchedSearchOption.userId
+        }).pipe(
             map((searchedProfiles) =>
                 searchedProfiles.map(
                     (_searchedProfile) =>
@@ -186,35 +192,5 @@ export class ProfilesController {
             authProfile,
             profileId
         );
-    }
-
-    /**
-     * query param's existence indicates that field is used as an search option
-     */
-    _parseSearchOption(
-        {
-            teamId: authTeamId,
-            userId: authUserId
-        }: Pick<AppJwtPayload, 'userId' | 'teamId'>,
-        {
-            teamId,
-            userId,
-            withUserData
-        }: Partial<ProfileSearchOption>
-    ): Partial<ProfileSearchOption> {
-
-        const teamIdOption = teamId ? authTeamId : undefined;
-
-        const isAllSearchOptionDisabled = teamIdOption === undefined || userId;
-
-        const userIdOption = isAllSearchOptionDisabled
-            ? authUserId
-            : undefined;
-
-        return {
-            userId: userIdOption,
-            teamId: teamIdOption,
-            withUserData
-        };
     }
 }

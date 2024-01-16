@@ -3,7 +3,7 @@ import { firstValueFrom, of } from 'rxjs';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.interface';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { UtilService } from '@services/util/util.service';

@@ -8,6 +8,7 @@ import { NotificationType } from '@interfaces/notifications/notification-type.en
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { Role } from '@interfaces/profiles/role.enum';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
@@ -53,21 +54,108 @@ describe('UtilService', () => {
         expect(service).ok;
     });
 
+    describe('Search Option Patching Test', () => {
+
+        (
+            [
+                {
+                    description: 'should be ensured that the team ID option is patched in the absence of query parameters, provided the user possesses member permissions',
+                    searchOptionMock: { teamId: undefined, id: undefined, userId: undefined },
+                    authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MEMBER] },
+                    expected: { teamId: 1, id: 2, userId: 3 }
+                },
+                {
+
+                    description: 'should be ensured that the team ID option is patched in the absence of query parameters, provided the user possesses manager permissions',
+                    searchOptionMock: { teamId: undefined, id: undefined, userId: undefined },
+                    authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MANAGER] },
+                    expected: { teamId: 1, id: undefined, userId: undefined }
+                },
+                {
+                    description: 'should be ensured that the team ID option is patched in the absence of query parameters, provided the user possesses owner permissions',
+                    searchOptionMock: { teamId: undefined, id: undefined, userId: undefined },
+                    authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.OWNER] },
+                    expected: { teamId: 1, id: undefined, userId: undefined }
+                },
+                {
+                    description: 'should be ensured that the team id search option is patched when the team id is queried',
+                    searchOptionMock: { teamId: 1, id: undefined, userId: undefined },
+                    authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MEMBER] },
+                    expected: { teamId: 1, id: undefined, userId: undefined }
+                },
+                {
+                    description: 'should be ensured that the team id search option is patched when the team id is queried with wrong value fixing automatically',
+                    searchOptionMock: { teamId: 4, id: undefined, userId: undefined },
+                    authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MEMBER] },
+                    expected: { teamId: 1, id: undefined, userId: undefined }
+                },
+                {
+                    description: 'should be ensured that the user id search option is patched when user id is queried with wrong value fixing automatically',
+                    searchOptionMock: { teamId: undefined, id: undefined, userId: 3 },
+                    authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MEMBER] },
+                    expected: { teamId: 1, id: 2, userId: 3 }
+                },
+                {
+                    description: 'should be ensured that the profile id search option is patched when profile id is queried with wrong value fixing automatically',
+                    searchOptionMock: { teamId: 6, id: 7, userId: 8 },
+                    authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MEMBER] },
+                    expected: { teamId: 1, id: 2, userId: 3 }
+                },
+                {
+                    description: 'should be ensured that user and profile id search option as query params are patched when profile id is queried and user has a permission',
+                    searchOptionMock: { teamId: 6, id: 7, userId: 8 },
+                    authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MANAGER] },
+                    expected: { teamId: 1, id: 7, userId: 8 }
+                }
+            ] as Array<{
+                description: string;
+                searchOptionMock: Partial<Pick<AppJwtPayload, 'teamId' | 'id' | 'userId'>>;
+                authProfileMock: AppJwtPayload;
+                expected: Partial<Pick<AppJwtPayload, 'teamId' | 'id' | 'userId'>>;
+            }>
+        ).forEach(function({
+            description,
+            searchOptionMock,
+            authProfileMock,
+            expected
+        }) {
+
+            it(description, () => {
+
+                const parsedSearchOption = service.patchSearchOption(
+                    searchOptionMock,
+                    authProfileMock
+                );
+                expect(parsedSearchOption).ok;
+
+                const {
+                    id: expectedProfileId,
+                    teamId: expectedTeamId,
+                    userId: expectedUserId
+                } = expected;
+
+                expect(parsedSearchOption.teamId).equals(expectedTeamId);
+                expect(parsedSearchOption.id).equals(expectedProfileId);
+                expect(parsedSearchOption.userId).equals(expectedUserId);
+            });
+        });
+    });
+
     describe('Proration Test', () => {
-        it('should be calculated the proration', () => {
-            // 93 is divisible by either 30 or 31
-            const amountMock = 93000;
+        it('It should be calculated that the proration for an amount of 26,970, which divides evenly by 29 for February and by 30 or 31, results in whole numbers of 930, 899, or 870', () => {
+            const amountMock = 26970;
 
             const _15daysAfterPaymentPeriodMock = new Date();
             _15daysAfterPaymentPeriodMock.setDate(_15daysAfterPaymentPeriodMock.getDate() + 15);
 
-            const nextPeriod = new Date(_15daysAfterPaymentPeriodMock);
-            nextPeriod.setMonth(nextPeriod.getMonth() + 1);
-
-            // 30 or 31
-            const diffDays = (nextPeriod.getTime() - _15daysAfterPaymentPeriodMock.getTime()) / (1000 * 60 * 60 * 24);
+            const previousPeriod = new Date(_15daysAfterPaymentPeriodMock);
+            previousPeriod.setMonth(previousPeriod.getMonth() - 1);
 
             const actual = service.getProrations(amountMock, _15daysAfterPaymentPeriodMock);
+
+            // 29 for Feb or 30 or 31 days
+            const day = 1000 * 60 * 60 * 24;
+            const diffDays = (_15daysAfterPaymentPeriodMock.getTime() - previousPeriod.getTime()) / day;
 
             expect(actual).ok;
             expect(actual).equals(amountMock / diffDays * 14);
@@ -75,7 +163,7 @@ describe('UtilService', () => {
     });
 
     describe('Conversion Test', () => {
-        it('should be converted of the email invitation to a invited new team member dto', () => {
+        it('should be converted from the email invitation to a invited new team member dto', () => {
             const emailMock = 'sample@sync.day';
 
             const conveted = service.convertToInvitedNewTeamMember(emailMock);
@@ -84,7 +172,7 @@ describe('UtilService', () => {
             expect(conveted.email).ok;
         });
 
-        it('should be converted of the phone invitation to a invited new team member dto', () => {
+        it('should be converted from the phone invitation to a invited new team member dto', () => {
             const phoneMock = '+821012345678';
 
             const conveted = service.convertToInvitedNewTeamMember(phoneMock);

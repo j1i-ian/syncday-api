@@ -6,7 +6,8 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
 import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee-scheduled-events.interface';
-import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.interface';
+import { PageOption } from '@core/interfaces/page-option.interface';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { EventsService } from '@services/events/events.service';
 import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
@@ -52,7 +53,7 @@ export class GlobalScheduledEventsService {
 
     allIntegrationSchedulesServices: IntegrationScheduledEventsService[];
 
-    search(scheduleSearchOption: Partial<ScheduledEventSearchOption>): Observable<InviteeScheduledEvent[]> {
+    search(scheduleSearchOption: Partial<ScheduledEventSearchOption> & Partial<PageOption>): Observable<InviteeScheduledEvent[]> {
 
         const syncNativeSchedule$ = this.nativeSchedulesService.search(scheduleSearchOption);
 

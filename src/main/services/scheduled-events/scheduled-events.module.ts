@@ -12,8 +12,10 @@ import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/goo
 import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { GlobalScheduledEventsService } from './global-scheduled-events.service';
+import { ScheduledEventsController } from './scheduled-events.controller';
 
 @Module({
+    controllers: [ScheduledEventsController],
     imports: [
         TypeOrmModule.forFeature([ScheduledEvent, GoogleIntegrationScheduledEvent, AppleCalDAVIntegrationScheduledEvent]),
         SyncdayRedisModule,

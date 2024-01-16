@@ -19,6 +19,7 @@ import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { Role } from '@interfaces/profiles/role.enum';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -61,9 +62,64 @@ type EventDetailInit = Omit<EventDetail,
 | 'scheduledEvents'
 >;
 
+type SearchOption = Pick<AppJwtPayload, 'teamId' | 'id' | 'uuid' | 'userId'>;
+
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
+
+    patchSearchOption(
+        searchOption: Partial<SearchOption>,
+        authProfile: AppJwtPayload
+    ): Partial<SearchOption> {
+
+        const {
+            teamId: queryTeamId,
+            id: queryProfileId,
+            userId: queryUserId
+        } = searchOption;
+
+        const {
+            teamId: authTeamId,
+            id: authProfileId,
+            userId: authUserId,
+            roles
+        } = authProfile;
+
+        let parsedSearchOption: Partial<SearchOption> = {};
+
+        const isOwner = roles.includes(Role.OWNER);
+        const isManager = roles.includes(Role.MANAGER);
+        const hasQueryPermissionByRole = isOwner || isManager;
+
+        const isTeamIdSearch = !!queryTeamId;
+        const noTeamSearch = isTeamIdSearch === false;
+
+        const isUserIdSearch = !!(noTeamSearch || queryUserId);
+        const isProfileIdSearch = !!(noTeamSearch || queryProfileId);
+
+        const patchedSearchOption: SearchOption =  (
+            hasQueryPermissionByRole
+                ? {
+                    teamId: authTeamId,
+                    id: queryProfileId,
+                    userId: queryUserId
+                } : {
+                    teamId: authTeamId,
+                    id: authProfileId,
+                    userId: authUserId,
+                    uuid: authProfile.uuid
+                }
+        )as SearchOption;
+
+        parsedSearchOption = {
+            teamId: patchedSearchOption.teamId,
+            id: isProfileIdSearch ? patchedSearchOption.id : undefined,
+            userId: isUserIdSearch ? patchedSearchOption.userId : undefined
+        };
+
+        return parsedSearchOption;
+    }
 
     getProrations(
         amount: number,
@@ -83,9 +139,11 @@ export class UtilService {
         const previousPeriod = new Date(nextPeriod);
         previousPeriod.setMonth(previousPeriod.getMonth() - 1);
 
-        const totalPeriod = (nextPeriod.getTime() - previousPeriod.getTime()) / (1000 * 60 * 60 * 24);
+        const day = 1000 * 60 * 60 * 24;
 
-        const prorationDate = (nextPeriod.getTime() - tomorrow.getTime()) / (1000 * 60 * 60 * 24);
+        const totalPeriod = (nextPeriod.getTime() - previousPeriod.getTime()) / day;
+
+        const prorationDate = (nextPeriod.getTime() - tomorrow.getTime()) / day;
 
         return Math.floor(amount / totalPeriod * prorationDate);
     }

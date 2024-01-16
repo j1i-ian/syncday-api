@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { FindManyOptions, FindOptionsWhere, Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
-import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.interface';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
@@ -90,7 +90,6 @@ describe('NativeSchedulesService', () => {
 
         afterEach(() => {
             eventsServiceStub.findOneByTeamWorkspaceAndUUID.reset();
-            utilServiceStub.getPatchedScheduledEvent.reset();
             timeUtilServiceStub.localizeDateTime.reset();
             integrationsServiceLocatorStub.getIntegrationFactory.reset();
             integrationsServiceLocatorStub.getFacade.reset();
@@ -122,14 +121,18 @@ describe('NativeSchedulesService', () => {
                 {
                     description: 'should be searched scheduled events by search option (hostUUID)',
                     searchOption: {
-                        hostUUID: hostUUIDMock
+                        hostUUID: hostUUIDMock,
+                        page: 1,
+                        take: 0
                     } as ScheduledEventSearchOption
                 },
                 {
                     description: 'should be searched scheduled events by search option (hostUUID, eventUUID)',
                     searchOption: {
                         hostUUID: hostUUIDMock,
-                        eventUUID: eventUUIDMock
+                        eventUUID: eventUUIDMock,
+                        page: 1,
+                        take: 0
                     } as ScheduledEventSearchOption
                 },
                 {
@@ -137,7 +140,9 @@ describe('NativeSchedulesService', () => {
                     searchOption: {
                         hostUUID: hostUUIDMock,
                         eventUUID: eventUUIDMock,
-                        since: Date.now()
+                        since: Date.now(),
+                        page: 1,
+                        take: 0
                     } as ScheduledEventSearchOption
                 },
                 {
@@ -146,7 +151,9 @@ describe('NativeSchedulesService', () => {
                         hostUUID: hostUUIDMock,
                         eventUUID: eventUUIDMock,
                         since: Date.now(),
-                        until: Date.now() + 1000000
+                        until: Date.now() + 1000000,
+                        page: 1,
+                        take: 0
                     } as ScheduledEventSearchOption
                 }
             ].forEach(function({
@@ -157,7 +164,7 @@ describe('NativeSchedulesService', () => {
                 it(description, async () => {
 
 
-                    scheduledEventRepositoryStub.findBy.resolves(scheduleStubs);
+                    scheduledEventRepositoryStub.find.resolves(scheduleStubs);
 
                     const searchedSchedules = await firstValueFrom(
                         service.search(searchOption)
@@ -165,9 +172,9 @@ describe('NativeSchedulesService', () => {
 
                     expect(searchedSchedules).ok;
                     expect(searchedSchedules.length).greaterThan(0);
-                    expect(scheduledEventRepositoryStub.findBy.called).true;
+                    expect(scheduledEventRepositoryStub.find.called).true;
 
-                    const actualComposedScheduledEventSearchOptions = scheduledEventRepositoryStub.findBy.getCall(0).args[0] as Array<FindOptionsWhere<ScheduledEvent>>;
+                    const actualComposedScheduledEventSearchOptions = (scheduledEventRepositoryStub.find.getCall(0).args[0] as FindManyOptions<ScheduledEvent>).where as Array<FindOptionsWhere<ScheduledEvent>>;
 
                     expect((actualComposedScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).startTimestamp).ok;
                     expect((actualComposedScheduledEventSearchOptions[0].scheduledTime as ScheduledTimeset).endTimestamp).ok;

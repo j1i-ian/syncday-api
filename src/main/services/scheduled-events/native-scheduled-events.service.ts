@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { Observable, defer, from } from 'rxjs';
-import { FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { FindOptionsOrder, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ScheduledEventsService } from '@core/interfaces/scheduled-events/scheduled-events.service.interface';
 import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee-scheduled-events.interface';
-import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.interface';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 
 @Injectable()
 export class NativeScheduledEventsService implements ScheduledEventsService {
 
     constructor(
-        @InjectRepository(ScheduledEvent) private readonly scheduleRepository: Repository<ScheduledEvent>
+        @InjectRepository(ScheduledEvent) private readonly scheduledEventRepository: Repository<ScheduledEvent>
     ) {}
 
     search(scheduleSearchOption: Partial<ScheduledEventSearchOption>): Observable<InviteeScheduledEvent[]> {
@@ -20,10 +20,18 @@ export class NativeScheduledEventsService implements ScheduledEventsService {
             hostUUID,
             eventUUID,
             since,
-            until
+            until,
+            page,
+            take,
+            teamId,
+            orderScheduledTimeStartTimestamp
         } = scheduleSearchOption;
 
-        const defaultUntilDateTime = new Date(new Date().getDate() + 90);
+        const ensuredTake = take ? take : undefined;
+        const skip = page && take ? page * take : 0;
+
+        const _90daysAfter = new Date().getDate() + 90;
+        const defaultUntilDateTime = new Date(new Date().setDate(_90daysAfter));
         const ensuredSinceDateTime = since ? new Date(since) : new Date();
         const ensuredUntilDateTime = until ? new Date(until) : defaultUntilDateTime;
 
@@ -33,7 +41,10 @@ export class NativeScheduledEventsService implements ScheduledEventsService {
             },
             eventDetail: {
                 event: {
-                    uuid: eventUUID
+                    uuid: eventUUID,
+                    eventGroup: {
+                        teamId
+                    }
                 }
             }
         };
@@ -55,7 +66,19 @@ export class NativeScheduledEventsService implements ScheduledEventsService {
             }
         ];
 
-        const syncNativeSchedule$ = defer(() => from(this.scheduleRepository.findBy(nativeScheduleConditionOptions)));
+        const patchedOrderSearchOption: FindOptionsOrder<ScheduledEvent> | undefined = orderScheduledTimeStartTimestamp
+            ? {
+                scheduledTime: {
+                    startTimestamp: orderScheduledTimeStartTimestamp
+                }
+            } : undefined;
+
+        const syncNativeSchedule$ = defer(() => from(this.scheduledEventRepository.find({
+            where: nativeScheduleConditionOptions,
+            order: patchedOrderSearchOption,
+            take: ensuredTake,
+            skip
+        })));
 
         return syncNativeSchedule$;
     }
