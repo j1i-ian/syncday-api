@@ -1,5 +1,21 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { Observable, combineLatest, concat, firstValueFrom, from, map, merge, mergeMap, of, reduce, tap, toArray } from 'rxjs';
+import {
+    Observable,
+    catchError,
+    combineLatest,
+    combineLatestWith,
+    concat,
+    defer,
+    firstValueFrom,
+    from,
+    map,
+    merge,
+    mergeMap,
+    of,
+    reduce,
+    tap,
+    toArray
+} from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -83,7 +99,7 @@ export class TeamService {
         patchedQueryBuilder.andWhere('team.id = :teamId', { teamId });
 
         return from(
-            patchedQueryBuilder.getOneOrFail()
+            defer(() => patchedQueryBuilder.getOneOrFail())
         );
     }
 
@@ -319,11 +335,11 @@ export class TeamService {
 
     delete(authProfile: AppJwtPayload): Observable<boolean> {
 
-        const { id, teamId, teamUUID, userId, name } = authProfile;
+        const { id, teamId, teamUUID, name } = authProfile;
 
-        const validateProfiles$ = from(this.profilesService.search({
+        const validateProfiles$ = this.profilesService.search({
             teamId
-        })).pipe(
+        }).pipe(
             map((profiles) => profiles.length > 1),
             tap((hasProfiles) => {
                 if (hasProfiles) {
@@ -340,24 +356,44 @@ export class TeamService {
                     }
                 }));
 
+        const team$ = from(defer(() => this.teamRepository.findOneByOrFail({ id: teamId })));
+
+        const refundParams$ = this.ordersService.fetch({ teamId, productId: 1 })
+            .pipe(
+                combineLatestWith(team$),
+                tap(([loadedOrder, loadedTeam]) => {
+                    this.logger.info({
+                        message: 'Team Delete is requested.. Refund with proration',
+                        authProfile,
+                        loadedOrder,
+                        loadedTeam
+                    });
+                }),
+                mergeMap(([relatedOrder, loadedTeam ]) => of({
+                    unitPrice: Math.floor(relatedOrder.amount / relatedOrder.unit),
+                    isPartialCancelation: relatedOrder.unit > 1,
+                    profileName: name || id,
+                    refundMessage: `Team ${loadedTeam.name} is removed by owner ${name}`,
+                    teamCreatedAt: loadedTeam.createdAt,
+                    relatedOrder
+                })),
+                map((refundParams) => {
+                    const { unitPrice  } = refundParams;
+                    const proration = this.utilService.getProrations(unitPrice, refundParams.teamCreatedAt);
+
+                    return {
+                        ...refundParams,
+                        proration
+                    };
+                })
+            );
+
         return merge(
             validateProfiles$,
             validateInvitations$
         ).pipe(
             toArray(),
-            mergeMap(() => combineLatest([
-                this.ordersService.fetch({ teamId, productId: 1 }),
-                this.get(teamId, userId, {})
-            ])),
-            tap(([relatedOrder, loadedTeam]) => {
-                this.logger.info({
-                    message: 'Team Delete is requested.. Refund with proration',
-                    authProfile,
-                    relatedOrder,
-                    loadedTeam
-                });
-            }),
-            mergeMap(([relatedOrder, loadedTeam]) =>
+            mergeMap(() =>
                 this.datasource.transaction((transactionManager) =>
                     firstValueFrom(
                         concat(
@@ -368,34 +404,25 @@ export class TeamService {
                             this._delete(transactionManager, teamId)
                         ).pipe(
                             reduce((acc, curr) => acc && curr),
-                            mergeMap(() => of({
-                                unitPrice: Math.floor(relatedOrder.amount / relatedOrder.unit),
-                                isPartialCancelation: relatedOrder.unit > 1,
-                                profileName: name || id,
-                                refundMessage: `Team ${loadedTeam.name} is removed by owner ${name}`
-                            })),
-                            map((refundParams) => {
-                                const { unitPrice  } = refundParams;
-                                const proration = this.utilService.getProrations(unitPrice, loadedTeam.createdAt);
-
-                                return {
-                                    ...refundParams,
-                                    proration
-                                };
-                            }),
-                            mergeMap(({
-                                proration,
-                                profileName,
-                                refundMessage,
-                                isPartialCancelation
-                            }) => from(this.paymentsService._refund(
-                                transactionManager,
-                                relatedOrder,
-                                profileName as string,
-                                refundMessage,
-                                proration,
-                                isPartialCancelation
-                            )))
+                            mergeMap(() =>
+                                refundParams$.pipe(
+                                    mergeMap(({
+                                        proration,
+                                        profileName,
+                                        refundMessage,
+                                        isPartialCancelation,
+                                        relatedOrder
+                                    }) => from(this.paymentsService._refund(
+                                        transactionManager,
+                                        relatedOrder,
+                                        profileName as string,
+                                        refundMessage,
+                                        proration,
+                                        isPartialCancelation
+                                    ))),
+                                    catchError(() => of(null))
+                                )
+                            )
                         )
                     )
                 )

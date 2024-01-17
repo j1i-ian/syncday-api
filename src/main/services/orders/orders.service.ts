@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, FindOptionsWhere, Raw, Repository } from 'typeorm';
-import { Observable, from } from 'rxjs';
+import { Observable, defer, from } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { Orderer } from '@interfaces/orders/orderer.interface';
@@ -78,10 +78,10 @@ export class OrdersService {
             } as FindOptionsWhere<Order>;
         }
 
-        return from(this.orderRepository.findOneOrFail({
+        return from(defer(() => this.orderRepository.findOneOrFail({
             relations: ['team'],
             where: findOptionsWhere
-        }));
+        })));
     }
 
     async _create(

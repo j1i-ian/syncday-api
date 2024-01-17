@@ -504,8 +504,13 @@ describe('TeamService', () => {
             profilesServiceStub.search.reset();
             profilesServiceStub.searchInvitations.reset();
 
+            teamRepositoryStub.findOneByOrFail.reset();
+
             ordersServiceStub.fetch.reset();
             teamSettingServiceStub._delete.reset();
+
+            utilServiceStub.getProrations.reset();
+            paymentsServiceStub._refund.reset();
 
             serviceSandbox.restore();
         });
@@ -519,11 +524,11 @@ describe('TeamService', () => {
 
             const _deleteStub = serviceSandbox.stub(service, '_delete');
 
-            profilesServiceStub.search.resolves([]);
-            profilesServiceStub.searchInvitations.resolves([]);
+            profilesServiceStub.search.returns(of([]));
+            profilesServiceStub.searchInvitations.returns(of([]));
+            teamRepositoryStub.findOneByOrFail.resolves(teamStub);
 
             ordersServiceStub.fetch.returns(of(orderMock));
-            const getStub = serviceSandbox.stub(service, 'get').returns(of(teamStub));
 
             teamSettingServiceStub._delete.returns(of(true));
             _deleteStub.returns(of(true));
@@ -537,8 +542,8 @@ describe('TeamService', () => {
 
             expect(profilesServiceStub.search.called).true;
             expect(profilesServiceStub.searchInvitations.called).true;
+            expect(teamRepositoryStub.findOneByOrFail.called).true;
             expect(ordersServiceStub.fetch.called).true;
-            expect(getStub.called).true;
 
             expect(teamSettingServiceStub._delete.called).true;
             expect(_deleteStub.called).true;
@@ -549,22 +554,72 @@ describe('TeamService', () => {
         it('should be thrown an error for delete request when the team has the profiles', async () => {
             const authProfileMock = stubOne(Profile) as unknown as AppJwtPayload;
             const profileStubs = stub(Profile);
+            const orderMock = stubOne(Order);
 
-            profilesServiceStub.search.resolves(profileStubs);
-            profilesServiceStub.searchInvitations.resolves([]);
+            const teamStub = stubOne(Team);
+            const paymentStub = stubOne(Payment);
+
+            const _deleteStub = serviceSandbox.stub(service, '_delete');
+
+            profilesServiceStub.search.returns(of(profileStubs));
+            profilesServiceStub.searchInvitations.returns(of([]));
+            teamRepositoryStub.findOneByOrFail.resolves(teamStub);
+
+            ordersServiceStub.fetch.returns(of(orderMock));
+
+            teamSettingServiceStub._delete.returns(of(true));
+            _deleteStub.returns(of(true));
+
+            utilServiceStub.getProrations.returns(0);
+            paymentsServiceStub._refund.resolves(paymentStub);
 
             await expect(firstValueFrom(service.delete(authProfileMock))).rejectedWith(CannotDeleteTeamException);
+
+            expect(profilesServiceStub.search.called).true;
+            expect(profilesServiceStub.searchInvitations.called).true;
+            expect(teamRepositoryStub.findOneByOrFail.called).false;
+            expect(ordersServiceStub.fetch.called).true;
+
+            expect(teamSettingServiceStub._delete.called).false;
+            expect(_deleteStub.called).false;
+            expect(utilServiceStub.getProrations.called).false;
+            expect(paymentsServiceStub._refund.called).false;
         });
 
         it('should be thrown an error for delete request when the team has the invitations', async () => {
             const authProfileMock = stubOne(Profile) as unknown as AppJwtPayload;
             const teamMock = stubOne(Team);
             const invitedNewMemberStubs = testMockUtil.getInvitedNewTeamMemberMocks(teamMock.id);
+            const orderMock = stubOne(Order);
 
-            profilesServiceStub.search.resolves([]);
-            profilesServiceStub.searchInvitations.resolves(invitedNewMemberStubs);
+            const teamStub = stubOne(Team);
+            const paymentStub = stubOne(Payment);
+
+            const _deleteStub = serviceSandbox.stub(service, '_delete');
+
+            profilesServiceStub.search.returns(of([]));
+            profilesServiceStub.searchInvitations.returns(of(invitedNewMemberStubs));
+            teamRepositoryStub.findOneByOrFail.resolves(teamStub);
+
+            ordersServiceStub.fetch.returns(of(orderMock));
+
+            teamSettingServiceStub._delete.returns(of(true));
+            _deleteStub.returns(of(true));
+
+            utilServiceStub.getProrations.returns(0);
+            paymentsServiceStub._refund.resolves(paymentStub);
 
             await expect(firstValueFrom(service.delete(authProfileMock))).rejectedWith(CannotDeleteTeamException);
+
+            expect(profilesServiceStub.search.called).true;
+            expect(profilesServiceStub.searchInvitations.called).true;
+            expect(teamRepositoryStub.findOneByOrFail.called).false;
+            expect(ordersServiceStub.fetch.called).true;
+
+            expect(teamSettingServiceStub._delete.called).false;
+            expect(_deleteStub.called).false;
+            expect(utilServiceStub.getProrations.called).false;
+            expect(paymentsServiceStub._refund.called).false;
         });
     });
 
