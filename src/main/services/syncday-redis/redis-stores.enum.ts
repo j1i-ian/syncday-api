@@ -17,5 +17,6 @@ export enum RedisStores {
     GOOGLE_CALENDARS = 'calendars',
     CALENDAR_SUBSCRIPTION = 'calendars-subscription',
     PG_PAYMENTS = 'pg-payments',
-    INVITED_NEW_MEMBER = 'invited-new-member'
+    INVITED_NEW_MEMBER = 'invited-new-member',
+    TEAM_INVITATIONS = 'team-invitations'
 }

@@ -40,11 +40,13 @@ export class OrdersService {
 
     fetch(searchOptions: {
         teamId?: number;
-        orderOption: OrderOption;
+        productId?: number;
+        orderOption?: OrderOption;
     }): Observable<Order> {
 
         const {
             teamId,
+            productId,
             orderOption
         } = searchOptions;
 
@@ -52,6 +54,10 @@ export class OrdersService {
 
         if(teamId) {
             findOptionsWhere.teamId = searchOptions.teamId;
+        }
+
+        if (productId) {
+            findOptionsWhere.productId = searchOptions.productId;
         }
 
         if (

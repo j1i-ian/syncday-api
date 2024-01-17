@@ -63,12 +63,14 @@ describe('OrdersService', () => {
     it('should be found an order by team id', async () => {
 
         const teamIdMock = 1;
+        const productIdMock = 1;
         const orderStub = stubOne(Order);
 
         orderRepositoryStub.findOneOrFail.resolves(orderStub);
 
         const loaded = await firstValueFrom(service.fetch({
-            teamId: teamIdMock
+            teamId: teamIdMock,
+            productId: productIdMock
         }));
 
         expect(loaded).ok;
@@ -107,6 +109,7 @@ describe('OrdersService', () => {
                 datasourceMock as unknown as EntityManager,
                 productMock,
                 unit,
+                { teamId: teamIdMock },
                 teamIdMock
             );
 

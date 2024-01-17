@@ -40,6 +40,7 @@ import { Verification } from '@entity/verifications/verification.interface';
 import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity';
 import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.entity';
 import { User } from '@entity/users/user.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduleBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
@@ -456,7 +457,7 @@ export class TestMockUtil {
         ) as Record<string, AvailabilityBody>;
     }
 
-    getScheduleTimeMock(date?: Date): Pick<Schedule, 'scheduledTime' | 'scheduledBufferTime'> {
+    getScheduleTimeMock(date?: Date): Pick<ScheduledEvent, 'scheduledTime' | 'scheduledBufferTime'> {
 
         const now = new Date(date ?? Date.now());
         const _1hourAfter = new Date();

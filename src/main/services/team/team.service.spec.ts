@@ -3,8 +3,11 @@ import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
 import { firstValueFrom, of } from 'rxjs';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { stubQueryBuilder } from 'typeorm-faker';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Role } from '@interfaces/profiles/role.enum';
 import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface';
+import { Orderer } from '@interfaces/orders/orderer.interface';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { UserService } from '@services/users/user.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
@@ -30,8 +33,11 @@ import { EventGroup } from '@entity/events/event-group.entity';
 import { Event } from '@entity/events/event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
+import { CannotDeleteTeamException } from '@app/exceptions/teams/cannot-delete-team.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { TeamService } from './team.service';
+
+const testMockUtil = new TestMockUtil();
 
 describe('TeamService', () => {
     let service: TeamService;
@@ -135,6 +141,10 @@ describe('TeamService', () => {
                 {
                     provide: getRepositoryToken(EventGroup),
                     useValue: eventGroupRepositoryStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: TestMockUtil.getLoggerStub()
                 }
             ]
         }).compile();
@@ -322,6 +332,7 @@ describe('TeamService', () => {
             const availabilityStub = stubOne(Availability);
             const eventGroupStub = stubOne(EventGroup);
             const eventStub = stubOne(Event);
+            const ordererMock = stubOne(Profile) as Orderer;
 
             teamSettingServiceStub.fetchTeamWorkspaceStatus.resolves(false);
             productsServiceStub.findTeamPlanProduct.resolves(productStub);
@@ -350,11 +361,12 @@ describe('TeamService', () => {
             notificationsStub.sendTeamInvitationForNewUsers.returns(of(true));
 
             const result = await firstValueFrom(service.create(
-                orderMockStub,
+                orderMockStub.unit,
                 paymentMethodMockStub,
                 teamMockStub,
                 teamSettingMock,
                 searchedTeamMemberMocksStubs,
+                ordererMock,
                 ownerUserMockStub.id
             ));
             expect(result).ok;
@@ -440,15 +452,17 @@ describe('TeamService', () => {
             const paymentMethodMockStub = stubOne(PaymentMethod);
             const orderMockStub = stubOne(Order);
             const teamSettingMock = stubOne(TeamSetting);
+            const ordererMock = stubOne(Profile) as Orderer;
 
             teamSettingServiceStub.fetchTeamWorkspaceStatus.resolves(true);
 
             await expect(firstValueFrom(service.create(
-                orderMockStub,
+                orderMockStub.unit,
                 paymentMethodMockStub,
                 teamMockStub,
                 teamSettingMock,
                 searchedTeamMemberMocksStubs,
+                ordererMock,
                 ownerUserMockStub.id
             ))).rejectedWith(AlreadyUsedInWorkspace);
 
@@ -477,6 +491,81 @@ describe('TeamService', () => {
         const updateResult = await firstValueFrom(service.patch(teamIdMock, teamMock));
         expect(updateResult).ok;
         expect(teamRepositoryStub.update.called).true;
+    });
+
+    describe('Team Delete Test', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            profilesServiceStub.search.reset();
+            profilesServiceStub.searchInvitations.reset();
+
+            ordersServiceStub.fetch.reset();
+            teamSettingServiceStub._delete.reset();
+
+            serviceSandbox.restore();
+        });
+
+        it('should be deleted a team', async () => {
+            const authProfileMock = stubOne(Profile) as unknown as AppJwtPayload;
+            const orderMock = stubOne(Order);
+
+            const teamStub = stubOne(Team);
+            const paymentStub = stubOne(Payment);
+
+            const _deleteStub = serviceSandbox.stub(service, '_delete');
+
+            profilesServiceStub.search.resolves([]);
+            profilesServiceStub.searchInvitations.resolves([]);
+
+            ordersServiceStub.fetch.returns(of(orderMock));
+            const getStub = serviceSandbox.stub(service, 'get').returns(of(teamStub));
+
+            teamSettingServiceStub._delete.returns(of(true));
+            _deleteStub.returns(of(true));
+
+            utilServiceStub.getProrations.returns(0);
+            paymentsServiceStub._refund.resolves(paymentStub);
+
+            const deleteSuccess = await firstValueFrom(service.delete(authProfileMock));
+
+            expect(deleteSuccess).true;
+
+            expect(profilesServiceStub.search.called).true;
+            expect(profilesServiceStub.searchInvitations.called).true;
+            expect(ordersServiceStub.fetch.called).true;
+            expect(getStub.called).true;
+
+            expect(teamSettingServiceStub._delete.called).true;
+            expect(_deleteStub.called).true;
+            expect(utilServiceStub.getProrations.called).true;
+            expect(paymentsServiceStub._refund.called).true;
+        });
+
+        it('should be thrown an error for delete request when the team has the profiles', async () => {
+            const authProfileMock = stubOne(Profile) as unknown as AppJwtPayload;
+            const profileStubs = stub(Profile);
+
+            profilesServiceStub.search.resolves(profileStubs);
+            profilesServiceStub.searchInvitations.resolves([]);
+
+            await expect(firstValueFrom(service.delete(authProfileMock))).rejectedWith(CannotDeleteTeamException);
+        });
+
+        it('should be thrown an error for delete request when the team has the invitations', async () => {
+            const authProfileMock = stubOne(Profile) as unknown as AppJwtPayload;
+            const teamMock = stubOne(Team);
+            const invitedNewMemberStubs = testMockUtil.getInvitedNewTeamMemberMocks(teamMock.id);
+
+            profilesServiceStub.search.resolves([]);
+            profilesServiceStub.searchInvitations.resolves(invitedNewMemberStubs);
+
+            await expect(firstValueFrom(service.delete(authProfileMock))).rejectedWith(CannotDeleteTeamException);
+        });
     });
 
     describe('Test __getTeamOptionQuery', () => {

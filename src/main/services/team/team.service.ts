@@ -1,7 +1,9 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { Observable, combineLatest, concat, defer, firstValueFrom, from, map, mergeMap, of, reduce, tap } from 'rxjs';
+import { Observable, combineLatest, concat, firstValueFrom, from, map, merge, mergeMap, of, reduce, tap, toArray } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
@@ -9,6 +11,7 @@ import { Role } from '@interfaces/profiles/role.enum';
 import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { Orderer } from '@interfaces/orders/orderer.interface';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ProductsService } from '@services/products/products.service';
 import { OrdersService } from '@services/orders/orders.service';
@@ -30,6 +33,7 @@ import { Profile } from '@entity/profiles/profile.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
+import { CannotDeleteTeamException } from '@app/exceptions/teams/cannot-delete-team.exception';
 
 @Injectable()
 export class TeamService {
@@ -44,6 +48,7 @@ export class TeamService {
         private readonly paymentsService: PaymentsService,
         private readonly eventsService: EventsService,
         private readonly availabilityService: AvailabilityService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @Inject(forwardRef(() => ProfilesService))
         private readonly profilesService: ProfilesService,
         @Inject(forwardRef(() => UserService))
@@ -259,7 +264,7 @@ export class TeamService {
 
                 const invitedNewUsers = this.utilService.filterInvitedNewUsers(teamMembers, searchedUsers);
 
-                return this.profilesService.saveInvitedNewTeamMember(createdTeam.id, invitedNewUsers)
+                return this.profilesService.saveInvitedNewTeamMember(createdTeam.id, createdTeam.uuid, invitedNewUsers)
                     .pipe(
                         mergeMap(() => this.notificationsService.sendTeamInvitationForNewUsers(invitedNewUsers)),
                         map(() => createdTeam)
@@ -312,23 +317,90 @@ export class TeamService {
         );
     }
 
-    delete(teamId: number): Observable<boolean> {
-        return from(
-            defer(() =>
+    delete(authProfile: AppJwtPayload): Observable<boolean> {
+
+        const { id, teamId, teamUUID, userId, name } = authProfile;
+
+        const validateProfiles$ = from(this.profilesService.search({
+            teamId
+        })).pipe(
+            map((profiles) => profiles.length > 1),
+            tap((hasProfiles) => {
+                if (hasProfiles) {
+                    throw new CannotDeleteTeamException('Team should have not the profiles for delete request');
+                }
+            })
+        );
+        const validateInvitations$ = from(this.profilesService.searchInvitations(teamUUID))
+            .pipe(
+                map((invitations) => invitations.length > 0),
+                tap((hasInvitations) => {
+                    if (hasInvitations) {
+                        throw new CannotDeleteTeamException('Team should have not the invitations for delete request');
+                    }
+                }));
+
+        return merge(
+            validateProfiles$,
+            validateInvitations$
+        ).pipe(
+            toArray(),
+            mergeMap(() => combineLatest([
+                this.ordersService.fetch({ teamId, productId: 1 }),
+                this.get(teamId, userId, {})
+            ])),
+            tap(([relatedOrder, loadedTeam]) => {
+                this.logger.info({
+                    message: 'Team Delete is requested.. Refund with proration',
+                    authProfile,
+                    relatedOrder,
+                    loadedTeam
+                });
+            }),
+            mergeMap(([relatedOrder, loadedTeam]) =>
                 this.datasource.transaction((transactionManager) =>
                     firstValueFrom(
                         concat(
-                            this._delete(transactionManager, teamId),
                             this.teamSettingService._delete(
                                 transactionManager,
                                 teamId
-                            )
+                            ),
+                            this._delete(transactionManager, teamId)
                         ).pipe(
-                            reduce((acc, curr) => acc && curr)
+                            reduce((acc, curr) => acc && curr),
+                            mergeMap(() => of({
+                                unitPrice: Math.floor(relatedOrder.amount / relatedOrder.unit),
+                                isPartialCancelation: relatedOrder.unit > 1,
+                                profileName: name || id,
+                                refundMessage: `Team ${loadedTeam.name} is removed by owner ${name}`
+                            })),
+                            map((refundParams) => {
+                                const { unitPrice  } = refundParams;
+                                const proration = this.utilService.getProrations(unitPrice, loadedTeam.createdAt);
+
+                                return {
+                                    ...refundParams,
+                                    proration
+                                };
+                            }),
+                            mergeMap(({
+                                proration,
+                                profileName,
+                                refundMessage,
+                                isPartialCancelation
+                            }) => from(this.paymentsService._refund(
+                                transactionManager,
+                                relatedOrder,
+                                profileName as string,
+                                refundMessage,
+                                proration,
+                                isPartialCancelation
+                            )))
                         )
                     )
                 )
-            )
+            ),
+            map(() => true)
         );
     }
 
@@ -336,7 +408,7 @@ export class TeamService {
 
         return of(transactionManager.getRepository(Team))
             .pipe(
-                mergeMap(() => this.teamRepository.delete(teamId)),
+                mergeMap((teamRepository) => teamRepository.softDelete(teamId)),
                 map((deleteResult) => !!(deleteResult &&
                     deleteResult.affected &&
                     deleteResult.affected > 0))

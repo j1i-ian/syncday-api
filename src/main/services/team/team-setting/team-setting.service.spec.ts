@@ -3,6 +3,7 @@ import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
+import { UtilService } from '@services/util/util.service';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 import { TestMockUtil } from '@test/test-mock-util';
@@ -13,6 +14,8 @@ describe('TeamSettingService', () => {
 
     let service: TeamSettingService;
     let teamSettingRepositoryStub: sinon.SinonStubbedInstance<Repository<TeamSetting>>;
+
+    let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
 
     const _getRepository = (EntityClass: new () => any) =>
@@ -25,6 +28,8 @@ describe('TeamSettingService', () => {
 
     before(async () => {
         teamSettingRepositoryStub = sinon.createStubInstance<Repository<TeamSetting>>(Repository);
+
+        utilServiceStub = sinon.createStubInstance(UtilService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
 
         module = await Test.createTestingModule({
@@ -37,6 +42,10 @@ describe('TeamSettingService', () => {
                 {
                     provide: getRepositoryToken(TeamSetting),
                     useValue: teamSettingRepositoryStub
+                },
+                {
+                    provide: UtilService,
+                    useValue: utilServiceStub
                 },
                 {
                     provide: SyncdayRedisService,
@@ -265,6 +274,54 @@ describe('TeamSettingService', () => {
             expect(syncdayRedisServiceStub.setWorkspaceStatus.called).true;
 
             expect(result).true;
+        });
+    });
+
+    describe('Team Setting Delete Test', () => {
+
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            utilServiceStub.generateUUID.reset();
+
+            teamSettingRepositoryStub.update.reset();
+            teamSettingRepositoryStub.softDelete.reset();
+
+            teamSettingRepositoryStub.findOneOrFail.reset();
+
+            syncdayRedisServiceStub.deleteWorkspaceStatus.reset();
+
+            serviceSandbox.restore();
+        });
+
+        it('should be deleted the team setting', async () => {
+            const teamSettingStub = stubOne(TeamSetting);
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            utilServiceStub.generateUUID.returns('fakeuuid');
+
+            teamSettingRepositoryStub.update.resolves(updateResultStub);
+            teamSettingRepositoryStub.softDelete.resolves(updateResultStub);
+
+            teamSettingRepositoryStub.findOneOrFail.resolves(teamSettingStub);
+
+            syncdayRedisServiceStub.deleteWorkspaceStatus.resolves(true);
+
+            const deleteResult = await firstValueFrom(service._delete(datasourceMock as EntityManager, teamSettingStub.id));
+
+            expect(deleteResult).true;
+            expect(utilServiceStub.generateUUID.called).true;
+
+            expect(teamSettingRepositoryStub.update.called).true;
+            expect(teamSettingRepositoryStub.softDelete.called).true;
+
+            expect(teamSettingRepositoryStub.findOneOrFail.called).true;
+
+            expect(syncdayRedisServiceStub.deleteWorkspaceStatus.called).true;
         });
     });
 });

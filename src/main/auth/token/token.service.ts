@@ -166,6 +166,7 @@ export class TokenService {
                             mergeMap((_profiles) =>
                                 this.profileService.completeInvitation(
                                     createdTeam.id,
+                                    createdTeam.uuid,
                                     createdUser
                                 ).pipe(map(() => _profiles))
                             )

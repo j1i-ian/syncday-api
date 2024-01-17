@@ -47,6 +47,7 @@ export class ProfilesService {
 
     filterProfiles(
         teamId: number,
+        teamUUID: string,
         newInvitationTeamMembers: InvitedNewTeamMember[]
     ): Observable<InvitedNewTeamMember[]> {
 
@@ -58,7 +59,11 @@ export class ProfilesService {
         const emailOrPhoneBulk = emailBulk.concat(phoneNumberBulk);
 
         // check nosql db
-        const invitedNewTeamMembers$ = defer(() => from(this.profilesRedisRepository.filterAlreadyInvited(teamId, emailOrPhoneBulk)))
+        const invitedNewTeamMembers$ = defer(() => from(this.profilesRedisRepository.filterAlreadyInvited(
+            teamId,
+            teamUUID,
+            emailOrPhoneBulk
+        )))
             .pipe(
                 mergeMap((alreadyInvitedEmailOrPhoneBulk) => from(alreadyInvitedEmailOrPhoneBulk)),
                 map((alreadyInvitedEmailOrPhone) => this.utilService.convertToInvitedNewTeamMember(alreadyInvitedEmailOrPhone))
@@ -156,6 +161,16 @@ export class ProfilesService {
             );
     }
 
+    searchInvitations(teamUUID: string): Observable<InvitedNewTeamMember[]> {
+        return from(this.profilesRedisRepository.getAllTeamInvitations(
+            teamUUID
+        )).pipe(
+            mergeMap((_invitations) => from(_invitations)),
+            map((_invitation) => this.utilService.convertToInvitedNewTeamMember(_invitation)),
+            toArray()
+        );
+    }
+
     fetch(profileSearchOption: Partial<ProfileSearchOption>): Observable<Profile> {
 
         const {
@@ -228,6 +243,7 @@ export class ProfilesService {
 
     createBulk(
         teamId: number,
+        teamUUID: string,
         newInvitedNewMembers: Array<Pick<Partial<User>, 'email' | 'phone'>>,
         orderer: Orderer,
         newPaymentMethod?: PaymentMethod | undefined
@@ -353,7 +369,7 @@ export class ProfilesService {
                 const invitedNewUsers = this.utilService.filterInvitedNewUsers(newInvitedNewMembers, searchedUsers);
 
                 return invitedNewUsers.length > 0 ?
-                    this.saveInvitedNewTeamMember(teamId, invitedNewUsers)
+                    this.saveInvitedNewTeamMember(teamId, teamUUID, invitedNewUsers)
                         .pipe(
                             mergeMap(() => this.notificationsService.sendTeamInvitationForNewUsers(invitedNewUsers)),
                             map(() => true)
@@ -368,15 +384,23 @@ export class ProfilesService {
 
         const emailOrPhone = user.email || user.phone;
 
-        return this.profilesRedisRepository.getInvitedTeamIds(emailOrPhone).pipe(
-            mergeMap((allTeamIds) => from(allTeamIds)),
-            map((_teamId) => (this.profileRepository.create({
-                teamId: _teamId,
-                userId: user.id
-            }))),
-            toArray(),
-            mergeMap((_newProfiles) => from(this.profileRepository.save(_newProfiles)))
-        );
+        return from(this.profilesRedisRepository.getTeamInvitations(emailOrPhone))
+            .pipe(
+                mergeMap((teamEntities) => from(teamEntities)),
+                map((_team) => {
+
+                    const createdProfile = this.profileRepository.create({
+                        teamId: _team.id,
+                        userId: user.id
+                    });
+
+                    createdProfile.teamUUID = _team.uuid;
+
+                    return createdProfile;
+                }),
+                toArray(),
+                mergeMap((_newProfiles) => from(this.profileRepository.save(_newProfiles)))
+            );
     }
 
     async _create(
@@ -400,30 +424,16 @@ export class ProfilesService {
         return savedProfile;
     }
 
-    checkAlreadyInvited(
-        invitedNewTeamMember: InvitedNewTeamMember,
-        teamId: number
-    ): Observable<boolean> {
-        const invitedNewUserEmailOrPhone = (invitedNewTeamMember.email || invitedNewTeamMember.phone) as string;
-
-        return this.profilesRedisRepository.getInvitedTeamIds(invitedNewUserEmailOrPhone)
-            .pipe(
-                map((invitedTeamIds) => {
-                    const alreadyInvited = invitedTeamIds.includes(teamId);
-
-                    return alreadyInvited;
-                })
-            );
-    }
-
     saveInvitedNewTeamMember(
-        createdTeamId: number,
+        teamId: number,
+        teamUUID: string,
         invitedNewMembers: InvitedNewTeamMember[]
     ): Observable<boolean> {
-        return this.profilesRedisRepository.setInvitedNewTeamMembers(
-            createdTeamId,
+        return from(defer(() => this.profilesRedisRepository.setTeamInvitations(
+            teamId,
+            teamUUID,
             invitedNewMembers
-        );
+        )));
     }
 
     patch(profileId: number, partialProfile: Partial<Profile>): Observable<boolean> {
@@ -530,11 +540,12 @@ export class ProfilesService {
 
     completeInvitation(
         teamId: number,
+        teamUUID: string,
         user: Pick<User, 'id' | 'email' | 'phone'>
     ): Observable<boolean> {
         return combineLatest([
-            this.profilesRedisRepository.deleteTeamInvitations(teamId, user.email),
-            this.profilesRedisRepository.deleteTeamInvitations(teamId, user.phone)
+            this.profilesRedisRepository.deleteTeamInvitations(teamId, teamUUID, user.email),
+            this.profilesRedisRepository.deleteTeamInvitations(teamId, teamUUID, user.phone)
         ]).pipe(map(() => true));
     }
 

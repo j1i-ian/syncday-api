@@ -39,11 +39,13 @@ export class ProfilesController {
     @Roles(Role.OWNER, Role.MANAGER)
     filter(
         @AuthProfile('teamId') teamId: number,
+        @AuthProfile('teamUUID') teamUUID: string,
         @Body() invitedNewTeamMembers: InvitedNewTeamMember[]
     ): Observable<InvitedNewTeamMember[]> {
 
         return this.profileService.filterProfiles(
             teamId,
+            teamUUID,
             invitedNewTeamMembers
         );
     }
@@ -99,7 +101,7 @@ export class ProfilesController {
         @Body() createProfileBulkRequestDto: CreateProfileBulkRequestDto
     ): Observable<boolean> {
 
-        const { teamId } = authProfile;
+        const { teamId, teamUUID } = authProfile;
 
         const orderer = {
             name: authProfile.name,
@@ -116,12 +118,14 @@ export class ProfilesController {
         this.logger.info({
             message: 'Invitation is ordered',
             teamId,
+            teamUUID,
             order,
             totalCount: createProfileBulkRequestDto.invitedMembers.length
         });
 
         return this.profileService.createBulk(
             teamId,
+            teamUUID,
             invitedMembers,
             orderer,
             newPaymentMethod as PaymentMethod

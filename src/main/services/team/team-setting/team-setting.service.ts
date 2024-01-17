@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, from, iif, map, mergeMap, of, throwError } from 'rxjs';
+import { Observable, concat, from, iif, map, mergeMap, of, throwError } from 'rxjs';
 import { EntityManager, Repository } from 'typeorm';
 import { TeamSettingSearchOption } from '@interfaces/teams/team-settings/team-setting-search-option.interface';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
+import { UtilService } from '@services/util/util.service';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 
@@ -11,6 +12,7 @@ import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-wo
 export class TeamSettingService {
     constructor(
         private readonly syncdayRedisService: SyncdayRedisService,
+        private readonly utilsService: UtilService,
         @InjectRepository(TeamSetting)
         private readonly teamSettingRepository: Repository<TeamSetting>
     ) {}
@@ -146,24 +148,32 @@ export class TeamSettingService {
         teamSettingId: number
     ): Observable<boolean> {
 
+        const randomUUID = this.utilsService.generateUUID();
+
         return of(transactionManager.getRepository(TeamSetting))
             .pipe(
                 mergeMap((teamSettingRepository) =>
-                    from(teamSettingRepository.delete(teamSettingId))
+                    concat(
+                        from(teamSettingRepository.update(teamSettingId, { workspace: randomUUID })),
+                        from(teamSettingRepository.softDelete(teamSettingId))
+                    )
                 ),
                 map((deleteResult) =>
                     !!(deleteResult
                         && deleteResult.affected
                         && deleteResult.affected > 0)
                 ),
-                map(
+                mergeMap(
                     (deleteSuccess) => iif(
                         () => deleteSuccess,
                         of(true),
                         throwError(() => new NotFoundException('Team setting does not exist'))
                     )
                 ),
-                mergeMap(() => this.teamSettingRepository.findOneByOrFail({ id: teamSettingId })),
+                mergeMap(() => this.teamSettingRepository.findOneOrFail({
+                    where: { id: teamSettingId },
+                    withDeleted: true
+                })),
                 mergeMap((teamSetting) =>
                     from(this.syncdayRedisService.deleteWorkspaceStatus(
                         teamSetting.workspace

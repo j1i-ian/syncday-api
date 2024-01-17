@@ -242,7 +242,8 @@ describe('ProfilesService', () => {
 
             it(description, async () => {
 
-                const teamIdMock = stubOne(Team).id;
+                const teamMock = stubOne(Team);
+                const teamIdMock = teamMock.id;
 
                 const newInvitationTeamMemberMocks = getNewInvitationTeamMemberMocks(teamIdMock);
                 const invitedNewTeamMemberMocks = getInvitedNewTeamMemberMocks(teamIdMock);
@@ -259,6 +260,7 @@ describe('ProfilesService', () => {
                 const alreadySentInvitations = await firstValueFrom(
                     service.filterProfiles(
                         teamIdMock,
+                        teamMock.uuid,
                         newInvitationTeamMemberMocks
                     )
                 );
@@ -281,17 +283,18 @@ describe('ProfilesService', () => {
         // Test Empty Array or one bulk type profiles
         it('should be returned empty array for empty array body', async () => {
 
-            const teamIdMock = 1;
+            const teamMock = stubOne(Team);
             profilesRedisRepositoryStub.filterAlreadyInvited.resolves([]);
 
-            const invitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
+            const invitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamMock.id);
             utilServiceStub.convertToInvitedNewTeamMember.returns(invitedNewTeamMemberMocks[0]);
 
             profileQueryBuilderStub.getMany.resolves([]);
 
             const alreadySentInvitations = await firstValueFrom(
                 service.filterProfiles(
-                    teamIdMock,
+                    teamMock.id,
+                    teamMock.uuid,
                     []
                 )
             );
@@ -394,6 +397,29 @@ describe('ProfilesService', () => {
                 expect(profileSearchQueryBuilderStub.getMany.called).equals(getManyCall);
             });
 
+        });
+    });
+
+    describe('Invitation Search Test', () => {
+        it('should be searched invitations', async () => {
+
+            const teamMock = stubOne(Team);
+            const teamUUIDMock = teamMock.uuid;
+
+            const invitedNewTeamMemberMockStubs = testMockUtil.getInvitedNewTeamMemberMocks(0);
+
+            const emailOrPhoneBulkStubs = invitedNewTeamMemberMockStubs.map((_invitedNewTeamMemberMock) => (_invitedNewTeamMemberMock.email || _invitedNewTeamMemberMock.phone) as string);
+
+            profilesRedisRepositoryStub.getAllTeamInvitations.resolves(emailOrPhoneBulkStubs);
+            utilServiceStub.convertToInvitedNewTeamMember.returns(invitedNewTeamMemberMockStubs[0]);
+
+            const invitedNewTeamMembers = await firstValueFrom(service.searchInvitations(teamUUIDMock));
+
+            expect(invitedNewTeamMembers).ok;
+            expect(invitedNewTeamMembers.length).equals(invitedNewTeamMemberMockStubs.length);
+
+            expect(profilesRedisRepositoryStub.getAllTeamInvitations.called).true;
+            expect(utilServiceStub.convertToInvitedNewTeamMember.called).true;
         });
     });
 
@@ -510,7 +536,8 @@ describe('ProfilesService', () => {
 
                 const createNewPaymentMethod = !!newPaymentMethodMock;
 
-                const teamIdMock = stubOne(Team).id;
+                const teamMock = stubOne(Team);
+                const teamIdMock = teamMock.id;
                 const profileStub = stubOne(Profile);
                 const userStubs = getSearchedUserStubs();
                 const invitedNewUsersStubs = getFilterInvitedNewUsersStubs(teamIdMock);
@@ -555,6 +582,7 @@ describe('ProfilesService', () => {
                 const createdProfile = await firstValueFrom(
                     service.createBulk(
                         teamIdMock,
+                        teamMock.uuid,
                         newInvitedNewTeamMemberMocks,
                         ordererMock as Orderer,
                         newPaymentMethodMock
@@ -591,7 +619,7 @@ describe('ProfilesService', () => {
             profileRepositoryStub.create.reset();
             profileRepositoryStub.save.reset();
 
-            profilesRedisRepositoryStub.getInvitedTeamIds.reset();
+            profilesRedisRepositoryStub.getTeamInvitations.reset();
         });
 
         it('should be created a profile with transaction', async () => {
@@ -633,9 +661,9 @@ describe('ProfilesService', () => {
 
         it('should be created invited profiles', async () => {
             const userMock = stubOne(User);
-            const teamIdMocks = stub(Team).map((_team) => _team.id);
+            const teamStubs = stub(Team);
 
-            profilesRedisRepositoryStub.getInvitedTeamIds.returns(of(teamIdMocks));
+            profilesRedisRepositoryStub.getTeamInvitations.resolves(teamStubs);
 
             profileRepositoryStub.create.returnsArg(0);
             profileRepositoryStub.save.resolvesArg(0);
@@ -649,63 +677,23 @@ describe('ProfilesService', () => {
 
             expect(profileRepositoryStub.create.called).true;
             expect(profileRepositoryStub.save.called).true;
-            expect(profilesRedisRepositoryStub.getInvitedTeamIds.called).true;
-        });
-    });
-
-    describe('Test check duplicated invitation', () => {
-
-        afterEach(() => {
-            profilesRedisRepositoryStub.getInvitedTeamIds.reset();
-        });
-
-        it('should be invited user', async () => {
-            const invitedTeamIdsStub = stub(Team).map((team) => team.id);
-            const teamIdMock = invitedTeamIdsStub[0];
-
-            const userMock = stubOne(User);
-
-            profilesRedisRepositoryStub.getInvitedTeamIds.returns(of(invitedTeamIdsStub));
-
-            const result = await firstValueFrom(service.checkAlreadyInvited(
-                userMock,
-                teamIdMock
-            ));
-
-            expect(result).true;
-            expect(profilesRedisRepositoryStub.getInvitedTeamIds.called).true;
-        });
-
-        it('should be not invited user if he has been invited alerady', async () => {
-            const invitedTeamIdsStub = stub(Team).map((team) => team.id);
-            const teamIdMock = invitedTeamIdsStub.pop() as number;
-
-            const userMock = stubOne(User);
-
-            profilesRedisRepositoryStub.getInvitedTeamIds.returns(of(invitedTeamIdsStub));
-
-            const result = await firstValueFrom(service.checkAlreadyInvited(
-                userMock,
-                teamIdMock
-            ));
-
-            expect(result).false;
-            expect(profilesRedisRepositoryStub.getInvitedTeamIds.called).true;
+            expect(profilesRedisRepositoryStub.getTeamInvitations.called).true;
         });
     });
 
     it('coverage fill: saveInvitedNewTeamMember', async () => {
+        const teamMock = stubOne(Team);
         const teamIdMock = stubOne(Team).id;
         const invitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
 
-        profilesRedisRepositoryStub.setInvitedNewTeamMembers.returns(of(true));
+        profilesRedisRepositoryStub.setTeamInvitations.resolves(true);
 
-        const saveSuccess = await firstValueFrom(service.saveInvitedNewTeamMember(teamIdMock, invitedNewTeamMemberMocks));
+        const saveSuccess = await firstValueFrom(service.saveInvitedNewTeamMember(teamIdMock, teamMock.uuid, invitedNewTeamMemberMocks));
 
         expect(saveSuccess).true;
-        expect(profilesRedisRepositoryStub.setInvitedNewTeamMembers.called).true;
+        expect(profilesRedisRepositoryStub.setTeamInvitations.called).true;
 
-        profilesRedisRepositoryStub.setInvitedNewTeamMembers.reset();
+        profilesRedisRepositoryStub.setTeamInvitations.reset();
     });
 
     describe('Test Profile Patching', () => {
@@ -847,12 +835,12 @@ describe('ProfilesService', () => {
     });
 
     it('should be completed a invitation for new user', async () => {
-        profilesRedisRepositoryStub.deleteTeamInvitations.returns(of(true));
+        profilesRedisRepositoryStub.deleteTeamInvitations.resolves(true);
 
-        const teamIdMock = stubOne(Team).id;
+        const teamMock = stubOne(Team);
         const userMock = stubOne(User);
 
-        await firstValueFrom(service.completeInvitation(teamIdMock, userMock));
+        await firstValueFrom(service.completeInvitation(teamMock.id, teamMock.uuid, userMock));
 
         expect(profilesRedisRepositoryStub.deleteTeamInvitations.calledTwice).true;
 
@@ -1084,12 +1072,12 @@ describe('ProfilesService', () => {
     });
 
     it('should be completed a invitation for new user', async () => {
-        profilesRedisRepositoryStub.deleteTeamInvitations.returns(of(true));
+        profilesRedisRepositoryStub.deleteTeamInvitations.resolves(true);
 
-        const teamIdMock = stubOne(Team).id;
+        const teamMock = stubOne(Team);
         const userMock = stubOne(User);
 
-        await firstValueFrom(service.completeInvitation(teamIdMock, userMock));
+        await firstValueFrom(service.completeInvitation(teamMock.id, teamMock.uuid, userMock));
 
         expect(profilesRedisRepositoryStub.deleteTeamInvitations.calledTwice).true;
 

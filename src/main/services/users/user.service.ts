@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable, InternalServerErrorException, 
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { Observable, firstValueFrom, from, map, mergeMap, of } from 'rxjs';
+import { Observable, firstValueFrom, from, map, mergeMap, of, toArray } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
@@ -326,9 +326,11 @@ export class UserService {
 
         const createdProfileByInvitations = await firstValueFrom(
             this.profilesService.createInvitedProfiles(createdUser).pipe(
-                mergeMap((_profiles) => this.profilesService.completeInvitation(createdTeam.id, createdUser)
-                    .pipe(map(() => _profiles))
-                )
+                mergeMap((_profiles) => from(_profiles)),
+                mergeMap((_createdProfile) => this.profilesService.completeInvitation(_createdProfile.teamId, _createdProfile.teamUUID, createdUser)
+                    .pipe(map(() => _createdProfile))
+                ),
+                toArray()
             )
         );
 
@@ -389,9 +391,11 @@ export class UserService {
 
         const createdProfileByInvitations = await firstValueFrom(
             this.profilesService.createInvitedProfiles(createdUser).pipe(
-                mergeMap((_profiles) => this.profilesService.completeInvitation(createdTeam.id, createdUser)
-                    .pipe(map(() => _profiles))
-                )
+                mergeMap((_profiles) => from(_profiles)),
+                mergeMap((_createdProfile) => this.profilesService.completeInvitation(_createdProfile.teamId, _createdProfile.teamUUID, createdUser)
+                    .pipe(map(() => _createdProfile))
+                ),
+                toArray()
             )
         );
 

@@ -112,8 +112,8 @@ export class TeamController {
     @HttpCode(HttpStatus.NO_CONTENT)
     @Roles(Role.OWNER)
     remove(
-        @AuthProfile('teamId') authTeamId: number
+        @AuthProfile() authProfile: AppJwtPayload
     ): Observable<boolean> {
-        return this.teamService.delete(authTeamId);
+        return this.teamService.delete(authProfile);
     }
 }
