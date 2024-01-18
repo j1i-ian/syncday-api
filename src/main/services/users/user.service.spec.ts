@@ -580,6 +580,7 @@ describe('Test User Service', () => {
             const expectedWorkspace = 'test';
 
             const userStub = stubOne(User, {
+                email: 'fakeUUID',
                 phone: phoneNumberMock,
                 hashedPassword: plainPassword
             });
@@ -655,7 +656,7 @@ describe('Test User Service', () => {
 
             expect(createdUser).ok;
             expect(createdProfile).ok;
-            expect(createdUser.email).not.ok;
+            expect(createdUser.email).not.contains('@');
             expect(createdUser.phone).ok;
             expect(createdUser.phone).equals(phoneNumberMock);
             expect(createdTeam.teamSetting.workspace).contains(expectedWorkspace);
@@ -849,14 +850,14 @@ describe('Test User Service', () => {
                     createdProfile,
                     createdTeam,
                     createdUser
-                } = await service._createUserWithVerificationByPhoneNumber(
+                } = await firstValueFrom(service._createUserWithVerificationByPhoneNumber(
                     phoneNumberMock,
                     plainPasswordMock,
                     nameMock,
                     uuidMock,
                     timezoneMock,
                     language
-                );
+                ));
 
                 expect(createdProfile).ok;
                 expect(createdTeam).ok;
@@ -876,14 +877,14 @@ describe('Test User Service', () => {
 
             syncdayRedisServiceStub.getPhoneVerificationStatus.resolves(false);
 
-            await expect(service._createUserWithVerificationByPhoneNumber(
+            await expect(firstValueFrom(service._createUserWithVerificationByPhoneNumber(
                 phoneNumberMock,
                 plainPasswordMock,
                 nameMock,
                 uuidMock,
                 timezoneMock,
                 language
-            )).rejectedWith(PhoneVertificationFailException);
+            ))).rejectedWith(PhoneVertificationFailException);
         });
     });
 

@@ -430,12 +430,14 @@ describe('UtilService', () => {
         it('should be filtered new users', () => {
 
             const invitedMemberMocks: InvitedNewTeamMember[] = [
-                { email: 'alan@sync.day' },
-                { phone: '+821012341234' },
-                { email: 'alan2@sync.day' },
-                { phone: '+821012341235' }
+                { email: 'alan@sync.day', phone: 'fakeuuid' },
+                { email: 'fakeuuid', phone: '+821012341234' },
+                { email: 'alan2@sync.day', phone: 'fakeuuid' },
+                { email: 'fakeuuid', phone: '+821012341235' }
             ];
-            const searchedUserMocks = stub(User, 2);
+            const searchedUserMocks = stub(User, 2, {
+                email: 'fakeuuid', phone: 'fakeuuid'
+            });
             searchedUserMocks[0].email = invitedMemberMocks[0].email as string;
             searchedUserMocks[1].phone = invitedMemberMocks[1].phone as string;
 

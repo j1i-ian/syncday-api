@@ -62,8 +62,8 @@ export class VerificationService {
             isSignUpVerification
         );
 
-        // verification code is valid while 10 minutes
-        const expire = 10 * 60;
+        // verification code is valid while 5 minutes
+        const expire = 5 * 60;
         const _result = await this.cluster.setex(
             verificationRedisKey,
             expire,

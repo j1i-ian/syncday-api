@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable, InternalServerErrorException, 
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { Observable, concatMap, defer, firstValueFrom, from, map, mergeMap, of, toArray } from 'rxjs';
+import { Observable, concatMap, defer, firstValueFrom, from, map, mergeMap, of, tap, toArray } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
@@ -236,7 +236,7 @@ export class UserService {
         let createUser$: Observable<CreatedUserTeamProfile>;
 
         if (isCreateUserByPhone) {
-            createUser$ = from(
+            createUser$ =
                 this._createUserWithVerificationByPhoneNumber(
                     emailOrIntegrationVendorOrPhone,
                     verificationCodeOrOAuth2UserProfileOrPlainPassword as string,
@@ -244,8 +244,7 @@ export class UserService {
                     languageOrUUID as string,
                     timezone as string,
                     language
-                )
-            );
+                );
         } else if (isOAuth2SignUp === false) {
             createUser$ = from(
                 this._createUserWithVerificationByEmail(
@@ -366,33 +365,31 @@ export class UserService {
         };
     }
 
-    async _createUserWithVerificationByPhoneNumber(
+    _createUserWithVerificationByPhoneNumber(
         phone: string,
         plainPassword: string,
         name: string,
         uuid: string,
         timezone: string,
         language: Language
-    ): Promise<CreatedUserTeamProfile> {
+    ): Observable<CreatedUserTeamProfile> {
 
-        const isVerifiedPhoneNumber = await this.syncdayRedisService.getPhoneVerificationStatus(phone, uuid);
-
-        if (!isVerifiedPhoneNumber) {
-            throw new PhoneVertificationFailException();
-        }
+        const isVerifiedPhoneNumber$ = from(defer(() => this.syncdayRedisService.getPhoneVerificationStatus(phone, uuid))).pipe(
+            tap((isVerifiedPhoneNumber) => {
+                if (!isVerifiedPhoneNumber) {
+                    throw new PhoneVertificationFailException();
+                }
+            })
+        );
 
         const newUser = this.userRepository.create({
             uuid,
             phone
         });
 
-        const {
-            createdProfile,
-            createdUser,
-            createdTeam
-        } = await this.datasource.transaction((transactionManager) =>
-            firstValueFrom(
-                from(defer(() =>
+        return isVerifiedPhoneNumber$.pipe(
+            mergeMap(() => from(defer(() => this.datasource.transaction((transactionManager) =>
+                firstValueFrom(from(
                     this._createUser(
                         transactionManager,
                         newUser,
@@ -401,10 +398,11 @@ export class UserService {
                         timezone,
                         {
                             plainPassword,
+                            alreadySignedUpUserCheckByPhone: true,
                             uuidWorkspace: true
                         }
                     )
-                )).pipe(
+                ).pipe(
                     concatMap((createUserTeamProfile) =>
                         this.profilesService._createInvitedProfiles(transactionManager, createUserTeamProfile.createdUser)
                             .pipe(
@@ -423,14 +421,9 @@ export class UserService {
                             )
                     )
                 )
-            )
-        );
-
-        return {
-            createdUser,
-            createdProfile,
-            createdTeam
-        };
+                )
+            ))
+            )));
     }
 
     async _createUser(
