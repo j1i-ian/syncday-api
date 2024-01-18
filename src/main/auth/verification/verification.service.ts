@@ -181,7 +181,9 @@ export class VerificationService {
 
         const isValid = !!email || !!phoneNumber;
 
-        return isValid && isUUIDValid;
+        return email
+            ? isValid
+            : isValid && isUUIDValid;
     }
 
     async isValidPhoneVerification(

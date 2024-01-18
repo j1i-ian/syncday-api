@@ -342,7 +342,7 @@ describe('VerificationService', () => {
                 createVerificationDtoMock: {
                     email: TestMockUtil.faker.internet.email()
                 } as CreateVerificationDto,
-                expectedResult: false
+                expectedResult: true
             },
             {
                 description:'should be not passed validation of createVerificationDto',
