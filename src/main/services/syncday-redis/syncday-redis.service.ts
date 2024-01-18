@@ -165,6 +165,13 @@ export class SyncdayRedisService {
         ]);
     }
 
+    getTeamInvitationOrderKey(teamUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.TEAM_INVITATIONS, [
+            teamUUID,
+            'orders'
+        ]);
+    }
+
     getInvitedNewMemberKey(memberKey: string): RedisKey {
         return this.getRedisKey(RedisStores.INVITED_NEW_MEMBER, [
             memberKey

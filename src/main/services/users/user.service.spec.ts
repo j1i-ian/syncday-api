@@ -743,7 +743,7 @@ describe('Test User Service', () => {
                 createdTeam: teamStub
             });
 
-            profilesServiceStub.createInvitedProfiles.returns(of([profileStub]));
+            profilesServiceStub._createInvitedProfiles.returns(of([profileStub]));
             profilesServiceStub.completeInvitation.returns(of(true));
             notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(true);
 
@@ -759,7 +759,7 @@ describe('Test User Service', () => {
             expect(createdUser).ok;
             expect(createdUser.id).equals(userStub.id);
 
-            expect(profilesServiceStub.createInvitedProfiles.called).ok;
+            expect(profilesServiceStub._createInvitedProfiles.called).ok;
             expect(profilesServiceStub.completeInvitation.called).ok;
             expect(notificationsServiceStub.sendWelcomeEmailForNewUser.called).ok;
         });
@@ -798,7 +798,9 @@ describe('Test User Service', () => {
 
             profileStub = stubOne(Profile);
             teamStub = stubOne(Team);
-            userStub = stubOne(User);
+            userStub = stubOne(User, {
+                profiles: []
+            });
 
             _createUserStub = serviceSandbox.stub(service, '_createUser').resolves({
                 createdProfile: profileStub,
@@ -807,7 +809,7 @@ describe('Test User Service', () => {
             });
 
             invitiedProfileStub = stubOne(Profile);
-            profilesServiceStub.createInvitedProfiles.returns(of([invitiedProfileStub]));
+            profilesServiceStub._createInvitedProfiles.returns(of([invitiedProfileStub]));
             profilesServiceStub.completeInvitation.returns(of(true));
         });
 
@@ -817,7 +819,7 @@ describe('Test User Service', () => {
             userRepositoryStub.create.reset();
             _createUserStub.reset();
 
-            profilesServiceStub.createInvitedProfiles.reset();
+            profilesServiceStub._createInvitedProfiles.reset();
             profilesServiceStub.completeInvitation.reset();
 
             serviceSandbox.reset();
@@ -826,7 +828,7 @@ describe('Test User Service', () => {
 
         [
             {
-                description: 'should be created a user with phone number by _createUserWithVerificationByPhoneNumber when user is not exist'
+                description: 'should be created an user with phone number by _createUserWithVerificationByPhoneNumber when user is not exist'
             }
         ].forEach(function({
             description

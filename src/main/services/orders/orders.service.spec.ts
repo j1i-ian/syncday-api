@@ -121,6 +121,30 @@ describe('OrdersService', () => {
         });
     });
 
+    describe('Order Update Test', () => {
+
+        afterEach(() => {
+            orderRepositoryStub.update.reset();
+        });
+
+        it('should be updated an order', async () => {
+            const orderMockStub = stubOne(Order);
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+
+            orderRepositoryStub.update.resolves(updateResultStub);
+
+            await firstValueFrom(
+                service._update(
+                    datasourceMock as unknown as EntityManager,
+                    orderMockStub.id,
+                    orderMockStub
+                )
+            );
+
+            expect(orderRepositoryStub.update.called).true;
+        });
+    });
+
     describe('Test order updating status', () => {
 
         it('should be updated order status with transaction', async () => {

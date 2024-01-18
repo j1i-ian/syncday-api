@@ -43,18 +43,36 @@ export class ProfilesRedisRepository {
         return alreadyInvitedMembers ?? [];
     }
 
-    async getTeamInvitations(emailOrPhone: string): Promise<Array<Pick<Team, 'id' | 'uuid'>>> {
+    async getTeamInvitations(emailOrPhone: string): Promise<Array<Pick<Team, 'id' | 'uuid'> & { orderId: number }>> {
 
         const invitedNewMemberKey = this.syncdayRedisService.getInvitedNewMemberKey(emailOrPhone);
 
+        const orderPipeline = this.cluster.pipeline();
         const teamKeyStringArray = await this.cluster.smembers(invitedNewMemberKey) as TeamKeyString[];
 
-        return teamKeyStringArray.map((_teamIdAndUUIDString) => {
+        const teams = teamKeyStringArray.map((_teamIdAndUUIDString) => {
             const [ teamId, teamUUID ] = _teamIdAndUUIDString.split(':');
 
             return {
                 id: +teamId,
                 uuid: teamUUID
+            };
+        });
+
+        teams.forEach((team) => {
+            const teamInvitationOrderKey = this.syncdayRedisService.getTeamInvitationOrderKey(team.uuid);
+
+            orderPipeline.hget(teamInvitationOrderKey, emailOrPhone);
+        });
+        const ordersResult = await orderPipeline.exec();
+
+        return teams.map(({ id, uuid }, index) => {
+            const orderId = ordersResult && ordersResult[index][1] as string;
+
+            return {
+                id,
+                uuid,
+                orderId: orderId ? +orderId : -1
             };
         });
     }
@@ -71,7 +89,8 @@ export class ProfilesRedisRepository {
     async setTeamInvitations(
         teamId: number,
         teamUUID: string,
-        invitedNewMembers: InvitedNewTeamMember[]
+        invitedNewMembers: InvitedNewTeamMember[],
+        orderId: number
     ): Promise<boolean> {
 
         const setAddPipeline = this.cluster.pipeline();
@@ -82,11 +101,13 @@ export class ProfilesRedisRepository {
 
             const _invitedNewMemberRedisKey = this.syncdayRedisService.getInvitedNewMemberKey(_invitedNewMemberKey);
             const _teamInvitationKey = this.syncdayRedisService.getTeamInvitationsKey(teamUUID);
+            const _teamInvitationOrderKey = this.syncdayRedisService.getTeamInvitationOrderKey(teamUUID);
 
             const teamKeyString = `${teamId}:${teamUUID}` as TeamKeyString;
 
             setAddPipeline.sadd(_invitedNewMemberRedisKey, teamKeyString);
             setAddPipeline.sadd(_teamInvitationKey, _invitedNewMemberKey);
+            setAddPipeline.hset(_teamInvitationOrderKey, _invitedNewMemberKey, String(orderId));
         });
 
         const pipelineResults = await setAddPipeline.exec();
@@ -113,6 +134,7 @@ export class ProfilesRedisRepository {
     ): Promise<boolean> {
         const memberKey = this.syncdayRedisService.getInvitedNewMemberKey(emailOrPhone);
         const teamInvitationsKey = this.syncdayRedisService.getTeamInvitationsKey(teamUUID);
+        const teamInvitationOrderKey = this.syncdayRedisService.getTeamInvitationOrderKey(teamUUID);
 
         const deletePipeline = this.cluster.pipeline();
 
@@ -120,6 +142,7 @@ export class ProfilesRedisRepository {
 
         deletePipeline.srem(memberKey, teamKeyString);
         deletePipeline.srem(teamInvitationsKey, emailOrPhone);
+        deletePipeline.hdel(teamInvitationOrderKey, memberKey);
 
         const pipelineResults = await deletePipeline.exec();
 

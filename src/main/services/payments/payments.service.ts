@@ -7,6 +7,7 @@ import { PaymentStatus } from '@interfaces/payments/payment-status.enum';
 import { PaymentRedisRepository } from '@services/payments/payment.redis-repository';
 import { BootpayService } from '@services/payments/bootpay/bootpay.service';
 import { BootpayConfiguration } from '@services/payments/bootpay/bootpay-configuration.interface';
+import { BootpayPGPaymentStatus } from '@services/payments/bootpay-pg-payment-status.enum';
 import { Payment } from '@entity/payments/payment.entity';
 import { Order } from '@entity/orders/order.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
@@ -90,27 +91,30 @@ export class PaymentsService {
             status: PaymentStatus.PARTIAL_REFUNDED
         });
 
+        const savedPayment = await _paymentRepository.save(createdPayment);
+
         const pgPaymentResult = await this.paymentRedisRepository.getPGPaymentResult(relatedOrder.uuid);
 
-        const bootpayService = new BootpayService();
+        if (pgPaymentResult.status !== BootpayPGPaymentStatus.CANCELLED) {
 
-        await bootpayService.init(this.bootpayConfiguration);
+            const bootpayService = new BootpayService();
 
-        const result = await bootpayService.refund(
-            relatedOrder.uuid,
-            pgPaymentResult.receipt_id,
-            canceler,
-            message,
-            proratedRefundUnitPrice,
-            isPartialCancelation
-        );
+            await bootpayService.init(this.bootpayConfiguration);
 
-        await this.paymentRedisRepository.setPGPaymentResult(
-            relatedOrder.uuid,
-            result
-        );
+            const result = await bootpayService.refund(
+                relatedOrder.uuid,
+                pgPaymentResult.receipt_id,
+                canceler,
+                message,
+                proratedRefundUnitPrice,
+                isPartialCancelation
+            );
 
-        const savedPayment = await _paymentRepository.save(createdPayment);
+            await this.paymentRedisRepository.setPGPaymentResult(
+                relatedOrder.uuid,
+                result
+            );
+        }
 
         return savedPayment;
     }

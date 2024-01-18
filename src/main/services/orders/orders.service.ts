@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { EntityManager, FindOptionsWhere, Raw, Repository } from 'typeorm';
-import { Observable, defer, from } from 'rxjs';
+import { EntityManager, FindOptionsWhere, In, IsNull, Raw, Repository } from 'typeorm';
+import { Observable, defer, from, map, mergeMap, of } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { Orderer } from '@interfaces/orders/orderer.interface';
@@ -17,19 +17,36 @@ export class OrdersService {
     ) {}
 
     search({
+        ids,
         teamId,
         page = 0,
         take = 50
-    }: {
+    }: Partial<{
+        ids: number[];
         teamId: number;
         page: number;
         take: number;
-    }): Observable<Order[]> {
+    }>): Observable<Order[]> {
+
+        let findOptionsWhere: FindOptionsWhere<Order> = {};
+
+        if (ids) {
+            findOptionsWhere = {
+                id: In(ids)
+            };
+        }
+
+        if (teamId) {
+            findOptionsWhere = {
+                ...findOptionsWhere,
+                teamId
+            };
+        }
 
         const skip = page * take;
 
         return from(this.orderRepository.find({
-            where: { teamId },
+            where: findOptionsWhere,
             order: {
                 createdAt: 'DESC'
             },
@@ -39,18 +56,24 @@ export class OrdersService {
     }
 
     fetch(searchOptions: {
+        id?: number;
         teamId?: number;
         productId?: number;
         orderOption?: OrderOption;
     }): Observable<Order> {
 
         const {
+            id,
             teamId,
             productId,
             orderOption
         } = searchOptions;
 
         let findOptionsWhere: FindOptionsWhere<Order> = {};
+
+        if(id) {
+            findOptionsWhere.id = id;
+        }
 
         if(teamId) {
             findOptionsWhere.teamId = searchOptions.teamId;
@@ -60,20 +83,25 @@ export class OrdersService {
             findOptionsWhere.productId = searchOptions.productId;
         }
 
-        if (
-            orderOption
-            && orderOption.profileIds
-            && orderOption.profileIds.length > 0
-        ) {
+        if (orderOption) {
+
+            const hasProfileIds = orderOption.profileIds && orderOption.profileIds.length > 0;
+            const profileIdsOptionRawOperator = hasProfileIds ?
+                Raw((alias) =>
+                    (orderOption.profileIds as number[])
+                        .map(
+                            (profileId) => `FIND_IN_SET('${profileId}', ${alias})`
+                        ).join(' OR ')
+                ) : IsNull();
+
+            const hasTeamId = !!orderOption.teamId;
+            const teamIdOptionOperator = hasTeamId ? orderOption.teamId : IsNull();
+
             findOptionsWhere = {
                 ...findOptionsWhere,
                 option: {
-                    profileIds: Raw(
-                        (alias) =>
-                            (orderOption.profileIds as number[])
-                                .map(
-                                    (profileId) => `FIND_IN_SET('${profileId}', ${alias})`
-                                ).join(' OR '))
+                    teamId: teamIdOptionOperator,
+                    profileIds: profileIdsOptionRawOperator
                 }
             } as FindOptionsWhere<Order>;
         }
@@ -113,6 +141,19 @@ export class OrdersService {
         const savedOrder = await orderRepository.save(createdOrder);
 
         return savedOrder;
+    }
+
+    _update(
+        transactionManager: EntityManager,
+        orderId: number,
+        partialOrder: Partial<Omit<Order, 'status'>>
+    ): Observable<boolean> {
+
+        return of(transactionManager.getRepository(Order))
+            .pipe(
+                mergeMap((orderRepository) => orderRepository.update(orderId, partialOrder)),
+                map((updateResult) => !!(updateResult.affected && updateResult.affected > 0))
+            );
     }
 
     async _updateOrderStatus(

@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable, InternalServerErrorException, 
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { Observable, firstValueFrom, from, map, mergeMap, of, toArray } from 'rxjs';
+import { Observable, concatMap, defer, firstValueFrom, from, map, mergeMap, of, toArray } from 'rxjs';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
@@ -314,27 +314,44 @@ export class UserService {
             createdProfile,
             createdUser,
             createdTeam
-        } = await this.datasource.transaction(async (transactionManager) => {
-
-            const _createdUserAndTeam = await this._createUser(transactionManager, newUser, profileName, temporaryUser.language, timezone, {
-                plainPassword: temporaryUser.plainPassword,
-                emailVerification: true
-            });
-
-            return _createdUserAndTeam;
-        });
-
-        const createdProfileByInvitations = await firstValueFrom(
-            this.profilesService.createInvitedProfiles(createdUser).pipe(
-                mergeMap((_profiles) => from(_profiles)),
-                mergeMap((_createdProfile) => this.profilesService.completeInvitation(_createdProfile.teamId, _createdProfile.teamUUID, createdUser)
-                    .pipe(map(() => _createdProfile))
-                ),
-                toArray()
+        } = await this.datasource.transaction((transactionManager) =>
+            firstValueFrom(
+                from(defer(() =>
+                    this._createUser(
+                        transactionManager,
+                        newUser,
+                        profileName,
+                        temporaryUser.language,
+                        timezone,
+                        {
+                            plainPassword: temporaryUser.plainPassword,
+                            emailVerification: true
+                        }
+                    )
+                )).pipe(
+                    concatMap((createUserTeamProfile) =>
+                        this.profilesService._createInvitedProfiles(
+                            transactionManager,
+                            createUserTeamProfile.createdUser
+                        ).pipe(
+                            mergeMap((_profiles) => from(_profiles)),
+                            mergeMap((_createdProfile) =>
+                                this.profilesService.completeInvitation(
+                                    _createdProfile.teamId,
+                                    _createdProfile.teamUUID,
+                                    createUserTeamProfile.createdUser
+                                ).pipe(map(() => _createdProfile))
+                            ),
+                            toArray(),
+                            map((createdProfilesByInvitations) => {
+                                createUserTeamProfile.createdUser.profiles = [createUserTeamProfile.createdProfile].concat(createdProfilesByInvitations);
+                                return createUserTeamProfile;
+                            })
+                        )
+                    )
+                )
             )
         );
-
-        createdUser.profiles = [ createdProfile ].concat(createdProfileByInvitations);
 
         await this.notificationsService.sendWelcomeEmailForNewUser(
             createdProfile.name,
@@ -373,33 +390,41 @@ export class UserService {
             createdProfile,
             createdUser,
             createdTeam
-        } = await this.datasource.transaction(async (transactionManager) => {
-
-            const _createdUserAndTeam = await this._createUser(transactionManager,
-                newUser,
-                name,
-                language,
-                timezone,
-                {
-                    plainPassword,
-                    uuidWorkspace: true
-                }
-            );
-
-            return _createdUserAndTeam;
-        });
-
-        const createdProfileByInvitations = await firstValueFrom(
-            this.profilesService.createInvitedProfiles(createdUser).pipe(
-                mergeMap((_profiles) => from(_profiles)),
-                mergeMap((_createdProfile) => this.profilesService.completeInvitation(_createdProfile.teamId, _createdProfile.teamUUID, createdUser)
-                    .pipe(map(() => _createdProfile))
-                ),
-                toArray()
+        } = await this.datasource.transaction((transactionManager) =>
+            firstValueFrom(
+                from(defer(() =>
+                    this._createUser(
+                        transactionManager,
+                        newUser,
+                        name,
+                        language,
+                        timezone,
+                        {
+                            plainPassword,
+                            uuidWorkspace: true
+                        }
+                    )
+                )).pipe(
+                    concatMap((createUserTeamProfile) =>
+                        this.profilesService._createInvitedProfiles(transactionManager, createUserTeamProfile.createdUser)
+                            .pipe(
+                                mergeMap((_profiles) => from(_profiles)),
+                                mergeMap((_createdProfile) => this.profilesService.completeInvitation(
+                                    _createdProfile.teamId,
+                                    _createdProfile.teamUUID,
+                                    createUserTeamProfile.createdUser)
+                                    .pipe(map(() => _createdProfile))
+                                ),
+                                toArray(),
+                                map((createdProfilesByInvitations) => {
+                                    createUserTeamProfile.createdUser.profiles = [createUserTeamProfile.createdProfile].concat(createdProfilesByInvitations);
+                                    return createUserTeamProfile;
+                                })
+                            )
+                    )
+                )
             )
         );
-
-        createdUser.profiles = [ createdProfile ].concat(createdProfileByInvitations);
 
         return {
             createdUser,

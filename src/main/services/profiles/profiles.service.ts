@@ -362,14 +362,14 @@ export class ProfilesService {
                     OrderStatus.PLACED
                 );
 
-                return searchedUsers;
+                return { searchedUsers, createdOrderId: _createdOrder.id };
             })),
-            mergeMap((searchedUsers) => {
+            mergeMap(({ searchedUsers, createdOrderId }) => {
 
                 const invitedNewUsers = this.utilService.filterInvitedNewUsers(newInvitedNewMembers, searchedUsers);
 
                 return invitedNewUsers.length > 0 ?
-                    this.saveInvitedNewTeamMember(teamId, teamUUID, invitedNewUsers)
+                    this.saveInvitedNewTeamMember(teamId, teamUUID, invitedNewUsers, createdOrderId)
                         .pipe(
                             mergeMap(() => this.notificationsService.sendTeamInvitationForNewUsers(invitedNewUsers)),
                             map(() => true)
@@ -381,12 +381,27 @@ export class ProfilesService {
     createInvitedProfiles(
         user: Pick<User, 'id' | 'email' | 'phone'>
     ): Observable<Profile[]> {
+        return from(defer(() =>
+            this.datasource.transaction(
+                (transactionManager) =>
+                    firstValueFrom(
+                        this._createInvitedProfiles(transactionManager, user)
+                    )
+            ))
+        );
+    }
+
+    _createInvitedProfiles(
+        transactionManager: EntityManager,
+        user: Pick<User, 'id' | 'email' | 'phone'>
+    ): Observable<Profile[]> {
 
         const emailOrPhone = user.email || user.phone;
+        const _profileRepository = transactionManager.getRepository(Profile);
 
         return from(this.profilesRedisRepository.getTeamInvitations(emailOrPhone))
             .pipe(
-                mergeMap((teamEntities) => from(teamEntities)),
+                mergeMap((teamEntitiesAndOrderIds) => from(teamEntitiesAndOrderIds)),
                 map((_team) => {
 
                     const createdProfile = this.profileRepository.create({
@@ -395,11 +410,34 @@ export class ProfilesService {
                     });
 
                     createdProfile.teamUUID = _team.uuid;
+                    createdProfile.orderId = _team.orderId;
 
                     return createdProfile;
                 }),
                 toArray(),
-                mergeMap((_newProfiles) => from(this.profileRepository.save(_newProfiles)))
+                mergeMap((_newProfiles) =>
+                    from(defer(() =>
+                        _profileRepository.save(_newProfiles)
+                    ))
+                ),
+                mergeMap((profiles) => from(profiles)),
+                mergeMap((_createdProfile) =>
+                    this.ordersService.fetch({
+                        id: _createdProfile.orderId
+                    }).pipe(
+                        mergeMap((relatedOrder) => this.ordersService._update(
+                            transactionManager,
+                            relatedOrder.id,
+                            {
+                                option: {
+                                    profileIds: (relatedOrder.option?.profileIds || []).concat(_createdProfile.id)
+                                }
+                            }
+                        )),
+                        map(() => _createdProfile)
+                    )
+                ),
+                toArray()
             );
     }
 
@@ -427,12 +465,14 @@ export class ProfilesService {
     saveInvitedNewTeamMember(
         teamId: number,
         teamUUID: string,
-        invitedNewMembers: InvitedNewTeamMember[]
+        invitedNewMembers: InvitedNewTeamMember[],
+        orderId: number
     ): Observable<boolean> {
         return from(defer(() => this.profilesRedisRepository.setTeamInvitations(
             teamId,
             teamUUID,
-            invitedNewMembers
+            invitedNewMembers,
+            orderId
         )));
     }
 
@@ -570,10 +610,10 @@ export class ProfilesService {
         } = authProfile;
 
         // check profile roles and validate it.
-        return from(this.profileRepository.findOneByOrFail({
+        return from(defer(() => this.profileRepository.findOneByOrFail({
             id: profileId,
             teamId
-        })).pipe(
+        }))).pipe(
             tap((deleteTargetProfile) => {
 
                 if (deleteTargetProfile.roles.includes(Role.OWNER)) {

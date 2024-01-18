@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { BootpayService } from '@services/payments/bootpay/bootpay.service';
 import { PaymentRedisRepository } from '@services/payments/payment.redis-repository';
+import { BootpayPGPaymentStatus } from '@services/payments/bootpay-pg-payment-status.enum';
 import { Payment } from '@entity/payments/payment.entity';
 import { Order } from '@entity/orders/order.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
@@ -192,6 +193,45 @@ describe('PaymentsService', () => {
 
             expect(paymentRedisRepository.getPGPaymentResult.called).true;
             expect(paymentRedisRepository.setPGPaymentResult.called).true;
+        });
+
+        it('should be refunded a payment without bootpay transaction', async () => {
+
+            const orderMock = stubOne(Order);
+            const paymentStub = stubOne(Payment, {
+                amount: orderMock.amount,
+                orderId: orderMock.id
+            });
+            const refundUnitPriceMock = 5000;
+            const cancelerMock = stubOne(Profile).name as string;
+            const messageMock = '';
+
+            paymentRepositoryStub.create.returns(paymentStub);
+
+            paymentRedisRepository.getPGPaymentResult.resolves({ status: BootpayPGPaymentStatus.CANCELLED, receipt_id: '' } as ReceiptResponseParameters);
+
+            paymentRepositoryStub.save.resolves(paymentStub);
+
+            const refundedPayment = await service._refund(
+                datasourceMock as unknown as EntityManager,
+                orderMock,
+                cancelerMock,
+                messageMock,
+                refundUnitPriceMock,
+                false
+            );
+
+            expect(refundedPayment).ok;
+            expect(refundedPayment).deep.equals(paymentStub);
+
+            expect(paymentRepositoryStub.create.called).true;
+            expect(paymentRepositoryStub.save.called).true;
+
+            expect(bootpayServiceRefundStub.called).false;
+            expect(bootpayServiceInitStub.called).false;
+
+            expect(paymentRedisRepository.getPGPaymentResult.called).true;
+            expect(paymentRedisRepository.setPGPaymentResult.called).false;
         });
     });
 });

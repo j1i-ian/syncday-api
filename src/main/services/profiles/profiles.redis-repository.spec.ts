@@ -6,6 +6,7 @@ import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.servi
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { Team } from '@entity/teams/team.entity';
 import { User } from '@entity/users/user.entity';
+import { Order } from '@entity/orders/order.entity';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { TestMockUtil } from '@test/test-mock-util';
 
@@ -148,6 +149,7 @@ describe('Profiles Redis Repository Test', () => {
 
         it('should be set the team invitations for new member', async () => {
 
+            const orderMock = stubOne(Order);
             const teamMock = stubOne(Team);
             const invitedNewMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamMock.id);
 
@@ -158,7 +160,8 @@ describe('Profiles Redis Repository Test', () => {
             const saveSuccess = await service.setTeamInvitations(
                 teamMock.id,
                 teamMock.uuid,
-                invitedNewMemberMocks
+                invitedNewMemberMocks,
+                orderMock.id
             );
 
             expect(saveSuccess).true;

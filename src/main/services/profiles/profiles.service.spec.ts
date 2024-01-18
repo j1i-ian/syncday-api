@@ -615,11 +615,22 @@ describe('ProfilesService', () => {
 
     describe('Test creating profile with transaction', () => {
 
+        let serviceSandbox: SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
         afterEach(() => {
             profileRepositoryStub.create.reset();
             profileRepositoryStub.save.reset();
 
             profilesRedisRepositoryStub.getTeamInvitations.reset();
+
+            ordersServiceStub.fetch.reset();
+            ordersServiceStub._update.reset();
+
+            serviceSandbox.restore();
         });
 
         it('should be created a profile with transaction', async () => {
@@ -661,14 +672,35 @@ describe('ProfilesService', () => {
 
         it('should be created invited profiles', async () => {
             const userMock = stubOne(User);
-            const teamStubs = stub(Team);
+
+            const invitedProfileStubs = stub(Profile);
+
+            serviceSandbox.stub(service, '_createInvitedProfiles')
+                .returns(of(invitedProfileStubs));
+
+            const createdProfiles = await firstValueFrom(service.createInvitedProfiles(
+                userMock
+            ));
+
+            expect(createdProfiles).ok;
+            expect(createdProfiles.length).greaterThan(0);
+        });
+
+        it('should be created invited profiles', async () => {
+            const userMock = stubOne(User);
+            const orderStub = stubOne(Order);
+            const teamStubs = stub(Team).map((_team) => ({ ..._team, orderId: orderStub.id }));
 
             profilesRedisRepositoryStub.getTeamInvitations.resolves(teamStubs);
 
             profileRepositoryStub.create.returnsArg(0);
             profileRepositoryStub.save.resolvesArg(0);
 
-            const createdProfiles = await firstValueFrom(service.createInvitedProfiles(
+            ordersServiceStub.fetch.returns(of(orderStub));
+            ordersServiceStub._update.returns(of(true));
+
+            const createdProfiles = await firstValueFrom(service._createInvitedProfiles(
+                datasourceMock as unknown as EntityManager,
                 userMock
             ));
 
@@ -678,17 +710,21 @@ describe('ProfilesService', () => {
             expect(profileRepositoryStub.create.called).true;
             expect(profileRepositoryStub.save.called).true;
             expect(profilesRedisRepositoryStub.getTeamInvitations.called).true;
+
+            expect(ordersServiceStub.fetch.called).true;
+            expect(ordersServiceStub._update.called).true;
         });
     });
 
     it('coverage fill: saveInvitedNewTeamMember', async () => {
         const teamMock = stubOne(Team);
         const teamIdMock = stubOne(Team).id;
+        const orderIdMock = stubOne(Order).id;
         const invitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
 
         profilesRedisRepositoryStub.setTeamInvitations.resolves(true);
 
-        const saveSuccess = await firstValueFrom(service.saveInvitedNewTeamMember(teamIdMock, teamMock.uuid, invitedNewTeamMemberMocks));
+        const saveSuccess = await firstValueFrom(service.saveInvitedNewTeamMember(teamIdMock, teamMock.uuid, invitedNewTeamMemberMocks, orderIdMock));
 
         expect(saveSuccess).true;
         expect(profilesRedisRepositoryStub.setTeamInvitations.called).true;

@@ -273,14 +273,14 @@ export class TeamService {
                         initialEvent
                     );
 
-                    return [_createdTeam, searchedUsers] as [Team, User[]];
+                    return { createdTeam: _createdTeam, searchedUsers, createdOrder: _createdOrder };
                 })
             ),
-            mergeMap(([createdTeam, searchedUsers]: [Team, User[]]) => {
+            mergeMap(({ createdTeam, searchedUsers, createdOrder }) => {
 
                 const invitedNewUsers = this.utilService.filterInvitedNewUsers(teamMembers, searchedUsers);
 
-                return this.profilesService.saveInvitedNewTeamMember(createdTeam.id, createdTeam.uuid, invitedNewUsers)
+                return this.profilesService.saveInvitedNewTeamMember(createdTeam.id, createdTeam.uuid, invitedNewUsers, createdOrder.id)
                     .pipe(
                         mergeMap(() => this.notificationsService.sendTeamInvitationForNewUsers(invitedNewUsers)),
                         map(() => createdTeam)
