@@ -3,6 +3,7 @@ import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { EntityManager, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { Billing } from '@core/interfaces/payments/billing.interface';
 import { BootpayService } from '@services/payments/bootpay/bootpay.service';
@@ -13,6 +14,7 @@ import { Order } from '@entity/orders/order.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TestMockUtil } from '@test/test-mock-util';
+import { BootpayException } from '@exceptions/bootpay.exception';
 import { PaymentMethodService } from './payment-method.service';
 
 describe('PaymentMethodService', () => {
@@ -54,6 +56,10 @@ describe('PaymentMethodService', () => {
                 {
                     provide: getRepositoryToken(PaymentMethod),
                     useValue: paymentMethodRepositoryStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: TestMockUtil.getLoggerStub()
                 }
             ]
         }).compile();
@@ -164,6 +170,37 @@ describe('PaymentMethodService', () => {
             expect(bootpayServiceIssueBillingKeyStub.called).true;
 
             expect(paymentMethodRepositoryStub.save.called).true;
+        });
+
+        it('should be thrown a bootpay exception when bootpay service threw an error ', async () => {
+
+            const paymentMethodMockStub = stubOne(PaymentMethod);
+            const userStub = stubOne(User);
+            const buyerMock = {
+                name: 'sample',
+                email: userStub.email,
+                phone: userStub.phone
+            } as Buyer;
+            const orderUUIDMock = stubOne(Order).uuid;
+
+            paymentMethodRepositoryStub.create.resolves(paymentMethodMockStub);
+            paymentMethodRepositoryStub.save.resolves(paymentMethodMockStub);
+            bootpayServiceIssueBillingKeyStub.throws({
+                error_code: 'RC_USER_EMAIL_INVALID',
+                message: 'user 필드에 회원정보 이메일이 포맷에 맞지 않습니다.'
+            });
+
+            await expect(service._create(
+                datasourceMock as unknown as EntityManager,
+                paymentMethodMockStub,
+                buyerMock,
+                orderUUIDMock
+            )).rejectedWith(BootpayException);
+
+            expect(bootpayServiceInitStub.called).true;
+            expect(bootpayServiceIssueBillingKeyStub.called).true;
+
+            expect(paymentMethodRepositoryStub.save.called).false;
         });
     });
 

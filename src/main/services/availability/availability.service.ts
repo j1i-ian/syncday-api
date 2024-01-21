@@ -32,7 +32,7 @@ export class AvailabilityService {
     ) {}
 
     search(
-        searchOption: AvailabilitySearchOption,
+        searchOption: Partial<AvailabilitySearchOption>,
         roles: Role[]
     ): Observable<Availability[]> {
 

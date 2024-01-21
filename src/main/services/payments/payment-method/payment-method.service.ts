@@ -3,7 +3,10 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Observable, from, map, mergeMap } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
+import { Billing } from '@core/interfaces/payments/billing.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { Role } from '@interfaces/profiles/role.enum';
 import { BootpayService } from '@services/payments/bootpay/bootpay.service';
@@ -11,6 +14,8 @@ import { BootpayConfiguration } from '@services/payments/bootpay/bootpay-configu
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { Team } from '@entity/teams/team.entity';
+import { BootpayException } from '@exceptions/bootpay.exception';
+import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
 
 @Injectable()
 export class PaymentMethodService {
@@ -19,7 +24,8 @@ export class PaymentMethodService {
         @Inject(forwardRef(() => ProfilesService))
         private readonly profilesService: ProfilesService,
         @InjectDataSource() private readonly datasource: DataSource,
-        @InjectRepository(PaymentMethod) private readonly paymentMethodRepository: Repository<PaymentMethod>
+        @InjectRepository(PaymentMethod) private readonly paymentMethodRepository: Repository<PaymentMethod>,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
         const bootpaySetting = AppConfigService.getBootpaySetting(this.configService);
 
@@ -96,22 +102,50 @@ export class PaymentMethodService {
         buyer: Buyer,
         orderUUID: string
     ): Promise<PaymentMethod> {
+
+        let billing: Billing | null = null;
+
+        try {
+            const bootpayService = new BootpayService();
+
+            await bootpayService.init(this.bootpayConfiguration);
+
+            await bootpayService.issueBillingKey(
+                orderUUID,
+                buyer.name,
+                newPaymentMethod.creditCard,
+                buyer
+            );
+
+            billing = bootpayService.billing;
+
+        } catch (error: unknown) {
+
+            const bootpayError = (error as InternalBootpayException);
+
+            if (bootpayError.error_code && bootpayError.message) {
+
+                const bootpayException = new BootpayException(bootpayError.message);
+                bootpayException.name = bootpayError.error_code;
+                bootpayException.message = bootpayError.message;
+
+                this.logger.error({
+                    message: 'Error while issue the billing key',
+                    error,
+                    bootpayException
+                });
+
+                error = bootpayException;
+            }
+
+            throw error;
+        }
+
         const _paymentMethodRepository = transactionManager.getRepository(PaymentMethod);
 
         const createdPaymentMethod = _paymentMethodRepository.create(newPaymentMethod);
 
-        const bootpayService = new BootpayService();
-
-        await bootpayService.init(this.bootpayConfiguration);
-
-        await bootpayService.issueBillingKey(
-            orderUUID,
-            buyer.name,
-            newPaymentMethod.creditCard,
-            buyer
-        );
-
-        createdPaymentMethod.billing = bootpayService.billing;
+        createdPaymentMethod.billing = billing as unknown as Billing;
 
         if (newPaymentMethod.teams) {
             createdPaymentMethod.teams = newPaymentMethod.teams;

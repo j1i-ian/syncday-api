@@ -18,6 +18,7 @@ import { CannotFindAvailabilityBody } from '@app/exceptions/availability/cannot-
 import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
 import { InvalidICloudCredentialsException } from '@exceptions/integrations/calendar-integrations/invalid-icloud-credentials.exception';
 import { InvalidICloudEmailException } from '@exceptions/integrations/calendar-integrations/invalid-icloud-email.exception';
+import { BootpayException } from '@exceptions/bootpay.exception';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -32,7 +33,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     @Inject(WINSTON_MODULE_PROVIDER) protected readonly logger: Logger;
 
-    catch(exception: Error | EntityNotFoundError | HttpException, host: ArgumentsHost): void {
+    catch(exception: Error | EntityNotFoundError | HttpException | BootpayException, host: ArgumentsHost): void {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
 
@@ -42,7 +43,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
         const status = (exception as HttpException).getStatus?.() || 500;
 
-        if (this.isWhiteListedException(exception as HttpException)) {
+        if (exception instanceof BootpayException) {
+            exceptionType = exception.name;
+            message = exception.message;
+        } else if (this.isWhiteListedException(exception as HttpException)) {
 
             const exceptionMessage = Array.isArray(message) ?
                 message.join('\n') :
