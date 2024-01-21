@@ -68,9 +68,9 @@ export class PaymentMethodService {
         })).pipe(
             map((ownerProfile) => {
 
-                const ownerName = ownerProfile.name
+                const ownerName: string = (ownerProfile.name
                     || ownerProfile.user.email
-                    || ownerProfile.user.phone;
+                    || ownerProfile.user.phone) as string;
 
                 const buyer: Buyer = {
                     email: ownerProfile.user.email,

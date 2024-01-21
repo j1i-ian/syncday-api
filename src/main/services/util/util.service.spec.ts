@@ -615,6 +615,7 @@ describe('UtilService', () => {
             const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
                 workspaceMock,
                 emailMock,
+                null,
                 profileNameMock,
                 {
                     randomSuffix: false,
@@ -635,6 +636,7 @@ describe('UtilService', () => {
             const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
                 workspaceMock,
                 emailMock,
+                null,
                 profileNameMock,
                 {
                     randomSuffix: true,
@@ -656,6 +658,7 @@ describe('UtilService', () => {
             const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
                 workspaceMock,
                 emailMock,
+                null,
                 profileNameMock,
                 {
                     randomSuffix: true,
@@ -667,6 +670,31 @@ describe('UtilService', () => {
             expect(defaultTeamWorkspace).contains(emailPrefix);
             expect(defaultTeamWorkspace).not.equals(emailPrefix);
             expect(defaultTeamWorkspace).not.equals(emailMock);
+        });
+
+        it('should be got the default team workspace which has phone number as workspace with Korean phone number', () => {
+            const workspaceMock = undefined;
+
+            const emailDummy = null;
+            const phoneMock = '+821012341234';
+            const expectedPhoneNumberWorkspace = '01012341234';
+
+            const profileNameDummy = undefined;
+
+            const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
+                workspaceMock,
+                emailDummy,
+                phoneMock,
+                profileNameDummy,
+                {
+                    randomSuffix: false,
+                    uuidWorkspace: false
+                }
+            );
+
+            expect(defaultTeamWorkspace).ok;
+            expect(defaultTeamWorkspace).not.equals(emailDummy);
+            expect(defaultTeamWorkspace).equals(expectedPhoneNumberWorkspace);
         });
     });
 

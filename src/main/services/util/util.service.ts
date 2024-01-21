@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { UpdateResult } from 'typeorm';
@@ -621,10 +621,12 @@ export class UtilService {
 
         let value;
 
-        if (notificationType === NotificationType.EMAIL) {
+        if (notificationType === NotificationType.EMAIL && host.email) {
             value = host.email;
-        } else {
+        } else if (notificationType === NotificationType.TEXT && host.phone) {
             value = host.phone;
+        } else {
+            throw new InternalServerErrorException('Invalid notification type and host setting');
         }
 
         return value;
@@ -652,7 +654,8 @@ export class UtilService {
 
     getDefaultTeamWorkspace(
         workspace?: string | null,
-        email?: string,
+        email?: string | null,
+        phone?: string | null,
         profileName?: string,
         {
             randomSuffix,
@@ -664,6 +667,7 @@ export class UtilService {
     ): string {
 
         const emailId = email?.replaceAll('.', '').split('@').shift();
+        const convertedPhone = phone?.includes('+82') ? phone.replace('+82', '0') : phone;
 
         if (uuidWorkspace) {
             workspace = this.generateUUID();
@@ -671,6 +675,7 @@ export class UtilService {
 
             workspace = workspace ??
                 emailId ??
+                convertedPhone ??
                 profileName ??
                 this.generateUUID();
         }

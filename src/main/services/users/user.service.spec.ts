@@ -205,7 +205,7 @@ describe('Test User Service', () => {
 
             userRepositoryStub.findBy.resolves(userStubs);
 
-            const emails = userStubs.map((_user) => _user.email);
+            const emails = userStubs.map((_user) => _user.email as string);
 
             const loadedUsers = await service.search({
                 emails
@@ -244,7 +244,7 @@ describe('Test User Service', () => {
 
             userRepositoryStub.findOne.resolves(userStub);
 
-            const loadedUser = await service.findUserByLocalAuth(userStub.email);
+            const loadedUser = await service.findUserByLocalAuth(userStub.email as string);
 
             const actualPassedParam: FindOneOptions<User> =
                 userRepositoryStub.findOne.getCall(0).args[0];
@@ -263,7 +263,7 @@ describe('Test User Service', () => {
 
             userRepositoryStub.findOne.resolves(userStub);
 
-            const loadedUser = await service.findUserByLocalAuth(userStub.phone);
+            const loadedUser = await service.findUserByLocalAuth(userStub.phone as string);
 
             const actualPassedParam: FindOneOptions<User> =
                 userRepositoryStub.findOne.getCall(0).args[0];
@@ -282,7 +282,7 @@ describe('Test User Service', () => {
 
             userRepositoryStub.findOne.resolves(null);
 
-            const loadedUser = await service.findUserByLocalAuth(userStub.email);
+            const loadedUser = await service.findUserByLocalAuth(userStub.email as string);
 
             expect(loadedUser).not.ok;
         });
@@ -976,7 +976,7 @@ describe('Test User Service', () => {
             utilServiceStub.comparePassword.resolves(true);
 
             const validatedUserOrNull = await service.validateEmailAndPassword(
-                userStub.email,
+                userStub.email as string,
                 plainPassword
             );
 
@@ -991,7 +991,7 @@ describe('Test User Service', () => {
             serviceSandbox.stub(service, 'findUserByLocalAuth').resolves(null);
 
             const validatedUserOrNull = await service.validateEmailAndPassword(
-                userStub.email,
+                userStub.email as string,
                 dummy
             );
 
@@ -1007,7 +1007,7 @@ describe('Test User Service', () => {
             utilServiceStub.comparePassword.resolves(false);
 
             const validatedUserOrNull = await service.validateEmailAndPassword(
-                userStub.email,
+                userStub.email as string,
                 dummy
             );
 

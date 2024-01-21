@@ -125,7 +125,7 @@ export class NotificationsService {
         return await this._sendNotification(messageAttribute, notificationData);
     }
 
-    async sendWelcomeEmailForNewUser(userName: string | null, userEmail: string, preferredLanguage: Language): Promise<boolean> {
+    sendWelcomeEmailForNewUser(userName: string | null, userEmail: string, preferredLanguage: Language): Promise<boolean> {
         const messageAttribute: MessageAttributeValue = {
             DataType: 'String.Array',
             StringValue: JSON.stringify([SyncdayNotificationPublishKey.EMAIL])
@@ -138,7 +138,7 @@ export class NotificationsService {
             data: JSON.stringify({ userName })
         } as SyncdayAwsSnsRequest;
 
-        return await this._sendNotification(messageAttribute, notificationData);
+        return this._sendNotification(messageAttribute, notificationData);
     }
 
     async _sendNotification(messageAttribute: MessageAttributeValue, notificationData: SyncdayAwsSnsRequest): Promise<boolean> {

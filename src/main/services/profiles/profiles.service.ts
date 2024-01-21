@@ -94,7 +94,10 @@ export class ProfilesService {
         )).pipe(
             mergeMap((_profiles) => from(_profiles)),
             map(({ user: profileUser }) => [profileUser.email, profileUser.phone]),
-            filter(([email, phone]) => emailBulk.includes(email) || phoneNumberBulk.includes(phone)),
+            filter(([email, phone]) =>
+                !!(email && emailBulk.includes(email)) ||
+                !!(phone && phoneNumberBulk.includes(phone))
+            ),
             map(([email, phone]) => ({ email, phone } as InvitedNewTeamMember))
         );
 
@@ -244,7 +247,7 @@ export class ProfilesService {
     createBulk(
         teamId: number,
         teamUUID: string,
-        newInvitedNewMembers: Array<Pick<Partial<User>, 'email' | 'phone'>>,
+        newInvitedNewMembers: InvitedNewTeamMember[],
         orderer: Orderer,
         newPaymentMethod?: PaymentMethod | undefined
     ): Observable<boolean> {
@@ -399,7 +402,7 @@ export class ProfilesService {
         const emailOrPhone = user.email || user.phone;
         const _profileRepository = transactionManager.getRepository(Profile);
 
-        return from(this.profilesRedisRepository.getTeamInvitations(emailOrPhone))
+        return from(this.profilesRedisRepository.getTeamInvitations(emailOrPhone as string))
             .pipe(
                 mergeMap((teamEntitiesAndOrderIds) => from(teamEntitiesAndOrderIds)),
                 map((_team) => {
@@ -584,8 +587,8 @@ export class ProfilesService {
         user: Pick<User, 'id' | 'email' | 'phone'>
     ): Observable<boolean> {
         return combineLatest([
-            this.profilesRedisRepository.deleteTeamInvitations(teamId, teamUUID, user.email),
-            this.profilesRedisRepository.deleteTeamInvitations(teamId, teamUUID, user.phone)
+            this.profilesRedisRepository.deleteTeamInvitations(teamId, teamUUID, user.email as string),
+            this.profilesRedisRepository.deleteTeamInvitations(teamId, teamUUID, user.phone as string)
         ]).pipe(map(() => true));
     }
 

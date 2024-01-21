@@ -57,7 +57,7 @@ export class BootpayService {
             tax_free: 0,
             user: {
                 username: buyer.name,
-                email: buyer.email,
+                email: buyer.email as string,
                 phone: KoreanPhoneNumberFormatOrUndefined
             }
         });
@@ -69,11 +69,7 @@ export class BootpayService {
         orderId: string,
         placedOrderName: string,
         creditCard: CreditCard,
-        buyer: {
-            name: string;
-            email?: string;
-            phone?: string;
-        }
+        buyer: Buyer
     ): Promise<BootpayService> {
 
         await this._getAccessToken();
@@ -98,7 +94,7 @@ export class BootpayService {
             card_expire_month: creditCard.expirationMonth,
             user: {
                 username: buyer.name,
-                email: buyer.email,
+                email: buyer.email as string,
                 phone: KoreanPhoneNumberFormatOrUndefined
             },
             extra: {

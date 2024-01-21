@@ -175,7 +175,7 @@ export class TokenService {
 
                 await this.notificationsService.sendWelcomeEmailForNewUser(
                     createdProfile.name,
-                    createdUser.email,
+                    createdUser.email as string,
                     createdUser.userSetting.preferredLanguage
                 );
 

@@ -354,7 +354,7 @@ export class UserService {
 
         await this.notificationsService.sendWelcomeEmailForNewUser(
             createdProfile.name,
-            createdUser.email,
+            createdUser.email as string,
             createdUser.userSetting.preferredLanguage
         );
 
@@ -450,7 +450,7 @@ export class UserService {
          * TODO: it should be applied Criteria Pattern.
          */
         if (emailVerification) {
-            const isVerifiedEmail = await this.verificationService.isVerifiedUser(newUser.email);
+            const isVerifiedEmail = await this.verificationService.isVerifiedUser(newUser.email as string);
 
             if (isVerifiedEmail !== true) {
                 throw new BadRequestException('Verification is not completed');
@@ -458,7 +458,7 @@ export class UserService {
         }
 
         if (alreadySignedUpUserCheck) {
-            const alreadySignedUser = await this.findUserByLocalAuth(newUser.email);
+            const alreadySignedUser = await this.findUserByLocalAuth(newUser.email as string);
 
             if (alreadySignedUser) {
                 throw new AlreadySignedUpEmailException('Already signed up email.');
@@ -466,7 +466,7 @@ export class UserService {
         }
 
         if (alreadySignedUpUserCheckByPhone) {
-            const alreadySignedUsers = await this.search({ phone: newUser.phone });
+            const alreadySignedUsers = await this.search({ phone: newUser.phone as string });
             const alreadySignedUser = alreadySignedUsers[0];
 
             if (alreadySignedUser) {
@@ -504,6 +504,7 @@ export class UserService {
         const defaultTeamWorkspace = this.utilService.getDefaultTeamWorkspace(
             workspace,
             _createdUser.email,
+            _createdUser.phone,
             profileName,
             {
                 randomSuffix: shouldAddRandomSuffix,
@@ -622,6 +623,7 @@ export class UserService {
             const teamWorkspace = this.utilService.getDefaultTeamWorkspace(
                 null,
                 newUserEmail,
+                null,
                 newProfileName,
                 {
                     randomSuffix: false,

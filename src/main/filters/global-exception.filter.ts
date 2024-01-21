@@ -44,8 +44,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         const status = (exception as HttpException).getStatus?.() || 500;
 
         if (exception instanceof BootpayException) {
-            exceptionType = exception.name;
-            message = exception.message;
+            exceptionType = BootpayException.name;
+            message = `${ exception.name }: ${ exception.message }`;
         } else if (this.isWhiteListedException(exception as HttpException)) {
 
             const exceptionMessage = Array.isArray(message) ?
