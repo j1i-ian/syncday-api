@@ -504,7 +504,6 @@ export class UserService {
         const defaultTeamWorkspace = this.utilService.getDefaultTeamWorkspace(
             workspace,
             _createdUser.email,
-            _createdUser.phone,
             profileName,
             {
                 randomSuffix: shouldAddRandomSuffix,
@@ -623,7 +622,6 @@ export class UserService {
             const teamWorkspace = this.utilService.getDefaultTeamWorkspace(
                 null,
                 newUserEmail,
-                null,
                 newProfileName,
                 {
                     randomSuffix: false,

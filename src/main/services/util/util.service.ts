@@ -655,7 +655,6 @@ export class UtilService {
     getDefaultTeamWorkspace(
         workspace?: string | null,
         email?: string | null,
-        phone?: string | null,
         profileName?: string,
         {
             randomSuffix,
@@ -667,17 +666,14 @@ export class UtilService {
     ): string {
 
         const emailId = email?.replaceAll('.', '').split('@').shift();
-        const convertedPhone = phone?.includes('+82') ? phone.replace('+82', '0') : phone;
+
+        workspace = workspace ??
+                emailId ??
+                profileName ??
+                '';
 
         if (uuidWorkspace) {
-            workspace = this.generateUUID();
-        } else {
-
-            workspace = workspace ??
-                emailId ??
-                convertedPhone ??
-                profileName ??
-                this.generateUUID();
+            workspace += this.generateUUID();
         }
 
         if (randomSuffix) {
