@@ -12,6 +12,7 @@ import { TemporaryUsersModule } from '@services/users/temporary-users/temporary-
 import { PaymentMethodModule } from '@services/payments/payment-method/payment-method.module';
 import { GlobalExceptionFilter } from '@app/filters/global-exception.filter';
 import { RolesGuard } from '@app/auth/roles.guard';
+import { GlobalInterceptor } from '@app/interceptors/global/global.interceptor';
 import { ClusterModule } from '@liaoliaots/nestjs-redis';
 import { AppController } from './app.controller';
 import { AuthModule } from './main/auth/auth.module';
@@ -69,6 +70,10 @@ import { ProductsModule } from './main/services/products/products.module';
         {
             provide: APP_INTERCEPTOR,
             useClass: ClassSerializerInterceptor
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: GlobalInterceptor
         },
         {
             provide: APP_FILTER,
