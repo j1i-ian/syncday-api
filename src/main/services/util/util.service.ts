@@ -39,6 +39,7 @@ import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity'
 import { Language } from '@app/enums/language.enum';
 import { NewProfile } from '@app/interfaces/profiles/new-profile.type';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
+import { plainToInstance } from 'class-transformer';
 
 interface UserDefaultSettingOption {
     timezone?: string;
@@ -404,7 +405,7 @@ export class UtilService {
             });
     }
 
-    getDefaultEvent(patchBody?: Partial<Event>): Event {
+    getDefaultEvent(patchBody?: Partial<Event> & { hasNoEmailUser?: boolean; }): Event {
 
         const _0min = '00:00:00';
 
@@ -418,38 +419,42 @@ export class UtilService {
         const hostNotificationUUID = this.generateUUID();
         const emailReminderUUID = this.generateUUID();
 
+        const defaultNotification = patchBody?.hasNoEmailUser ?
+        {} :
+        {
+            host: [
+                {
+                    uuid: hostNotificationUUID,
+                    type: NotificationType.EMAIL,
+                    reminders: [
+                        {
+                            remindBefore: '01:00:00',
+                            uuid: emailReminderUUID
+                        }
+                    ]
+                }
+            ],
+            invitee: [
+                {
+                    uuid: hostNotificationUUID,
+                    type: NotificationType.EMAIL,
+                    reminders: [
+                        {
+                            remindBefore: '01:00:00',
+                            uuid: emailReminderUUID
+                        }
+                    ]
+                }
+            ]
+        };
+
         const initialEventDetail = new EventDetail({
             description: null,
             inviteeQuestions: [],
             eventSetting: {
                 enforceInviteePhoneInput: false
             },
-            notificationInfo: {
-                host: [
-                    {
-                        uuid: hostNotificationUUID,
-                        type: NotificationType.EMAIL,
-                        reminders: [
-                            {
-                                remindBefore: '01:00:00',
-                                uuid: emailReminderUUID
-                            }
-                        ]
-                    }
-                ],
-                invitee: [
-                    {
-                        uuid: hostNotificationUUID,
-                        type: NotificationType.EMAIL,
-                        reminders: [
-                            {
-                                remindBefore: '01:00:00',
-                                uuid: emailReminderUUID
-                            }
-                        ]
-                    }
-                ]
-            }
+            notificationInfo: defaultNotification
         } as EventDetailInit);
 
         const defaultLink = '30-minute-meeting';
@@ -461,11 +466,13 @@ export class UtilService {
             bufferTime: initialBufferTime,
             dateRange: initialDateRange,
             contacts: [],
-            eventDetail: initialEventDetail,
             ...patchBody,
             link: lowercasedLinkWithDashes
         });
-        initialEvent.eventDetail = initialEventDetail;
+        initialEvent.eventDetail = plainToInstance(EventDetail, {
+            ...initialEventDetail,
+            ...patchBody?.eventDetail
+        });
 
         return initialEvent;
     }

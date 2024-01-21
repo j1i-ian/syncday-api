@@ -560,10 +560,13 @@ export class UserService {
         const eventGroupRepository = manager.getRepository(EventGroup);
         const savedEventGroup = await eventGroupRepository.save(initialEventGroup);
 
+        const hasNoEmailUser = !_createdUser.email;
+
         const initialEvent = this.utilService.getDefaultEvent({
             name: '30 Minute Meeting',
             link: '30-minute-meeting',
-            eventGroupId: savedEventGroup.id
+            eventGroupId: savedEventGroup.id,
+            hasNoEmailUser
         });
         initialEvent.availabilityId = savedAvailability.id;
 

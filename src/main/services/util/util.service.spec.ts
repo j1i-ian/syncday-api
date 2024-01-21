@@ -495,6 +495,23 @@ describe('UtilService', () => {
             expect(defaultEvent).ok;
             expect(defaultEvent.link).equals(expectedEventLink);
         });
+
+        it('should be generated a default event with overrided event detail', () => {
+
+            const customEventDetail = stubOne(EventDetail, {
+                notificationInfo: {}
+            });
+
+            const defaultEvent = service.getDefaultEvent({
+                eventDetail: customEventDetail
+            });
+
+            expect(defaultEvent).ok;
+            expect(defaultEvent.eventDetail).ok;
+            expect(defaultEvent.eventDetail.description).ok;
+            expect(defaultEvent.eventDetail.notificationInfo).ok;
+            expect(defaultEvent.eventDetail.notificationInfo.host).not.ok;
+        });
     });
 
 
