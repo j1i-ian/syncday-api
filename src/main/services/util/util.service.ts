@@ -4,6 +4,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { UpdateResult } from 'typeorm';
+import { plainToInstance } from 'class-transformer';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
@@ -39,7 +40,6 @@ import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity'
 import { Language } from '@app/enums/language.enum';
 import { NewProfile } from '@app/interfaces/profiles/new-profile.type';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
-import { plainToInstance } from 'class-transformer';
 
 interface UserDefaultSettingOption {
     timezone?: string;
@@ -405,7 +405,7 @@ export class UtilService {
             });
     }
 
-    getDefaultEvent(patchBody?: Partial<Event> & { hasNoEmailUser?: boolean; }): Event {
+    getDefaultEvent(patchBody?: Partial<Event> & { hasNoEmailUser?: boolean }): Event {
 
         const _0min = '00:00:00';
 
@@ -420,33 +420,33 @@ export class UtilService {
         const emailReminderUUID = this.generateUUID();
 
         const defaultNotification = patchBody?.hasNoEmailUser ?
-        {} :
-        {
-            host: [
-                {
-                    uuid: hostNotificationUUID,
-                    type: NotificationType.EMAIL,
-                    reminders: [
-                        {
-                            remindBefore: '01:00:00',
-                            uuid: emailReminderUUID
-                        }
-                    ]
-                }
-            ],
-            invitee: [
-                {
-                    uuid: hostNotificationUUID,
-                    type: NotificationType.EMAIL,
-                    reminders: [
-                        {
-                            remindBefore: '01:00:00',
-                            uuid: emailReminderUUID
-                        }
-                    ]
-                }
-            ]
-        };
+            {} :
+            {
+                host: [
+                    {
+                        uuid: hostNotificationUUID,
+                        type: NotificationType.EMAIL,
+                        reminders: [
+                            {
+                                remindBefore: '01:00:00',
+                                uuid: emailReminderUUID
+                            }
+                        ]
+                    }
+                ],
+                invitee: [
+                    {
+                        uuid: hostNotificationUUID,
+                        type: NotificationType.EMAIL,
+                        reminders: [
+                            {
+                                remindBefore: '01:00:00',
+                                uuid: emailReminderUUID
+                            }
+                        ]
+                    }
+                ]
+            };
 
         const initialEventDetail = new EventDetail({
             description: null,
