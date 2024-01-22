@@ -173,7 +173,10 @@ export class GoogleIntegrationsService implements
         } as CalendarCreateOption
     ): Promise<GoogleIntegration> {
         const { workspace } = teamSetting;
-        const { preferredTimezone: timezone } = userSetting;
+        const {
+            preferredTimezone: timezone,
+            preferredLanguage: language
+        } = userSetting;
 
         const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
 
@@ -236,7 +239,8 @@ export class GoogleIntegrationsService implements
                     uuid: profile.uuid,
                     name: profile.name,
                     workspace,
-                    timezone
+                    timezone,
+                    language
                 } as Host;
                 _googleIntegrationSchedule.googleCalendarIntegrationId = _googleCalendarIntegration?.id as number;
 

@@ -111,7 +111,14 @@ export class TeamService {
                         workspace: teamWorkspace
                     }
                 },
-                relations: ['teamSetting', 'profiles', 'profiles.user']
+                relations: {
+                    teamSetting: true,
+                    profiles: {
+                        user: {
+                            userSetting: true
+                        }
+                    }
+                }
             })
         );
     }

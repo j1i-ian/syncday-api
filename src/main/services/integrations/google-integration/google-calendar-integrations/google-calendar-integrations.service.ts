@@ -143,7 +143,8 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                 uuid: profile.uuid,
                 name: profile.name,
                 workspace: teamSetting.workspace,
-                timezone: userSetting.preferredTimezone
+                timezone: userSetting.preferredTimezone,
+                language: userSetting.preferredLanguage
             };
             return _newSchedule;
         });

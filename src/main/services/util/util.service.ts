@@ -502,7 +502,8 @@ export class UtilService {
             uuid: hostProfile.uuid,
             name: hostProfile.name,
             workspace,
-            timezone
+            timezone,
+            language: host.userSetting.preferredLanguage
         } as Host;
 
         newScheduledEvent.scheduledEventNotifications = this.getPatchedScheduleNotification(

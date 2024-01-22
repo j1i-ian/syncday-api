@@ -19,6 +19,7 @@ import { NotificationTarget } from '@entity/scheduled-events/notification-target
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { TestMockUtil } from '@test/test-mock-util';
@@ -527,7 +528,10 @@ describe('UtilService', () => {
         });
 
         it('should be got patched scheduled event with source event', () => {
-            const userMock = stubOne(User);
+            const userSettingStub = stubOne(UserSetting);
+            const userMock = stubOne(User, {
+                userSetting: userSettingStub
+            });
             const profileMock = stubOne(Profile);
             const eventDetailMock = stubOne(EventDetail);
             const teamSetting = stubOne(TeamSetting);
