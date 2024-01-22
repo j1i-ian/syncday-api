@@ -713,6 +713,7 @@ export class UserService {
                     manager,
                     _createdProfile,
                     newTeamSetting,
+                    newUser,
                     userSetting,
                     oauth2Token,
                     googleCalendarIntegrations,

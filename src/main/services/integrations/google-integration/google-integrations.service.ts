@@ -30,6 +30,7 @@ import { Integration } from '@entity/integrations/integration.entity';
 import { Host } from '@entity/scheduled-events/host.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { User } from '@entity/users/user.entity';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
@@ -136,6 +137,7 @@ export class GoogleIntegrationsService implements
     create(
         profile: Profile,
         teamSetting: TeamSetting,
+        user: User,
         userSetting: UserSetting,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
@@ -149,6 +151,7 @@ export class GoogleIntegrationsService implements
                 transactionManager,
                 profile,
                 teamSetting,
+                user,
                 userSetting,
                 googleAuthToken,
                 googleCalendarIntegrations,
@@ -162,6 +165,7 @@ export class GoogleIntegrationsService implements
         manager: EntityManager,
         profile: Profile,
         teamSetting: TeamSetting,
+        user: User,
         userSetting: UserSetting,
         googleAuthToken: OAuthToken,
         googleCalendarIntegrations: GoogleCalendarIntegration[],
@@ -240,6 +244,8 @@ export class GoogleIntegrationsService implements
                     name: profile.name,
                     workspace,
                     timezone,
+                    email: user.email,
+                    phone: user.phone,
                     language
                 } as Host;
                 _googleIntegrationSchedule.googleCalendarIntegrationId = _googleCalendarIntegration?.id as number;

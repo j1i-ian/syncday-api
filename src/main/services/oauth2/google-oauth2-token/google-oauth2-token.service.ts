@@ -115,6 +115,7 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         await this.googleIntegrationService.create(
             profile,
             teamSetting,
+            user,
             user.userSetting,
             tokens,
             newGoogleCalendarIntegrations,

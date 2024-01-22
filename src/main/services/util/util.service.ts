@@ -503,6 +503,8 @@ export class UtilService {
             name: hostProfile.name,
             workspace,
             timezone,
+            email: host.email,
+            phone: host.phone,
             language: host.userSetting.preferredLanguage
         } as Host;
 

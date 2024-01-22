@@ -259,6 +259,9 @@ describe('GoogleCalendarIntegrationsService', () => {
             sendCancellationMessagesStubValue
         }) {
             it(description, async () => {
+
+                const userDummy = stubOne(User);
+
                 const googleCalendarEventListServiceSearchStub = serviceSandbox.stub(GoogleCalendarEventListService.prototype, 'search').resolves(googleScheduleStubValue);
 
                 const oldGoogleIntegrationScheduleStubs = stub(GoogleIntegrationScheduledEvent);
@@ -279,6 +282,7 @@ describe('GoogleCalendarIntegrationsService', () => {
                     googleCalendarIntegrationDummy,
                     profileDummy,
                     teamSettingDummy,
+                    userDummy,
                     userSettingDummy,
                     refrashTokenAndGoogleOAuthClientDummy
                 );

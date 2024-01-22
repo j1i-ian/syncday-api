@@ -31,6 +31,7 @@ import { ScheduledStatus } from '@entity/scheduled-events/scheduled-status.enum'
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { User } from '@entity/users/user.entity';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
 
@@ -70,6 +71,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         // As of now, User can have only one Google Integration
         const loadedProfile = loadedGoogleIntegration.profiles[0];
         const loadedTeamSetting = loadedProfile.team.teamSetting;
+        const loadedUser = loadedProfile.user;
         const loadedUserSetting = loadedProfile.user.userSetting;
 
         const googleOAuthClient = this.integrationUtilService.getGoogleOAuthClient(loadedGoogleIntegration.refreshToken);
@@ -79,6 +81,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             loadedGoogleCalendarIntegration,
             loadedProfile,
             loadedTeamSetting,
+            loadedUser,
             loadedUserSetting,
             {
                 googleOAuthClient
@@ -91,6 +94,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         googleCalendarIntegration: GoogleCalendarIntegration,
         profile: Profile,
         teamSetting: TeamSetting,
+        user: User,
         userSetting: UserSetting,
         {
             userRefreshToken,
@@ -144,6 +148,8 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                 name: profile.name,
                 workspace: teamSetting.workspace,
                 timezone: userSetting.preferredTimezone,
+                email: user.email,
+                phone: user.phone,
                 language: userSetting.preferredLanguage
             };
             return _newSchedule;
@@ -331,6 +337,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
 
                 const loadedProfile = loadedCalendars[0].googleIntegration.profiles[0];
                 const loadedTeamSetting = loadedProfile.team.teamSetting;
+                const loadedUser = loadedProfile.user;
                 const loadedUserSetting = loadedProfile.user.userSetting;
 
                 await Promise.all(
@@ -344,6 +351,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                                 __googleCalendarIntegration,
                                 loadedProfile,
                                 loadedTeamSetting,
+                                loadedUser,
                                 loadedUserSetting,
                                 {
                                     googleOAuthClient: __googleOAuthClient

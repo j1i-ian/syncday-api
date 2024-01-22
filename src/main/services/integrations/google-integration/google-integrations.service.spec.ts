@@ -16,6 +16,7 @@ import { GoogleCalendarIntegration } from '@entity/integrations/google/google-ca
 import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { User } from '@entity/users/user.entity';
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 import { TestMockUtil } from '@test/test-mock-util';
 
@@ -234,10 +235,13 @@ describe('GoogleIntegrationsService', () => {
 
             it(description, async () => {
 
+                const userDummy = stubOne(User);
+
                 const createdGoogleIntegration = await service._create(
                     datasourceMock as EntityManager,
                     profileMock,
                     teamSettingMock,
+                    userDummy,
                     userSettingMock,
                     googleOAuthTokenMock,
                     googleCalendarIntegrationsMocks,
