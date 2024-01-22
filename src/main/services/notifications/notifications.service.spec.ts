@@ -8,6 +8,7 @@ import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws
 import { AppConfigService } from '@config/app-config.service';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
+import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { FileUtilsService } from '@services/util/file-utils/file-utils.service';
 import { UtilService } from '@services/util/util.service';
@@ -102,7 +103,7 @@ describe('IntegrationsService', () => {
             const users = stub(User);
             const isSuccess = await firstValueFrom(
                 service.sendTeamInvitationForNewUsers(
-                    users
+                    users as InvitedNewTeamMember[]
                 )
             );
 
