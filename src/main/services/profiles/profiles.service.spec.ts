@@ -478,7 +478,7 @@ describe('ProfilesService', () => {
 
             utilServiceStub.filterInvitedNewUsers.reset();
 
-            notificationServiceStub.sendTeamInvitationForNewUsers.reset();
+            notificationServiceStub.sendTeamInvitation.reset();
 
             serviceSandbox.restore();
         });
@@ -493,7 +493,6 @@ describe('ProfilesService', () => {
                 },
                 getFilterInvitedNewUsersStubs: () => [],
                 saveInvitedNewTeamMemberCall: false,
-                sendTeamInvitationForNewUsersCall: false,
                 createNewProfileCall: true
             },
             {
@@ -506,7 +505,6 @@ describe('ProfilesService', () => {
                     return nonAppUserInvitations;
                 },
                 saveInvitedNewTeamMemberCall: true,
-                sendTeamInvitationForNewUsersCall: true,
                 createNewProfileCall: false
             },
             {
@@ -519,7 +517,6 @@ describe('ProfilesService', () => {
                     return nonAppUserInvitations;
                 },
                 saveInvitedNewTeamMemberCall: true,
-                sendTeamInvitationForNewUsersCall: true,
                 createNewProfileCall: false
             }
         ].forEach(function({
@@ -528,7 +525,6 @@ describe('ProfilesService', () => {
             getSearchedUserStubs,
             getFilterInvitedNewUsersStubs,
             saveInvitedNewTeamMemberCall,
-            sendTeamInvitationForNewUsersCall,
             createNewProfileCall
         }) {
 
@@ -577,7 +573,7 @@ describe('ProfilesService', () => {
                 utilServiceStub.filterInvitedNewUsers.returns(invitedNewUsersStubs);
                 const saveInvitedNewTeamMemberStub = serviceSandbox.stub(service, 'saveInvitedNewTeamMember');
                 saveInvitedNewTeamMemberStub.returns(of(true));
-                notificationServiceStub.sendTeamInvitationForNewUsers.returns(of(true));
+                notificationServiceStub.sendTeamInvitation.returns(of(true));
 
                 const createdProfile = await firstValueFrom(
                     service.createBulk(
@@ -607,7 +603,7 @@ describe('ProfilesService', () => {
 
                 expect(utilServiceStub.filterInvitedNewUsers.called).true;
                 expect(saveInvitedNewTeamMemberStub.called).equals(saveInvitedNewTeamMemberCall);
-                expect(notificationServiceStub.sendTeamInvitationForNewUsers.called).equals(sendTeamInvitationForNewUsersCall);
+                expect(notificationServiceStub.sendTeamInvitation.called).true;
             });
         });
 

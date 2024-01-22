@@ -303,7 +303,7 @@ describe('TeamService', () => {
             eventsServiceStub._create.reset();
 
             utilServiceStub.filterInvitedNewUsers.reset();
-            notificationsStub.sendTeamInvitationForNewUsers.reset();
+            notificationsStub.sendTeamInvitation.reset();
 
             teamRepositoryStub.create.reset();
             teamRepositoryStub.save.reset();
@@ -359,7 +359,7 @@ describe('TeamService', () => {
 
             utilServiceStub.filterInvitedNewUsers.returns([]);
             profilesServiceStub.saveInvitedNewTeamMember.returns(of(true));
-            notificationsStub.sendTeamInvitationForNewUsers.returns(of(true));
+            notificationsStub.sendTeamInvitation.returns(of(true));
 
             const result = await firstValueFrom(service.create(
                 orderMockStub.unit,
@@ -392,7 +392,7 @@ describe('TeamService', () => {
             expect(eventsServiceStub._create.called).true;
 
             expect(utilServiceStub.filterInvitedNewUsers.called).true;
-            expect(notificationsStub.sendTeamInvitationForNewUsers.called).true;
+            expect(notificationsStub.sendTeamInvitation.called).true;
 
             const passedNewProfiles = profilesServiceStub._create.getCall(0).args[1] as Profile[];
             const ownerProfile = passedNewProfiles.find((_profile) => _profile.userId === ownerUserMockStub.id);
@@ -476,7 +476,7 @@ describe('TeamService', () => {
             expect(ordersServiceStub._updateOrderStatus.called).false;
             expect(profilesServiceStub._create.called).false;
             expect(utilServiceStub.filterInvitedNewUsers.called).false;
-            expect(notificationsStub.sendTeamInvitationForNewUsers.called).false;
+            expect(notificationsStub.sendTeamInvitation.called).false;
         });
     });
 

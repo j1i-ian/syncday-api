@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Brackets, DataSource, EntityManager, FindOptionsWhere, Like, Raw, Repository, UpdateResult } from 'typeorm';
-import { Observable, combineLatest, defer, filter, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray, zip } from 'rxjs';
+import { Observable, combineLatest, defaultIfEmpty, defer, filter, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray, zip } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
@@ -263,7 +263,8 @@ export class ProfilesService {
             ? of(null)
             : from(this.paymentMethodService.fetch({ teamId }));
 
-        const buyerTeam$ = this._fetchTeamOwnerProfile(teamId)
+        const ownerProfile$ = this._fetchTeamOwnerProfile(teamId);
+        const buyerTeam$ = ownerProfile$
             .pipe(
                 mergeMap((ownerProfile) =>
                     zip(
@@ -287,21 +288,25 @@ export class ProfilesService {
                 emails: emailBulk,
                 phones: phoneNumberBulk
             })),
+            ownerProfile$,
             buyerTeam$,
             teamPaymentMethod$
         ]).pipe(
             mergeMap(([
                 loadedProduct,
                 searchedUsers,
+                ownerProfile,
                 [buyer, team],
                 teamPaymentMethod
             ]) => this.datasource.transaction(async (transactionManager) => {
+                const ensuredHostName = ownerProfile.name as string || team.name;
 
                 this.logger.info({
                     message: 'Invitation transaction is started',
                     productId: loadedProduct.id,
                     newPaymentMethod,
-                    buyer
+                    buyer,
+                    ensuredHostName
                 });
 
                 const amount = loadedProduct.price * orderUnit;
@@ -367,18 +372,57 @@ export class ProfilesService {
                     OrderStatus.PLACED
                 );
 
-                return { searchedUsers, createdOrderId: _createdOrder.id };
+                return {
+                    searchedUsers,
+                    createdOrderId: _createdOrder.id,
+                    team,
+                    hostName: ensuredHostName
+                };
             })),
-            mergeMap(({ searchedUsers, createdOrderId }) => {
+            mergeMap(({
+                searchedUsers,
+                createdOrderId,
+                team,
+                hostName
+            }) => {
 
                 const invitedNewUsers = this.utilService.filterInvitedNewUsers(newInvitedNewMembers, searchedUsers);
 
-                return invitedNewUsers.length > 0 ?
-                    this.saveInvitedNewTeamMember(teamId, teamUUID, invitedNewUsers, createdOrderId)
-                        .pipe(
-                            mergeMap(() => this.notificationsService.sendTeamInvitationForNewUsers(invitedNewUsers)),
-                            map(() => true)
-                        ) : of(true);
+                const signedUpUserInvitationNotifications$ = from(this.notificationsService.sendTeamInvitation(
+                    team.name,
+                    hostName,
+                    searchedUsers as InvitedNewTeamMember[],
+                    true
+                ));
+
+                const unsignedUserInvitationNotifications$ = from(this.notificationsService.sendTeamInvitation(
+                    team.name,
+                    hostName,
+                    invitedNewUsers,
+                    false
+                ));
+
+                const saveInvitedNewTeamMember$ = of(invitedNewUsers.length > 0)
+                    .pipe(
+                        filter(Boolean),
+                        mergeMap(() => this.saveInvitedNewTeamMember(
+                            teamId,
+                            teamUUID,
+                            invitedNewUsers,
+                            createdOrderId
+                        )),
+                        defaultIfEmpty(true)
+                    );
+
+                return saveInvitedNewTeamMember$
+                    .pipe(
+                        mergeMap(() => merge(
+                            signedUpUserInvitationNotifications$,
+                            unsignedUserInvitationNotifications$
+                        )),
+                        toArray(),
+                        map(() => true)
+                    );
             })
         );
     }
@@ -466,9 +510,6 @@ export class ProfilesService {
                                 email: user.email,
                                 phone: user.phone
                             });
-                        }),
-                        tap((relatedOrder) => {
-                            console.log('related order:', relatedOrder);
                         }),
                         mergeMap((relatedOrder) => this.ordersService._update(
                             transactionManager,

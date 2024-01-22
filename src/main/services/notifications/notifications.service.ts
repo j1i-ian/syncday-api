@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Observable, combineLatest, from, map, mergeMap, of } from 'rxjs';
+import { Observable, combineLatest, from, map, mergeMap } from 'rxjs';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
-import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
 import { BookingRequest } from '@core/interfaces/notifications/text-templates/booking-request.interface';
 import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
+import { InvitationNotification } from '@core/interfaces/notifications/text-templates/invitation-notification-request.interface';
+import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { AppConfigService } from '@config/app-config.service';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
@@ -28,11 +29,43 @@ export class NotificationsService {
         private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
     ) {}
 
-    sendTeamInvitationForNewUsers(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        users: InvitedNewTeamMember[]
+    sendTeamInvitation(
+        teamName: string,
+        hostName: string,
+        invitedNewTeamMembers: InvitedNewTeamMember[],
+        isAlreadySignedUpSyncUser: boolean
     ): Observable<boolean> {
-        return of(true);
+
+        return from(invitedNewTeamMembers)
+            .pipe(
+                map((invitedNewTeamMember) => ({
+                    hostName,
+                    teamName,
+                    invitedNewTeamMember,
+                    isAlreadySignedUpSyncUser
+                } as InvitationNotification)),
+                mergeMap((invitationNotificationRequest) => {
+
+                    let syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
+                    let phoneNumber: string | undefined;
+
+                    if (invitationNotificationRequest.invitedNewTeamMember.email) {
+                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
+                    } else {
+                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.KAKAOTALK;
+                        phoneNumber = invitationNotificationRequest.invitedNewTeamMember.phone as string;
+                    }
+
+                    return this.sendMessage(
+                        syncdayNotificationPublishKey,
+                        {
+                            template: TextTemplate.INVITATION,
+                            data: JSON.stringify(invitationNotificationRequest),
+                            phoneNumber
+                        }
+                    );
+                })
+            );
     }
 
     sendBookingRequest(

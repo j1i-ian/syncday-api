@@ -5,7 +5,9 @@ import {
     combineLatest,
     combineLatestWith,
     concat,
+    defaultIfEmpty,
     defer,
+    filter,
     firstValueFrom,
     from,
     map,
@@ -280,16 +282,55 @@ export class TeamService {
                         initialEvent
                     );
 
-                    return { createdTeam: _createdTeam, searchedUsers, createdOrder: _createdOrder };
+                    return {
+                        createdTeam: _createdTeam,
+                        searchedUsers,
+                        createdOrder: _createdOrder
+                    };
                 })
             ),
-            mergeMap(({ createdTeam, searchedUsers, createdOrder }) => {
+            mergeMap(({
+                createdTeam,
+                searchedUsers,
+                createdOrder
+            }) => {
 
+                const hostName = createdTeam.name;
                 const invitedNewUsers = this.utilService.filterInvitedNewUsers(teamMembers, searchedUsers);
 
-                return this.profilesService.saveInvitedNewTeamMember(createdTeam.id, createdTeam.uuid, invitedNewUsers, createdOrder.id)
+                const signedUpUserInvitationNotifications$ = from(this.notificationsService.sendTeamInvitation(
+                    createdTeam.name,
+                    hostName,
+                    searchedUsers as InvitedNewTeamMember[],
+                    true
+                ));
+
+                const saveInvitedNewTeamMember$ = of(invitedNewUsers.length > 0)
                     .pipe(
-                        mergeMap(() => this.notificationsService.sendTeamInvitationForNewUsers(invitedNewUsers)),
+                        filter(Boolean),
+                        mergeMap(() => this.profilesService.saveInvitedNewTeamMember(
+                            createdTeam.id,
+                            createdTeam.uuid,
+                            invitedNewUsers,
+                            createdOrder.id
+                        )),
+                        defaultIfEmpty(true)
+                    );
+
+                const unsignedUserInvitationNotifications$ = from(this.notificationsService.sendTeamInvitation(
+                    createdTeam.name,
+                    hostName,
+                    invitedNewUsers,
+                    false
+                ));
+
+                return saveInvitedNewTeamMember$
+                    .pipe(
+                        mergeMap(() => merge(
+                            signedUpUserInvitationNotifications$,
+                            unsignedUserInvitationNotifications$
+                        )),
+                        toArray(),
                         map(() => createdTeam)
                     );
             })
