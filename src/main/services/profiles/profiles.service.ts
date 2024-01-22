@@ -38,11 +38,11 @@ export class ProfilesService {
         private readonly notificationsService: NotificationsService,
         private readonly teamService: TeamService,
         private readonly profilesRedisRepository: ProfilesRedisRepository,
-        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
         @InjectDataSource() private datasource: DataSource,
-        @InjectRepository(Profile) private readonly profileRepository: Repository<Profile>
+        @InjectRepository(Profile) private readonly profileRepository: Repository<Profile>,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
     filterProfiles(
@@ -402,8 +402,21 @@ export class ProfilesService {
         const emailOrPhone = user.email || user.phone;
         const _profileRepository = transactionManager.getRepository(Profile);
 
+        this.logger.info({
+            message: 'Start to create the profiles with invitations in transaction',
+            email: user.email,
+            phone: user.phone
+        });
+
         return from(this.profilesRedisRepository.getTeamInvitations(emailOrPhone as string))
             .pipe(
+                tap((teamEntitiesAndOrderIds) => {
+                    this.logger.info({
+                        message: 'Loaded team entities and related orders',
+                        teamEntitiesAndOrderIds
+                    });
+                })
+            ).pipe(
                 mergeMap((teamEntitiesAndOrderIds) => from(teamEntitiesAndOrderIds)),
                 map((_team) => {
 
@@ -418,16 +431,43 @@ export class ProfilesService {
                     return createdProfile;
                 }),
                 toArray(),
+                tap((_newProfiles) => {
+                    this.logger.info({
+                        message: 'Trying to save the profiles with invitations in transaction',
+                        invitationLength: _newProfiles.length,
+                        email: user.email,
+                        phone: user.phone
+                    });
+                }),
                 mergeMap((_newProfiles) =>
                     from(defer(() =>
                         _profileRepository.save(_newProfiles)
                     ))
                 ),
+                tap((_savedProfiles) => {
+                    this.logger.info({
+                        message: 'creating the profiles is done. Trying to update the related order in transaction',
+                        invitationLength: _savedProfiles.length,
+                        email: user.email,
+                        phone: user.phone
+                    });
+                }),
                 mergeMap((profiles) => from(profiles)),
                 mergeMap((_createdProfile) =>
                     this.ordersService.fetch({
                         id: _createdProfile.orderId
                     }).pipe(
+                        tap((relatedOrder) => {
+                            this.logger.info({
+                                message: 'Loaded a related order in transaction',
+                                relatedOrderId: relatedOrder.id,
+                                email: user.email,
+                                phone: user.phone
+                            });
+                        }),
+                        tap((relatedOrder) => {
+                            console.log('related order:', relatedOrder);
+                        }),
                         mergeMap((relatedOrder) => this.ordersService._update(
                             transactionManager,
                             relatedOrder.id,

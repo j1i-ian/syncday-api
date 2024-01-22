@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, FindOneOptions, FindOptionsWhere, Repository } from 'typeorm';
 import { firstValueFrom, of } from 'rxjs';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
@@ -179,6 +180,10 @@ describe('Test User Service', () => {
                 {
                     provide: getRepositoryToken(EventGroup),
                     useValue: eventGroupRepositoryStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: TestMockUtil.getLoggerStub()
                 }
             ]
         }).compile();

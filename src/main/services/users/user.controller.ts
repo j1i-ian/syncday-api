@@ -58,8 +58,10 @@ export class UserController {
 
         let createUser$: Observable<CreatedUserTeamProfile>;
 
-        if (createUserWithEmailOrPhoneVerificationDto instanceof CreateUserWithEmailVerificationDto) {
-            const { email, verificationCode, timezone } = createUserWithEmailOrPhoneVerificationDto;
+        const createUserWithEmail = createUserWithEmailOrPhoneVerificationDto as CreateUserWithEmailVerificationDto;
+
+        if (createUserWithEmail.email) {
+            const { email, verificationCode, timezone } = createUserWithEmailOrPhoneVerificationDto as CreateUserWithEmailVerificationDto;
 
             createUser$ = this.userService.createUser(
                 email,
@@ -73,7 +75,7 @@ export class UserController {
                 name,
                 uuid,
                 timezone
-            } = createUserWithEmailOrPhoneVerificationDto;
+            } = createUserWithEmailOrPhoneVerificationDto as CreateUserWithPhoneVerificationDto;
 
             createUser$ = this.userService.createUser(
                 phone,

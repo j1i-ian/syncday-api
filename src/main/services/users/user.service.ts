@@ -3,6 +3,8 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { Observable, concatMap, defer, firstValueFrom, from, map, mergeMap, of, tap, toArray } from 'rxjs';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
@@ -81,7 +83,8 @@ export class UserService {
         @Inject(forwardRef(() => TeamService))
         private readonly teamService: TeamService,
         @InjectDataSource() private datasource: DataSource,
-        @InjectRepository(User) private readonly userRepository: Repository<User>
+        @InjectRepository(User) private readonly userRepository: Repository<User>,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
     async search({
@@ -236,6 +239,11 @@ export class UserService {
         let createUser$: Observable<CreatedUserTeamProfile>;
 
         if (isCreateUserByPhone) {
+
+            this.logger.info({
+                message: 'Create user by phone number'
+            });
+
             createUser$ =
                 this._createUserWithVerificationByPhoneNumber(
                     emailOrIntegrationVendorOrPhone,
@@ -246,6 +254,11 @@ export class UserService {
                     language
                 );
         } else if (isOAuth2SignUp === false) {
+
+            this.logger.info({
+                message: 'Create user by email'
+            });
+
             createUser$ = from(
                 this._createUserWithVerificationByEmail(
                     emailOrIntegrationVendorOrPhone,
@@ -254,6 +267,10 @@ export class UserService {
                 )
             );
         } else {
+
+            this.logger.info({
+                message: 'Create user by oauth2'
+            });
 
             createUser$ = of(this.oauth2TokenServiceLocator.get(emailOrIntegrationVendorOrPhone as IntegrationVendor))
                 .pipe(
@@ -300,6 +317,11 @@ export class UserService {
             throw new EmailVertificationFailException();
         }
 
+        this.logger.info({
+            message: 'Email verification success',
+            email
+        });
+
         await this.syncdayRedisService.setEmailVerificationStatus(
             email,
             verificationOrNull.uuid
@@ -308,6 +330,11 @@ export class UserService {
         const temporaryUser = await this.syncdayRedisService.getTemporaryUser(email);
         const profileName = temporaryUser.name;
         const newUser = this.userRepository.create(temporaryUser);
+
+        this.logger.info({
+            message: 'Creating profile, team, user transaction start',
+            email
+        });
 
         const {
             createdProfile,
@@ -328,11 +355,23 @@ export class UserService {
                         }
                     )
                 )).pipe(
+                    tap(() => {
+                        this.logger.info({
+                            message: 'Creating the user is success. Start to create the profile and detect invitations',
+                            email
+                        });
+                    }),
                     concatMap((createUserTeamProfile) =>
                         this.profilesService._createInvitedProfiles(
                             transactionManager,
                             createUserTeamProfile.createdUser
                         ).pipe(
+                            tap(() => {
+                                this.logger.info({
+                                    message: 'Creating profiles with invitations are completed. Trying to complete invitation..',
+                                    email
+                                });
+                            }),
                             mergeMap((_profiles) => from(_profiles)),
                             mergeMap((_createdProfile) =>
                                 this.profilesService.completeInvitation(
@@ -342,6 +381,12 @@ export class UserService {
                                 ).pipe(map(() => _createdProfile))
                             ),
                             toArray(),
+                            tap(() => {
+                                this.logger.info({
+                                    message: 'Invitation is done',
+                                    email
+                                });
+                            }),
                             map((createdProfilesByInvitations) => {
                                 createUserTeamProfile.createdUser.profiles = [createUserTeamProfile.createdProfile].concat(createdProfilesByInvitations);
                                 return createUserTeamProfile;
