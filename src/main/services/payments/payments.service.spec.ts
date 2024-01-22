@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EntityManager, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { BootpayService } from '@services/payments/bootpay/bootpay.service';
 import { PaymentRedisRepository } from '@services/payments/payment.redis-repository';
@@ -58,6 +59,10 @@ describe('PaymentsService', () => {
                 {
                     provide: getRepositoryToken(Payment),
                     useValue: paymentRepositoryStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: TestMockUtil.getLoggerStub()
                 }
             ]
         }).compile();

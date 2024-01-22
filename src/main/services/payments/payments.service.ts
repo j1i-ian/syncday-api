@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { PaymentStatus } from '@interfaces/payments/payment-status.enum';
@@ -11,13 +13,16 @@ import { BootpayPGPaymentStatus } from '@services/payments/bootpay-pg-payment-st
 import { Payment } from '@entity/payments/payment.entity';
 import { Order } from '@entity/orders/order.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { BootpayException } from '@exceptions/bootpay.exception';
+import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
 
 @Injectable()
 export class PaymentsService {
 
     constructor(
         private readonly paymentRedisRepository: PaymentRedisRepository,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
         const bootpaySetting = AppConfigService.getBootpaySetting(this.configService);
 
@@ -44,6 +49,46 @@ export class PaymentsService {
         paymentMethod: PaymentMethod,
         buyer: Buyer
     ): Promise<Payment> {
+
+        try {
+
+            const bootpayService = new BootpayService();
+
+            await bootpayService.init(this.bootpayConfiguration);
+
+            const pgPaymentResult = await bootpayService.placeOrder(
+                relatedOrder,
+                relatedOrder.amount,
+                buyer,
+                paymentMethod.billing
+            );
+
+            await this.paymentRedisRepository.setPGPaymentResult(
+                relatedOrder.uuid,
+                pgPaymentResult
+            );
+        } catch (error) {
+
+            const bootpayError = (error as InternalBootpayException);
+
+            if (bootpayError.error_code && bootpayError.message) {
+
+                const bootpayException = new BootpayException(bootpayError.message);
+                bootpayException.name = bootpayError.error_code;
+                bootpayException.message = bootpayError.message;
+
+                this.logger.error({
+                    message: 'Error while placing the order',
+                    error,
+                    bootpayException
+                });
+
+                error = bootpayException;
+            }
+
+            throw error;
+        }
+
         const _paymentRepository = transactionManager.getRepository(Payment);
 
         const createdPayment = _paymentRepository.create({
@@ -52,22 +97,6 @@ export class PaymentsService {
             proration,
             paymentMethodId: paymentMethod.id
         });
-
-        const bootpayService = new BootpayService();
-
-        await bootpayService.init(this.bootpayConfiguration);
-
-        const pgPaymentResult = await bootpayService.placeOrder(
-            relatedOrder,
-            relatedOrder.amount,
-            buyer,
-            paymentMethod.billing
-        );
-
-        await this.paymentRedisRepository.setPGPaymentResult(
-            relatedOrder.uuid,
-            pgPaymentResult
-        );
 
         const savedPayment = await _paymentRepository.save(createdPayment);
 
