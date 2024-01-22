@@ -8,6 +8,7 @@ import { Role } from '@interfaces/profiles/role.enum';
 import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
+import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { UserService } from '@services/users/user.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
@@ -365,7 +366,7 @@ describe('TeamService', () => {
                 paymentMethodMockStub,
                 teamMockStub,
                 teamSettingMock,
-                searchedTeamMemberMocksStubs,
+                searchedTeamMemberMocksStubs as InvitedNewTeamMember[],
                 ordererMock,
                 ownerUserMockStub.id
             ));
@@ -461,7 +462,7 @@ describe('TeamService', () => {
                 paymentMethodMockStub,
                 teamMockStub,
                 teamSettingMock,
-                searchedTeamMemberMocksStubs,
+                searchedTeamMemberMocksStubs as InvitedNewTeamMember[],
                 ordererMock,
                 ownerUserMockStub.id
             ))).rejectedWith(AlreadyUsedInWorkspace);
@@ -509,7 +510,7 @@ describe('TeamService', () => {
             ordersServiceStub.fetch.reset();
             teamSettingServiceStub._delete.reset();
 
-            utilServiceStub.getProrations.reset();
+            utilServiceStub.getProratedPrice.reset();
             paymentsServiceStub._refund.reset();
 
             serviceSandbox.restore();
@@ -533,7 +534,7 @@ describe('TeamService', () => {
             teamSettingServiceStub._delete.returns(of(true));
             _deleteStub.returns(of(true));
 
-            utilServiceStub.getProrations.returns(0);
+            utilServiceStub.getProratedPrice.returns(0);
             paymentsServiceStub._refund.resolves(paymentStub);
 
             const deleteSuccess = await firstValueFrom(service.delete(authProfileMock));
@@ -547,7 +548,7 @@ describe('TeamService', () => {
 
             expect(teamSettingServiceStub._delete.called).true;
             expect(_deleteStub.called).true;
-            expect(utilServiceStub.getProrations.called).true;
+            expect(utilServiceStub.getProratedPrice.called).true;
             expect(paymentsServiceStub._refund.called).true;
         });
 
@@ -570,7 +571,7 @@ describe('TeamService', () => {
             teamSettingServiceStub._delete.returns(of(true));
             _deleteStub.returns(of(true));
 
-            utilServiceStub.getProrations.returns(0);
+            utilServiceStub.getProratedPrice.returns(0);
             paymentsServiceStub._refund.resolves(paymentStub);
 
             await expect(firstValueFrom(service.delete(authProfileMock))).rejectedWith(CannotDeleteTeamException);
@@ -582,7 +583,7 @@ describe('TeamService', () => {
 
             expect(teamSettingServiceStub._delete.called).false;
             expect(_deleteStub.called).false;
-            expect(utilServiceStub.getProrations.called).false;
+            expect(utilServiceStub.getProratedPrice.called).false;
             expect(paymentsServiceStub._refund.called).false;
         });
 
@@ -606,7 +607,7 @@ describe('TeamService', () => {
             teamSettingServiceStub._delete.returns(of(true));
             _deleteStub.returns(of(true));
 
-            utilServiceStub.getProrations.returns(0);
+            utilServiceStub.getProratedPrice.returns(0);
             paymentsServiceStub._refund.resolves(paymentStub);
 
             await expect(firstValueFrom(service.delete(authProfileMock))).rejectedWith(CannotDeleteTeamException);
@@ -618,7 +619,7 @@ describe('TeamService', () => {
 
             expect(teamSettingServiceStub._delete.called).false;
             expect(_deleteStub.called).false;
-            expect(utilServiceStub.getProrations.called).false;
+            expect(utilServiceStub.getProratedPrice.called).false;
             expect(paymentsServiceStub._refund.called).false;
         });
     });

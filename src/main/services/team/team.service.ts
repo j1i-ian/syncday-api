@@ -379,11 +379,11 @@ export class TeamService {
                 })),
                 map((refundParams) => {
                     const { unitPrice  } = refundParams;
-                    const proration = this.utilService.getProrations(unitPrice, refundParams.teamCreatedAt);
+                    const proratedRefundUnitPrice = this.utilService.getProratedPrice(unitPrice, refundParams.teamCreatedAt);
 
                     return {
                         ...refundParams,
-                        proration
+                        proratedRefundUnitPrice
                     };
                 })
             );
@@ -407,7 +407,7 @@ export class TeamService {
                             mergeMap(() =>
                                 refundParams$.pipe(
                                     mergeMap(({
-                                        proration,
+                                        proratedRefundUnitPrice,
                                         profileName,
                                         refundMessage,
                                         isPartialCancelation,
@@ -417,7 +417,7 @@ export class TeamService {
                                         relatedOrder,
                                         profileName as string,
                                         refundMessage,
-                                        proration,
+                                        proratedRefundUnitPrice,
                                         isPartialCancelation
                                     ))),
                                     catchError(() => of(null))

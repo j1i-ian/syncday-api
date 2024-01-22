@@ -304,10 +304,12 @@ export class ProfilesService {
                     buyer
                 });
 
-                const proration = this.utilService.getProrations(
-                    loadedProduct.price * orderUnit,
+                const amount = loadedProduct.price * orderUnit;
+                const proratedPrice = this.utilService.getProratedPrice(
+                    amount,
                     team.createdAt
                 );
+                const proration = amount - proratedPrice;
                 const _allProfiles = searchedUsers.map((_user) => this.utilService.createNewProfile(teamId, _user.id));
 
                 const createdProfiles = await this._create(transactionManager, _allProfiles) as Profile[];
@@ -702,7 +704,7 @@ export class ProfilesService {
             ]: [Profile, Profile, Team, Order]) => this.datasource.transaction(async (transactionManager) => {
 
                 const unitPrice = Math.floor(relatedOrder.amount / relatedOrder.unit);
-                const proration = this.utilService.getProrations(
+                const proration = this.utilService.getProratedPrice(
                     unitPrice,
                     loadedTeam.createdAt
                 );

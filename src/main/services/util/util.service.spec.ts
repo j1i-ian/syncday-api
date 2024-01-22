@@ -151,7 +151,7 @@ describe('UtilService', () => {
             const previousPeriod = new Date(_15daysAfterPaymentPeriodMock);
             previousPeriod.setMonth(previousPeriod.getMonth() - 1);
 
-            const actual = service.getProrations(amountMock, _15daysAfterPaymentPeriodMock);
+            const actual = service.getProratedPrice(amountMock, _15daysAfterPaymentPeriodMock);
 
             // 29 for Feb or 30 or 31 days
             const day = 1000 * 60 * 60 * 24;

@@ -122,7 +122,7 @@ export class UtilService {
         return parsedSearchOption;
     }
 
-    getProrations(
+    getProratedPrice(
         amount: number,
         paymentPeriod: Date
     ): number {

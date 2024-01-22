@@ -915,7 +915,7 @@ describe('ProfilesService', () => {
             teamServiceStub.get.resolves(teamStub);
             ordersServiceStub.fetch.resolves(relatedOrderStub);
 
-            utilServiceStub.getProrations.returns(0);
+            utilServiceStub.getProratedPrice.returns(0);
             paymentsServiceStub._refund.resolves();
 
             availabilityRepositoryStub.softDelete.resolves();
@@ -932,7 +932,7 @@ describe('ProfilesService', () => {
 
             expect(teamServiceStub.get.called).true;
             expect(ordersServiceStub.fetch.called).true;
-            expect(utilServiceStub.getProrations.called).true;
+            expect(utilServiceStub.getProratedPrice.called).true;
             expect(paymentsServiceStub._refund.called).true;
             expect(availabilityRepositoryStub.softDelete.called).true;
             expect(availabilityRepositoryStub.update.called).true;
@@ -958,7 +958,7 @@ describe('ProfilesService', () => {
             teamServiceStub.get.resolves(teamStub);
             ordersServiceStub.fetch.resolves(relatedOrderStub);
 
-            utilServiceStub.getProrations.returns(0);
+            utilServiceStub.getProratedPrice.returns(0);
             paymentsServiceStub._refund.resolves();
 
             availabilityRepositoryStub.softDelete.resolves();
@@ -975,7 +975,7 @@ describe('ProfilesService', () => {
 
             expect(teamServiceStub.get.called).true;
             expect(ordersServiceStub.fetch.called).true;
-            expect(utilServiceStub.getProrations.called).true;
+            expect(utilServiceStub.getProratedPrice.called).true;
             expect(paymentsServiceStub._refund.called).true;
             expect(availabilityRepositoryStub.softDelete.called).true;
             expect(availabilityRepositoryStub.update.called).true;
