@@ -5,6 +5,7 @@ import { SNSClient } from '@aws-sdk/client-sns';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
+import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
 import { AppConfigService } from '@config/app-config.service';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
@@ -113,8 +114,10 @@ describe('NotificationsService', () => {
             serviceSandbox.restore();
         });
 
-        it('should be notified to new users for invitations', async () => {
-            const users = stub(User);
+        it('should be notified with email to new users for email invitations', async () => {
+            const users = stub(User, 3, {
+                email: TestMockUtil.faker.internet.email()
+            });
             const ownerProfileMock = stubOne(Profile);
             const teamMock = stubOne(Team);
 
@@ -128,6 +131,62 @@ describe('NotificationsService', () => {
             );
 
             expect(isSuccess).true;
+
+            const notificationType = serviceSendMessageStub.getCall(0).args[0];
+            const { template: actualTemplate } = serviceSendMessageStub.getCall(0).args[1];
+
+            expect(notificationType).equals(SyncdayNotificationPublishKey.EMAIL);
+            expect(actualTemplate).equals(EmailTemplate.INVITATION);
+        });
+
+        it('should be notified with Kakaotalk for Korean phone number invitations', async () => {
+            const users = stub(User, 3, {
+                phone: '+821012341234'
+            });
+            const ownerProfileMock = stubOne(Profile);
+            const teamMock = stubOne(Team);
+
+            const isSuccess = await firstValueFrom(
+                service.sendTeamInvitation(
+                    teamMock.name,
+                    ownerProfileMock.name as string,
+                    users as InvitedNewTeamMember[],
+                    false
+                )
+            );
+
+            expect(isSuccess).true;
+
+            const notificationType = serviceSendMessageStub.getCall(0).args[0];
+            const { template: actualTemplate } = serviceSendMessageStub.getCall(0).args[1];
+
+            expect(notificationType).equals(SyncdayNotificationPublishKey.KAKAOTALK);
+            expect(actualTemplate).equals(TextTemplate.INVITATION);
+        });
+
+        it('should be notified with Twilio for international phone number invitations', async () => {
+            const users = stub(User, 3, {
+                phone: '+141012341234'
+            });
+            const ownerProfileMock = stubOne(Profile);
+            const teamMock = stubOne(Team);
+
+            const isSuccess = await firstValueFrom(
+                service.sendTeamInvitation(
+                    teamMock.name,
+                    ownerProfileMock.name as string,
+                    users as InvitedNewTeamMember[],
+                    false
+                )
+            );
+
+            expect(isSuccess).true;
+
+            const notificationType = serviceSendMessageStub.getCall(0).args[0];
+            const { template: actualTemplate } = serviceSendMessageStub.getCall(0).args[1];
+
+            expect(notificationType).equals(SyncdayNotificationPublishKey.SMS_GLOBAL);
+            expect(actualTemplate).equals(TextTemplate.INVITATION);
         });
     });
 

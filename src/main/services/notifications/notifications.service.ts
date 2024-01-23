@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Observable, combineLatest, from, map, mergeMap } from 'rxjs';
+import { Observable, combineLatest, from, map, mergeMap, reduce } from 'rxjs';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
@@ -48,23 +48,35 @@ export class NotificationsService {
 
                     let syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
                     let phoneNumber: string | undefined;
+                    let template: TextTemplate | EmailTemplate;
 
-                    if (invitationNotificationRequest.invitedNewTeamMember.email) {
+                    const { invitedNewTeamMember } = invitationNotificationRequest;
+
+                    if (invitedNewTeamMember.email) {
                         syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
+                        template = EmailTemplate.INVITATION;
                     } else {
-                        syncdayNotificationPublishKey = SyncdayNotificationPublishKey.KAKAOTALK;
-                        phoneNumber = invitationNotificationRequest.invitedNewTeamMember.phone as string;
+
+                        const phoneNumber = invitedNewTeamMember.phone as string;
+                        const isKoreanPhoneNumber = phoneNumber.includes('+82');
+
+                        syncdayNotificationPublishKey = isKoreanPhoneNumber
+                            ? SyncdayNotificationPublishKey.KAKAOTALK
+                            : SyncdayNotificationPublishKey.SMS_GLOBAL;
+
+                        template = TextTemplate.INVITATION;
                     }
 
                     return this.sendMessage(
                         syncdayNotificationPublishKey,
                         {
-                            template: TextTemplate.INVITATION,
+                            template,
                             data: JSON.stringify(invitationNotificationRequest),
                             phoneNumber
                         }
                     );
-                })
+                }),
+                reduce((acc, curr) => acc && curr)
             );
     }
 
