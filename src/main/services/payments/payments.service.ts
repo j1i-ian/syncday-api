@@ -3,6 +3,7 @@ import { EntityManager } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+import { Observable, combineLatestWith, concatMap, defaultIfEmpty, defer, filter, from, map, mergeMap, of, zip } from 'rxjs';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { PaymentStatus } from '@interfaces/payments/payment-status.enum';
@@ -103,48 +104,58 @@ export class PaymentsService {
         return savedPayment;
     }
 
-    async _refund(
-        transactionManager: EntityManager,
+    _refund(
         relatedOrder: Order,
         canceler: string,
         message: string,
         proratedRefundUnitPrice: number,
         isPartialCancelation: boolean
-    ): Promise<Payment> {
+    ): Observable<boolean> {
 
-        const _paymentRepository = transactionManager.getRepository(Payment);
+        return from(defer(() => this.paymentRedisRepository.getPGPaymentResult(relatedOrder.uuid)))
+            .pipe(
+                filter((pgPaymentResult) => pgPaymentResult.status !== BootpayPGPaymentStatus.CANCELLED),
+                combineLatestWith(of(new BootpayService())),
+                mergeMap(([pgPaymentResult, bootpayService]) =>
+                    from(bootpayService.init(this.bootpayConfiguration))
+                        .pipe(
+                            concatMap(() => bootpayService.refund(
+                                relatedOrder.uuid,
+                                pgPaymentResult.receipt_id,
+                                canceler,
+                                message,
+                                proratedRefundUnitPrice,
+                                isPartialCancelation
+                            ))
+                        )
+                ),
+                concatMap((result) => this.paymentRedisRepository.setPGPaymentResult(
+                    relatedOrder.uuid,
+                    result
+                )),
+                defaultIfEmpty(true)
+            );
+    }
 
-        const createdPayment = _paymentRepository.create({
-            amount: proratedRefundUnitPrice * -1,
-            orderId: relatedOrder.id,
-            status: PaymentStatus.PARTIAL_REFUNDED
-        });
+    _save(
+        transactionManager: EntityManager,
+        relatedOrder: Order,
+        proratedRefundUnitPrice: number
+    ): Observable<Payment> {
+        const paymentRepository$ = of(transactionManager.getRepository(Payment));
+        const createdPayment$ = paymentRepository$.pipe(
+            map((_paymentRepository) => _paymentRepository.create({
+                amount: proratedRefundUnitPrice * -1,
+                orderId: relatedOrder.id,
+                status: PaymentStatus.PARTIAL_REFUNDED
+            }))
+        );
 
-        const savedPayment = await _paymentRepository.save(createdPayment);
-
-        const pgPaymentResult = await this.paymentRedisRepository.getPGPaymentResult(relatedOrder.uuid);
-
-        if (pgPaymentResult.status !== BootpayPGPaymentStatus.CANCELLED) {
-
-            const bootpayService = new BootpayService();
-
-            await bootpayService.init(this.bootpayConfiguration);
-
-            const result = await bootpayService.refund(
-                relatedOrder.uuid,
-                pgPaymentResult.receipt_id,
-                canceler,
-                message,
-                proratedRefundUnitPrice,
-                isPartialCancelation
+        const savePayments$ = zip(paymentRepository$, createdPayment$)
+            .pipe(
+                mergeMap(([_paymentRepository, createdPayment]) => _paymentRepository.save(createdPayment))
             );
 
-            await this.paymentRedisRepository.setPGPaymentResult(
-                relatedOrder.uuid,
-                result
-            );
-        }
-
-        return savedPayment;
+        return savePayments$;
     }
 }

@@ -8,9 +8,11 @@ import {
     HttpStatus,
     Patch,
     Post,
-    Query
+    Query,
+    Res
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, catchError, filter, of, tap, throwIfEmpty } from 'rxjs';
+import { Response } from 'express';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
@@ -20,6 +22,7 @@ import { TeamService } from '@services/team/team.service';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { CreateTeamRequestDto } from '@dto/teams/create-team-request.dto';
+import { BootpayException } from '@exceptions/bootpay.exception';
 
 @Controller()
 export class TeamController {
@@ -112,8 +115,27 @@ export class TeamController {
     @HttpCode(HttpStatus.NO_CONTENT)
     @Roles(Role.OWNER)
     remove(
-        @AuthProfile() authProfile: AppJwtPayload
+        @AuthProfile() authProfile: AppJwtPayload,
+        @Res() response: Response
     ): Observable<boolean> {
-        return this.teamService.delete(authProfile);
+        return this.teamService.delete(authProfile)
+            .pipe(
+                tap(() => {
+                    response.status(HttpStatus.NO_CONTENT).json();
+                }),
+                catchError((errorOrBootpayException) =>
+                    of(errorOrBootpayException)
+                        .pipe(
+                            filter((errorOrBootpayException) => errorOrBootpayException instanceof BootpayException),
+                            tap(() => {
+                                response.status(208).json({
+                                    exception: errorOrBootpayException.name,
+                                    message: errorOrBootpayException.message
+                                });
+                            }),
+                            throwIfEmpty(() => errorOrBootpayException)
+                        )
+                )
+            );
     }
 }

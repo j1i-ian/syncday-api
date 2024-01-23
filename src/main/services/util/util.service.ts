@@ -40,6 +40,8 @@ import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity'
 import { Language } from '@app/enums/language.enum';
 import { NewProfile } from '@app/interfaces/profiles/new-profile.type';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
+import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
+import { BootpayException } from '@exceptions/bootpay.exception';
 
 interface UserDefaultSettingOption {
     timezone?: string;
@@ -147,6 +149,15 @@ export class UtilService {
         const prorationDate = (nextPeriod.getTime() - tomorrow.getTime()) / day;
 
         return Math.floor(amount / totalPeriod * prorationDate);
+    }
+
+    convertToBootpayException(bootpayError: InternalBootpayException): BootpayException {
+
+        const bootpayException = new BootpayException(bootpayError.message);
+        bootpayException.name = bootpayError.error_code;
+        bootpayException.message = bootpayError.message;
+
+        return bootpayException;
     }
 
     convertToInvitedNewTeamMember(emailOrPhone: string): InvitedNewTeamMember {

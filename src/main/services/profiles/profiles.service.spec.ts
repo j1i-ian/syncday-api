@@ -893,7 +893,7 @@ describe('ProfilesService', () => {
             serviceSandbox.restore();
         });
 
-        it('should be removed a profile for kick a user from the team', async () => {
+        it('should be removed a profile', async () => {
 
             const teamStub = stubOne(Team);
             const relatedOrderStub = stubOne(Order);
@@ -904,27 +904,33 @@ describe('ProfilesService', () => {
             const deleteTargetProfileStub = stubOne(Profile, {
                 roles: [Role.MEMBER]
             });
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            const deleteResultStub = TestMockUtil.getTypeormDeleteResultMock();
 
             profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
+
+            serviceSandbox.stub(service, 'validateDeleteProfilePermission');
+
+            paymentsServiceStub._refund.returns(of(true));
 
             serviceSandbox.stub(service, '_fetchTeamOwnerProfile').returns(of(authProfile));
             teamServiceStub.get.resolves(teamStub);
             ordersServiceStub.fetch.resolves(relatedOrderStub);
 
             utilServiceStub.getProratedPrice.returns(0);
-            paymentsServiceStub._refund.resolves();
 
-            availabilityRepositoryStub.softDelete.resolves();
-            availabilityRepositoryStub.update.resolves();
-
-            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
+            availabilityRepositoryStub.softDelete.resolves(updateResultStub);
+            availabilityRepositoryStub.update.resolves(updateResultStub);
             profileRepositoryStub.delete.resolves(deleteResultStub);
+            paymentsServiceStub._save.resolves();
 
             await firstValueFrom(service.remove(
                 teamStub.id,
                 authProfile,
                 profileIdMock
             ));
+
+            expect(profileRepositoryStub.findOneByOrFail.called).true;
 
             expect(teamServiceStub.get.called).true;
             expect(ordersServiceStub.fetch.called).true;
@@ -933,134 +939,7 @@ describe('ProfilesService', () => {
             expect(availabilityRepositoryStub.softDelete.called).true;
             expect(availabilityRepositoryStub.update.called).true;
             expect(profileRepositoryStub.delete.called).true;
-
-            expect(profileRepositoryStub.findOneByOrFail.called).true;
-            expect(profileRepositoryStub.delete.called).true;
-        });
-
-        it('should be removed a manager profile by request himself', async () => {
-
-            const teamStub = stubOne(Team);
-            const relatedOrderStub = stubOne(Order);
-            const authProfile = stubOne(Profile);
-            const deleteTargetProfileStub = stubOne(Profile, {
-                id: authProfile.id,
-                roles: [Role.MANAGER]
-            });
-
-            profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
-
-            serviceSandbox.stub(service, '_fetchTeamOwnerProfile').returns(of(authProfile));
-            teamServiceStub.get.resolves(teamStub);
-            ordersServiceStub.fetch.resolves(relatedOrderStub);
-
-            utilServiceStub.getProratedPrice.returns(0);
-            paymentsServiceStub._refund.resolves();
-
-            availabilityRepositoryStub.softDelete.resolves();
-            availabilityRepositoryStub.update.resolves();
-
-            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
-            profileRepositoryStub.delete.resolves(deleteResultStub);
-
-            await firstValueFrom(service.remove(
-                teamStub.id,
-                authProfile,
-                deleteTargetProfileStub.id
-            ));
-
-            expect(teamServiceStub.get.called).true;
-            expect(ordersServiceStub.fetch.called).true;
-            expect(utilServiceStub.getProratedPrice.called).true;
-            expect(paymentsServiceStub._refund.called).true;
-            expect(availabilityRepositoryStub.softDelete.called).true;
-            expect(availabilityRepositoryStub.update.called).true;
-            expect(profileRepositoryStub.delete.called).true;
-
-            expect(profileRepositoryStub.findOneByOrFail.called).true;
-            expect(profileRepositoryStub.delete.called).true;
-        });
-
-        it('should be thrown an error when a manager requests to delete other manager profile', async () => {
-
-            const teamIdMock = stubOne(Team).id;
-            const authProfile = stubOne(Profile, {
-                roles: [Role.MANAGER]
-            });
-            const profileIdMock = authProfile.id + 1;
-            const deleteTargetProfileStub = stubOne(Profile, {
-                id: profileIdMock,
-                roles: [Role.MANAGER]
-            });
-
-            profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
-
-            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
-            profileRepositoryStub.delete.resolves(deleteResultStub);
-
-            await expect(firstValueFrom(service.remove(
-                teamIdMock,
-                authProfile,
-                profileIdMock
-            ))).rejectedWith(ForbiddenException);
-
-            expect(profileRepositoryStub.findOneByOrFail.called).true;
-            expect(profileRepositoryStub.delete.called).false;
-        });
-
-        it('should be thrown an error when manager to try remove owner profile', async () => {
-
-            const teamIdMock = stubOne(Team).id;
-            const authProfile = stubOne(Profile, {
-                roles: [Role.MANAGER]
-            });
-            const profileIdMock = authProfile.id + 1;
-            const deleteTargetProfileStub = stubOne(Profile, {
-                roles: [Role.OWNER]
-            });
-
-
-            profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
-
-            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
-            profileRepositoryStub.delete.resolves(deleteResultStub);
-
-            await expect(firstValueFrom(service.remove(
-                teamIdMock,
-                authProfile,
-                profileIdMock
-            ))).rejectedWith(ForbiddenException);
-
-            expect(profileRepositoryStub.findOneByOrFail.called).true;
-            expect(profileRepositoryStub.delete.called).false;
-        });
-
-        it('should be thrown an error when manager to try remove manager profile', async () => {
-
-            const teamIdMock = stubOne(Team).id;
-            const authProfile = stubOne(Profile, {
-                roles: [Role.MANAGER]
-            });
-            const profileIdMock = authProfile.id + 1;
-            const deleteTargetProfileStub = stubOne(Profile, {
-                id: profileIdMock,
-                roles: [Role.MANAGER]
-            });
-
-
-            profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
-
-            const deleteResultStub = TestMockUtil.getTypeormUpdateResultMock();
-            profileRepositoryStub.delete.resolves(deleteResultStub);
-
-            await expect(firstValueFrom(service.remove(
-                teamIdMock,
-                authProfile,
-                profileIdMock
-            ))).rejectedWith(ForbiddenException);
-
-            expect(profileRepositoryStub.findOneByOrFail.called).true;
-            expect(profileRepositoryStub.delete.called).false;
+            expect(paymentsServiceStub._save.called).true;
         });
     });
 
@@ -1173,6 +1052,122 @@ describe('ProfilesService', () => {
                         authProfileId,
                         deleteTargetProfileId,
                         roles
+                    )).not.throws();
+                }
+            });
+
+        });
+    });
+
+    describe('Delete Request Permission Test',() => {
+
+        [
+            {
+                description: 'should be passed the validation when the owner requests to delete a manager',
+                authProfileMock: stubOne(Profile, {
+                    roles: [Role.OWNER]
+                }),
+                deleteProfileMock: stubOne(Profile, {
+                    roles: [Role.MANAGER]
+                }),
+                expectedThrow: false
+            },
+            {
+                description: 'should be passed the validation when the owner requests to delete a member',
+                authProfileMock: stubOne(Profile, {
+                    roles: [Role.OWNER]
+                }),
+                deleteProfileMock: stubOne(Profile, {
+                    roles: [Role.MEMBER]
+                }),
+                expectedThrow: false
+            },
+            {
+                description: 'should be thrown an error when any requests to delete a owner',
+                authProfileMock: stubOne(Profile),
+                deleteProfileMock: stubOne(Profile, {
+                    roles: [Role.OWNER]
+                }),
+                expectedThrow: true
+            },
+            {
+                description: 'should be passed the validation when the manager requests to delete himself',
+                authProfileMock: stubOne(Profile, {
+                    id: 1,
+                    roles: [Role.MANAGER]
+                }),
+                deleteProfileMock: stubOne(Profile, {
+                    id: 1,
+                    roles: [Role.MANAGER]
+                }),
+                expectedThrow: false
+            },
+            {
+                description: 'should be thrown an error when the manager requests to delete another manager',
+                authProfileMock: stubOne(Profile, {
+                    id: 1,
+                    roles: [Role.MANAGER]
+                }),
+                deleteProfileMock: stubOne(Profile, {
+                    id: 2,
+                    roles: [Role.MANAGER]
+                }),
+                expectedThrow: true
+            },
+            {
+                description: 'should be passed the validation when the manager requests to delete himself',
+                authProfileMock: stubOne(Profile, {
+                    id: 1,
+                    roles: [Role.MEMBER]
+                }),
+                deleteProfileMock: stubOne(Profile, {
+                    id: 1,
+                    roles: [Role.MEMBER]
+                }),
+                expectedThrow: false
+            },
+            {
+                description: 'should be thrown an error when member requests to delete the manager',
+                authProfileMock: stubOne(Profile, {
+                    id: 1,
+                    roles: [Role.MEMBER]
+                }),
+                deleteProfileMock: stubOne(Profile, {
+                    id: 2,
+                    roles: [Role.MANAGER]
+                }),
+                expectedThrow: true
+            },
+            {
+                description: 'should be thrown an error when member requests to delete the owner',
+                authProfileMock: stubOne(Profile, {
+                    id: 1,
+                    roles: [Role.MEMBER]
+                }),
+                deleteProfileMock: stubOne(Profile, {
+                    id: 2,
+                    roles: [Role.OWNER]
+                }),
+                expectedThrow: true
+            }
+        ].forEach(function({
+            description,
+            authProfileMock,
+            deleteProfileMock,
+            expectedThrow
+        }) {
+            it(description, () => {
+
+                if (expectedThrow) {
+
+                    expect(() => service.validateDeleteProfilePermission(
+                        authProfileMock,
+                        deleteProfileMock
+                    )).throws(ForbiddenException);
+                } else {
+                    expect(() => service.validateDeleteProfilePermission(
+                        authProfileMock,
+                        deleteProfileMock
                     )).not.throws();
                 }
             });

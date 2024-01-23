@@ -23,6 +23,7 @@ import { UserSetting } from '@entity/users/user-setting.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { TestMockUtil } from '@test/test-mock-util';
+import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
 import { UtilService } from './util.service';
 
 interface RoleUpdateTestParameters {
@@ -139,6 +140,25 @@ describe('UtilService', () => {
                 expect(parsedSearchOption.id).equals(expectedProfileId);
                 expect(parsedSearchOption.userId).equals(expectedUserId);
             });
+        });
+    });
+
+    describe('Bootpay Exception convert Test', () => {
+
+        it('should be converted to bootpay exception', () => {
+
+            const errorCodeMock = 'sample';
+            const messageMock = 'cancelation is already completed';
+            const bootpayErrorMock = {
+                error_code: errorCodeMock,
+                message: messageMock
+            } as InternalBootpayException;
+
+            const convertedException = service.convertToBootpayException(bootpayErrorMock);
+
+            expect(convertedException).ok;
+            expect(convertedException.message).equals(messageMock);
+            expect(convertedException.name).equals(errorCodeMock);
         });
     });
 

@@ -1,7 +1,30 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Brackets, DataSource, EntityManager, FindOptionsWhere, Like, Raw, Repository, UpdateResult } from 'typeorm';
-import { Observable, combineLatest, defaultIfEmpty, defer, filter, firstValueFrom, from, iif, map, merge, mergeMap, of, reduce, tap, toArray, zip } from 'rxjs';
+import {
+    Observable,
+    catchError,
+    combineLatest,
+    combineLatestWith,
+    concat,
+    concatMap,
+    defaultIfEmpty,
+    defer,
+    filter,
+    firstValueFrom,
+    from,
+    iif,
+    map,
+    merge,
+    mergeMap,
+    of,
+    reduce,
+    tap,
+    throwIfEmpty,
+    toArray,
+    zip,
+    zipWith
+} from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
@@ -22,9 +45,9 @@ import { TeamService } from '@services/team/team.service';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
-import { Order } from '@entity/orders/order.entity';
-import { Team } from '@entity/teams/team.entity';
 import { Availability } from '@entity/availability/availability.entity';
+import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
+import { BootpayException } from '@exceptions/bootpay.exception';
 
 @Injectable()
 export class ProfilesService {
@@ -691,100 +714,153 @@ export class ProfilesService {
 
         const {
             id: authProfileId,
-            roles: authRoles,
             name: canceler
         } = authProfile;
 
-        // check profile roles and validate it.
-        return from(defer(() => this.profileRepository.findOneByOrFail({
+        const targetProfile$ = from(defer(() => this.profileRepository.findOneByOrFail({
             id: profileId,
             teamId
-        }))).pipe(
-            tap((deleteTargetProfile) => {
+        })));
 
-                if (deleteTargetProfile.roles.includes(Role.OWNER)) {
-                    throw new ForbiddenException('Owner cannot be deleted');
-                } else if (
-                    deleteTargetProfile.roles.includes(Role.MANAGER)
-                    && authRoles.includes(Role.MANAGER)
-                    && authProfileId !== profileId
-                ) {
-                    throw new ForbiddenException('Invalid permission request');
-                }
-            }),
-            mergeMap((deleteTargetProfile) => combineLatest([
-                of(deleteTargetProfile),
-                this._fetchTeamOwnerProfile(teamId),
-                this.teamService.get(teamId, authProfile.userId, {}),
-                this.ordersService.fetch({
+        const validateRequestPermission$ = targetProfile$.pipe(
+            tap((deleteProfile) => {
+                this.validateDeleteProfilePermission(
+                    authProfile,
+                    deleteProfile
+                );
+            })
+        );
+
+        const order$ = targetProfile$
+            .pipe(
+                mergeMap((_deleteProfile) => this.ordersService.fetch({
                     teamId,
                     orderOption: {
-                        profileIds: [deleteTargetProfile.id]
+                        profileIds: [_deleteProfile.id]
                     }
-                })
-            ])),
-            tap(([
-                deleteTargetProfile,
-                ownerProfile,
-                loadedTeam,
-                relatedOrder
-            ]) => {
-                this.logger.info({
-                    message: 'Profile Remove: Start transaction',
-                    relatedOrder,
-                    loadedTeam,
-                    deleteTargetProfile,
-                    ownerProfile
-                });
-            }),
-            mergeMap(([
-                deleteTargetProfile,
-                ownerProfile,
-                loadedTeam,
-                relatedOrder
-            ]: [Profile, Profile, Team, Order]) => this.datasource.transaction(async (transactionManager) => {
+                }))
+            );
+        const team$ = this.teamService.get(teamId, authProfile.userId, {});
 
-                const unitPrice = Math.floor(relatedOrder.amount / relatedOrder.unit);
-                const proration = this.utilService.getProratedPrice(
-                    unitPrice,
-                    loadedTeam.createdAt
-                );
-                const profileName = deleteTargetProfile.name || deleteTargetProfile.id;
-                const refundMessage = `Profile ${profileName} is removed by ${canceler || authProfileId}`;
+        const refundParams$ = zip(targetProfile$, order$)
+            .pipe(
+                map(([_deleteProfile, _relatedOrder]) => ({
+                    unitPrice: Math.floor(_relatedOrder.amount / _relatedOrder.unit),
+                    profileName: _deleteProfile.name || _deleteProfile.id,
+                    isPartialCancelation: _relatedOrder.unit > 1
+                })),
+                combineLatestWith(team$),
+                map(([_refundParams, _team]) => ({
+                    ..._refundParams,
+                    proration: this.utilService.getProratedPrice(
+                        _refundParams.unitPrice,
+                        _team.createdAt
+                    ),
+                    refundMessage: `Profile ${_refundParams.profileName} is removed by ${canceler || authProfileId}`
+                }))
+            );
 
-                const isPartialCancelation = relatedOrder.unit > 1;
-
-                await this.paymentsService._refund(
-                    transactionManager,
+        const refund$ = zip(refundParams$, order$)
+            .pipe(
+                concatMap(([refundParams, relatedOrder]) => this.paymentsService._refund(
                     relatedOrder,
                     canceler as string,
-                    refundMessage,
-                    proration,
-                    isPartialCancelation
-                );
+                    refundParams.refundMessage,
+                    refundParams.proration,
+                    refundParams.isPartialCancelation
+                ))
+            );
+        const ownerProfile$ = this._fetchTeamOwnerProfile(teamId);
 
-                const _profileRepository = transactionManager.getRepository(Profile);
-                const _availabilityRepository = transactionManager.getRepository(Availability);
+        return validateRequestPermission$.pipe(
+            tap((refundParams) => {
+                this.logger.info({
+                    message: 'Profile Remove: Start transaction',
+                    authProfileId: authProfile.id,
+                    refundParams
+                });
+            }),
+            concatMap(() => refund$),
+            catchError((error) => {
 
-                await _availabilityRepository.softDelete({
-                    profileId: deleteTargetProfile.id
+                this.logger.error({
+                    message: 'Error while refunding the order',
+                    authProfileId: authProfile.id,
+                    error
                 });
 
-                await _availabilityRepository.update(
-                    { profileId: deleteTargetProfile.id },
-                    { profileId: ownerProfile.id }
-                );
-
-                const deleteResult = await _profileRepository.delete({
-                    id: profileId,
+                return of(error)
+                    .pipe(
+                        filter((error) => error.error_code && error.message),
+                        map((bootpayError: InternalBootpayException) => this.utilService.convertToBootpayException(bootpayError)),
+                        throwIfEmpty(() => error)
+                    );
+            }),
+            tap(() => {
+                this.logger.info({
+                    message: 'Profile Remove: Refund is complete successfully. Trying to soft delete and update the availabilities..',
+                    authProfileId: authProfile.id,
+                    profileId,
                     teamId
                 });
-
-                return deleteResult;
-            })),
-            map((deleteResult) =>!!(deleteResult &&
-                deleteResult.affected &&
-                deleteResult.affected > 0))
+            }),
+            concatMap((exception) =>
+                from(this.datasource.transaction((transactionManager) =>
+                    firstValueFrom(
+                        concat(
+                            of(transactionManager.getRepository(Availability))
+                                .pipe(
+                                    concatMap((_availabilityRepository) => _availabilityRepository.softDelete({
+                                        profileId
+                                    }))
+                                ),
+                            of(transactionManager.getRepository(Availability))
+                                .pipe(
+                                    zipWith(ownerProfile$),
+                                    concatMap(([_availabilityRepository, ownerProfile]) => _availabilityRepository.update(
+                                        { profileId },
+                                        { profileId: ownerProfile.id }
+                                    ))
+                                ),
+                            of(transactionManager.getRepository(Profile))
+                                .pipe(
+                                    mergeMap((_profileRepository) => _profileRepository.delete({
+                                        id: profileId,
+                                        teamId
+                                    }))
+                                )
+                        ).pipe(
+                            reduce((acc, updateResult) => acc && !!(
+                                updateResult
+                                    && updateResult.affected
+                                    && updateResult.affected > 0)
+                            , true),
+                            mergeMap(() => zip(order$, refundParams$)),
+                            mergeMap(([
+                                relatedOrder,
+                                { proration }
+                            ]) => this.paymentsService._save(
+                                transactionManager,
+                                relatedOrder,
+                                proration
+                            )),
+                            map(() => true)
+                        ))
+                )).pipe(
+                    tap((resultAndException) => {
+                        this.logger.info({
+                            message: 'Profile Delete Transaction is completed. Trying to validate delete reuslts',
+                            resultAndException
+                        });
+                    }),
+                    /** TODO: Study about finalized operator and thats pipe range */
+                    tap(() => {
+                        if (exception instanceof BootpayException) {
+                            throw exception;
+                        }
+                    })
+                )
+            )
         );
     }
 
@@ -824,5 +900,35 @@ export class ProfilesService {
         }
 
         return true;
+    }
+
+    validateDeleteProfilePermission(
+        authProfile: Profile,
+        deleteProfile: Profile
+    ): void {
+
+        const isOwnerPermission = deleteProfile.roles.includes(Role.OWNER);
+        const isManagerDeleteRequestOfManager =
+            deleteProfile.roles.includes(Role.MANAGER)
+            && authProfile.roles.includes(Role.MANAGER)
+            && deleteProfile.id !== authProfile.id;
+        const isMemberPermissionRequest =
+            authProfile.roles.includes(Role.OWNER) === false
+            && authProfile.roles.includes(Role.MANAGER) === false
+            && deleteProfile.id !== authProfile.id;
+
+        if (isOwnerPermission) {
+            throw new ForbiddenException('Owner cannot be deleted');
+        } else if (isManagerDeleteRequestOfManager) {
+            throw new ForbiddenException('Invalid permission request');
+        } else if (isMemberPermissionRequest) {
+            throw new ForbiddenException('Only owner or manager can remove other profiles');
+        } else {
+            this.logger.info({
+                message: 'Permission validation is passed',
+                authProfile,
+                deleteProfileRoles: deleteProfile.roles
+            });
+        }
     }
 }

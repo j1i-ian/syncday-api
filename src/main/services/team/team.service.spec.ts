@@ -535,7 +535,8 @@ describe('TeamService', () => {
             _deleteStub.returns(of(true));
 
             utilServiceStub.getProratedPrice.returns(0);
-            paymentsServiceStub._refund.resolves(paymentStub);
+            paymentsServiceStub._refund.returns(of(true));
+            paymentsServiceStub._save.resolves(paymentStub);
 
             const deleteSuccess = await firstValueFrom(service.delete(authProfileMock));
 
@@ -572,7 +573,8 @@ describe('TeamService', () => {
             _deleteStub.returns(of(true));
 
             utilServiceStub.getProratedPrice.returns(0);
-            paymentsServiceStub._refund.resolves(paymentStub);
+            paymentsServiceStub._refund.returns(of(true));
+            paymentsServiceStub._save.resolves(paymentStub);
 
             await expect(firstValueFrom(service.delete(authProfileMock))).rejectedWith(CannotDeleteTeamException);
 
@@ -608,7 +610,8 @@ describe('TeamService', () => {
             _deleteStub.returns(of(true));
 
             utilServiceStub.getProratedPrice.returns(0);
-            paymentsServiceStub._refund.resolves(paymentStub);
+            paymentsServiceStub._refund.returns(of(true));
+            paymentsServiceStub._save.resolves(paymentStub);
 
             await expect(firstValueFrom(service.delete(authProfileMock))).rejectedWith(CannotDeleteTeamException);
 

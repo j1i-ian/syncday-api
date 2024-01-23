@@ -16,6 +16,7 @@ import {
     of,
     reduce,
     tap,
+    throwIfEmpty,
     toArray
 } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
@@ -52,6 +53,8 @@ import { EventGroup } from '@entity/events/event-group.entity';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 import { CannotDeleteTeamException } from '@app/exceptions/teams/cannot-delete-team.exception';
+import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
+import { BootpayException } from '@exceptions/bootpay.exception';
 
 @Injectable()
 export class TeamService {
@@ -436,13 +439,45 @@ export class TeamService {
                 })
             );
 
+        const refund$ = refundParams$.pipe(
+            mergeMap(({
+                proratedRefundUnitPrice,
+                profileName,
+                refundMessage,
+                isPartialCancelation,
+                relatedOrder
+            }) => this.paymentsService._refund(
+                relatedOrder,
+                profileName as string,
+                refundMessage,
+                proratedRefundUnitPrice,
+                isPartialCancelation
+            ))
+        );
+
         return merge(
             validateProfiles$,
             validateInvitations$
         ).pipe(
             toArray(),
-            mergeMap(() =>
-                this.datasource.transaction((transactionManager) =>
+            mergeMap(() => refund$),
+            catchError((error) => {
+
+                this.logger.error({
+                    message: 'Error while refunding the order',
+                    authProfileId: authProfile.id,
+                    error
+                });
+
+                return of(error)
+                    .pipe(
+                        filter((error) => error.error_code && error.message),
+                        map((bootpayError: InternalBootpayException) => this.utilService.convertToBootpayException(bootpayError)),
+                        throwIfEmpty(() => error)
+                    );
+            }),
+            mergeMap((exception) =>
+                from(this.datasource.transaction((transactionManager) =>
                     firstValueFrom(
                         concat(
                             this.teamSettingService._delete(
@@ -452,27 +487,26 @@ export class TeamService {
                             this._delete(transactionManager, teamId)
                         ).pipe(
                             reduce((acc, curr) => acc && curr),
-                            mergeMap(() =>
-                                refundParams$.pipe(
-                                    mergeMap(({
-                                        proratedRefundUnitPrice,
-                                        profileName,
-                                        refundMessage,
-                                        isPartialCancelation,
-                                        relatedOrder
-                                    }) => from(this.paymentsService._refund(
-                                        transactionManager,
-                                        relatedOrder,
-                                        profileName as string,
-                                        refundMessage,
-                                        proratedRefundUnitPrice,
-                                        isPartialCancelation
-                                    ))),
-                                    catchError(() => of(null))
+                            mergeMap(() => refundParams$),
+                            mergeMap(({
+                                relatedOrder,
+                                proratedRefundUnitPrice
+                            }) =>
+                                this.paymentsService._save(
+                                    transactionManager,
+                                    relatedOrder,
+                                    proratedRefundUnitPrice
                                 )
-                            )
+                            ),
+                            map(() => true)
                         )
                     )
+                )).pipe(
+                    tap(() => {
+                        if (exception instanceof BootpayException) {
+                            throw exception;
+                        }
+                    })
                 )
             ),
             map(() => true)

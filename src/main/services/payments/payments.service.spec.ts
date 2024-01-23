@@ -3,6 +3,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { firstValueFrom } from 'rxjs';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { BootpayService } from '@services/payments/bootpay/bootpay.service';
 import { PaymentRedisRepository } from '@services/payments/payment.redis-repository';
@@ -74,7 +75,7 @@ describe('PaymentsService', () => {
         expect(service).ok;
     });
 
-    describe('Test payment method creating', () => {
+    describe('Test payment creating', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
         beforeEach(() => {
@@ -97,7 +98,7 @@ describe('PaymentsService', () => {
             serviceSandbox.restore();
         });
 
-        it('should be saved a payment method with transactional interface', async () => {
+        it('should be saved a payment with transactional interface', async () => {
 
             const prorationMock = 0;
             const orderMock = stubOne(Order);
@@ -137,21 +138,48 @@ describe('PaymentsService', () => {
         });
     });
 
-    describe('Test payment method refund', () => {
+    describe('Payment Save Test', () => {
+        afterEach(() => {
+            paymentRepositoryStub.create.reset();
+            paymentRepositoryStub.save.reset();
+        });
+
+        it('should be saved a payment entity with transaction', async () => {
+
+            const orderMock = stubOne(Order);
+            const proratedRefundUnitPriceMock = 5000;
+
+            paymentRepositoryStub.create.returnsArg(0);
+            paymentRepositoryStub.save.resolvesArg(0);
+
+            const result = await firstValueFrom(service._save(
+                datasourceMock as unknown as EntityManager,
+                orderMock,
+                proratedRefundUnitPriceMock
+            ));
+
+            expect(result).ok;
+            expect(paymentRepositoryStub.create.called).ok;
+            expect(paymentRepositoryStub.save.called).ok;
+        });
+    });
+
+    describe('Test payment refund with bootpay', () => {
         let serviceSandbox: sinon.SinonSandbox;
 
         beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
 
             bootpayServiceRefundStub = serviceSandbox.stub(BootpayService.prototype, 'refund');
+            bootpayServiceRefundStub.resolves({} as any);
 
             bootpayServiceInitStub = serviceSandbox.stub(BootpayService.prototype, 'init');
+            bootpayServiceInitStub.resolves({} as any);
+
+            paymentRedisRepository.setPGPaymentResult.resolves(true);
         });
 
         afterEach(() => {
-            paymentRepositoryStub.create.reset();
-            paymentRepositoryStub.save.reset();
-
             bootpayServiceRefundStub.reset();
             bootpayServiceInitStub.reset();
 
@@ -161,37 +189,24 @@ describe('PaymentsService', () => {
             serviceSandbox.restore();
         });
 
-        it('should be refunded a payment with transaction', async () => {
+        it('should be refunded a payment with bootpay', async () => {
 
             const orderMock = stubOne(Order);
-            const paymentStub = stubOne(Payment, {
-                amount: orderMock.amount,
-                orderId: orderMock.id
-            });
             const refundUnitPriceMock = 5000;
             const cancelerMock = stubOne(Profile).name as string;
             const messageMock = '';
 
-            paymentRepositoryStub.create.returns(paymentStub);
-
             paymentRedisRepository.getPGPaymentResult.resolves({ receipt_id: '' } as ReceiptResponseParameters);
 
-            paymentRepositoryStub.save.resolves(paymentStub);
-
-            const refundedPayment = await service._refund(
-                datasourceMock as unknown as EntityManager,
+            const refundSuccess = await firstValueFrom(service._refund(
                 orderMock,
                 cancelerMock,
                 messageMock,
                 refundUnitPriceMock,
                 false
-            );
+            ));
 
-            expect(refundedPayment).ok;
-            expect(refundedPayment).deep.equals(paymentStub);
-
-            expect(paymentRepositoryStub.create.called).true;
-            expect(paymentRepositoryStub.save.called).true;
+            expect(refundSuccess).ok;
 
             expect(bootpayServiceRefundStub.called).true;
             expect(bootpayServiceInitStub.called).true;
@@ -203,34 +218,22 @@ describe('PaymentsService', () => {
         it('should be refunded a payment without bootpay transaction', async () => {
 
             const orderMock = stubOne(Order);
-            const paymentStub = stubOne(Payment, {
-                amount: orderMock.amount,
-                orderId: orderMock.id
-            });
             const refundUnitPriceMock = 5000;
             const cancelerMock = stubOne(Profile).name as string;
             const messageMock = '';
 
-            paymentRepositoryStub.create.returns(paymentStub);
-
             paymentRedisRepository.getPGPaymentResult.resolves({ status: BootpayPGPaymentStatus.CANCELLED, receipt_id: '' } as ReceiptResponseParameters);
 
-            paymentRepositoryStub.save.resolves(paymentStub);
 
-            const refundedPayment = await service._refund(
-                datasourceMock as unknown as EntityManager,
+            const refundSuccess = await firstValueFrom(service._refund(
                 orderMock,
                 cancelerMock,
                 messageMock,
                 refundUnitPriceMock,
                 false
-            );
+            ));
 
-            expect(refundedPayment).ok;
-            expect(refundedPayment).deep.equals(paymentStub);
-
-            expect(paymentRepositoryStub.create.called).true;
-            expect(paymentRepositoryStub.save.called).true;
+            expect(refundSuccess).true;
 
             expect(bootpayServiceRefundStub.called).false;
             expect(bootpayServiceInitStub.called).false;

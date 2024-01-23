@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Inject, Param, Patch, Post, Put, Query } from '@nestjs/common';
-import { Observable, map } from 'rxjs';
+import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Inject, Param, Patch, Post, Put, Query, Res } from '@nestjs/common';
+import { Observable, catchError, filter, map, of, tap, throwIfEmpty } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+import { Response } from 'express';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
@@ -19,6 +20,7 @@ import { FetchProfileResponseDto } from '@dto/profiles/fetch-profile-response.dt
 import { PatchAllProfileRequestDto } from '@dto/profiles/patch-all-profile-request.dto';
 import { PatchProfileRolesRequest } from '@dto/profiles/patch-profile-roles-request.dto';
 import { CreateProfileBulkRequestDto } from '@dto/profiles/create-profile-bulk-request.dto';
+import { BootpayException } from '@exceptions/bootpay.exception';
 
 @Controller()
 export class ProfilesController {
@@ -120,7 +122,7 @@ export class ProfilesController {
             teamId,
             teamUUID,
             order,
-            totalCount: createProfileBulkRequestDto.invitedMembers.length
+            totalCount: invitedMembers.length
         });
 
         return this.profileService.createBulk(
@@ -178,12 +180,26 @@ export class ProfilesController {
         );
     }
 
+
+    /**
+     * Http status code 208 - Already Reported
+     *
+     * @see {@link [Already Reported](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/208)}
+     */
     @Delete(':profileId(\\d+)')
     @HttpCode(HttpStatus.NO_CONTENT)
     remove(
         @Param('profileId') profileId: number,
-        @AuthProfile() authProfile: Profile
+        @AuthProfile() authProfile: Profile,
+        @Res() response: Response
     ): Observable<boolean> {
+
+        this.logger.info({
+            message: 'Profile Delete is requested',
+            profileId,
+            teamId: authProfile.teamId,
+            teamUUID: authProfile.teamUUID
+        });
 
         this.profileService.validateProfileDeleteRequest(
             authProfile.id,
@@ -195,6 +211,31 @@ export class ProfilesController {
             authProfile.teamId,
             authProfile,
             profileId
+        ).pipe(
+            tap(() => {
+                this.logger.info({
+                    message: 'Profile Delete is completed',
+                    profileId,
+                    teamId: authProfile.teamId,
+                    teamUUID: authProfile.teamUUID
+                });
+            }),
+            tap(() => {
+                response.status(HttpStatus.NO_CONTENT).json();
+            }),
+            catchError((errorOrBootpayException) =>
+                of(errorOrBootpayException)
+                    .pipe(
+                        filter((errorOrBootpayException) => errorOrBootpayException instanceof BootpayException),
+                        tap(() => {
+                            response.status(208).json({
+                                exception: errorOrBootpayException.name,
+                                message: errorOrBootpayException.message
+                            });
+                        }),
+                        throwIfEmpty(() => errorOrBootpayException)
+                    )
+            )
         );
     }
 }
