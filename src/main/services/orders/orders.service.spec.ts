@@ -66,7 +66,7 @@ describe('OrdersService', () => {
         const productIdMock = 1;
         const orderStub = stubOne(Order);
 
-        orderRepositoryStub.findOneOrFail.resolves(orderStub);
+        orderRepositoryStub.findOne.resolves(orderStub);
 
         const loaded = await firstValueFrom(service.fetch({
             teamId: teamIdMock,
@@ -74,7 +74,7 @@ describe('OrdersService', () => {
         }));
 
         expect(loaded).ok;
-        expect(orderRepositoryStub.findOneOrFail.called).true;
+        expect(orderRepositoryStub.findOne.called).true;
     });
 
     describe('Test order creating with product', () => {

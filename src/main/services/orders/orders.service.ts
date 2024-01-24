@@ -60,7 +60,7 @@ export class OrdersService {
         teamId?: number;
         productId?: number;
         orderOption?: OrderOption;
-    }): Observable<Order> {
+    }): Observable<Order | null> {
 
         const {
             id,
@@ -106,7 +106,7 @@ export class OrdersService {
             } as FindOptionsWhere<Order>;
         }
 
-        return from(defer(() => this.orderRepository.findOneOrFail({
+        return from(defer(() => this.orderRepository.findOne({
             relations: ['team'],
             where: findOptionsWhere
         })));

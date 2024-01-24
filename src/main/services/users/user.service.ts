@@ -176,10 +176,7 @@ export class UserService {
             relations: _appJwtPayloadFindOptionsRelations,
             select: _appJwtPayloadFindOptionsSelect,
             where: {
-                ...emailFindOptionWhere,
-                profiles: {
-                    default: true
-                }
+                ...emailFindOptionWhere
             }
         });
 
@@ -187,10 +184,10 @@ export class UserService {
     }
 
     async validateEmailAndPassword(
-        email: string,
+        emailOrPhoneNumber: string,
         requestPlainPassword: string
     ): Promise<User | null> {
-        const loadedUser = await this.findUserByLocalAuth(email);
+        const loadedUser = await this.findUserByLocalAuth(emailOrPhoneNumber);
 
         let result = false;
         if (loadedUser) {

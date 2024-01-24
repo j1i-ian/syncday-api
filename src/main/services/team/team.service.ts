@@ -17,7 +17,8 @@ import {
     reduce,
     tap,
     throwIfEmpty,
-    toArray
+    toArray,
+    zip
 } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
@@ -51,6 +52,7 @@ import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
+import { Order } from '@entity/orders/order.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 import { CannotDeleteTeamException } from '@app/exceptions/teams/cannot-delete-team.exception';
 import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
@@ -409,8 +411,15 @@ export class TeamService {
 
         const team$ = from(defer(() => this.teamRepository.findOneByOrFail({ id: teamId })));
 
-        const refundParams$ = this.ordersService.fetch({ teamId, productId: 1 })
+        const refundParams$ = this.ordersService.fetch({
+            teamId,
+            orderOption: {
+                teamId
+            }
+        })
             .pipe(
+                filter((relatedOrder) => relatedOrder !== null),
+                map((relatedOrder) => relatedOrder as Order),
                 combineLatestWith(team$),
                 tap(([loadedOrder, loadedTeam]) => {
                     this.logger.info({
@@ -420,7 +429,7 @@ export class TeamService {
                         loadedTeam
                     });
                 }),
-                mergeMap(([relatedOrder, loadedTeam ]) => of({
+                mergeMap(([relatedOrder, loadedTeam]) => of({
                     unitPrice: Math.floor(relatedOrder.amount / relatedOrder.unit),
                     isPartialCancelation: relatedOrder.unit > 1,
                     profileName: name || id,
@@ -440,6 +449,7 @@ export class TeamService {
             );
 
         const refund$ = refundParams$.pipe(
+            filter(({ relatedOrder}) => relatedOrder !== null),
             mergeMap(({
                 proratedRefundUnitPrice,
                 profileName,
@@ -452,14 +462,14 @@ export class TeamService {
                 refundMessage,
                 proratedRefundUnitPrice,
                 isPartialCancelation
-            ))
+            )),
+            defaultIfEmpty(true)
         );
 
-        return merge(
+        return zip(
             validateProfiles$,
             validateInvitations$
         ).pipe(
-            toArray(),
             mergeMap(() => refund$),
             catchError((error) => {
 
@@ -488,6 +498,7 @@ export class TeamService {
                         ).pipe(
                             reduce((acc, curr) => acc && curr),
                             mergeMap(() => refundParams$),
+                            filter(({ relatedOrder}) => relatedOrder !== null),
                             mergeMap(({
                                 relatedOrder,
                                 proratedRefundUnitPrice
@@ -498,7 +509,8 @@ export class TeamService {
                                     proratedRefundUnitPrice
                                 )
                             ),
-                            map(() => true)
+                            map(() => true),
+                            defaultIfEmpty(true)
                         )
                     )
                 )).pipe(
@@ -515,12 +527,19 @@ export class TeamService {
 
     _delete(transactionManager: EntityManager, teamId: number): Observable<boolean> {
 
-        return of(transactionManager.getRepository(Team))
+        const teamDelete$ = of(transactionManager.getRepository(Team))
+            .pipe(mergeMap((teamRepository) => teamRepository.softDelete(teamId)));
+        const profileDelete$ = of(transactionManager.getRepository(Profile))
+            .pipe(mergeMap((profileRepository) => profileRepository.softDelete({
+                teamId
+            })));
+
+        return concat(teamDelete$, profileDelete$)
             .pipe(
-                mergeMap((teamRepository) => teamRepository.softDelete(teamId)),
                 map((deleteResult) => !!(deleteResult &&
                     deleteResult.affected &&
-                    deleteResult.affected > 0))
+                    deleteResult.affected > 0)),
+                reduce((acc, curr) => acc && curr)
             );
     }
 

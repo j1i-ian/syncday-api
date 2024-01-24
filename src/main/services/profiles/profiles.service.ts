@@ -46,6 +46,7 @@ import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { Availability } from '@entity/availability/availability.entity';
+import { Order } from '@entity/orders/order.entity';
 import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
 import { BootpayException } from '@exceptions/bootpay.exception';
 
@@ -526,6 +527,8 @@ export class ProfilesService {
                     this.ordersService.fetch({
                         id: _createdProfile.orderId
                     }).pipe(
+                        filter((relatedOrder) => relatedOrder !== null),
+                        map((relatedOrder) => relatedOrder as Order),
                         tap((relatedOrder) => {
                             this.logger.info({
                                 message: 'Loaded a related order in transaction',
@@ -744,6 +747,9 @@ export class ProfilesService {
 
         const refundParams$ = zip(targetProfile$, order$)
             .pipe(
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                filter(([_, _relatedOrder]) => _relatedOrder !== null),
+                map(([_deleteProfile, _relatedOrder]) => [_deleteProfile, _relatedOrder] as [Profile, Order]),
                 map(([_deleteProfile, _relatedOrder]) => ({
                     unitPrice: Math.floor(_relatedOrder.amount / _relatedOrder.unit),
                     profileName: _deleteProfile.name || _deleteProfile.id,
@@ -762,8 +768,10 @@ export class ProfilesService {
 
         const refund$ = zip(refundParams$, order$)
             .pipe(
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                filter(([_, relatedOrder]) => relatedOrder !== null),
                 concatMap(([refundParams, relatedOrder]) => this.paymentsService._refund(
-                    relatedOrder,
+                    relatedOrder as Order,
                     canceler as string,
                     refundParams.refundMessage,
                     refundParams.proration,
@@ -836,15 +844,17 @@ export class ProfilesService {
                                     && updateResult.affected > 0)
                             , true),
                             mergeMap(() => zip(order$, refundParams$)),
+                            filter(([ relatedOrder ]) => relatedOrder !== null),
                             mergeMap(([
                                 relatedOrder,
                                 { proration }
                             ]) => this.paymentsService._save(
                                 transactionManager,
-                                relatedOrder,
+                                relatedOrder as Order,
                                 proration
                             )),
-                            map(() => true)
+                            map(() => true),
+                            defaultIfEmpty(true)
                         ))
                 )).pipe(
                     tap((resultAndException) => {
