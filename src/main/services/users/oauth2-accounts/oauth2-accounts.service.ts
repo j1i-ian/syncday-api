@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { Observable, from } from 'rxjs';
-import { OAuth2Account } from '@entity/users/oauth2-account.entity';
-import { User } from '@entity/users/user.entity';
+import { OAuth2Account } from '@entities/users/oauth2-account.entity';
+import { User } from '@entities/users/user.entity';
 
 @Injectable()
 export class OAuth2AccountsService {

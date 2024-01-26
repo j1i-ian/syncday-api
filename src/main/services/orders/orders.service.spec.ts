@@ -3,9 +3,9 @@ import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
-import { Order } from '@entity/orders/order.entity';
-import { Product } from '@entity/products/product.entity';
-import { Team } from '@entity/teams/team.entity';
+import { Order } from '@entities/orders/order.entity';
+import { Product } from '@entities/products/product.entity';
+import { Team } from '@entities/teams/team.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { OrdersService } from './orders.service';
 

@@ -1,14 +1,14 @@
 import { ConfigService } from '@nestjs/config';
 import { Injectable } from '@nestjs/common';
-import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
-import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
-import { AppConfigService } from '@config/app-config.service';
+import { AppConfigService } from '@configs/app-config.service';
+import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
+import { ZoomCreateMeetingResponseDTO } from '@interfaces/integrations/zoom/zoom-create-meeting-response.interface';
+import { ZoomCreateMeetingRequestDTO } from '@interfaces/integrations/zoom/zoom-create-meeting-request.interface';
 import { ZoomOauthTokenService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-token.service';
 import { ZoomOauthUserService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-user.service';
 import { IntegrationsFacade } from '@services/integrations/integrations.facade.interface';
 import { ZoomCreateMeetingService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
-import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
-import { ZoomCreateMeetingRequestDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-request.interface';
 
 @Injectable()
 export class ZoomIntegrationFacade implements IntegrationsFacade {

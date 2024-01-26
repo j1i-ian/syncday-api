@@ -2,7 +2,7 @@ import { firstValueFrom, from, map, mergeMap, reduce, tap } from 'rxjs';
 import { Inject, Injectable } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { AppConfigService } from '@config/app-config.service';
+import { AppConfigService } from '@configs/app-config.service';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { TooManyIntegrationRequestException } from '@exceptions/integrations/too-many-integration-request.exception';
 

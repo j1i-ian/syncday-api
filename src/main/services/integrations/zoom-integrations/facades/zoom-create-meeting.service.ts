@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
-import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
-import { ZoomCreateMeetingRequestDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-request.interface';
+import { ZoomCreateMeetingResponseDTO } from '@interfaces/integrations/zoom/zoom-create-meeting-response.interface';
+import { ZoomCreateMeetingRequestDTO } from '@interfaces/integrations/zoom/zoom-create-meeting-request.interface';
 
 export class ZoomCreateMeetingService {
     async createZoomMeeting(

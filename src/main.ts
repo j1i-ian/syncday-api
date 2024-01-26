@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { urlencoded, json } from 'body-parser';
 import helmet from 'helmet';
 import { Logger, VERSION_NEUTRAL, VersioningType } from '@nestjs/common';
-import { AppConfigService } from '@config/app-config.service';
+import { AppConfigService } from '@configs/app-config.service';
 import { AppModule } from './app.module';
 
 const PORT = 3011;

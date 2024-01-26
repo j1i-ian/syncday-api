@@ -1,9 +1,9 @@
 import { URL } from 'url';
 import { Injectable } from '@nestjs/common';
 import fetch from 'node-fetch';
-import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
-import { IssueOAuth2Token } from '@services/integrations/facades/issue-oauth2-token.interface';
-import { KakaotalkOAuth2TokenResponse } from '@app/interfaces/integrations/kakaotalk/kakaotalk-oauth2-token-response.interface';
+import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
+import { KakaotalkOAuth2TokenResponse } from '@interfaces/integrations/kakaotalk/kakaotalk-oauth2-token-response.interface';
+import { IssueOAuth2Token } from '@interfaces/oauth2/issue-oauth2-token.interface';
 
 @Injectable()
 export class KakaotalkIssueOAuth2TokenService implements IssueOAuth2Token {

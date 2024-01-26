@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationsController } from '@services/integrations/integrations.controller';
 import { UserService } from '@services/users/user.service';
-import { User } from '@entity/users/user.entity';
+import { User } from '@entities/users/user.entity';
 import { TooManyIntegrationRequestException } from '@exceptions/integrations/too-many-integration-request.exception';
 import { TestIntegrationUtil } from './test-integration-util';
 

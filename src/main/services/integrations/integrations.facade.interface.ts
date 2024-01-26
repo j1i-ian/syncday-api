@@ -1,5 +1,5 @@
-import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
-import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
+import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 
 export interface IntegrationsFacade {
     issueToken(authorizationCode: string): Promise<OAuthToken>;

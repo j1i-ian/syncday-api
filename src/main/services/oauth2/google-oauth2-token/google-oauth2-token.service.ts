@@ -1,22 +1,22 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
+import { GoogleOAuth2UserWithToken } from '@interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
+import { SyncdayOAuth2TokenResponse } from '@interfaces/auth/syncday-oauth2-token-response.interface';
 import { OAuth2TokenService } from '@services/integrations/oauth2-token-service.interface';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
-import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { OAuth2Converter } from '@services/integrations/oauth2-converter.interface';
-import { User } from '@entity/users/user.entity';
-import { OAuth2Account } from '@entity/users/oauth2-account.entity';
-import { Profile } from '@entity/profiles/profile.entity';
-import { TeamSetting } from '@entity/teams/team-setting.entity';
-import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
+import { CoreGoogleConverterService } from '@services/converters/google/core-google-converter.service';
+import { User } from '@entities/users/user.entity';
+import { OAuth2Account } from '@entities/users/oauth2-account.entity';
+import { Profile } from '@entities/profiles/profile.entity';
+import { TeamSetting } from '@entities/teams/team-setting.entity';
 
 @Injectable()
 export class GoogleOAuth2TokenService implements OAuth2TokenService {
@@ -26,7 +26,7 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         private readonly integrationsServiceLocator: IntegrationsServiceLocator,
         private readonly integrationsValidator: IntegrationsValidator,
         private readonly googleIntegrationFacade: GoogleIntegrationFacade,
-        private readonly googleConverterService: GoogleConverterService,
+        private readonly coreGoogleConverterService: CoreGoogleConverterService,
         private readonly googleIntegrationService: GoogleIntegrationsService,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
@@ -85,7 +85,7 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
 
         const { calendars, tokens, schedules } = oauth2UserProfile;
 
-        const newGoogleCalendarIntegrations = this.googleConverterService.convertToGoogleCalendarIntegration(calendars);
+        const newGoogleCalendarIntegrations = this.coreGoogleConverterService.convertToGoogleCalendarIntegration(calendars);
 
         const googleUserEmail = this.getEmailFromOAuth2UserProfile(oauth2UserProfile);
 
@@ -143,6 +143,6 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
     }
 
     get converter(): OAuth2Converter {
-        return this.googleConverterService;
+        return this.coreGoogleConverterService;
     }
 }

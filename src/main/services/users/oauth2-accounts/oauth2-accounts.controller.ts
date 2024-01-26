@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
-import { OAuth2Account } from '@entity/users/oauth2-account.entity';
+import { OAuth2Account } from '@entities/users/oauth2-account.entity';
 
 @Controller()
 export class OAuth2AccountsController {

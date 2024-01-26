@@ -1,13 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { CoreAppleConverterService } from '@services/converters/apple/core-apple-converter.service';
 import { AppleIntegrationFacadeService } from '@services/integrations/apple-integrations/apple-integration-facade.service';
-import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
-import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
-import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
-import { User } from '@entity/users/user.entity';
-import { UserSetting } from '@entity/users/user-setting.entity';
-import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
+import { AppleCalDAVIntegration } from '@entities/integrations/apple/apple-caldav-integration.entity';
+import { AppleCalDAVCalendarIntegration } from '@entities/integrations/apple/apple-caldav-calendar-integration.entity';
+import { UserSetting } from '@entities/users/user-setting.entity';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entities/integrations/apple/apple-caldav-integration-scheduled-event.entity';
+import { Profile } from '@entities/profiles/profile.entity';
+import { TeamSetting } from '@entities/teams/team-setting.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { AppleCalendarIntegrationsService } from './apple-calendar-integrations.service';
 
@@ -18,7 +19,7 @@ describe('AppleCalendarIntegrationsService', () => {
     let service: AppleCalendarIntegrationsService;
 
     let appleIntegrationFacadeStub: sinon.SinonStubbedInstance<AppleIntegrationFacadeService>;
-    let appleConverterStub: sinon.SinonStubbedInstance<AppleConverterService>;
+    let coreAppleConverterStub: sinon.SinonStubbedInstance<CoreAppleConverterService>;
 
     let appleCalDAVCalendarIntegrationRepositoryStub: sinon.SinonStubbedInstance<Repository<AppleCalDAVCalendarIntegration>>;
     let appleCalDAVIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<AppleCalDAVIntegrationScheduledEvent>>;
@@ -28,7 +29,7 @@ describe('AppleCalendarIntegrationsService', () => {
     before(async () => {
 
         appleIntegrationFacadeStub = sinon.createStubInstance(AppleIntegrationFacadeService);
-        appleConverterStub = sinon.createStubInstance(AppleConverterService);
+        coreAppleConverterStub = sinon.createStubInstance(CoreAppleConverterService);
 
         appleCalDAVCalendarIntegrationRepositoryStub = sinon.createStubInstance<Repository<AppleCalDAVCalendarIntegration>>(Repository);
         appleCalDAVIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<AppleCalDAVIntegrationScheduledEvent>>(Repository);
@@ -41,8 +42,8 @@ describe('AppleCalendarIntegrationsService', () => {
                     useValue: appleIntegrationFacadeStub
                 },
                 {
-                    provide: AppleConverterService,
-                    useValue: appleConverterStub
+                    provide: CoreAppleConverterService,
+                    useValue: coreAppleConverterStub
                 },
                 {
                     provide: getDataSourceToken(),
@@ -75,7 +76,7 @@ describe('AppleCalendarIntegrationsService', () => {
 
             appleIntegrationFacadeStub.generateCalDAVClient.resolves(calDAVClientMock);
             appleIntegrationFacadeStub.searchScheduledEvents.resolves(calDAVCalendarObjectStubs);
-            appleConverterStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents.returns(scheduleStubs);
+            coreAppleConverterStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents.returns(scheduleStubs);
 
             appleCalDAVIntegrationScheduleRepositoryStub.save.resolves();
             appleCalDAVIntegrationScheduleRepositoryStub.findBy.resolves(scheduleStubs);
@@ -84,7 +85,7 @@ describe('AppleCalendarIntegrationsService', () => {
         afterEach(() => {
             appleIntegrationFacadeStub.generateCalDAVClient.reset();
             appleIntegrationFacadeStub.searchScheduledEvents.reset();
-            appleConverterStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents.reset();
+            coreAppleConverterStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents.reset();
 
             appleCalDAVIntegrationScheduleRepositoryStub.save.reset();
             appleCalDAVIntegrationScheduleRepositoryStub.findBy.resolves();
@@ -94,20 +95,22 @@ describe('AppleCalendarIntegrationsService', () => {
 
             const appleIntegrationMock = stubOne(AppleCalDAVIntegration);
             const appleCalDAVCalendarIntegrationMock = stubOne(AppleCalDAVCalendarIntegration);
-            const userMock = stubOne(User);
+            const profileMock = stubOne(Profile);
             const userSettingMock = stubOne(UserSetting);
+            const teamSettingMock = stubOne(TeamSetting);
 
             await service._synchronizeWithCalDAVCalendars(
-                datasourceMock as EntityManager,
+                datasourceMock as unknown as EntityManager,
                 appleIntegrationMock,
                 appleCalDAVCalendarIntegrationMock,
-                userMock,
-                userSettingMock
+                profileMock,
+                userSettingMock,
+                teamSettingMock
             );
 
             expect(appleIntegrationFacadeStub.generateCalDAVClient.called).true;
             expect(appleIntegrationFacadeStub.searchScheduledEvents.called).true;
-            expect(appleConverterStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents.called).true;
+            expect(coreAppleConverterStub.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents.called).true;
 
             expect(appleCalDAVIntegrationScheduleRepositoryStub.save.called).true;
             expect(appleCalDAVIntegrationScheduleRepositoryStub.findBy.called).true;

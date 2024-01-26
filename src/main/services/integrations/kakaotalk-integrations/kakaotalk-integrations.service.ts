@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
-import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
+import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
+import { SyncdayOAuth2TokenResponse } from '@interfaces/auth/syncday-oauth2-token-response.interface';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
-import { Integration } from '@entity/integrations/integration.entity';
-import { Profile } from '@entity/profiles/profile.entity';
-import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
+import { Integration } from '@entities/integrations/integration.entity';
+import { Profile } from '@entities/profiles/profile.entity';
 
 @Injectable()
 export class KakaotalkIntegrationsService implements IntegrationsFactory {

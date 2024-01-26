@@ -5,8 +5,8 @@ import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
 import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
-import { CreditCard } from '@entity/payments/credit-card.entity';
-import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { CreditCard } from '@entities/payments/credit-card.entity';
+import { PaymentMethod } from '@entities/payments/payment-method.entity';
 import { PaymentMethodRequestDto } from '@dto/payments/payment-method-request.dto';
 
 type NonSensitivePaymentMethod = Pick<PaymentMethod, 'id'> & { creditCard: Pick<CreditCard, 'serialNumber'> };

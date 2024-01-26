@@ -10,8 +10,8 @@ import { INestApplication } from '@nestjs/common';
 import { Response } from 'express';
 import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
-import { routes } from '@config/routes';
-import { AppConfigService } from '@config/app-config.service';
+import { routes } from '@configs/routes';
+import { AppConfigService } from '@configs/app-config.service';
 import { Language } from '@interfaces/users/language.enum';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
@@ -20,12 +20,13 @@ import { HostEvent } from '@interfaces/bookings/host-event';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
+import { ZoomUserResponseDTO } from '@interfaces/integrations/zoom/zoom-user-response.interface';
 import { UserModule } from '@services/users/user.module';
-import { UtilModule } from '@services/util/util.module';
+import { UtilModule } from '@services/utils/util.module';
 import { IntegrationsModule } from '@services/integrations/integrations.module';
-import { AvailabilityModule } from '@services/availability/availability.module';
+import { AvailabilityModule } from '@services/availabilities/availability.module';
 import { EventsModule } from '@services/events/events.module';
-import { SyncdayAwsSdkClientModule } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.module';
+import { SyncdayAwsSdkClientModule } from '@services/utils/syncday-aws-sdk-clients/syncday-aws-sdk-client.module';
 import { BookingsModule } from '@services/bookings/bookings.module';
 import { ScheduledEventsModule } from '@services/scheduled-events/scheduled-events.module';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
@@ -51,23 +52,22 @@ import { AppleCalendarEventListService } from '@services/integrations/apple-inte
 import { AppleCalendarEventCreateService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-create.service';
 import { AppleCalendarEventPatchService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-patch.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
-import { User } from '@entity/users/user.entity';
-import { Verification } from '@entity/verifications/verification.interface';
-import { QuestionInputType } from '@entity/invitee-questions/question-input-type.enum';
-import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
-import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
-import { Profile } from '@entity/profiles/profile.entity';
-import { Team } from '@entity/teams/team.entity';
+import { User } from '@entities/users/user.entity';
+import { Verification } from '@entities/verifications/verification.interface';
+import { QuestionInputType } from '@entities/invitee-questions/question-input-type.enum';
+import { GoogleIntegrationScheduledEvent } from '@entities/integrations/google/google-integration-scheduled-event.entity';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entities/integrations/apple/apple-caldav-integration-scheduled-event.entity';
+import { Profile } from '@entities/profiles/profile.entity';
+import { Team } from '@entities/teams/team.entity';
 import { CreateTemporaryUserRequestDto } from '@dto/users/create-temporary-user-request.dto';
 import { CreateScheduledRequestDto } from '@dto/scheduled-events/create-scheduled-request.dto';
 import { ScheduledEventResponseDto } from '@dto/scheduled-events/scheduled-event-response.dto';
 import { CreateAppleCalDAVRequestDto } from '@dto/integrations/apple/create-apple-cal-dav-request.dto';
 import { CreateUserWithEmailVerificationDto } from '@dto/users/create-user-with-email-verification.dto';
 import { AuthModule } from '@app/auth/auth.module';
-import { VerificationController } from '@app/auth/verification/verification.controller';
-import { TokenController } from '@app/auth/token/token.controller';
-import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
-import { TokenService } from '@app/auth/token/token.service';
+import { VerificationController } from '@app/auth/verifications/verification.controller';
+import { TokenController } from '@app/auth/tokens/token.controller';
+import { TokenService } from '@app/auth/tokens/token.service';
 import { ClusterModule, DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { TestMockUtil } from '@test/test-mock-util';
 import { faker } from '@faker-js/faker';
@@ -558,12 +558,12 @@ export class TestIntegrationUtil {
         );
     }
 
-    getFakeUser(): User {
+    getFakeUser(): User & { email: string } {
 
         const fakeUserName = faker.internet.userName();
         const fakeUser = {
             email: faker.internet.email(fakeUserName)
-        } as User;
+        } as User & { email: string };
 
         return fakeUser;
     }
@@ -571,7 +571,7 @@ export class TestIntegrationUtil {
     setNewFakeUserEmail(
         withGoogleProfileSetting = false,
         newFakeUserEmail = faker.internet.email(faker.name.fullName())
-    ): User {
+    ): User & { email: string } {
 
         const fakeUser = this.getFakeUser();
 

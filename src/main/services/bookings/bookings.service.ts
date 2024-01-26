@@ -4,14 +4,14 @@ import { plainToInstance } from 'class-transformer';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { HostEvent } from '@interfaces/bookings/host-event';
 import { EventsService } from '@services/events/events.service';
-import { AvailabilityService } from '@services/availability/availability.service';
+import { AvailabilityService } from '@services/availabilities/availability.service';
 import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
-import { TeamService } from '@services/team/team.service';
-import { Event } from '@entity/events/event.entity';
-import { Availability } from '@entity/availability/availability.entity';
-import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
-import { EventStatus } from '@entity/events/event-status.enum';
-import { Team } from '@entity/teams/team.entity';
+import { TeamService } from '@services/teams/team.service';
+import { Event } from '@entities/events/event.entity';
+import { Availability } from '@entities/availability/availability.entity';
+import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
+import { EventStatus } from '@entities/events/event-status.enum';
+import { Team } from '@entities/teams/team.entity';
 import { ScheduledEventResponseDto } from '@dto/scheduled-events/scheduled-event-response.dto';
 
 @Injectable()

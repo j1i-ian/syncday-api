@@ -3,9 +3,9 @@ import { Observable } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
-import { UtilService } from '@services/util/util.service';
+import { UtilService } from '@services/utils/util.service';
 import { NativeScheduledEventsService } from '@services/scheduled-events/native-scheduled-events.service';
-import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
 
 @Controller()
 export class ScheduledEventsController {

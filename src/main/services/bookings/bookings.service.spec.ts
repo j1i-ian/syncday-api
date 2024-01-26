@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
 import { EventsService } from '@services/events/events.service';
-import { AvailabilityService } from '@services/availability/availability.service';
+import { AvailabilityService } from '@services/availabilities/availability.service';
 import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
-import { TeamService } from '@services/team/team.service';
-import { Event } from '@entity/events/event.entity';
-import { Availability } from '@entity/availability/availability.entity';
-import { Team } from '@entity/teams/team.entity';
-import { Profile } from '@entity/profiles/profile.entity';
+import { TeamService } from '@services/teams/team.service';
+import { Event } from '@entities/events/event.entity';
+import { Availability } from '@entities/availability/availability.entity';
+import { Team } from '@entities/teams/team.entity';
+import { Profile } from '@entities/profiles/profile.entity';
 import { BookingsService } from './bookings.service';
 
 describe('BookingsService', () => {

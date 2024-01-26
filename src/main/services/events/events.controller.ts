@@ -18,11 +18,11 @@ import {
 import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { Request, Response } from 'express';
-import { Event } from '@core/entities/events/event.entity';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
+import { Event } from '@entities/events/event.entity';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
 import { PatchEventRequestDto } from '@dto/event-groups/events/patch-event-request.dto';
 import { FetchEventResponseDto } from '@dto/event-groups/events/fetch-event-response.dto';

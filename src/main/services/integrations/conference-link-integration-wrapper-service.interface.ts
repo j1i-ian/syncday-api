@@ -1,4 +1,4 @@
-import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
+import { ConferenceLinkIntegrationService } from '@interfaces/integrations/conference-link-integration.abstract-service';
 
 export interface ConferenceLinkIntegrationWrapperService {
     getConferenceLinkIntegrationService(): ConferenceLinkIntegrationService;

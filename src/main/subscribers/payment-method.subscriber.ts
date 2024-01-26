@@ -1,5 +1,5 @@
 import { EventSubscriber, EntitySubscriberInterface, InsertEvent, UpdateEvent } from 'typeorm';
-import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { PaymentMethod } from '@entities/payments/payment-method.entity';
 
 @EventSubscriber()
 export class PaymentMethodSubscriber implements EntitySubscriberInterface<PaymentMethod> {

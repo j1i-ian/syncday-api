@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import * as nodeFetchModule from 'node-fetch';
-import { ZoomTokenResponseDTO } from '@app/interfaces/integrations/zoom/zoom-token-response.interface';
+import { ZoomTokenResponseDTO } from '@interfaces/integrations/zoom/zoom-token-response.interface';
 import { TestMockUtil } from '@test/test-mock-util';
 import { ZoomOauthTokenService } from './zoom-oauth-token.service';
 

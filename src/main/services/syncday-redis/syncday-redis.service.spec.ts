@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Test, TestingModule } from '@nestjs/testing';
 import { Cluster, RedisKey } from 'ioredis';
-import { UtilService } from '@services/util/util.service';
-import { TemporaryUser } from '@entity/users/temporary-user.entity';
-import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
-import { TestMockUtil } from '../../../test/test-mock-util';
+import { AvailabilityBody } from '@interfaces/availabilities/availability-body.type';
+import { UtilService } from '@services/utils/util.service';
+import { TemporaryUser } from '@entities/users/temporary-user.entity';
+import { TestMockUtil } from '@test/test-mock-util';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { SyncdayRedisService } from './syncday-redis.service';
 import { RedisStores } from './redis-stores.enum';

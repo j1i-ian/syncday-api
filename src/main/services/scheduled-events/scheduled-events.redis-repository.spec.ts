@@ -3,11 +3,11 @@ import { Cluster } from 'ioredis';
 import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { firstValueFrom } from 'rxjs';
+import { ScheduleBody } from '@interfaces/scheduled-events/schedule-body.interface';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
-import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
-import { CannotFindScheduleBody } from '@app/exceptions/scheduled-events/cannot-find-schedule-body.exception';
-import { ScheduleBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
+import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
+import { CannotFindScheduleBody } from '@exceptions/scheduled-events/cannot-find-schedule-body.exception';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { TestMockUtil } from '@test/test-mock-util';
 

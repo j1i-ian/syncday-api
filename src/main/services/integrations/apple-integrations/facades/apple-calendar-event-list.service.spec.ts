@@ -41,10 +41,13 @@ describe('AppleCalendarEventListService', () => {
 
         const calDAVCalendarObjectStubs = testMockUtil.getCalDavObjectMocks();
 
-        const davClientMock = testMockUtil.getCalDavClientMock({
-            calendars: [],
-            calendarObjects: calDAVCalendarObjectStubs
-        });
+        const davClientMock = testMockUtil.getCalDavClientMock(
+            'sampleEmail@test.com',
+            {
+                calendars: [],
+                calendarObjects: calDAVCalendarObjectStubs
+            }
+        );
 
         const davUrlMock = '';
         const untilDateMock = new Date();

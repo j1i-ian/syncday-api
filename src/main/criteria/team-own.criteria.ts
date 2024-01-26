@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, FindOneOptions } from 'typeorm';
-import { Event } from '@entity/events/event.entity';
-import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
+import { Event } from '@entities/events/event.entity';
+import { NotAnOwnerException } from '@exceptions/not-an-owner.exception';
 import { TeamResourceEntity } from '@criteria/team-resource-entity.type';
 import { ResourceOwnCriteria } from './resource-own-criteria.interface';
 

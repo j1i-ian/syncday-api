@@ -1,10 +1,10 @@
 import * as crypto from 'crypto';
 import { Body, Controller, Header, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { ZoomWebhookNotificationRequestDto } from '@interfaces/integrations/zoom/zoom-webhook-notification-request.dto';
+import { ValidateZoomEventSubscriptionUrlResponseDto } from '@interfaces/integrations/zoom/validate-zoom-event-subscription-url-response.dto';
 import { ZoomIntegrationsService } from '@services/integrations/zoom-integrations/zoom-integrations.service';
-import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
-import { ZoomWebhookNotificationRequestDto } from '@app/interfaces/integrations/zoom/zoom-webhook-notification-request.dto';
-import { Public } from '@app/auth/strategy/jwt/public.decorator';
-import { ValidateZoomEventSubscriptionUrlResponseDto } from '@app/interfaces/integrations/zoom/validate-zoom-event-subscription-url-response.dto';
+import { ZoomIntegration } from '@entities/integrations/zoom/zoom-integration.entity';
+import { Public } from '@app/auth/strategies/jwt/public.decorator';
 
 @Controller()
 export class ZoomIntegrationsController {

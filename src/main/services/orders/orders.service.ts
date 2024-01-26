@@ -4,9 +4,9 @@ import { Observable, defer, from, map, mergeMap, of } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { Orderer } from '@interfaces/orders/orderer.interface';
-import { Order } from '@entity/orders/order.entity';
-import { Product } from '@entity/products/product.entity';
-import { OrderOption } from '@entity/orders/order-option.entity';
+import { Order } from '@entities/orders/order.entity';
+import { Product } from '@entities/products/product.entity';
+import { OrderOption } from '@entities/orders/order-option.entity';
 
 @Injectable()
 export class OrdersService {

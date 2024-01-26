@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Event } from '@entity/events/event.entity';
-import { EventGroup } from '@entity/events/event-group.entity';
-import { Team } from '@entity/teams/team.entity';
+import { Event } from '@entities/events/event.entity';
+import { EventGroup } from '@entities/events/event-group.entity';
+import { Team } from '@entities/teams/team.entity';
 import { TeamOwnCriteria } from '@criteria/team-own.criteria';
 import { TestMockUtil } from '@test/test-mock-util';
 

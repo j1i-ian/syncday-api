@@ -1,5 +1,5 @@
-import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
-import { CreateUserWithOAuth2DTO } from '@services/users/interfaces/create-user-with-oauth2-dto.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
+import { CreateUserWithOAuth2DTO } from '@interfaces/users/create-user-with-oauth2-dto.interface';
 
 export interface OAuth2Converter {
     convertToCreateUserRequestDTO(

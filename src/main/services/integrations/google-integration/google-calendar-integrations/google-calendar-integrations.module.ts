@@ -2,12 +2,11 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { GoogleCalendarEventWatchService } from '@services/integrations/google-integration/facades/google-calendar-event-watch.service';
-import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
-import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { NotificationsModule } from '@services/notifications/notifications.module';
-import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
-import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { GoogleCalendarIntegration } from '@entities/integrations/google/google-calendar-integration.entity';
+import { GoogleIntegrationScheduledEvent } from '@entities/integrations/google/google-integration-scheduled-event.entity';
+import { GoogleIntegration } from '@entities/integrations/google/google-integration.entity';
+import { IntegrationsRedisRepository } from '@repositories/integrations/integration-redis.repository';
 import { GoogleCalendarIntegrationsController } from './google-calendar-integrations.controller';
 
 @Module({
@@ -20,7 +19,6 @@ import { GoogleCalendarIntegrationsController } from './google-calendar-integrat
         NotificationsModule
     ],
     providers: [
-        GoogleConverterService,
         GoogleCalendarIntegrationsService,
         GoogleCalendarEventWatchService,
         IntegrationsRedisRepository

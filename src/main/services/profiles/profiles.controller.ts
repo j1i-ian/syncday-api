@@ -12,9 +12,9 @@ import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { ProfilesService } from '@services/profiles/profiles.service';
-import { UtilService } from '@services/util/util.service';
-import { Profile } from '@entity/profiles/profile.entity';
-import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { UtilService } from '@services/utils/util.service';
+import { Profile } from '@entities/profiles/profile.entity';
+import { PaymentMethod } from '@entities/payments/payment-method.entity';
 import { PatchProfileRequestDto } from '@dto/profiles/patch-profile-request.dto';
 import { FetchProfileResponseDto } from '@dto/profiles/fetch-profile-response.dto';
 import { PatchAllProfileRequestDto } from '@dto/profiles/patch-all-profile-request.dto';

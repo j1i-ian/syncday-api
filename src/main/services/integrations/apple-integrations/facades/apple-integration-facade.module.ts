@@ -5,12 +5,10 @@ import { AppleCalendarListService } from '@services/integrations/apple-integrati
 import { AppleCalendarEventListService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-list.service';
 import { AppleCalendarEventCreateService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-create.service';
 import { AppleCalendarEventPatchService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-patch.service';
-import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 
 @Module({
     providers: [
         AppleIntegrationFacadeService,
-        AppleConverterService,
         AppleCaldavClientService,
         AppleCalendarListService,
         AppleCalendarEventListService,

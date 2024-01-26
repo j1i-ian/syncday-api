@@ -1,4 +1,4 @@
-jest.config.js
 *.js
 node_modules
 src/@core/**/*
+scripts/**/*

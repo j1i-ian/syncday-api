@@ -1,6 +1,6 @@
 import { Injectable, Scope } from '@nestjs/common';
 import { google, Auth } from 'googleapis';
-import { GoogleCredentials } from '@core/interfaces/integrations/google/google-credential.interface';
+import { GoogleCredentials } from '@interfaces/integrations/google/google-credential.interface';
 
 @Injectable({
     scope: Scope.REQUEST

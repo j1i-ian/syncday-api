@@ -6,40 +6,40 @@ import { Observable, firstValueFrom, from } from 'rxjs';
 import { Auth, calendar_v3 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
-import { GoogleCalendarIntegrationSearchOption } from '@core/interfaces/integrations/google/google-calendar-integration-search-option.interface';
-import { GoogleCalendarDetail } from '@core/interfaces/integrations/google/google-calendar-detail.interface';
-import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
-import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
-import { AppConfigService } from '@config/app-config.service';
+import { AppConfigService } from '@configs/app-config.service';
+import { GoogleCalendarEvent } from '@interfaces/integrations/google/google-calendar-event.interface';
+import { GoogleCalendarIntegrationSearchOption } from '@interfaces/integrations/google/google-calendar-integration-search-option.interface';
+import { GoogleCalendarDetail } from '@interfaces/integrations/google/google-calendar-detail.interface';
+import { CalendarIntegrationService } from '@interfaces/integrations/calendar-integration.abstract-service';
+import { CreatedCalendarEvent } from '@interfaces/integrations/created-calendar-event.interface';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleCalendarEventWatchService } from '@services/integrations/google-integration/facades/google-calendar-event-watch.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
-import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
-import { IntegrationUtilsService } from '@services/util/integration-utils/integration-utils.service';
+import { IntegrationUtilsService } from '@services/utils/integration-utils/integration-utils.service';
 import { GoogleCalendarEventCreateService } from '@services/integrations/google-integration/facades/google-calendar-event-create.service';
 import { GoogleCalendarEventPatchService } from '@services/integrations/google-integration/facades/google-calendar-event-patch.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
-import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
-import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
-import { UserSetting } from '@entity/users/user-setting.entity';
-import { ScheduledStatus } from '@entity/scheduled-events/scheduled-status.enum';
-import { TeamSetting } from '@entity/teams/team-setting.entity';
-import { Profile } from '@entity/profiles/profile.entity';
-import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
-import { User } from '@entity/users/user.entity';
-import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
+import { CoreGoogleConverterService } from '@services/converters/google/core-google-converter.service';
+import { GoogleCalendarIntegration } from '@entities/integrations/google/google-calendar-integration.entity';
+import { GoogleIntegrationScheduledEvent } from '@entities/integrations/google/google-integration-scheduled-event.entity';
+import { GoogleIntegration } from '@entities/integrations/google/google-integration.entity';
+import { UserSetting } from '@entities/users/user-setting.entity';
+import { ScheduledStatus } from '@entities/scheduled-events/scheduled-status.enum';
+import { TeamSetting } from '@entities/teams/team-setting.entity';
+import { Profile } from '@entities/profiles/profile.entity';
+import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
+import { User } from '@entities/users/user.entity';
+import { IntegrationsRedisRepository } from '@repositories/integrations/integration-redis.repository';
+import { NotAnOwnerException } from '@exceptions/not-an-owner.exception';
 import { GoogleCalendarEventWatchStopService } from '../facades/google-calendar-event-watch-stop.service';
 
 @Injectable()
 export class GoogleCalendarIntegrationsService extends CalendarIntegrationService {
     constructor(
         private readonly integrationUtilService: IntegrationUtilsService,
-        private readonly googleConverterService: GoogleConverterService,
+        private readonly coreGoogleConverterService: CoreGoogleConverterService,
         private readonly notificationsService: NotificationsService,
         private readonly integrationsRedisRepository: IntegrationsRedisRepository,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
@@ -138,7 +138,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             }
         });
 
-        const newSchedules = this.googleConverterService.convertToGoogleIntegrationSchedules({
+        const newSchedules = this.coreGoogleConverterService.convertToGoogleIntegrationSchedules({
             [googleCalendarIntegration.name]: newEvents
         }).map((_newSchedule) => {
             _newSchedule.originatedCalendarId = googleCalendarIntegration.name;
@@ -387,7 +387,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         /**
          * TODO: PreferredTimezone should be replaced as scheduled event value.
          */
-        const newGoogleEventBody = this.googleConverterService.convertScheduledEventToGoogleCalendarEvent(
+        const newGoogleEventBody = this.coreGoogleConverterService.convertScheduledEventToGoogleCalendarEvent(
             hostTimezone,
             googleCalendarIntegration.name,
             scheduledEvent

@@ -5,7 +5,7 @@ import { Logger } from 'winston';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
-import { Team } from '@entity/teams/team.entity';
+import { Team } from '@entities/teams/team.entity';
 
 type TeamKeyString = `${string | Team['id']}:${Team['uuid']}`;
 

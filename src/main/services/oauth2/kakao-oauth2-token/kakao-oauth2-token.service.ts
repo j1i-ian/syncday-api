@@ -2,22 +2,22 @@
 import { URL } from 'url';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
-import { OAuth2Setting } from '@core/interfaces/auth/oauth2-setting.interface';
-import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-oauth2-state-params.interface';
-import { AppConfigService } from '@config/app-config.service';
+import { AppConfigService } from '@configs/app-config.service';
+import { OAuth2AccountUserProfileMetaInfo } from '@interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
+import { OAuth2Setting } from '@interfaces/auth/oauth2-setting.interface';
+import { SyncdayOAuth2StateParams } from '@interfaces/integrations/syncday-oauth2-state-params.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
+import { SyncdayOAuth2TokenResponse } from '@interfaces/auth/syncday-oauth2-token-response.interface';
+import { KakaotalkUserProfileResponse } from '@interfaces/integrations/kakaotalk/kakaotalk-user-profile-response.interface';
 import { OAuth2TokenService } from '@services/integrations/oauth2-token-service.interface';
 import { KakaotalkIntegrationsFacade } from '@services/integrations/kakaotalk-integrations/kakaotalk-integrations.facade';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { OAuth2Converter } from '@services/integrations/oauth2-converter.interface';
-import { User } from '@entity/users/user.entity';
-import { OAuth2Account } from '@entity/users/oauth2-account.entity';
+import { User } from '@entities/users/user.entity';
+import { OAuth2Account } from '@entities/users/oauth2-account.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
-import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
-import { KakaotalkUserProfileResponse } from '@app/interfaces/integrations/kakaotalk/kakaotalk-user-profile-response.interface';
 
 @Injectable()
 export class KakaoOAuth2TokenService implements OAuth2TokenService {

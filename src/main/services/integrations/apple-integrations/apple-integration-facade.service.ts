@@ -1,19 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { DAVCalendar, DAVClient, DAVObject } from 'tsdav';
-import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
+import { CreatedCalendarEvent } from '@interfaces/integrations/created-calendar-event.interface';
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
+import { CoreAppleConverterService } from '@services/converters/apple/core-apple-converter.service';
 import { AppleCaldavClientService } from '@services/integrations/apple-integrations/facades/apple-caldav-client.service';
 import { AppleCalendarListService } from '@services/integrations/apple-integrations/facades/apple-calendar-list.service';
 import { AppleCalendarEventListService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-list.service';
 import { AppleCalendarEventCreateService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-create.service';
-import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 import { AppleCalendarEventPatchService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-patch.service';
-import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
 
 @Injectable()
 export class AppleIntegrationFacadeService {
     constructor(
-        private readonly appleConverterService: AppleConverterService,
+        private readonly coreAppleConverterService: CoreAppleConverterService,
         private readonly appleCaldavClientService: AppleCaldavClientService,
         private readonly appleCalendarListService: AppleCalendarListService,
         private readonly appleCalendarEventListService: AppleCalendarEventListService,
@@ -57,7 +57,7 @@ export class AppleIntegrationFacadeService {
     ): Promise<CreatedCalendarEvent> {
 
         const organizerEmail = client.credentials.username as string;
-        const iCalICSString = this.appleConverterService.convertScheduleToICalICSString(
+        const iCalICSString = this.coreAppleConverterService.convertScheduleToICalICSString(
             organizerEmail,
             scheduledEvent
         );
@@ -82,7 +82,7 @@ export class AppleIntegrationFacadeService {
     ): Promise<boolean> {
 
         const organizerEmail = client.credentials.username as string;
-        const patchedICalICSString = this.appleConverterService.convertScheduleToICalICSString(
+        const patchedICalICSString = this.coreAppleConverterService.convertScheduleToICalICSString(
             organizerEmail,
             scheduledEvent
         );

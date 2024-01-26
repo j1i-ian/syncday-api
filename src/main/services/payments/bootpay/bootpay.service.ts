@@ -1,9 +1,9 @@
 import { Injectable, Scope } from '@nestjs/common';
-import { Billing } from '@core/interfaces/payments/billing.interface';
-import { Buyer } from '@core/interfaces/payments/buyer.interface';
+import { Billing } from '@interfaces/payments/billing.interface';
+import { Buyer } from '@interfaces/payments/buyer.interface';
 import { BootpayConfiguration } from '@services/payments/bootpay/bootpay-configuration.interface';
-import { CreditCard } from '@entity/payments/credit-card.entity';
-import { Order } from '@entity/orders/order.entity';
+import { CreditCard } from '@entities/payments/credit-card.entity';
+import { Order } from '@entities/orders/order.entity';
 import { BootpayBackendNodejs, ReceiptResponseParameters } from '@typings/bootpay';
 // eslint-disable-next-line import/no-internal-modules
 import { CancelPaymentParameters } from '@bootpay/backend-js/lib/response';

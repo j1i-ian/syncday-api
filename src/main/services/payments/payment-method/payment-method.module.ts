@@ -4,7 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PaymentMethodController } from '@services/payments/payment-method/payment-method.controller';
 import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
 import { ProfilesModule } from '@services/profiles/profiles.module';
-import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { PaymentMethod } from '@entities/payments/payment-method.entity';
 
 @Module({
     controllers: [PaymentMethodController],
