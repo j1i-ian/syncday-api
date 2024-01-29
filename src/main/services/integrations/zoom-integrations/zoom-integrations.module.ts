@@ -7,7 +7,7 @@ import { ZoomOauthTokenService } from '@services/integrations/zoom-integrations/
 import { ZoomOauthUserService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-user.service';
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
 import { ZoomCreateMeetingService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
-import { ZoomIntegration } from '@entities/integrations/zoom/zoom-integration.entity';
+import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { ZoomIntegrationsController } from './zoom-integrations.controller';
 import { ZoomConferenceLinkIntegrationsService } from './zoom-conference-link-integrations/zoom-conference-link-integrations.service';
 

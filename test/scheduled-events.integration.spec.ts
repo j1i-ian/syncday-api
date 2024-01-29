@@ -10,12 +10,12 @@ import { UserService } from '@services/users/user.service';
 import { BookingsController } from '@services/bookings/bookings.controller';
 import { IntegrationsController } from '@services/integrations/integrations.controller';
 import { EventsService } from '@services/events/events.service';
-import { AvailabilityService } from '@services/availabilities/availability.service';
-import { User } from '@entities/users/user.entity';
-import { Integration } from '@entities/integrations/integration.entity';
-import { Event } from '@entities/events/event.entity';
-import { BufferTime } from '@entities/events/buffer-time.entity';
-import { CannotCreateByInvalidTimeRange } from '@exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
+import { AvailabilityService } from '@services/availability/availability.service';
+import { User } from '@entity/users/user.entity';
+import { Integration } from '@entity/integrations/integration.entity';
+import { Event } from '@entity/events/event.entity';
+import { BufferTime } from '@entity/events/buffer-time.entity';
+import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
 import { TestIntegrationUtil } from './test-integration-util';
 
 const testIntegrationUtil = new TestIntegrationUtil();

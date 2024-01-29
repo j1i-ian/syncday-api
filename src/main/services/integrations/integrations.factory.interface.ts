@@ -1,17 +1,17 @@
 import { Observable } from 'rxjs';
-import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
-import { GoogleIntegrationBody } from '@interfaces/integrations/google/google-integration-body.interface';
-import { OAuth2AccountUserProfileMetaInfo } from '@interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
-import { SyncdayOAuth2TokenResponse } from '@interfaces/auth/syncday-oauth2-token-response.interface';
-import { CalendarCreateOption } from '@interfaces/integrations/calendar-create-option.interface';
-import { Integration } from '@entities/integrations/integration.entity';
-import { UserSetting } from '@entities/users/user-setting.entity';
-import { GoogleCalendarIntegration } from '@entities/integrations/google/google-calendar-integration.entity';
-import { Profile } from '@entities/profiles/profile.entity';
-import { TeamSetting } from '@entities/teams/team-setting.entity';
-import { User } from '@entities/users/user.entity';
+import { Integration } from '@entity/integrations/integration.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { User } from '@entity/users/user.entity';
+import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
+import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
 type GoogleIntegrationRequest =  [Profile, TeamSetting, User, UserSetting, OAuthToken, GoogleCalendarIntegration[], GoogleIntegrationBody, CalendarCreateOption?];
 type ZoomIntegrationRequest = [Profile, OAuthToken, OAuth2AccountUserProfileMetaInfo];

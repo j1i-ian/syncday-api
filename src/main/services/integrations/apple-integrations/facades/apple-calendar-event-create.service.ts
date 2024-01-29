@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { DAVClient, DAVResponse, getBasicAuthHeaders } from 'tsdav';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 
 @Injectable()
 export class AppleCalendarEventCreateService {

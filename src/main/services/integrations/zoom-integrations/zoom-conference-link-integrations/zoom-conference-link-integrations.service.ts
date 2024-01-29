@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { ConferenceLinkIntegrationService } from '@interfaces/integrations/conference-link-integration.abstract-service';
+import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
-import { ZoomCreateMeetingResponseDTO } from '@interfaces/integrations/zoom/zoom-create-meeting-response.interface';
-import { MeetingType } from '@interfaces/integrations/zoom/enum/meeting-type.enum';
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
-import { ConferenceLink } from '@entities/scheduled-events/conference-link.entity';
-import { Contact } from '@entities/events/contact.entity';
-import { ZoomIntegration } from '@entities/integrations/zoom/zoom-integration.entity';
-import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
+import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity';
+import { Contact } from '@entity/events/contact.entity';
+import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
+import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
 
 @Injectable()
 export class ZoomConferenceLinkIntegrationsService implements ConferenceLinkIntegrationService {

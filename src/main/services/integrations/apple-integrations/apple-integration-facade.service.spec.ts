@@ -2,10 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { CoreAppleConverterService } from '@services/converters/apple/core-apple-converter.service';
 import { AppleCalendarListService } from '@services/integrations/apple-integrations/facades/apple-calendar-list.service';
 import { AppleCalendarEventListService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-list.service';
 import { AppleCaldavClientService } from '@services/integrations/apple-integrations/facades/apple-caldav-client.service';
+import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 import { AppleCalendarEventCreateService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-create.service';
 import { AppleCalendarEventPatchService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-patch.service';
 import { TestMockUtil } from '@test/test-mock-util';
@@ -18,8 +18,7 @@ describe('AppleIntegrationFacadeService', () => {
 
     let loggerStub: sinon.SinonStubbedInstance<Logger>;
 
-    let coreAppleConverterServiceStub: sinon.SinonStubbedInstance<CoreAppleConverterService>;
-
+    let appleConverterServiceStub: sinon.SinonStubbedInstance<AppleConverterService>;
     let appleCaldavClientServiceStub: sinon.SinonStubbedInstance<AppleCaldavClientService>;
     let appleCalendarListServiceStub: sinon.SinonStubbedInstance<AppleCalendarListService>;
     let appleCalendarEventListServiceStub: sinon.SinonStubbedInstance<AppleCalendarEventListService>;
@@ -29,7 +28,7 @@ describe('AppleIntegrationFacadeService', () => {
     before(async () => {
         loggerStub = sinon.createStubInstance(Logger);
 
-        coreAppleConverterServiceStub = sinon.createStubInstance<CoreAppleConverterService>(CoreAppleConverterService);
+        appleConverterServiceStub = sinon.createStubInstance<AppleConverterService>(AppleConverterService);
         appleCaldavClientServiceStub = sinon.createStubInstance<AppleCaldavClientService>(AppleCaldavClientService);
         appleCalendarListServiceStub = sinon.createStubInstance<AppleCalendarListService>(AppleCalendarListService);
         appleCalendarEventListServiceStub = sinon.createStubInstance<AppleCalendarEventListService>(AppleCalendarEventListService);
@@ -44,8 +43,8 @@ describe('AppleIntegrationFacadeService', () => {
                     useValue: loggerStub
                 },
                 {
-                    provide: CoreAppleConverterService,
-                    useValue: coreAppleConverterServiceStub
+                    provide: AppleConverterService,
+                    useValue: appleConverterServiceStub
                 },
                 {
                     provide: AppleCaldavClientService,

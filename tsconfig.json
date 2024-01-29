@@ -1,109 +1,93 @@
 {
-    "compilerOptions": {
-        "module": "commonjs",
-        "declaration": true,
-        "removeComments": true,
-        "emitDecoratorMetadata": true,
-        "experimentalDecorators": true,
-        "allowSyntheticDefaultImports": true,
-        "target": "ES2020",
-        "sourceMap": true,
-        "outDir": "./dist",
-        "baseUrl": "./",
-        "incremental": true,
-        "lib": [
-            "ES2022"
-        ],
-        "skipLibCheck": true,
-        "strictNullChecks": true,
-        "noImplicitAny": true,
-        "strictBindCallApply": true,
-        "forceConsistentCasingInFileNames": true,
-        "noFallthroughCasesInSwitch": true,
-        "strict": true,
-        "noImplicitReturns": true,
-        "downlevelIteration": true,
-        "moduleResolution": "node",
-        "importHelpers": true,
-        "resolveJsonModule": true,
-        "strictPropertyInitialization": false,
-        "paths": {
-            "@dto/*": [
-                "src/@core/@share/src/dto/*",
-                "src/@core/@resource/src/dto/*"
-            ],
-            "@interfaces/*": [
-                "src/@core/@share/src/interfaces/*",
-                "src/@core/@resource/src/interfaces/*",
-                "src/@core/src/interfaces/*"
-            ],
-            "@exceptions/*": [
-                "src/@core/@share/src/exceptions/*",
-                "src/@core/@resource/src/exceptions/*",
-                "src/@core/src/exceptions/*",
-                "src/main/exceptions/*"
-            ],
-            "@criteria/*": [
-                "src/main/criteria/*",
-            ],
-            "@services/*": [
-                "src/@core/@resource/src/service/*",
-                "src/@core/src/services/*",
-                "src/main/services/*"
-            ],
-            "@repositories/*": [
-                "src/@core/@resource/src/repositories/*",
-                "src/@core/src/repositories/*"
-            ],
-            "@decorators/*": [
-                "src/@core/@resource/src/decorators/*",
-                "src/@core/src/decorators/*",
-                "src/main/decorators/*",
-            ],
-            "@configs/*": [
-                "src/@core/@resource/src/configs/*",
-                "src/@core/src/configs/*",
-                "src/configs/*"
-            ],
-            "@entities/*": [
-                "src/@core/src/entities/*"
-            ],
-            "@test/*": [
-                "src/@core/src/test/*",
-                "src/test/*"
-            ],
-            "@app/*": [
-                "src/main/*"
-            ],
-            "@typings/*": [
-                "./typings/*"
-            ],
-            "*": [
-                "node_modules/*"
-            ]
-        },
-        "typeRoots": [
-            "node_modules/@types",
-            "./typings",
-            "node_modules/typeorm-faker/@types"
-        ],
-        "types": [
-            "mocha",
-            "chai",
-            "chai-as-promised",
-            "node",
-            "test",
-            "bootpay",
-            "typeorm-faker"
-        ]
-    },
-    "include": [
-        "src/**/*",
-        "test/**/*"
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2020",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "lib": [
+      "ES2022"
     ],
-    "exclude": [
-        "src/@core",
-        "scripts",
-        "node_modules"
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "downlevelIteration": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "resolveJsonModule": true,
+    "strictPropertyInitialization": false,
+    "paths": {
+      "@config/*": [
+        "src/configs/*"
+      ],
+      "@criteria/*": [
+        "src/main/criteria/*",
+      ],
+      "@exceptions/*": [
+        "src/@core/src/exceptions/*",
+        "src/@core/@share/src/@exceptions/*"
+      ],
+      "@decorators/*": [
+        "src/@core/src/decorators/*",
+        "src/main/decorators/*",
+      ],
+      "@interfaces/*": [
+        "src/@core/@share/src/@interfaces/*"
+      ],
+      "@dto/*": [
+        "src/@core/@share/src/@dto/*"
+      ],
+      "@entity/*": [
+        "src/@core/src/entities/*"
+      ],
+      "@services/*": [
+        "src/main/services/*"
+      ],
+      "@app/*": [
+        "src/main/*"
+      ],
+      "@test/*": [
+        "src/test/*"
+      ],
+      "@share/*": [
+        "src/@core/@share/src/*"
+      ],
+      "@core/*": [
+        "src/@core/src/*"
+      ],
+      "@typings/*": [
+        "./typings/*"
+      ],
+      "*": [
+        "node_modules/*"
+      ]
+    },
+    "typeRoots": [
+      "node_modules/@types",
+      "./typings",
+      "node_modules/typeorm-faker/@types"
+    ],
+    "types": [
+      "mocha",
+      "chai",
+      "node",
+      "test",
+      "bootpay",
+      "typeorm-faker"
     ]
+  },
+  "exclude": [
+    "node_modules"
+  ]
 }

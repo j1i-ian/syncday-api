@@ -13,10 +13,10 @@ import {
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Observable, map } from 'rxjs';
+import { User } from '@core/entities/users/user.entity';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { Language } from '@interfaces/users/language.enum';
-import { CreatedUserTeamProfile } from '@interfaces/users/created-user-team-profile.interface';
-import { User } from '@entities/users/user.entity';
+import { CreatedUserTeamProfile } from '@services/users/created-user-team-profile.interface';
 import { PatchUserRequestDto } from '@dto/users/patch-user-request.dto';
 import { CreateUserResponseDto } from '@dto/users/create-user-response.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
@@ -24,7 +24,7 @@ import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-
 import { CreateUserWithEmailVerificationDto } from '@dto/users/create-user-with-email-verification.dto';
 import { CreateUserWithPhoneVerificationDto } from '@dto/users/create-user-with-phone-verification.dto';
 import { AuthProfile } from '../../decorators/auth-profile.decorator';
-import { Public } from '../../auth/strategies/jwt/public.decorator';
+import { Public } from '../../auth/strategy/jwt/public.decorator';
 import { UserService } from './user.service';
 
 @Controller()

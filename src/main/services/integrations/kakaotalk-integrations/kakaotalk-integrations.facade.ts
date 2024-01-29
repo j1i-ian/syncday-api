@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AppConfigService } from '@configs/app-config.service';
-import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { AppConfigService } from '@config/app-config.service';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { KakaotalkUserProfileResponse } from '@interfaces/integrations/kakaotalk/kakaotalk-user-profile-response.interface';
 import { IntegrationsFacade } from '@services/integrations/integrations.facade.interface';
 import { KakaotalkIssueOAuth2TokenService } from '@services/integrations/kakaotalk-integrations/facades/kakaotalk-issue-oauth2-token.service';
 import { KakaotalkFetchOAuth2UserProfileService } from '@services/integrations/kakaotalk-integrations/facades/kakaotalk-fetch-oauth2-user-profile.service';
+import { KakaotalkUserProfileResponse } from '@app/interfaces/integrations/kakaotalk/kakaotalk-user-profile-response.interface';
 
 @Injectable()
 export class KakaotalkIntegrationsFacade implements IntegrationsFacade {

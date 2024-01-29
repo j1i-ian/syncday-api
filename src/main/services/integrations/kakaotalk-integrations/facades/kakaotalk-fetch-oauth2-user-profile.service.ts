@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import fetch from 'node-fetch';
-import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
-import { KakaotalkUserProfileResponse } from '@interfaces/integrations/kakaotalk/kakaotalk-user-profile-response.interface';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { KakaotalkUserProfileResponse } from '@app/interfaces/integrations/kakaotalk/kakaotalk-user-profile-response.interface';
 
 @Injectable()
 export class KakaotalkFetchOAuth2UserProfileService {

@@ -1,10 +1,10 @@
-import { OAuth2AccountUserProfileMetaInfo } from '@interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
+import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
-import { SyncdayOAuth2TokenResponse } from '@interfaces/auth/syncday-oauth2-token-response.interface';
 import { OAuth2Converter } from '@services/integrations/oauth2-converter.interface';
-import { User } from '@entities/users/user.entity';
-import { Profile } from '@entities/profiles/profile.entity';
-import { TeamSetting } from '@entities/teams/team-setting.entity';
+import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 
 export interface OAuth2TokenService {
 

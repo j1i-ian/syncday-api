@@ -215,7 +215,7 @@
                         "position": "after"
                     },
                     {
-                        "pattern": "@configs/**",
+                        "pattern": "@config/**",
                         "group": "internal",
                         "position": "after"
                     },
@@ -235,7 +235,7 @@
                         "position": "after"
                     },
                     {
-                        "pattern": "@entities/**",
+                        "pattern": "@entity/**",
                         "group": "internal",
                         "position": "after"
                     },
@@ -268,6 +268,7 @@
         "unused-imports/no-unused-imports": "error",
         "jsdoc/check-alignment": "error",
         "jsdoc/check-indentation": "error",
+        "jsdoc/newline-after-description": "error",
         "max-classes-per-file": [
             "error",
             1
@@ -347,15 +348,6 @@
         "no-shadow": "off"
     },
     "overrides": [
-        {
-            "files": [
-                "src/@core/**/*.ts"
-            ],
-            "rules": {
-                "@typescript-eslint": "off",
-                "import/order": "off"
-            }
-        },
         {
             "files": [
                 "src/test/*.ts",

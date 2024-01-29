@@ -4,14 +4,14 @@ import { plainToInstance } from 'class-transformer';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { Language } from '@interfaces/users/language.enum';
 import { BookingsService } from '@services/bookings/bookings.service';
-import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { FetchHostResponseDto } from '@dto/bookings/fetch-host-response.dto';
 import { HostEventDto } from '@dto/bookings/host-event.dto';
 import { HostAvailabilityDto } from '@dto/bookings/host-availability.dto';
 import { CreateScheduledRequestDto } from '@dto/scheduled-events/create-scheduled-request.dto';
 import { ScheduledEventResponseDto } from '@dto/scheduled-events/scheduled-event-response.dto';
 import { SearchScheduledEventResponseDto } from '@dto/bookings/search-scheduled-event-response.dto';
-import { Public } from '@app/auth/strategies/jwt/public.decorator';
+import { Public } from '@app/auth/strategy/jwt/public.decorator';
 import { ValidateQueryParamPipe } from '@app/pipes/validate-query-param/validate-query-param.pipe';
 import { ParseEncodedUrl } from '@app/pipes/parse-url-decoded/parse-encoded-url.pipe';
 

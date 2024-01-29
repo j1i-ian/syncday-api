@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { TemporaryUser } from '@entities/users/temporary-user.entity';
+import { TemporaryUser } from '@entity/users/temporary-user.entity';
 import { CreateTemporaryUserRequestDto } from '@dto/users/create-temporary-user-request.dto';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
 import { Language } from '../../../enums/language.enum';

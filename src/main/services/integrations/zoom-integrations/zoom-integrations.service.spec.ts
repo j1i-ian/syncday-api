@@ -5,10 +5,10 @@ import { JwtService } from '@nestjs/jwt';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ZoomIntegrationsService } from '@services/integrations/zoom-integrations/zoom-integrations.service';
 import { ZoomConferenceLinkIntegrationsService } from '@services/integrations/zoom-integrations/zoom-conference-link-integrations/zoom-conference-link-integrations.service';
-import { ZoomIntegration } from '@entities/integrations/zoom/zoom-integration.entity';
-import { Event } from '@entities/events/event.entity';
-import { Profile } from '@entities/profiles/profile.entity';
-import { Team } from '@entities/teams/team.entity';
+import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
+import { Event } from '@entity/events/event.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { Team } from '@entity/teams/team.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 
 describe('ZoomIntegrationsService', () => {

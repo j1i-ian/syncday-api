@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { Observable, defer, from } from 'rxjs';
 import { FindOptionsOrder, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ScheduledEventsService } from '@interfaces/scheduled-events/scheduled-events.service.interface';
-import { InviteeScheduledEvent } from '@interfaces/scheduled-events/invitee-scheduled-events.interface';
+import { ScheduledEventsService } from '@core/interfaces/scheduled-events/scheduled-events.service.interface';
+import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee-scheduled-events.interface';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
-import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 
 @Injectable()
 export class NativeScheduledEventsService implements ScheduledEventsService {

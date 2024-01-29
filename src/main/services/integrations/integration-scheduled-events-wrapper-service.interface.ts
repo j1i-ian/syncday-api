@@ -1,4 +1,4 @@
-import { IntegrationScheduledEventsService } from '@interfaces/integrations/integration-scheduled-events.abstract-service';
+import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
 
 export interface IntegrationScheduledEventsWrapperService {
     getIntegrationScheduledEventsService(): IntegrationScheduledEventsService;

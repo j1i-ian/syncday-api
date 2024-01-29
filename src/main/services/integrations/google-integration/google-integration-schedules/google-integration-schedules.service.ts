@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IntegrationScheduledEventsService } from '@interfaces/integrations/integration-scheduled-events.abstract-service';
-import { GoogleIntegrationScheduledEvent } from '@entities/integrations/google/google-integration-scheduled-event.entity';
-import { IntegrationScheduledEvent } from '@entities/scheduled-events/integration-scheduled-event.entity';
+import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
+import { IntegrationScheduledEvent } from '@entity/scheduled-events/integration-scheduled-event.entity';
 
 @Injectable()
 export class GoogleIntegrationSchedulesService extends IntegrationScheduledEventsService {

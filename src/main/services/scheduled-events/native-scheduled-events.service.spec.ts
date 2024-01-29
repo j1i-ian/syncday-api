@@ -4,16 +4,16 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
-import { UtilService } from '@services/utils/util.service';
+import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
-import { AvailabilityRedisRepository } from '@services/availabilities/availability.redis-repository';
-import { TimeUtilService } from '@services/utils/time-util.service';
-import { User } from '@entities/users/user.entity';
-import { Event } from '@entities/events/event.entity';
-import { ScheduledTimeset } from '@entities/scheduled-events/scheduled-timeset.entity';
-import { ScheduledBufferTime } from '@entities/scheduled-events/scheduled-buffer-time.entity';
-import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
+import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { User } from '@entity/users/user.entity';
+import { Event } from '@entity/events/event.entity';
+import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.entity';
+import { ScheduledBufferTime } from '@entity/scheduled-events/scheduled-buffer-time.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { NativeScheduledEventsService } from './native-scheduled-events.service';
 
 describe('NativeSchedulesService', () => {

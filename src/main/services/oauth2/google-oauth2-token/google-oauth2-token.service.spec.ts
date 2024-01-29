@@ -2,15 +2,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
-import { UtilService } from '@services/utils/util.service';
+import { UtilService } from '@services/util/util.service';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
+import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
-import { CoreGoogleConverterService } from '@services/converters/google/core-google-converter.service';
-import { User } from '@entities/users/user.entity';
-import { Profile } from '@entities/profiles/profile.entity';
-import { TeamSetting } from '@entities/teams/team-setting.entity';
+import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleOAuth2TokenService } from './google-oauth2-token.service';
 
@@ -24,7 +24,7 @@ describe('GoogleOAuth2TokenService', () => {
     let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
     let integrationsValidatorStub: sinon.SinonStubbedInstance<IntegrationsValidator>;
     let googleIntegrationFacadeStub: sinon.SinonStubbedInstance<GoogleIntegrationFacade>;
-    let coreGoogleConverterServiceStub: sinon.SinonStubbedInstance<CoreGoogleConverterService>;
+    let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
     let googleIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationsService>;
 
     let loggerStub: sinon.SinonStub;
@@ -36,7 +36,7 @@ describe('GoogleOAuth2TokenService', () => {
         integrationsServiceLocatorStub = sinon.createStubInstance(IntegrationsServiceLocator);
         integrationsValidatorStub = sinon.createStubInstance(IntegrationsValidator);
         googleIntegrationFacadeStub = sinon.createStubInstance(GoogleIntegrationFacade);
-        coreGoogleConverterServiceStub = sinon.createStubInstance(CoreGoogleConverterService);
+        googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
         googleIntegrationServiceStub = sinon.createStubInstance(GoogleIntegrationsService);
 
         loggerStub = sinon.stub({
@@ -69,8 +69,8 @@ describe('GoogleOAuth2TokenService', () => {
                     useValue: googleIntegrationFacadeStub
                 },
                 {
-                    provide: CoreGoogleConverterService,
-                    useValue: coreGoogleConverterServiceStub
+                    provide: GoogleConverterService,
+                    useValue: googleConverterServiceStub
                 },
                 {
                     provide: GoogleIntegrationsService,
@@ -125,7 +125,7 @@ describe('GoogleOAuth2TokenService', () => {
 
             const userMock = stubOne(User);
 
-            await service.multipleSocialSignIn(userMock, userMock.email as string);
+            await service.multipleSocialSignIn(userMock, userMock.email);
 
             expect(oauth2AccountsServiceStub.create.called).true;
         });

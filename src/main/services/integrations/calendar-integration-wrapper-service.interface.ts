@@ -1,4 +1,4 @@
-import { CalendarIntegrationService } from '@interfaces/integrations/calendar-integration.abstract-service';
+import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
 
 export interface CalendarIntegrationWrapperService {
     getCalendarIntegrationsService(): CalendarIntegrationService;

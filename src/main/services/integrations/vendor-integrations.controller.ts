@@ -4,21 +4,21 @@ import { Request, Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { Observable } from 'rxjs';
-import { AppConfigService } from '@configs/app-config.service';
+import { AppConfigService } from '@config/app-config.service';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { UserService } from '@services/users/user.service';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
-import { Integration } from '@entities/integrations/integration.entity';
-import { User } from '@entities/users/user.entity';
-import { AppleCalDAVIntegration } from '@entities/integrations/apple/apple-caldav-integration.entity';
-import { Profile } from '@entities/profiles/profile.entity';
+import { Integration } from '@entity/integrations/integration.entity';
+import { User } from '@entity/users/user.entity';
+import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
 import { CreateAppleCalDAVRequestDto } from '@dto/integrations/apple/create-apple-cal-dav-request.dto';
 import { CreateIntegrationResponseDto } from '@dto/integrations/create-integration-response.dto';
-import { Public } from '@app/auth/strategies/jwt/public.decorator';
+import { Public } from '@app/auth/strategy/jwt/public.decorator';
 import { ValidateQueryParamPipe } from '@app/pipes/validate-query-param/validate-query-param.pipe';
 import { AppleCalendarIntegrationsExceptionFilter } from '@app/filters/integrations/calendar-integrations/apple-calendar-integrations/apple-calendar-integrations-exception.filter';
 
@@ -131,7 +131,7 @@ export class VendorIntegrationsController {
         @AuthProfile() authProfile: AppJwtPayload,
         @Param('vendor') vendor: IntegrationVendor,
         @Body() newIntegration: CreateAppleCalDAVRequestDto
-    ): Promise<CreateIntegrationResponseDto> {
+    ): Promise<Integration> {
         const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
 
         const loadedAppUserByEmail = await this.userService.findUserByLocalAuth(authProfile.email);
@@ -157,7 +157,7 @@ export class VendorIntegrationsController {
 
         return plainToInstance(CreateIntegrationResponseDto, createdIntegration, {
             excludeExtraneousValues: true
-        }) ;
+        }) as Integration;
     }
 
     @Patch(':vendorIntegrationId(\\d+)')

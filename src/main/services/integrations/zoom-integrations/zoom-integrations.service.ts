@@ -5,22 +5,22 @@ import { DataSource, Raw, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { Observable } from 'rxjs';
-import { AppConfigService } from '@configs/app-config.service';
-import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
-import { ConferenceLinkIntegrationService } from '@interfaces/integrations/conference-link-integration.abstract-service';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
+import { AppConfigService } from '@config/app-config.service';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
-import { ZoomUserResponseDTO } from '@interfaces/integrations/zoom/zoom-user-response.interface';
-import { SearchZoomIntegrationOptions } from '@interfaces/integrations/zoom/search-zoom-integration-options.interface';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/conference-link-integration-wrapper-service.interface';
 import { ZoomConferenceLinkIntegrationsService } from '@services/integrations/zoom-integrations/zoom-conference-link-integrations/zoom-conference-link-integrations.service';
-import { ZoomIntegration } from '@entities/integrations/zoom/zoom-integration.entity';
-import { Integration } from '@entities/integrations/integration.entity';
-import { Event } from '@entities/events/event.entity';
-import { EventStatus } from '@entities/events/event-status.enum';
-import { Profile } from '@entities/profiles/profile.entity';
+import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
+import { Integration } from '@entity/integrations/integration.entity';
+import { Event } from '@entity/events/event.entity';
+import { EventStatus } from '@entity/events/event-status.enum';
+import { Profile } from '@entity/profiles/profile.entity';
 import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
+import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
+import { SearchZoomIntegrationOptions } from '@app/interfaces/integrations/zoom/search-zoom-integration-options.interface';
 
 @Injectable()
 export class ZoomIntegrationsService implements

@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { User } from '@entities/users/user.entity';
+import { User } from '@entity/users/user.entity';
+import { TestMockUtil } from '../../../../test/test-mock-util';
 import { SyncdayRedisService } from '../../syncday-redis/syncday-redis.service';
-import { TestMockUtil } from '@test/test-mock-util';
 import { TemporaryUsersService } from './temporary-users.service';
 
 const testMockUtil = new TestMockUtil();

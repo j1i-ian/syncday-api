@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
-import { Profile } from '@entities/profiles/profile.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 
 export const AuthProfile = createParamDecorator(
     (data: Extract<keyof AppJwtPayload, keyof Profile | 'teamUUID' | 'userUUID'>, ctx: ExecutionContext) => {

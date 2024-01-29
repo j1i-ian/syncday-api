@@ -2,9 +2,9 @@ import { URL } from 'url';
 import fetch from 'node-fetch';
 
 import { Injectable } from '@nestjs/common';
-import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
-import { ZoomTokenResponseDTO } from '@interfaces/integrations/zoom/zoom-token-response.interface';
-import { IssueOAuth2Token } from '@interfaces/oauth2/issue-oauth2-token.interface';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { IssueOAuth2Token } from '@services/integrations/facades/issue-oauth2-token.interface';
+import { ZoomTokenResponseDTO } from '@app/interfaces/integrations/zoom/zoom-token-response.interface';
 
 @Injectable()
 export class ZoomOauthTokenService implements IssueOAuth2Token {

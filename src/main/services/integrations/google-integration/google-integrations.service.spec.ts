@@ -2,22 +2,22 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EntityManager, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { AppConfigService } from '@configs/app-config.service';
-import { OAuth2Setting } from '@interfaces/auth/oauth2-setting.interface';
-import { CalendarCreateOption } from '@interfaces/integrations/calendar-create-option.interface';
-import { CoreGoogleConverterService } from '@services/converters/google/core-google-converter.service';
+import { OAuth2Setting } from '@core/interfaces/auth/oauth2-setting.interface';
+import { AppConfigService } from '@config/app-config.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
+import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
+import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
 import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
-import { GoogleIntegration } from '@entities/integrations/google/google-integration.entity';
-import { UserSetting } from '@entities/users/user-setting.entity';
-import { GoogleCalendarIntegration } from '@entities/integrations/google/google-calendar-integration.entity';
-import { GoogleIntegrationScheduledEvent } from '@entities/integrations/google/google-integration-scheduled-event.entity';
-import { Profile } from '@entities/profiles/profile.entity';
-import { TeamSetting } from '@entities/teams/team-setting.entity';
-import { User } from '@entities/users/user.entity';
-import { IntegrationsRedisRepository } from '@repositories/integrations/integration-redis.repository';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { User } from '@entity/users/user.entity';
+import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 import { TestMockUtil } from '@test/test-mock-util';
 
 const testMockUtil = new TestMockUtil();
@@ -28,7 +28,7 @@ describe('GoogleIntegrationsService', () => {
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
 
-    let coreGoogleConverterServiceStub: sinon.SinonStubbedInstance<CoreGoogleConverterService>;
+    let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
     let googleCalendarIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleCalendarIntegrationsService>;
     let googleConferenceLinkIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleConferenceLinkIntegrationService>;
     let googleIntegrationSchedulesServiceStub: sinon.SinonStubbedInstance<GoogleIntegrationSchedulesService>;
@@ -46,7 +46,7 @@ describe('GoogleIntegrationsService', () => {
 
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
-        coreGoogleConverterServiceStub = sinon.createStubInstance(CoreGoogleConverterService);
+        googleConverterServiceStub = sinon.createStubInstance(GoogleConverterService);
         googleCalendarIntegrationsServiceStub = sinon.createStubInstance(GoogleCalendarIntegrationsService);
         googleConferenceLinkIntegrationServiceStub = sinon.createStubInstance(GoogleConferenceLinkIntegrationService);
         googleIntegrationSchedulesServiceStub = sinon.createStubInstance(GoogleIntegrationSchedulesService);
@@ -68,8 +68,8 @@ describe('GoogleIntegrationsService', () => {
                     useValue: integrationsRedisRepositoryStub
                 },
                 {
-                    provide: CoreGoogleConverterService,
-                    useValue: coreGoogleConverterServiceStub
+                    provide: GoogleConverterService,
+                    useValue: googleConverterServiceStub
                 },
                 {
                     provide: GoogleCalendarIntegrationsService,
@@ -148,7 +148,7 @@ describe('GoogleIntegrationsService', () => {
             integrationsRedisRepositoryStub.setGoogleCalendarSubscriptionStatus.reset();
             googleIntegrationRepositoryStub.save.reset();
             googleIntegrationSchedulesServiceStub._saveAll.reset();
-            coreGoogleConverterServiceStub.convertToGoogleIntegrationSchedules.reset();
+            googleConverterServiceStub.convertToGoogleIntegrationSchedules.reset();
             googleCalendarIntegrationsServiceStub.subscribeCalendar.reset();
         });
 
@@ -230,7 +230,7 @@ describe('GoogleIntegrationsService', () => {
             beforeEach(() => {
 
                 googleIntegrationRepositoryStub.save.callsFake((entity) => Promise.resolve(entity as GoogleIntegration));
-                coreGoogleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(googleSchedules);
+                googleConverterServiceStub.convertToGoogleIntegrationSchedules.returns(googleSchedules);
             });
 
             it(description, async () => {
@@ -253,7 +253,7 @@ describe('GoogleIntegrationsService', () => {
 
                 expect(googleIntegrationRepositoryStub.save.called).true;
                 expect(integrationsRedisRepositoryStub.setGoogleCalendarSubscriptionStatus.called).true;
-                expect(coreGoogleConverterServiceStub.convertToGoogleIntegrationSchedules.called).true;
+                expect(googleConverterServiceStub.convertToGoogleIntegrationSchedules.called).true;
                 expect(googleIntegrationSchedulesServiceStub._saveAll.called).true;
                 expect(googleCalendarIntegrationsServiceStub.subscribeCalendar.called).true;
 

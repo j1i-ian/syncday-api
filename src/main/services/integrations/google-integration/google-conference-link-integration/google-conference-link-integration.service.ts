@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { calendar_v3 } from 'googleapis';
-import { ConferenceLinkIntegrationService } from '@interfaces/integrations/conference-link-integration.abstract-service';
-import { CreatedCalendarEvent } from '@interfaces/integrations/created-calendar-event.interface';
+import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
+import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
-import { Contact } from '@entities/events/contact.entity';
-import { Integration } from '@entities/integrations/integration.entity';
-import { ConferenceLink } from '@entities/scheduled-events/conference-link.entity';
-import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
+import { Contact } from '@entity/events/contact.entity';
+import { Integration } from '@entity/integrations/integration.entity';
+import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 
 @Injectable()
 export class GoogleConferenceLinkIntegrationService implements ConferenceLinkIntegrationService {

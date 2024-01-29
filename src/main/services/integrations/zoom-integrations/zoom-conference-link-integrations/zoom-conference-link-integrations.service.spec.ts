@@ -2,10 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
-import { ZoomIntegration } from '@entities/integrations/zoom/zoom-integration.entity';
-import { Contact } from '@entities/events/contact.entity';
-import { ConferenceLink } from '@entities/scheduled-events/conference-link.entity';
-import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
+import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
+import { Contact } from '@entity/events/contact.entity';
+import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { ZoomConferenceLinkIntegrationsService } from './zoom-conference-link-integrations.service';
 

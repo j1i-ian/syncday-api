@@ -2,7 +2,7 @@ import { BadRequestException, Controller, Headers, Inject, Param, Post } from '@
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
-import { Public } from '@app/auth/strategies/jwt/public.decorator';
+import { Public } from '@app/auth/strategy/jwt/public.decorator';
 
 @Controller()
 export class GoogleCalendarIntegrationsController {

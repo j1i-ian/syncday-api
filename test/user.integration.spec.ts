@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { UserService } from '@services/users/user.service';
-import { User } from '@entities/users/user.entity';
+import { User } from '@entity/users/user.entity';
 import { TestIntegrationUtil } from './test-integration-util';
 
 const testIntegrationUtil = new TestIntegrationUtil();

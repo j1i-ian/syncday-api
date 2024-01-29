@@ -5,25 +5,25 @@ import { Repository } from 'typeorm';
 import { Observable, catchError, from, map, mergeMap, throwError } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { CalendarIntegrationService } from '@interfaces/integrations/calendar-integration.abstract-service';
-import { IntegrationScheduledEventsService } from '@interfaces/integrations/integration-scheduled-events.abstract-service';
+import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
+import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
-import { SyncdayOAuth2TokenResponse } from '@interfaces/auth/syncday-oauth2-token-response.interface';
-import { CoreAppleConverterService } from '@services/converters/apple/core-apple-converter.service';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
+import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 import { AppleIntegrationsSchedulesService } from '@services/integrations/apple-integrations/apple-integrations-schedules/apple-integrations-schedules.service';
 import { IntegrationScheduledEventsWrapperService } from '@services/integrations/integration-scheduled-events-wrapper-service.interface';
 import { CalendarIntegrationWrapperService } from '@services/integrations/calendar-integration-wrapper-service.interface';
 import { AppleIntegrationFacadeService } from '@services/integrations/apple-integrations/apple-integration-facade.service';
 import { AppleCalendarIntegrationsService } from '@services/integrations/apple-integrations/apple-calendar-integrations/apple-calendar-integrations.service';
-import { Integration } from '@entities/integrations/integration.entity';
-import { AppleCalDAVIntegration } from '@entities/integrations/apple/apple-caldav-integration.entity';
-import { UserSetting } from '@entities/users/user-setting.entity';
-import { Profile } from '@entities/profiles/profile.entity';
-import { TeamSetting } from '@entities/teams/team-setting.entity';
+import { Integration } from '@entity/integrations/integration.entity';
+import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { IntegrationStatus } from '@dto/integrations/integration-status.enum';
-import { AlreadyIntegratedCalendarException } from '@exceptions/integrations/already-integrated-calendar.exception';
+import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
+import { AlreadyIntegratedCalendarException } from '@app/exceptions/integrations/already-integrated-calendar.exception';
 
 @Injectable()
 export class AppleIntegrationsService implements
@@ -33,7 +33,7 @@ export class AppleIntegrationsService implements
 {
 
     constructor(
-        private readonly coreAppleConverter: CoreAppleConverterService,
+        private readonly appleConverter: AppleConverterService,
         private readonly appleIntegrationsSchedulesService: AppleIntegrationsSchedulesService,
         private readonly appleIntegrationFacade: AppleIntegrationFacadeService,
         private readonly appleCalendarIntegrationService: AppleCalendarIntegrationsService,
@@ -125,7 +125,7 @@ export class AppleIntegrationsService implements
 
         const convertedAppleCalDAVCalndarIntegrations = calendars.map(
             (_calendar) =>
-                this.coreAppleConverter.convertCalDAVCalendarToAppleCalendarIntegration(
+                this.appleConverter.convertCalDAVCalendarToAppleCalendarIntegration(
                     timezone,
                     _calendar
                 )
@@ -141,7 +141,7 @@ export class AppleIntegrationsService implements
                     );
 
                     const convertedSchedules = calDAVSchedules.flatMap((calDAVSchedule) =>
-                        this.coreAppleConverter.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents(
+                        this.appleConverter.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents(
                             profile,
                             userSetting,
                             teamSetting,

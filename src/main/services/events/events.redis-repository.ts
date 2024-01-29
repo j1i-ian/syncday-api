@@ -1,13 +1,13 @@
 import { Observable, forkJoin, from, map, mergeMap } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
+import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 import { EventSetting } from '@interfaces/events/event-setting';
-import { EventsDetailBody } from '@interfaces/events/events-detail-body.interface';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
-import { InviteeQuestion } from '@entities/invitee-questions/invitee-question.entity';
-import { EventDetailBodySaveFailException } from '@exceptions/event-detail-body-save-fail.exception';
+import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
+import { EventDetailBodySaveFailException } from '@app/exceptions/event-detail-body-save-fail.exception';
 
 interface EventDetailsRecord {
     [eventDetailUUID: string]: EventsDetailBody;

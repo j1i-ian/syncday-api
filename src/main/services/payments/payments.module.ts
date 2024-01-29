@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { PaymentRedisRepository } from '@services/payments/payment.redis-repository';
 import { SyncdayRedisModule } from '@services/syncday-redis/syncday-redis.module';
-import { Payment } from '@entities/payments/payment.entity';
+import { Payment } from '@entity/payments/payment.entity';
 import { PaymentsService } from './payments.service';
 import { BootpayModule } from './bootpay/bootpay.module';
 import { PaymentMethodModule } from './payment-method/payment-method.module';

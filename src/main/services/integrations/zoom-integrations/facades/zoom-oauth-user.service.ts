@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import fetch from 'node-fetch';
-import { ZoomUserResponseDTO } from '@interfaces/integrations/zoom/zoom-user-response.interface';
+import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
 
 @Injectable()
 export class ZoomOauthUserService {

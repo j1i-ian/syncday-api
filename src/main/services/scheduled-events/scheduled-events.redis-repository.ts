@@ -2,10 +2,10 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cluster } from 'ioredis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Observable, from, map } from 'rxjs';
-import { ScheduleBody } from '@interfaces/scheduled-events/schedule-body.interface';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
-import { CannotFindScheduleBody } from '@exceptions/scheduled-events/cannot-find-schedule-body.exception';
+import { ScheduleBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
+import { CannotFindScheduleBody } from '@app/exceptions/scheduled-events/cannot-find-schedule-body.exception';
 
 @Injectable()
 export class ScheduledEventsRedisRepository {

@@ -3,8 +3,8 @@ import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { OAuth2AccountsModule } from '@services/users/oauth2-accounts/oauth2-accounts.module';
-import { User } from '@entities/users/user.entity';
-import { OAuth2Account } from '@entities/users/oauth2-account.entity';
+import { User } from '@entity/users/user.entity';
+import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { OAuth2AccountsService } from './oauth2-accounts.service';
 
@@ -76,7 +76,7 @@ describe('OAuth2AccountsService', () => {
 
         oauth2AccountRepositoryStub.findOne.resolves(oauth2AccountStub);
 
-        const actualFoundOAuth2Account = await service.findOneByEmail(userEmail as string);
+        const actualFoundOAuth2Account = await service.findOneByEmail(userEmail);
 
         expect(actualFoundOAuth2Account).ok;
         expect(oauth2AccountRepositoryStub.findOne.called).true;

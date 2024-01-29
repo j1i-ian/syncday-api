@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { EntityNotFoundError, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
-import { EventDetail } from '@entities/events/event-detail.entity';
-import { NotAnOwnerException } from '@exceptions/not-an-owner.exception';
+import { EventDetail } from '@entity/events/event-detail.entity';
+import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 
 @Injectable()
 export class EventDetailsService {

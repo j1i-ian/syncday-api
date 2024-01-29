@@ -4,9 +4,9 @@ import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
-import { Team } from '@entities/teams/team.entity';
-import { User } from '@entities/users/user.entity';
-import { Order } from '@entities/orders/order.entity';
+import { Team } from '@entity/teams/team.entity';
+import { User } from '@entity/users/user.entity';
+import { Order } from '@entity/orders/order.entity';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { TestMockUtil } from '@test/test-mock-util';
 
@@ -119,7 +119,7 @@ describe('Profiles Redis Repository Test', () => {
 
             const teamStubs = stub(Team);
             const teamKeyStubs = teamStubs.map((_team) => `${_team.id}:${_team.uuid}`);
-            const emailMock = stubOne(User).email as string;
+            const emailMock = stubOne(User).email;
 
             clusterStub.smembers.resolves(teamKeyStubs);
 
@@ -175,7 +175,7 @@ describe('Profiles Redis Repository Test', () => {
         it('should be removed the team invitations as invitation complete', async () => {
 
             const teamMock = stubOne(Team);
-            const userEmail = stubOne(User).email as string;
+            const userEmail = stubOne(User).email;
 
             clusterStub.exec.resolves([]);
 

@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
-import { User } from '@entities/users/user.entity';
+import { User } from '@entity/users/user.entity';
 
 /**
  * AuthUser decorator is utilized to parse result of local strategy

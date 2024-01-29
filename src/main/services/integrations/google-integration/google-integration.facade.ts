@@ -1,25 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { calendar_v3 } from 'googleapis';
-import { AppConfigService } from '@configs/app-config.service';
-import { GoogleOAuth2UserWithToken } from '@interfaces/integrations/google/google-oauth2-user-with-token.interface';
-import { GoogleCalendarEvent } from '@interfaces/integrations/google/google-calendar-event.interface';
-import { GoogleCalendarScheduleBody } from '@interfaces/integrations/google/google-calendar-schedule-body.interface';
-import { GoogleIntegrationBody } from '@interfaces/integrations/google/google-integration-body.interface';
-import { GoogleAxiosErrorResponse } from '@interfaces/integrations/google/google-axios-error-response.interface';
-import { GoogleAxiosErrorReasons } from '@interfaces/integrations/google/google-axios-error-reasons.enum';
-import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
-import { SyncdayOAuth2StateParams } from '@interfaces/integrations/syncday-oauth2-state-params.interface';
+import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
+import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
+import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
+import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
+import { GoogleAxiosErrorResponse } from '@core/interfaces/integrations/google/google-axios-error-response.interface';
+import { GoogleAxiosErrorReasons } from '@core/interfaces/integrations/google/google-axios-error-reasons.enum';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-oauth2-state-params.interface';
+import { AppConfigService } from '@config/app-config.service';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { ZoomUserResponseDTO } from '@interfaces/integrations/zoom/zoom-user-response.interface';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
 import { GoogleOAuthTokenService } from '@services/integrations/google-integration/facades/google-oauth-token.service';
 import { GoogleOAuthUserService } from '@services/integrations/google-integration/facades/google-oauth-user.service';
 import { GoogleCalendarListService } from '@services/integrations/google-integration/facades/google-calendar-list.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
 import { IntegrationsFacade } from '@services/integrations/integrations.facade.interface';
-import { User } from '@entities/users/user.entity';
+import { User } from '@entity/users/user.entity';
+import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
 
 @Injectable()
 export class GoogleIntegrationFacade implements IntegrationsFacade {

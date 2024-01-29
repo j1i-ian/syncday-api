@@ -3,17 +3,17 @@ import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { EventsSearchOption } from '@interfaces/events/events-search-option.interface';
+import { Event } from '@core/entities/events/event.entity';
+import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
-import { UtilService } from '@services/utils/util.service';
-import { Availability } from '@entities/availability/availability.entity';
-import { EventStatus } from '@entities/events/event-status.enum';
-import { EventGroup } from '@entities/events/event-group.entity';
-import { EventDetail } from '@entities/events/event-detail.entity';
-import { Event } from '@entities/events/event.entity';
-import { NotAnOwnerException } from '@exceptions/not-an-owner.exception';
-import { NoDefaultAvailabilityException } from '@exceptions/availabilities/no-default-availability.exception';
-import { AlreadyUsedInEventLinkException } from '@exceptions/events/already-used-in-event-link.exception';
+import { UtilService } from '@services/util/util.service';
+import { Availability } from '@entity/availability/availability.entity';
+import { EventStatus } from '@entity/events/event-status.enum';
+import { EventGroup } from '@entity/events/event-group.entity';
+import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
+import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
+import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
+import { AlreadyUsedInEventLinkException } from '@app/exceptions/events/already-used-in-event-link.exception';
 import { Validator } from '@criteria/validator';
 
 @Injectable()

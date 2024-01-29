@@ -3,8 +3,8 @@ import { Observable, from, map, mergeAll, mergeMap, toArray } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { IntegrationSubject } from '@interfaces/integrations/integration-subject.enum';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
-import { Integration } from '@entities/integrations/integration.entity';
-import { Profile } from '@entities/profiles/profile.entity';
+import { Integration } from '@entity/integrations/integration.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { ValidateQueryParamPipe } from '@app/pipes/validate-query-param/validate-query-param.pipe';
 
 @Controller()

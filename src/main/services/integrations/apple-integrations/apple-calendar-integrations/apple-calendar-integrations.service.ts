@@ -2,29 +2,29 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Repository, FindOptionsWhere, DataSource, In, EntityManager } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Observable, firstValueFrom, from } from 'rxjs';
-import { CalendarIntegrationService } from '@interfaces/integrations/calendar-integration.abstract-service';
-import { CreatedCalendarEvent } from '@interfaces/integrations/created-calendar-event.interface';
+import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
+import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
 import { CalendarIntegrationSearchOption } from '@interfaces/integrations/calendar-integration-search-option.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { CoreAppleConverterService } from '@services/converters/apple/core-apple-converter.service';
 import { AppleIntegrationFacadeService } from '@services/integrations/apple-integrations/apple-integration-facade.service';
-import { AppleCalDAVCalendarIntegration } from '@entities/integrations/apple/apple-caldav-calendar-integration.entity';
-import { AppleCalDAVIntegrationScheduledEvent } from '@entities/integrations/apple/apple-caldav-integration-scheduled-event.entity';
-import { UserSetting } from '@entities/users/user-setting.entity';
-import { AppleCalDAVIntegration } from '@entities/integrations/apple/apple-caldav-integration.entity';
-import { CalendarIntegration } from '@entities/calendars/calendar-integration.entity';
+import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
+import { AppleCalDAVCalendarIntegration } from '@entity/integrations/apple/apple-caldav-calendar-integration.entity';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
+import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
 
-import { TeamSetting } from '@entities/teams/team-setting.entity';
-import { Profile } from '@entities/profiles/profile.entity';
-import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
-import { NotAnOwnerException } from '@exceptions/not-an-owner.exception';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 
 @Injectable()
 export class AppleCalendarIntegrationsService extends CalendarIntegrationService {
 
     constructor(
         private readonly appleIntegrationFacade: AppleIntegrationFacadeService,
-        private readonly coreAppleConverter: CoreAppleConverterService,
+        private readonly appleConverter: AppleConverterService,
         @InjectDataSource() private readonly datasource: DataSource,
         @InjectRepository(AppleCalDAVCalendarIntegration)
         private readonly appleCalDAVCalendarIntegrationRepository: Repository<AppleCalDAVCalendarIntegration>
@@ -68,7 +68,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         );
 
         const schedules = calDAVSchedules.flatMap((_calDAVSchedule) =>
-            this.coreAppleConverter.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents(
+            this.appleConverter.convertCalDAVCalendarObjectToAppleCalDAVIntegrationScheduledEvents(
                 profile,
                 userSetting,
                 teamSetting,

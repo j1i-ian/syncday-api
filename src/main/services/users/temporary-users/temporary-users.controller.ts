@@ -2,7 +2,7 @@ import { Body, Controller, Post } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CreateTemporaryUserRequestDto } from '@dto/users/create-temporary-user-request.dto';
 import { CreateTemporaryUserResponseDto } from '@dto/users/create-temporary-user-response.dto';
-import { Public } from '../../../auth/strategies/jwt/public.decorator';
+import { Public } from '../../../auth/strategy/jwt/public.decorator';
 import { BCP47AcceptLanguage } from '../../../decorators/accept-language.decorator';
 import { Language } from '../../../enums/language.enum';
 import { TemporaryUsersService } from './temporary-users.service';

@@ -6,16 +6,16 @@ import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { plainToInstance } from 'class-transformer';
 import { Observable } from 'rxjs';
-import { AppConfigService } from '@configs/app-config.service';
-import { OAuthToken } from '@interfaces/auth/oauth-token.interface';
-import { GoogleIntegrationBody } from '@interfaces/integrations/google/google-integration-body.interface';
-import { CalendarIntegrationService } from '@interfaces/integrations/calendar-integration.abstract-service';
-import { ConferenceLinkIntegrationService } from '@interfaces/integrations/conference-link-integration.abstract-service';
-import { IntegrationScheduledEventsService } from '@interfaces/integrations/integration-scheduled-events.abstract-service';
+import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
+import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
+import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
+import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
+import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
+import { AppConfigService } from '@config/app-config.service';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { SyncdayOAuth2TokenResponse } from '@interfaces/auth/syncday-oauth2-token-response.interface';
-import { CalendarCreateOption } from '@interfaces/integrations/calendar-create-option.interface';
+import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
+import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
@@ -23,16 +23,16 @@ import { IntegrationScheduledEventsWrapperService } from '@services/integrations
 import { CalendarIntegrationWrapperService } from '@services/integrations/calendar-integration-wrapper-service.interface';
 import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/conference-link-integration-wrapper-service.interface';
 import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
-import { CoreGoogleConverterService } from '@services/converters/google/core-google-converter.service';
-import { GoogleIntegration } from '@entities/integrations/google/google-integration.entity';
-import { GoogleCalendarIntegration } from '@entities/integrations/google/google-calendar-integration.entity';
-import { UserSetting } from '@entities/users/user-setting.entity';
-import { Integration } from '@entities/integrations/integration.entity';
-import { Host } from '@entities/scheduled-events/host.entity';
-import { Profile } from '@entities/profiles/profile.entity';
-import { TeamSetting } from '@entities/teams/team-setting.entity';
-import { User } from '@entities/users/user.entity';
-import { IntegrationsRedisRepository } from '@repositories/integrations/integration-redis.repository';
+import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
+import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
+import { Integration } from '@entity/integrations/integration.entity';
+import { Host } from '@entity/scheduled-events/host.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { User } from '@entity/users/user.entity';
+import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
+import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
 @Injectable()
 export class GoogleIntegrationsService implements
@@ -43,7 +43,7 @@ export class GoogleIntegrationsService implements
 {
     constructor(
         private readonly configService: ConfigService,
-        private readonly coreGoogleConverterService: CoreGoogleConverterService,
+        private readonly googleConverterService: GoogleConverterService,
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
         private readonly googleConferenceLinkIntegrationService: GoogleConferenceLinkIntegrationService,
         private readonly googleIntegrationSchedulesService: GoogleIntegrationSchedulesService,
@@ -229,7 +229,7 @@ export class GoogleIntegrationsService implements
                 primaryCalendarIntegration.uuid
             );
 
-            const googleIntegrationSchedules = this.coreGoogleConverterService.convertToGoogleIntegrationSchedules(googleCalendarScheduleBody);
+            const googleIntegrationSchedules = this.googleConverterService.convertToGoogleIntegrationSchedules(googleCalendarScheduleBody);
 
             const _createdGoogleCalendarIntegrations = createdGoogleIntegration.googleCalendarIntegrations;
 

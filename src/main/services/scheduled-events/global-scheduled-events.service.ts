@@ -4,29 +4,29 @@ import { Observable, bufferCount, combineLatest, concatMap, defer, forkJoin, fro
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { IntegrationScheduledEventsService } from '@interfaces/integrations/integration-scheduled-events.abstract-service';
-import { InviteeScheduledEvent } from '@interfaces/scheduled-events/invitee-scheduled-events.interface';
-import { PageOption } from '@interfaces/page-option.interface';
+import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
+import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee-scheduled-events.interface';
+import { PageOption } from '@core/interfaces/page-option.interface';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
-import { AvailabilityBody } from '@interfaces/availabilities/availability-body.type';
 import { EventsService } from '@services/events/events.service';
 import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
-import { UtilService } from '@services/utils/util.service';
-import { AvailabilityRedisRepository } from '@services/availabilities/availability.redis-repository';
+import { UtilService } from '@services/util/util.service';
+import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { NativeScheduledEventsService } from '@services/scheduled-events/native-scheduled-events.service';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
-import { TimeUtilService } from '@services/utils/time-util.service';
-import { User } from '@entities/users/user.entity';
-import { GoogleIntegrationScheduledEvent } from '@entities/integrations/google/google-integration-scheduled-event.entity';
-import { CalendarIntegration } from '@entities/calendars/calendar-integration.entity';
-import { AppleCalDAVIntegrationScheduledEvent } from '@entities/integrations/apple/apple-caldav-integration-scheduled-event.entity';
-import { Contact } from '@entities/events/contact.entity';
-import { Profile } from '@entities/profiles/profile.entity';
-import { Team } from '@entities/teams/team.entity';
-import { ScheduledEvent } from '@entities/scheduled-events/scheduled-event.entity';
-import { CannotCreateByInvalidTimeRange } from '@exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { User } from '@entity/users/user.entity';
+import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
+import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
+import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
+import { Contact } from '@entity/events/contact.entity';
+import { Profile } from '@entity/profiles/profile.entity';
+import { Team } from '@entity/teams/team.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
+import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
 /**
  * TODO: Apply prototype design pattern
