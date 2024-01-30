@@ -23,12 +23,12 @@ import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
 import { Availability } from '@entity/availability/availability.entity';
-import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
-import { UpdateAvailabilityRequestDto } from '@dto/availability/update-availability-request.dto';
-import { CreateAvailabilityResponseDto } from '@dto/availability/create-availability-response.dto';
-import { GetAvailabilityResponseDto } from '@dto/availability/get-availability-response.dto';
-import { PatchAvailabilityRequestDto } from '@dto/availability/patch-availability-request.dto';
-import { CloneAvailabilityRequestDto } from '@dto/availability/clone-availability-options.dto';
+import { CreateAvailabilityRequestDto } from '@dto/availabilities/create-availability-request.dto';
+import { UpdateAvailabilityRequestDto } from '@dto/availabilities/update-availability-request.dto';
+import { CreateAvailabilityResponseDto } from '@dto/availabilities/create-availability-response.dto';
+import { GetAvailabilityResponseDto } from '@dto/availabilities/get-availability-response.dto';
+import { PatchAvailabilityRequestDto } from '@dto/availabilities/patch-availability-request.dto';
+import { CloneAvailabilityRequestDto } from '@dto/availabilities/clone-availability-options.dto';
 import { AvailabilityService } from './availability.service';
 
 @Controller()

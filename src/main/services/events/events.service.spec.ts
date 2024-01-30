@@ -12,6 +12,7 @@ import { UtilService } from '@services/util/util.service';
 import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { EventProfile } from '@entity/events/event-profile.entity';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
@@ -35,6 +36,7 @@ describe('EventsService', () => {
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
     let eventDetailRepositoryStub: sinon.SinonStubbedInstance<Repository<EventDetail>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
+    let eventProfileRepositoryStub: sinon.SinonStubbedInstance<Repository<EventProfile>>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     before(async () => {
@@ -45,6 +47,7 @@ describe('EventsService', () => {
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
         eventDetailRepositoryStub = sinon.createStubInstance<Repository<EventDetail>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
+        eventProfileRepositoryStub = sinon.createStubInstance<Repository<EventProfile>>(Repository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         (eventRepositoryStub as any).manager = datasourceMock as unknown as EntityManager;
@@ -79,6 +82,10 @@ describe('EventsService', () => {
                 {
                     provide: getRepositoryToken(EventGroup),
                     useValue: eventGroupRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(EventProfile),
+                    useValue: eventProfileRepositoryStub
                 },
                 {
                     provide: UtilService,

@@ -10,6 +10,7 @@ import { UtilService } from '@services/util/util.service';
 import { Availability } from '@entity/availability/availability.entity';
 import { EventStatus } from '@entity/events/event-status.enum';
 import { EventGroup } from '@entity/events/event-group.entity';
+import { EventProfile } from '@entity/events/event-profile.entity';
 import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
@@ -24,13 +25,18 @@ export class EventsService {
         private readonly utilService: UtilService,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(EventGroup) private readonly eventGroupRepository: Repository<EventGroup>,
-        @InjectRepository(Event) private readonly eventRepository: Repository<Event>
+        @InjectRepository(Event) private readonly eventRepository: Repository<Event>,
+        @InjectRepository(EventProfile) private readonly eventProfileRepository: Repository<EventProfile>
     ) {}
 
     search(searchOption: EventsSearchOption): Observable<Event[]> {
         return from(
             this.eventRepository.find({
-                relations: ['eventGroup', 'eventDetail'],
+                relations: {
+                    eventGroup: true,
+                    eventDetail: true,
+                    eventProfiles: true
+                },
                 where: {
                     status: searchOption.status,
                     public: searchOption.public,
@@ -422,6 +428,24 @@ export class EventsService {
         clonedEvent.eventDetail.eventSetting = clonedEventDetailBody.eventSetting;
 
         return clonedEvent;
+    }
+
+    async linkToProfiles(
+        teamId: number,
+        eventId: number,
+        profileIds: number[]
+    ): Promise<boolean> {
+
+        await this.validator.validate(teamId, eventId, Event);
+
+        const shallowedEventProfiles = profileIds.map((profileId) => ({
+            profileId,
+            eventId
+        } as EventProfile));
+
+        await this.eventProfileRepository.save(shallowedEventProfiles);
+
+        return true;
     }
 
     async linkToAvailability(

@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Patch } from '@nestjs/comm
 import { plainToInstance } from 'class-transformer';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { FetchUserSettingResponseDto } from '@dto/users/user-settings/fetch-user-setting-response.dto';
-import { PatchUserSettingRequestDto } from '@share/@dto/users/user-settings/patch-user-setting-request.dto';
+import { PatchUserSettingRequestDto } from '@dto/users/user-settings/patch-user-setting-request.dto';
 import { UserSettingService } from './user-setting.service';
 
 /**

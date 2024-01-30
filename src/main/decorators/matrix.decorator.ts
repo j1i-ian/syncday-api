@@ -102,7 +102,7 @@ const __isMatrixParamUseHttpMethod = (
 const __parseByOption = (
     matrixParam: ObjectEntry,
     keyOrOptions: string | MatrixOption | null
-): string | number | string[] | number[] | ObjectEntry => {
+): string | number | string[] | number[] | ObjectEntry | null => {
     if (keyOrOptions === null || !keyOrOptions) {
         return matrixParam;
     }
@@ -110,7 +110,7 @@ const __parseByOption = (
     const isKeyString = typeof keyOrOptions === stringType;
     const isOptionObject = typeof keyOrOptions === objectType;
 
-    let result: string | number | string[] | number[] | ObjectEntry;
+    let result: string | number | string[] | number[] | ObjectEntry | null;
 
     if (isKeyString) {
         // key option
@@ -120,8 +120,13 @@ const __parseByOption = (
 
         const { key, parseInt, firstOne } = keyOrOptions as MatrixOption;
         result = matrixParam[key];
-        result = parseInt ? result.map((_resultToken) => +_resultToken) : result;
-        result = firstOne ? result[0] : result;
+
+        if (result) {
+            result = parseInt ? result.map((_resultToken) => +_resultToken) : result;
+            result = firstOne ? result[0] : result;
+        } else {
+            result = null;
+        }
     } else {
         result = matrixParam;
     }

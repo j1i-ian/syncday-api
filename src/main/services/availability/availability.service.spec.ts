@@ -11,7 +11,7 @@ import { EventsService } from '@services/events/events.service';
 import { Event } from '@entity/events/event.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
-import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
+import { CreateAvailabilityRequestDto } from '@dto/availabilities/create-availability-request.dto';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { CannotDeleteDefaultAvailabilityException } from '@app/exceptions/availability/cannot-delete-default-availability.exception';
 import { CannotUnlinkDefaultAvailabilityException } from '@app/exceptions/availability/cannot-unlink-default-availability.exception';

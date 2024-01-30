@@ -122,6 +122,14 @@ export class EventsController {
         return this.eventsService.linkToAvailability(teamId, eventId, availabilityId);
     }
 
+    connectToProfiles(
+        teamId: number,
+        eventId: number,
+        profileIds: number[]
+    ): Promise<boolean> {
+        return this.eventsService.linkToProfiles(teamId, eventId, profileIds);
+    }
+
     /**
      * Accept http method which is not officially supported by Nest.js
      *
@@ -134,12 +142,18 @@ export class EventsController {
         @Res() response: Response,
         @AuthProfile('teamUUID') teamUUID: string,
         @AuthProfile('teamId') teamId: number,
+        @AuthProfile('roles') roles: Role[],
         @Matrix({
             key: 'availabilityId',
             parseInt: true,
             firstOne: true
         })
-        availabilityId: number
+        availabilityId: number | null,
+        @Matrix({
+            key: 'profileId',
+            parseInt: true
+        })
+        profileIds?: number[]
     ): Promise<void> {
         let responseBody;
         let statusCode = 500;
@@ -148,13 +162,24 @@ export class EventsController {
         const ensuredEventId = eventId.split(';').shift() as string;
         const parsedEventId = +ensuredEventId;
 
+        const hasManagerPermission = roles.includes(Role.MANAGER) || roles.includes(Role.OWNER);
+
         switch (req.method) {
             case 'COPY':
                 responseBody = await this.clone(parsedEventId, teamId, teamUUID);
                 statusCode = HttpStatus.CREATED;
                 break;
             case 'LINK':
-                await this.connectToAvailability(teamId, parsedEventId, availabilityId);
+                if (availabilityId) {
+                    await this.connectToAvailability(teamId, parsedEventId, availabilityId);
+
+                } else if (profileIds && hasManagerPermission) {
+                    await this.connectToProfiles(
+                        teamId,
+                        parsedEventId,
+                        profileIds
+                    );
+                }
                 statusCode = HttpStatus.NO_CONTENT;
                 break;
             default:

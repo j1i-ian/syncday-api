@@ -39,6 +39,7 @@ import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { EventProfile } from '@entity/events/event-profile.entity';
 import { CreateUserRequestDto } from '@dto/users/create-user-request.dto';
 import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
@@ -611,6 +612,12 @@ export class UserService {
             hasNoEmailUser
         });
         initialEvent.availabilityId = savedAvailability.id;
+
+        const initialEventProfile = {
+            eventId: initialEvent.id,
+            profileId: savedProfile.id
+        } as EventProfile;
+        initialEvent.eventProfiles = [initialEventProfile] as EventProfile[];
 
         await this.eventsService._create(
             manager,

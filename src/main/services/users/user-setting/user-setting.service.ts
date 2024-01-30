@@ -2,7 +2,7 @@ import { Repository } from 'typeorm';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserSetting } from '@core/entities/users/user-setting.entity';
-import { PatchUserSettingRequestDto } from '@share/@dto/users/user-settings/patch-user-setting-request.dto';
+import { PatchUserSettingRequestDto } from '@dto/users/user-settings/patch-user-setting-request.dto';
 
 @Injectable()
 export class UserSettingService {

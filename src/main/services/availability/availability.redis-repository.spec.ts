@@ -3,7 +3,7 @@ import { Cluster } from 'ioredis';
 import { firstValueFrom } from 'rxjs';
 import { Logger } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Weekday } from '@interfaces/availability/weekday.enum';
+import { Weekday } from '@interfaces/availabilities/weekday.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { Availability } from '@entity/availability/availability.entity';

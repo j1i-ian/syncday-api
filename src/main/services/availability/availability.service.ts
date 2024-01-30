@@ -9,10 +9,10 @@ import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface
 import { KeySearchOption } from '@interfaces/key-search-option.type';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsService } from '@services/events/events.service';
-import { CreateAvailabilityRequestDto } from '@dto/availability/create-availability-request.dto';
-import { UpdateAvailabilityRequestDto } from '@dto/availability/update-availability-request.dto';
-import { PatchAvailabilityRequestDto } from '@dto/availability/patch-availability-request.dto';
-import { CloneAvailabilityRequestDto } from '@dto/availability/clone-availability-options.dto';
+import { CreateAvailabilityRequestDto } from '@dto/availabilities/create-availability-request.dto';
+import { UpdateAvailabilityRequestDto } from '@dto/availabilities/update-availability-request.dto';
+import { PatchAvailabilityRequestDto } from '@dto/availabilities/patch-availability-request.dto';
+import { CloneAvailabilityRequestDto } from '@dto/availabilities/clone-availability-options.dto';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { AvailabilityUpdateFailByEntityException } from '@app/exceptions/availability-update-fail-by-entity.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
