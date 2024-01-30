@@ -23,6 +23,7 @@ import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Matrix } from '@decorators/matrix.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
+import { EventType } from '@interfaces/events/event-type.enum';
 import { CreateEventRequestDto } from '@dto/event-groups/events/create-event-request.dto';
 import { PatchEventRequestDto } from '@dto/event-groups/events/patch-event-request.dto';
 import { FetchEventResponseDto } from '@dto/event-groups/events/fetch-event-response.dto';
@@ -63,6 +64,8 @@ export class EventsController {
         @AuthProfile('teamId') teamId: number,
         @Body() createEventDto: CreateEventRequestDto
     ): Promise<Event> {
+
+        createEventDto.type = createEventDto.type || EventType.ONE_ON_ONE;
         return this.eventsService.create(teamUUID, teamId, createEventDto as Event);
     }
 
