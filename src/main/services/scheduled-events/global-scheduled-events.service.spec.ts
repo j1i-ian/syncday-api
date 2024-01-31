@@ -39,7 +39,7 @@ import { GlobalScheduledEventsService } from './global-scheduled-events.service'
 
 const testMockUtil = new TestMockUtil();
 
-describe('ScheduledEventsService', () => {
+describe('GlobalScheduledEventsService', () => {
     let service: GlobalScheduledEventsService;
 
     let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
@@ -297,9 +297,7 @@ describe('ScheduledEventsService', () => {
                     description: 'should be ensured that a scheduled event event is created when both Google Calendar and Zoom are integrated, and a Google Meet link associated with Zoom exists',
                     getEventStub: () => {
 
-                        const availabilityMock = stubOne(Availability);
                         const eventStub = stubOne(Event, {
-                            availability: availabilityMock,
                             contacts: [
                                 { type: ContactType.ZOOM, value: 'https://zoomFakeLink' },
                                 { type: ContactType.GOOGLE_MEET, value: 'https://googleMeetFakeLink' }
@@ -340,6 +338,7 @@ describe('ScheduledEventsService', () => {
 
                     const googleIntegrationServiceStub = serviceSandbox.createStubInstance(GoogleIntegrationsService);
 
+                    const availabilityMock = stubOne(Availability);
                     const teamSettingMock = stubOne(TeamSetting);
                     const userSettingStub = stubOne(UserSetting);
                     const userMock = stubOne(User, {
@@ -402,7 +401,8 @@ describe('ScheduledEventsService', () => {
                             scheduleStub,
                             teamMock,
                             userMock,
-                            profileMock
+                            profileMock,
+                            availabilityMock
                         )
                     );
 

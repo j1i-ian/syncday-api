@@ -50,7 +50,6 @@ export class AvailabilityService {
         return forkJoin({
             availabilityEntities: from(
                 this.availabilityRepository.find({
-                    relations: ['events'],
                     where: availabilityCondition,
                     order: {
                         default: 'DESC'
@@ -119,8 +118,10 @@ export class AvailabilityService {
                             }
                         }
                     },
-                    events: {
-                        link: eventLink
+                    eventProfile: {
+                        event: {
+                            link: eventLink
+                        }
                     }
                 }
             })
@@ -446,6 +447,7 @@ export class AvailabilityService {
 
         await this.eventsService.linksToAvailability(
             teamId,
+            profileId,
             eventIds,
             availabilityId,
             defaultAvailability.id

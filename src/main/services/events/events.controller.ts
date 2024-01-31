@@ -62,11 +62,17 @@ export class EventsController {
     create(
         @AuthProfile('teamUUID') teamUUID: string,
         @AuthProfile('teamId') teamId: number,
+        @AuthProfile('id') profileId: number,
         @Body() createEventDto: CreateEventRequestDto
     ): Promise<Event> {
 
         createEventDto.type = createEventDto.type || EventType.ONE_ON_ONE;
-        return this.eventsService.create(teamUUID, teamId, createEventDto as Event);
+        return this.eventsService.create(
+            teamUUID,
+            teamId,
+            profileId,
+            createEventDto as Event
+        );
     }
 
     @Patch(':eventId')
@@ -120,9 +126,10 @@ export class EventsController {
     connectToAvailability(
         teamId: number,
         eventId: number,
+        profileId: number,
         availabilityId: number
     ): Promise<boolean> {
-        return this.eventsService.linkToAvailability(teamId, eventId, availabilityId);
+        return this.eventsService.linkToAvailability(teamId, eventId, profileId, availabilityId);
     }
 
     connectToProfiles(
@@ -146,6 +153,7 @@ export class EventsController {
         @AuthProfile('teamUUID') teamUUID: string,
         @AuthProfile('teamId') teamId: number,
         @AuthProfile('roles') roles: Role[],
+        @AuthProfile('id') authProfileId: number,
         @Matrix({
             key: 'availabilityId',
             parseInt: true,
@@ -174,7 +182,7 @@ export class EventsController {
                 break;
             case 'LINK':
                 if (availabilityId) {
-                    await this.connectToAvailability(teamId, parsedEventId, availabilityId);
+                    await this.connectToAvailability(teamId, parsedEventId, authProfileId, availabilityId);
 
                 } else if (profileIds && hasManagerPermission) {
                     await this.connectToProfiles(

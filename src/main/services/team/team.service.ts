@@ -123,7 +123,8 @@ export class TeamService {
                     profiles: {
                         user: {
                             userSetting: true
-                        }
+                        },
+                        availabilities: true
                     }
                 }
             })
@@ -279,11 +280,12 @@ export class TeamService {
                         link: '30-minute-meeting',
                         eventGroupId: savedEventGroup.id
                     });
-                    initialEvent.availabilityId = savedAvailability.id;
 
                     await this.eventsService._create(
                         transactionManager,
                         _createdTeam.uuid,
+                        _createdRootProfile.id,
+                        savedAvailability.id,
                         initialEvent
                     );
 

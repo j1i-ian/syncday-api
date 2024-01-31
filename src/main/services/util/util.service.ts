@@ -470,10 +470,11 @@ export class UtilService {
 
         const defaultLink = '30-minute-meeting';
         const lowercasedLinkWithDashes = patchBody?.link?.toLowerCase().replaceAll(' ', '-') || defaultLink;
+        const eventTypesType = patchBody?.type || EventType.ONE_ON_ONE;
 
         const initialEvent = new Event({
-            type: EventType.ONE_ON_ONE,
             name: '30 Minute Meeting',
+            type: eventTypesType,
             bufferTime: initialBufferTime,
             dateRange: initialDateRange,
             contacts: [],

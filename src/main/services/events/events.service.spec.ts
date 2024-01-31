@@ -271,7 +271,12 @@ describe('EventsService', () => {
             coreCreateStub.resolves(eventMockStub);
 
             const teamUUIDDummy = teamMock.uuid;
-            const createdEvent = await service.create(teamUUIDDummy, teamMock.id, eventMockStub);
+            const createdEvent = await service.create(
+                teamUUIDDummy,
+                teamMock.id,
+                profileMock.id,
+                eventMockStub
+            );
 
             expect(createdEvent).ok;
             expect(createdEvent.name).equals(eventMockStub.name);
@@ -305,7 +310,12 @@ describe('EventsService', () => {
             coreCreateStub.resolves(eventMockStub);
 
             const teamUUIDDummy = teamMock.uuid;
-            const createdEvent = await service.create(teamUUIDDummy, teamMock.id, eventMockStub);
+            const createdEvent = await service.create(
+                teamUUIDDummy,
+                teamMock.id,
+                profileMock.id,
+                eventMockStub
+            );
 
             expect(createdEvent).ok;
             expect(utilServiceStub.generateUniqueNumber.called).true;
@@ -345,7 +355,12 @@ describe('EventsService', () => {
 
             eventGroupRepositoryStub.findOneOrFail.resolves(defaultEventGroupStub);
 
-            expect(service.create(teamMock.uuid, teamMock.id, eventMock)).rejectedWith(NoDefaultAvailabilityException, 'No default availability exception');
+            expect(service.create(
+                teamMock.uuid,
+                teamMock.id,
+                profileMock.id,
+                eventMock
+            )).rejectedWith(NoDefaultAvailabilityException, 'No default availability exception');
         });
     });
 
@@ -375,6 +390,8 @@ describe('EventsService', () => {
             const eventMockStub = stubOne(Event, {
                 eventDetail: eventDetailStub
             });
+            const profileMock = stubOne(Profile);
+            const availabilityMock = stubOne(Availability);
 
             utilServiceStub.getDefaultEvent.returns(eventMockStub);
             eventRepositoryStub.save.resolves(eventMockStub);
@@ -385,6 +402,8 @@ describe('EventsService', () => {
             const createdEvent = await service._create(
                 datasourceMock as unknown as EntityManager,
                 teamUUIDDummy,
+                profileMock.id,
+                availabilityMock.id,
                 eventMockStub
             );
 
@@ -830,18 +849,19 @@ describe('EventsService', () => {
     describe('Test Event Linking', () => {
         afterEach(() => {
             validatorStub.validate.reset();
-            eventRepositoryStub.update.reset();
+            eventProfileRepositoryStub.update.reset();
         });
 
         it('should be linked to availability for event', async () => {
             const teamIdMock = stubOne(Team).id;
             const eventIdMock = stubOne(Event).id;
+            const profileIdMock = stubOne(Profile).id;
             const availabilityIdMock = stubOne(Availability).id;
 
-            await service.linkToAvailability(teamIdMock, eventIdMock, availabilityIdMock);
+            await service.linkToAvailability(teamIdMock, eventIdMock, profileIdMock, availabilityIdMock);
 
-            expect(validatorStub.validate.calledTwice).true;
-            expect(eventRepositoryStub.update.called).true;
+            expect(validatorStub.validate.called).true;
+            expect(eventProfileRepositoryStub.update.called).true;
         });
     });
 
@@ -855,7 +875,7 @@ describe('EventsService', () => {
         afterEach(() => {
             serviceSandbox.restore();
 
-            eventRepositoryStub.update.reset();
+            eventProfileRepositoryStub.update.reset();
         });
 
         [
@@ -867,7 +887,7 @@ describe('EventsService', () => {
                 defaultAvailabilityIdMock: stubOne(Availability).id,
                 linkedEventsWithAvailabilityStubs: stub(Event),
 
-                expectedEventRepositoryUpdateCallCount: 2
+                expectedEventProfileRepositoryUpdateCallCount: 2
             },
             {
                 message:
@@ -877,7 +897,7 @@ describe('EventsService', () => {
                 defaultAvailabilityIdMock: 1,
                 linkedEventsWithAvailabilityStubs: stub(Event),
 
-                expectedEventRepositoryUpdateCallCount: 1
+                expectedEventProfileRepositoryUpdateCallCount: 1
             },
             {
                 message: 'should be linked to availability which is default and has no any events',
@@ -886,7 +906,7 @@ describe('EventsService', () => {
                 defaultAvailabilityIdMock: stubOne(Availability).id,
                 linkedEventsWithAvailabilityStubs: [],
 
-                expectedEventRepositoryUpdateCallCount: 1
+                expectedEventProfileRepositoryUpdateCallCount: 1
             }
         ].forEach(function ({
             message,
@@ -894,7 +914,7 @@ describe('EventsService', () => {
             availabilityIdMock,
             defaultAvailabilityIdMock,
             linkedEventsWithAvailabilityStubs,
-            expectedEventRepositoryUpdateCallCount
+            expectedEventProfileRepositoryUpdateCallCount
         }) {
             it(message, async () => {
                 const teamIdMock = stubOne(Team).id;
@@ -903,17 +923,19 @@ describe('EventsService', () => {
 
                 const exclusiveEventsUpdateResultMock = TestMockUtil.getTypeormUpdateResultMock();
                 const eventsUpdateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+                const profileIdMock = stubOne(Profile).id;
 
-                eventRepositoryStub.update
+                eventProfileRepositoryStub.update
                     .onFirstCall()
                     .resolves(exclusiveEventsUpdateResultMock)
                     .onSecondCall()
                     .resolves(eventsUpdateResultMock);
 
-                eventRepositoryStub.update.resolves(eventsUpdateResultMock);
+                eventProfileRepositoryStub.update.resolves(eventsUpdateResultMock);
 
                 const result = await service.linksToAvailability(
                     teamIdMock,
+                    profileIdMock,
                     eventIdMocks,
                     availabilityIdMock,
                     defaultAvailabilityIdMock
@@ -921,9 +943,9 @@ describe('EventsService', () => {
 
                 expect(result).true;
                 expect(searchStub.called).true;
-                expect(eventRepositoryStub.update.called).true;
-                expect(eventRepositoryStub.update.callCount).equals(
-                    expectedEventRepositoryUpdateCallCount
+                expect(eventProfileRepositoryStub.update.called).true;
+                expect(eventProfileRepositoryStub.update.callCount).equals(
+                    expectedEventProfileRepositoryUpdateCallCount
                 );
             });
         });
@@ -934,7 +956,7 @@ describe('EventsService', () => {
 
             const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-            eventRepositoryStub.update.resolves(updateResultStub);
+            eventProfileRepositoryStub.update.resolves(updateResultStub);
 
             const result = await service.unlinksToAvailability(
                 availabilityIdMock,
@@ -942,7 +964,7 @@ describe('EventsService', () => {
             );
 
             expect(result).true;
-            expect(eventRepositoryStub.update.called).true;
+            expect(eventProfileRepositoryStub.update.called).true;
         });
     });
 

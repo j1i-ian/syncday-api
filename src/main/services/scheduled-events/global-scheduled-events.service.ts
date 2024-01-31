@@ -25,6 +25,7 @@ import { Contact } from '@entity/events/contact.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { Availability } from '@entity/availability/availability.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
@@ -95,7 +96,8 @@ export class GlobalScheduledEventsService {
         newScheduledEvent: ScheduledEvent,
         team: Team,
         host: User,
-        hostProfile: Profile
+        hostProfile: Profile,
+        hostAvailability: Availability
     ): Observable<ScheduledEvent> {
         return this._create(
             this.scheduleRepository.manager,
@@ -104,7 +106,8 @@ export class GlobalScheduledEventsService {
             newScheduledEvent,
             team,
             host,
-            hostProfile
+            hostProfile,
+            hostAvailability
         );
     }
 
@@ -115,7 +118,8 @@ export class GlobalScheduledEventsService {
         newScheduledEvent: ScheduledEvent,
         team: Team,
         host: User,
-        hostProfile: Profile
+        hostProfile: Profile,
+        hostAvailability: Availability
     ): Observable<ScheduledEvent> {
 
         const _scheduledEventRepository = entityManager.getRepository(ScheduledEvent);
@@ -142,8 +146,8 @@ export class GlobalScheduledEventsService {
                 (event) => combineLatest([
                     this.availabilityRedisRepository.getAvailabilityBody(
                         team.uuid,
-                        event.availability.profileId,
-                        event.availability.uuid
+                        hostProfile.id,
+                        hostProfile.uuid
                     ),
                     of(this.utilService.getPatchedScheduledEvent(
                         host,
@@ -151,10 +155,10 @@ export class GlobalScheduledEventsService {
                         event,
                         newScheduledEvent,
                         teamWorkspace,
-                        event.availability.timezone
+                        hostAvailability.timezone
                     )),
                     loadedOutboundCalendarIntegration$,
-                    of(event.availability.timezone),
+                    of(hostAvailability.timezone),
                     of(event.contacts)
                 ])
             ),

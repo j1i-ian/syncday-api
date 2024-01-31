@@ -6,6 +6,7 @@ import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.servi
 import { UserSettingModule } from '@services/users/user-setting/user-setting.module';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { EventProfile } from '@entity/events/event-profile.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { SyncdayCriteriaModule } from '@criteria/syncday-criteria.module';
 import { EventsService } from './events.service';
 import { EventsController } from './events.controller';
@@ -13,7 +14,12 @@ import { EventDetailsController } from './event-details/event-details.controller
 import { EventDetailsModule } from './event-details/event-details.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([EventGroup, Event, EventProfile]), SyncdayCriteriaModule, UserSettingModule, EventDetailsModule],
+    imports: [
+        TypeOrmModule.forFeature([EventGroup, Event, EventProfile, Profile]),
+        SyncdayCriteriaModule,
+        UserSettingModule,
+        EventDetailsModule
+    ],
     controllers: [EventsController, EventDetailsController],
     providers: [EventsRedisRepository, SyncdayRedisService, EventsService],
     exports: [EventsService, EventsRedisRepository]

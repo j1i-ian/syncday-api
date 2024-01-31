@@ -8,6 +8,7 @@ import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Profile } from '@entity/profiles/profile.entity';
+import { EventProfile } from '@entity/events/event-profile.entity';
 import { BookingsService } from './bookings.service';
 
 describe('BookingsService', () => {
@@ -84,11 +85,11 @@ describe('BookingsService', () => {
 
         const teamStub = stubOne(Team);
         const profileStub = stubOne(Profile);
-        const availabilityStub = stubOne(Availability, {
+        const eventProfileStub = stubOne(EventProfile, {
             profile: profileStub
         });
         const eventStub = stubOne(Event, {
-            availability: availabilityStub
+            eventProfiles: [eventProfileStub]
         });
 
         eventsServiceStub.findOneByTeamWorkspaceAndLink.returns(of(eventStub));

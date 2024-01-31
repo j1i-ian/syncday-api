@@ -7,14 +7,13 @@ import { Event } from '@core/entities/events/event.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { UtilService } from '@services/util/util.service';
-import { Availability } from '@entity/availability/availability.entity';
 import { EventStatus } from '@entity/events/event-status.enum';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { EventProfile } from '@entity/events/event-profile.entity';
 import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
-import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { AlreadyUsedInEventLinkException } from '@app/exceptions/events/already-used-in-event-link.exception';
+import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
 import { Validator } from '@criteria/validator';
 
 @Injectable()
@@ -33,7 +32,11 @@ export class EventsService {
         return from(
             this.eventRepository.find({
                 relations: {
-                    eventGroup: true,
+                    eventGroup: {
+                        team: {
+                            teamSetting: true
+                        }
+                    },
                     eventDetail: true,
                     eventProfiles: true
                 },
@@ -41,15 +44,10 @@ export class EventsService {
                     status: searchOption.status,
                     public: searchOption.public,
                     eventGroup: {
-                        teamId: searchOption.teamId
-                    },
-                    availability: {
-                        id: searchOption.availabilityId,
-                        profile: {
-                            team: {
-                                teamSetting: {
-                                    workspace: searchOption.teamWorkspace
-                                }
+                        team: {
+                            id: searchOption.teamId,
+                            teamSetting: {
+                                workspace: searchOption.teamWorkspace
                             }
                         }
                     }
@@ -114,16 +112,21 @@ export class EventsService {
     findOneByTeamWorkspaceAndUUID(teamWorkspace: string, eventUUID: string): Observable<Event> {
         return from(
             this.eventRepository.findOneOrFail({
-                relations: ['eventDetail', 'availability'],
+                relations: {
+                    eventDetail: true,
+                    eventGroup: {
+                        team: {
+                            teamSetting: true
+                        }
+                    }
+                },
                 where: {
                     uuid: eventUUID,
                     status: EventStatus.OPENED,
-                    availability: {
-                        profile: {
-                            team: {
-                                teamSetting: {
-                                    workspace: teamWorkspace
-                                }
+                    eventGroup: {
+                        team: {
+                            teamSetting: {
+                                workspace: teamWorkspace
                             }
                         }
                     }
@@ -148,16 +151,29 @@ export class EventsService {
     findOneByTeamWorkspaceAndLink(teamWorkspace: string, eventLink: string): Observable<Event> {
 
         return from(this.eventRepository.findOneOrFail({
-            relations: ['eventDetail', 'availability', 'availability.profile'],
+            relations: {
+                eventDetail: true,
+                eventProfiles: {
+                    profile: {
+                        team: {
+                            teamSetting: true
+                        },
+                        availabilities: true
+                    }
+                }
+            },
             where: {
                 status: EventStatus.OPENED,
                 link: eventLink,
-                availability: {
+                eventProfiles: {
                     profile: {
                         team: {
                             teamSetting: {
                                 workspace: teamWorkspace
                             }
+                        },
+                        availabilities: {
+                            default: true
                         }
                     }
                 }
@@ -184,13 +200,25 @@ export class EventsService {
         );
     }
 
-    async create(teamUUID: string, teamId: number, newEvent: Event): Promise<Event> {
+    async create(
+        teamUUID: string,
+        teamId: number,
+        profileId: number,
+        newEvent: Event
+    ): Promise<Event> {
         const defaultEventGroup = await this.eventGroupRepository.findOneOrFail({
-            relations: ['team', 'team.profiles', 'team.profiles.availabilities'],
+            relations: {
+                team: {
+                    profiles: {
+                        availabilities: true
+                    }
+                }
+            },
             where: {
                 teamId,
                 team: {
                     profiles: {
+                        id: profileId,
                         availabilities: {
                             default: true
                         }
@@ -201,11 +229,11 @@ export class EventsService {
 
         const defaultAvailability = defaultEventGroup.team.profiles[0].availabilities.pop();
 
-        if (defaultAvailability) {
-            newEvent.availabilityId = defaultAvailability.id;
-        } else {
+        if (!defaultAvailability) {
             throw new NoDefaultAvailabilityException();
         }
+
+        const defaultAvailabilityId = defaultAvailability.id;
 
         newEvent.eventGroupId = defaultEventGroup.id;
 
@@ -223,6 +251,8 @@ export class EventsService {
         return this._create(
             this.eventRepository.manager,
             teamUUID,
+            profileId,
+            defaultAvailabilityId,
             newEvent
         );
     }
@@ -230,12 +260,21 @@ export class EventsService {
     async _create(
         manager: EntityManager,
         teamUUID: string,
+        profileId: number,
+        defaultAvailabilityId: number,
         newEvent: Event
     ): Promise<Event> {
 
         const _eventRepository = manager.getRepository(Event);
 
         const ensuredNewEvent = this.utilService.getDefaultEvent(newEvent);
+
+        const initialEventProfile = {
+            profileId,
+            availabilityId: defaultAvailabilityId
+        } as EventProfile;
+
+        ensuredNewEvent.eventProfiles = [initialEventProfile] as EventProfile[];
 
         // save relation data
         // event detail is saved by orm cascading.
@@ -438,8 +477,37 @@ export class EventsService {
 
         await this.validator.validate(teamId, eventId, Event);
 
-        const shallowedEventProfiles = profileIds.map((profileId) => ({
-            profileId,
+        const loadedEvent = await this.eventRepository.findOneOrFail({
+            relations: {
+                eventGroup: {
+                    team: {
+                        profiles: {
+                            availabilities: true
+                        }
+                    }
+                }
+            },
+            where: {
+                id: eventId,
+                eventGroup: {
+                    team: {
+                        id: teamId,
+                        profiles: {
+                            id: In(profileIds),
+                            availabilities: {
+                                default: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const profiles = loadedEvent.eventGroup.team.profiles;
+
+        const shallowedEventProfiles = profiles.map((profile) => ({
+            profileId: profile.id,
+            availabilityId: profile.availabilities[0].id,
             eventId
         } as EventProfile));
 
@@ -451,12 +519,15 @@ export class EventsService {
     async linkToAvailability(
         teamId: number,
         eventId: number,
+        profileId: number,
         availabilityId: number
     ): Promise<boolean> {
         await this.validator.validate(teamId, eventId, Event);
-        await this.validator.validate(teamId, availabilityId, Availability);
 
-        await this.eventRepository.update(eventId, {
+        await this.eventProfileRepository.update({
+            eventId,
+            profileId
+        }, {
             availabilityId
         });
 
@@ -465,6 +536,7 @@ export class EventsService {
 
     async linksToAvailability(
         teamId: number,
+        profileId: number,
         eventIds: number[],
         availabilityId: number,
         defaultAvailabilityId: number
@@ -483,7 +555,7 @@ export class EventsService {
             .map((_event) => _event.id);
 
         const linkResult = await this.datasource.transaction(async (transactionManager) => {
-            const _eventRepository = transactionManager.getRepository(Event);
+            const _eventProfileRepository = transactionManager.getRepository(EventProfile);
 
             let isExclusiveEventsUpdateSuccess = false;
 
@@ -491,7 +563,7 @@ export class EventsService {
                 exclusiveEventIds.length > 0 && isDefaultAvailabilityLink === false;
 
             if (shouldUnlinkRestEvents) {
-                const exclusiveEventsUpdateResult = await _eventRepository.update(
+                const exclusiveEventsUpdateResult = await _eventProfileRepository.update(
                     exclusiveEventIds,
                     {
                         availabilityId: defaultAvailabilityId
@@ -505,9 +577,13 @@ export class EventsService {
                 isExclusiveEventsUpdateSuccess = true;
             }
 
-            const eventsUpdateResult = await _eventRepository.update(eventIds, {
+            const eventsUpdateResult = await _eventProfileRepository.update({
+                eventId: In(eventIds),
+                profileId
+            }, {
                 availabilityId
             });
+
             const isEventsUpdateSuccess: boolean =
                 !!eventsUpdateResult.affected && eventsUpdateResult.affected > 0;
 
@@ -534,9 +610,9 @@ export class EventsService {
         defaultAvailabilityId: number
     ): Promise<boolean> {
 
-        const eventRepository = manager.getRepository(Event);
+        const eventProfileRepository = manager.getRepository(EventProfile);
 
-        const updateResult = await eventRepository.update(
+        const updateResult = await eventProfileRepository.update(
             {
                 availabilityId
             },

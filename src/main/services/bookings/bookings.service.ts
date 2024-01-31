@@ -40,7 +40,7 @@ export class BookingsService {
         return this.eventService.findOneByTeamWorkspaceAndLink(teamWorkspace, eventLink)
             .pipe(
                 map((event) => {
-                    const profileImage = event.availability.profile.image;
+                    const profileImage = event.eventProfiles[0].profile.image;
 
                     return {
                         ...event,
@@ -77,7 +77,8 @@ export class BookingsService {
                         newScheduledEvent,
                         loadedTeam,
                         loadedTeam.profiles[0].user,
-                        loadedTeam.profiles[0]
+                        loadedTeam.profiles[0],
+                        loadedTeam.profiles[0].availabilities[0]
                     )
                 )
             );
