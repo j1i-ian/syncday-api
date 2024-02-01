@@ -930,7 +930,7 @@ describe('ProfilesService', () => {
             teamServiceStub.get.resolves(teamStub);
             ordersServiceStub.fetch.resolves(relatedOrderStub);
 
-            utilServiceStub.getProratedPrice.returns(0);
+            utilServiceStub.getProration.returns(0);
 
             availabilityRepositoryStub.softDelete.resolves(updateResultStub);
             availabilityRepositoryStub.update.resolves(updateResultStub);
@@ -947,7 +947,7 @@ describe('ProfilesService', () => {
 
             expect(teamServiceStub.get.called).true;
             expect(ordersServiceStub.fetch.called).true;
-            expect(utilServiceStub.getProratedPrice.called).true;
+            expect(utilServiceStub.getProration.called).true;
             expect(paymentsServiceStub._refund.called).true;
             expect(availabilityRepositoryStub.softDelete.called).true;
             expect(availabilityRepositoryStub.update.called).true;

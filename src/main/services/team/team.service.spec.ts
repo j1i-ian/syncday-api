@@ -517,7 +517,7 @@ describe('TeamService', () => {
             ordersServiceStub.fetch.reset();
             teamSettingServiceStub._delete.reset();
 
-            utilServiceStub.getProratedPrice.reset();
+            utilServiceStub.getProration.reset();
             paymentsServiceStub._refund.reset();
 
             serviceSandbox.restore();
@@ -541,7 +541,7 @@ describe('TeamService', () => {
             teamSettingServiceStub._delete.returns(of(true));
             _deleteStub.returns(of(true));
 
-            utilServiceStub.getProratedPrice.returns(0);
+            utilServiceStub.getProration.returns(0);
             paymentsServiceStub._refund.returns(of(true));
             paymentsServiceStub._save.resolves(paymentStub);
 
@@ -556,7 +556,7 @@ describe('TeamService', () => {
 
             expect(teamSettingServiceStub._delete.called).true;
             expect(_deleteStub.called).true;
-            expect(utilServiceStub.getProratedPrice.called).true;
+            expect(utilServiceStub.getProration.called).true;
             expect(paymentsServiceStub._refund.called).true;
         });
 
@@ -579,7 +579,7 @@ describe('TeamService', () => {
             teamSettingServiceStub._delete.returns(of(true));
             _deleteStub.returns(of(true));
 
-            utilServiceStub.getProratedPrice.returns(0);
+            utilServiceStub.getProration.returns(0);
             paymentsServiceStub._refund.returns(of(true));
             paymentsServiceStub._save.resolves(paymentStub);
 
@@ -592,7 +592,7 @@ describe('TeamService', () => {
 
             expect(teamSettingServiceStub._delete.called).false;
             expect(_deleteStub.called).false;
-            expect(utilServiceStub.getProratedPrice.called).false;
+            expect(utilServiceStub.getProration.called).false;
             expect(paymentsServiceStub._refund.called).false;
         });
 
@@ -616,7 +616,7 @@ describe('TeamService', () => {
             teamSettingServiceStub._delete.returns(of(true));
             _deleteStub.returns(of(true));
 
-            utilServiceStub.getProratedPrice.returns(0);
+            utilServiceStub.getProration.returns(0);
             paymentsServiceStub._refund.returns(of(true));
             paymentsServiceStub._save.resolves(paymentStub);
 
@@ -629,7 +629,7 @@ describe('TeamService', () => {
 
             expect(teamSettingServiceStub._delete.called).false;
             expect(_deleteStub.called).false;
-            expect(utilServiceStub.getProratedPrice.called).false;
+            expect(utilServiceStub.getProration.called).false;
             expect(paymentsServiceStub._refund.called).false;
         });
     });

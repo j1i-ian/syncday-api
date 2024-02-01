@@ -178,23 +178,21 @@ describe('UtilService', () => {
     });
 
     describe('Proration Test', () => {
-        it('It should be calculated that the proration for an amount of 26,970, which divides evenly by 29 for February and by 30 or 31, results in whole numbers of 930, 899, or 870', () => {
+        it('It should be calculated that the proration for an amount of 26,970, results in whole numbers of 870', () => {
             const amountMock = 26970;
 
-            const _15daysAfterPaymentPeriodMock = new Date();
-            _15daysAfterPaymentPeriodMock.setDate(_15daysAfterPaymentPeriodMock.getDate() + 15);
+            const _15daysBeforePaymentPeriodMock = new Date();
+            _15daysBeforePaymentPeriodMock.setDate(_15daysBeforePaymentPeriodMock.getDate() - 15);
 
-            const previousPeriod = new Date(_15daysAfterPaymentPeriodMock);
-            previousPeriod.setMonth(previousPeriod.getMonth() - 1);
+            const actualProration = service.getProration(
+                amountMock,
+                _15daysBeforePaymentPeriodMock
+            );
 
-            const actual = service.getProratedPrice(amountMock, _15daysAfterPaymentPeriodMock);
+            const expectedProration = (amountMock / 31) * 15;
 
-            // 29 for Feb or 30 or 31 days
-            const day = 1000 * 60 * 60 * 24;
-            const diffDays = (_15daysAfterPaymentPeriodMock.getTime() - previousPeriod.getTime()) / day;
-
-            expect(actual).ok;
-            expect(actual).equals(amountMock / diffDays * 14);
+            expect(actualProration).ok;
+            expect(actualProration).equals(expectedProration);
         });
     });
 

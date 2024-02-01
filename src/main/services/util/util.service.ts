@@ -126,31 +126,20 @@ export class UtilService {
         return parsedSearchOption;
     }
 
-    getProratedPrice(
+    getProration(
         amount: number,
         paymentPeriod: Date
     ): number {
 
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        const aDay = (1000 * 60 * 60 * 24);
 
-        const paymentPeriodDate = new Date(paymentPeriod).getDate();
-        const periodDate = new Date(new Date().setDate(paymentPeriodDate));
+        const prorationDate = Math.floor((Date.now() - new Date(paymentPeriod).getTime()) / aDay);
 
-        const nextPeriod = tomorrow.getTime() < periodDate.getTime()
-            ? new Date(periodDate)
-            : new Date(periodDate.setMonth(periodDate.getMonth() + 1));
+        const pricePerDate = amount / 31;
 
-        const previousPeriod = new Date(nextPeriod);
-        previousPeriod.setMonth(previousPeriod.getMonth() - 1);
+        const proration = Math.ceil(pricePerDate * prorationDate / 10) * 10;
 
-        const day = 1000 * 60 * 60 * 24;
-
-        const totalPeriod = (nextPeriod.getTime() - previousPeriod.getTime()) / day;
-
-        const prorationDate = (nextPeriod.getTime() - tomorrow.getTime()) / day;
-
-        return Math.floor(amount / totalPeriod * prorationDate);
+        return proration;
     }
 
     convertToBootpayException(bootpayError: InternalBootpayException): BootpayException {

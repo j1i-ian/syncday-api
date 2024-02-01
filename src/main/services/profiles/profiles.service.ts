@@ -336,11 +336,10 @@ export class ProfilesService {
                 });
 
                 const amount = loadedProduct.price * orderUnit;
-                const proratedPrice = this.utilService.getProratedPrice(
+                const proration = this.utilService.getProration(
                     amount,
                     team.createdAt
                 );
-                const proration = amount - proratedPrice;
 
                 const _allProfiles = searchedUsers.map(
                     (_user) => {
@@ -803,7 +802,7 @@ export class ProfilesService {
                 combineLatestWith(team$),
                 map(([_refundParams, _team]) => ({
                     ..._refundParams,
-                    proration: this.utilService.getProratedPrice(
+                    proration: this.utilService.getProration(
                         _refundParams.unitPrice,
                         _team.createdAt
                     ),

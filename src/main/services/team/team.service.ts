@@ -494,11 +494,11 @@ export class TeamService {
                 })),
                 map((refundParams) => {
                     const { unitPrice  } = refundParams;
-                    const proratedRefundUnitPrice = this.utilService.getProratedPrice(unitPrice, refundParams.teamCreatedAt);
+                    const refundProration = this.utilService.getProration(unitPrice, refundParams.teamCreatedAt);
 
                     return {
                         ...refundParams,
-                        proratedRefundUnitPrice
+                        refundProration
                     };
                 })
             );
@@ -506,7 +506,7 @@ export class TeamService {
         const refund$ = refundParams$.pipe(
             filter(({ relatedOrder}) => relatedOrder !== null),
             mergeMap(({
-                proratedRefundUnitPrice,
+                refundProration,
                 profileName,
                 refundMessage,
                 isPartialCancelation,
@@ -515,7 +515,7 @@ export class TeamService {
                 relatedOrder,
                 profileName as string,
                 refundMessage,
-                proratedRefundUnitPrice,
+                refundProration,
                 isPartialCancelation
             )),
             defaultIfEmpty(true)
@@ -556,12 +556,12 @@ export class TeamService {
                             filter(({ relatedOrder}) => relatedOrder !== null),
                             mergeMap(({
                                 relatedOrder,
-                                proratedRefundUnitPrice
+                                refundProration
                             }) =>
                                 this.paymentsService._save(
                                     transactionManager,
                                     relatedOrder,
-                                    proratedRefundUnitPrice
+                                    refundProration
                                 )
                             ),
                             map(() => true),
