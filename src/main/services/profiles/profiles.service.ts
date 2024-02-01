@@ -42,6 +42,7 @@ import { OrdersService } from '@services/orders/orders.service';
 import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
 import { PaymentsService } from '@services/payments/payments.service';
 import { TeamService } from '@services/team/team.service';
+import { AvailabilityService } from '@services/availability/availability.service';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
@@ -61,6 +62,7 @@ export class ProfilesService {
         private readonly paymentsService: PaymentsService,
         private readonly notificationsService: NotificationsService,
         private readonly teamService: TeamService,
+        private readonly availabilityService: AvailabilityService,
         private readonly profilesRedisRepository: ProfilesRedisRepository,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
@@ -339,12 +341,44 @@ export class ProfilesService {
                     team.createdAt
                 );
                 const proration = amount - proratedPrice;
-                const _allProfiles = searchedUsers.map((_user) => this.utilService.createNewProfile(teamId, _user.id));
+
+                const _allProfiles = searchedUsers.map(
+                    (_user) => {
+                        const _createdProfile = this.utilService.createNewProfile(
+                            teamId,
+                            _user.id
+                        );
+                        _createdProfile.user = _user;
+
+                        return _createdProfile;
+                    }
+                );
 
                 const createdProfiles = await this._create(transactionManager, _allProfiles) as Profile[];
 
+                await Promise.allSettled(createdProfiles.map(async (_savedProfile) => {
+
+                    const profileMember = _savedProfile.user;
+
+                    const _userSetting = profileMember.userSetting;
+                    const { preferredLanguage, preferredTimezone } = _userSetting;
+                    const defaultAvailability = this.utilService.getDefaultAvailability(preferredLanguage, preferredTimezone);
+
+                    const savedAvailability = await this.availabilityService._create(
+                        transactionManager,
+                        team.uuid,
+                        _savedProfile.id,
+                        defaultAvailability,
+                        {
+                            default: true
+                        }
+                    );
+
+                    _savedProfile.availabilities = [savedAvailability];
+                }));
+
                 this.logger.info({
-                    message: 'Invitation transaction: Profile Bulk creating is sucess',
+                    message: 'Invitation transaction: Profile Bulk creating is sucess. Trying to creating default availabilities',
                     productPrice: loadedProduct.price,
                     orderUnit,
                     proration
@@ -452,13 +486,15 @@ export class ProfilesService {
     }
 
     createInvitedProfiles(
-        user: Pick<User, 'id' | 'email' | 'phone'>
+        user: Pick<User, 'id' | 'email' | 'phone'>,
+        defaultAvailability: Availability
     ): Observable<Profile[]> {
+
         return from(defer(() =>
             this.datasource.transaction(
                 (transactionManager) =>
                     firstValueFrom(
-                        this._createInvitedProfiles(transactionManager, user)
+                        this._createInvitedProfiles(transactionManager, user, defaultAvailability)
                     )
             ))
         );
@@ -466,7 +502,8 @@ export class ProfilesService {
 
     _createInvitedProfiles(
         transactionManager: EntityManager,
-        user: Pick<User, 'id' | 'email' | 'phone'>
+        user: Pick<User, 'id' | 'email' | 'phone'>,
+        defaultAvailability: Availability
     ): Observable<Profile[]> {
 
         const emailOrPhone = user.email || user.phone;
@@ -521,8 +558,17 @@ export class ProfilesService {
                         email: user.email,
                         phone: user.phone
                     });
-                }),
+                })
+            ).pipe(
                 mergeMap((profiles) => from(profiles)),
+                mergeMap((savedProfile) => from(this.availabilityService._create(
+                    transactionManager,
+                    savedProfile.teamUUID,
+                    savedProfile.id,
+                    defaultAvailability
+                )).pipe(
+                    map(() => savedProfile)
+                )),
                 mergeMap((_createdProfile) =>
                     this.ordersService.fetch({
                         id: _createdProfile.orderId
@@ -564,8 +610,7 @@ export class ProfilesService {
     ): Promise<Profile | Profile[]> {
         const profileRepository = transactionManager.getRepository(Profile);
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-        const createdProfile = profileRepository.create(newProfile as any);
+        const createdProfile = profileRepository.create(newProfile as Profile);
 
         const savedProfile = await profileRepository.save(createdProfile, {
             reload

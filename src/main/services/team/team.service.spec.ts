@@ -296,7 +296,7 @@ describe('TeamService', () => {
             profilesServiceStub._create.reset();
             profilesServiceStub.saveInvitedNewTeamMember.reset();
 
-            utilServiceStub.getDefaultAvailabilityName.reset();
+            utilServiceStub.getDefaultAvailability.reset();
             availabilityServiceStub._create.reset();
             eventGroupRepositoryStub.save.reset();
             utilServiceStub.getDefaultEvent.reset();
@@ -318,7 +318,9 @@ describe('TeamService', () => {
                 userSetting: ownerUserSettingStub
             });
             const productStub = stubOne(Product);
-            const searchedTeamMemberMocksStubs = stub(User);
+            const searchedTeamMemberMocksStubs = stub(User, 5, {
+                userSetting: stubOne(UserSetting)
+            });
 
             const teamMockStub = stubOne(Team);
             const paymentMethodMockStub = stubOne(PaymentMethod);
@@ -327,6 +329,7 @@ describe('TeamService', () => {
 
             const profileStubs = stub(Profile);
             profileStubs[0].roles = [Role.OWNER];
+            profileStubs[0].userId = ownerUserMockStub.id;
 
             const teamSettingMock = stubOne(TeamSetting);
 
@@ -348,11 +351,15 @@ describe('TeamService', () => {
             paymentsServiceStub._create.resolves(paymentStub);
             ordersServiceStub._updateOrderStatus.resolves(true);
 
-            utilServiceStub.createNewProfile.resolves(profileStubs);
-            profilesServiceStub._create.resolves(profileStubs);
+            utilServiceStub.createNewProfile
+                .onFirstCall()
+                .returns(profileStubs[0])
+                .callsFake(() => profileStubs[1]);
 
-            utilServiceStub.getDefaultAvailabilityName.returns('');
-            availabilityServiceStub._create.resolves(availabilityStub);
+            profilesServiceStub._create.resolvesArg(1);
+
+            utilServiceStub.getDefaultAvailability.returns(availabilityStub);
+            availabilityServiceStub._create.resolvesArg(3);
             eventGroupRepositoryStub.save.resolves(eventGroupStub);
             utilServiceStub.getDefaultEvent.returns(eventStub);
             eventsServiceStub._create.resolves(eventStub);
@@ -385,7 +392,7 @@ describe('TeamService', () => {
             expect(utilServiceStub.createNewProfile.called).true;
             expect(profilesServiceStub._create.called).true;
 
-            expect(utilServiceStub.getDefaultAvailabilityName.called).true;
+            expect(utilServiceStub.getDefaultAvailability.called).true;
             expect(availabilityServiceStub._create.called).true;
             expect(eventGroupRepositoryStub.save.called).true;
             expect(utilServiceStub.getDefaultEvent.called).true;

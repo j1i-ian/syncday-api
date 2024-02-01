@@ -40,20 +40,6 @@ describe('TimeUtilService', () => {
         expect(service).ok;
     });
 
-    it('should be generated default available times', () => {
-
-        const availableTimes = service.getDefaultAvailableTimes();
-
-        expect(availableTimes).ok;
-        expect(availableTimes.length).greaterThan(0);
-
-        const mondayAvailableTime = availableTimes[0];
-        expect(mondayAvailableTime).ok;
-        expect(mondayAvailableTime.day).equals(Weekday.MONDAY);
-        expect(mondayAvailableTime.timeRanges.length).equals(1);
-        expect(mondayAvailableTime.timeRanges[0].startTime).equals('09:00:00');
-    });
-
     [
         {
             description: 'should be equal to the New York localized date with the input date in New York Time',

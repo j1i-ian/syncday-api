@@ -37,8 +37,10 @@ import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { Host } from '@entity/scheduled-events/host.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { Weekday } from '@entity/availability/weekday.enum';
+import { AvailableTime } from '@entity/availability/availability-time.entity';
+import { Availability } from '@entity/availability/availability.entity';
 import { Language } from '@app/enums/language.enum';
-import { NewProfile } from '@app/interfaces/profiles/new-profile.type';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
 import { BootpayException } from '@exceptions/bootpay.exception';
@@ -197,11 +199,11 @@ export class UtilService {
     createNewProfile(
         teamId: number,
         userId: number
-    ): NewProfile {
+    ): Partial<Profile> {
         return {
             teamId,
             userId
-        } as NewProfile;
+        } as Partial<Profile>;
     }
 
     convertIntegrationVendorToOAuth2Type(
@@ -489,6 +491,22 @@ export class UtilService {
         return initialEvent;
     }
 
+    getDefaultAvailability(
+        language: Language,
+        timezone: string
+    ): Availability {
+        const availabilityDefaultName = this.getDefaultAvailabilityName(language);
+
+        const defaultAvailableTimes: AvailableTime[] = this.getDefaultAvailableTimes();
+
+        return new Availability({
+            name: availabilityDefaultName,
+            availableTimes: defaultAvailableTimes,
+            overrides: [],
+            timezone
+        });
+    }
+
     getPatchedScheduledEvent(
         host: User,
         hostProfile: Profile,
@@ -697,6 +715,29 @@ export class UtilService {
         }
 
         return workspace;
+    }
+
+    getDefaultAvailableTimes(): AvailableTime[] {
+
+        const workingDaysCount = Weekday.FRIDAY - Weekday.MONDAY + 1;
+
+        const initialAvailableTimes = Array(workingDaysCount)
+            .fill(undefined)
+            .map((_el, index) => index + 1)
+            .map((weekdayIndex) => {
+                const _initialAvailableTime = new AvailableTime();
+                _initialAvailableTime.day = weekdayIndex;
+                _initialAvailableTime.timeRanges = [
+                    {
+                        startTime: '09:00:00',
+                        endTime: '17:00:00'
+                    }
+                ];
+
+                return _initialAvailableTime;
+            });
+
+        return initialAvailableTimes;
     }
 
     getDefaultDateTimeFormat(language: Language, timezone: string): DefaultDateTimeFormat {

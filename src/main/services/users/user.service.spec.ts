@@ -202,13 +202,13 @@ describe('Test User Service', () => {
     describe('Test user searching', () => {
 
         afterEach(() => {
-            userRepositoryStub.findBy.reset();
+            userRepositoryStub.find.reset();
         });
 
         it('should be searched by emails or phones', async () => {
             const userStubs = stub(User);
 
-            userRepositoryStub.findBy.resolves(userStubs);
+            userRepositoryStub.find.resolves(userStubs);
 
             const emails = userStubs.map((_user) => _user.email as string);
 
@@ -414,8 +414,7 @@ describe('Test User Service', () => {
             userRepositoryStub.save.reset();
             profilesServiceStub._create.reset();
 
-            timeUtilServiceStub.getDefaultAvailableTimes.reset();
-            utilServiceStub.getDefaultAvailabilityName.reset();
+            utilServiceStub.getDefaultAvailability.reset();
             availabilityServiceStub._create.reset();
 
             utilServiceStub.getDefaultEvent.reset();
@@ -450,7 +449,6 @@ describe('Test User Service', () => {
             const eventGroupStub = stubOne(EventGroup);
             const defaultEventStub = stubOne(Event);
             const availabilityStub = stubOne(Availability);
-            const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
 
             const findUserByEmailStub = serviceSandbox.stub(service, 'findUserByLocalAuth');
 
@@ -464,8 +462,7 @@ describe('Test User Service', () => {
             teamServiceStub._create.resolves(teamStub);
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
-            timeUtilServiceStub.getDefaultAvailableTimes.returns(availabilityBodyStub.availableTimes);
-            utilServiceStub.getDefaultAvailabilityName.returns(availabilityStub.name);
+            utilServiceStub.getDefaultAvailability.returns(availabilityStub);
             availabilityServiceStub._create.resolves(availabilityStub);
 
             utilServiceStub.getDefaultEvent.returns(defaultEventStub);
@@ -500,8 +497,7 @@ describe('Test User Service', () => {
 
             expect(userRepositoryStub.save.called).true;
             expect(utilServiceStub.getDefaultEvent.called).true;
-            expect(timeUtilServiceStub.getDefaultAvailableTimes.called).true;
-            expect(utilServiceStub.getDefaultAvailabilityName.called).true;
+            expect(utilServiceStub.getDefaultAvailability.called).true;
             expect(availabilityServiceStub._create.called).true;
             expect(eventsServiceStub._create.called).true;
             expect(eventGroupRepositoryStub.save.called).true;
@@ -602,7 +598,6 @@ describe('Test User Service', () => {
             const defaultEventStub = stubOne(Event);
             const eventGroupStub = stubOne(EventGroup);
             const availabilityStub = stubOne(Availability);
-            const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock();
 
             const searchStub = serviceSandbox.stub(service, 'search');
 
@@ -616,8 +611,7 @@ describe('Test User Service', () => {
             teamServiceStub._create.resolves(teamStub);
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
-            timeUtilServiceStub.getDefaultAvailableTimes.returns(availabilityBodyStub.availableTimes);
-            utilServiceStub.getDefaultAvailabilityName.returns(availabilityStub.name);
+            utilServiceStub.getDefaultAvailability.returns(availabilityStub);
             availabilityServiceStub._create.resolves(availabilityStub);
 
             utilServiceStub.getDefaultEvent.returns(defaultEventStub);
@@ -653,8 +647,7 @@ describe('Test User Service', () => {
 
             expect(userRepositoryStub.save.called).true;
             expect(utilServiceStub.getDefaultEvent.called).true;
-            expect(timeUtilServiceStub.getDefaultAvailableTimes.called).true;
-            expect(utilServiceStub.getDefaultAvailabilityName.called).true;
+            expect(utilServiceStub.getDefaultAvailability.called).true;
             expect(availabilityServiceStub._create.called).true;
             expect(eventsServiceStub._create.called).true;
             expect(eventGroupRepositoryStub.save.called).true;

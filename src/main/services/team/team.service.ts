@@ -51,7 +51,6 @@ import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
-import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { Order } from '@entity/orders/order.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 import { CannotDeleteTeamException } from '@app/exceptions/teams/cannot-delete-team.exception';
@@ -182,6 +181,13 @@ export class TeamService {
             mergeMap(([loadedProduct, searchedUsers, owner]: [Product, User[], User]) =>
                 this.datasource.transaction(async (transactionManager) => {
 
+                    this.logger.info({
+                        message: 'Create a new team',
+                        memberLength: teamMembers.length,
+                        owner: owner.email || owner.phone,
+                        searchedUsersLength: searchedUsers.length
+                    });
+
                     const _createdTeam = await this._create(
                         transactionManager,
                         newTeam,
@@ -197,6 +203,14 @@ export class TeamService {
                     } as Buyer;
 
                     const proration = 0;
+
+                    this.logger.info({
+                        message: 'New team is created. Trying to create an order',
+                        productId: loadedProduct.id,
+                        orderUnit,
+                        createdTeamId: _createdTeam.id,
+                        proration
+                    });
 
                     const _createdOrder = await this.ordersService._create(
                         transactionManager,
@@ -229,42 +243,66 @@ export class TeamService {
                         OrderStatus.PLACED
                     );
 
-                    const _createdProfiles = searchedUsers.map((_user) => this.utilService.createNewProfile(_createdTeam.id, _user.id));
+                    const allUsers = [owner].concat(searchedUsers);
+                    const _profiles = allUsers.map((_user) => {
 
-                    const _rootProfile = {
-                        status: ProfileStatus.ACTIVATED,
-                        roles: [Role.OWNER],
-                        teamId: _createdTeam.id,
-                        userId: owner.id
-                    } as Profile;
+                        const isOwnerProfile = owner.id === _user.id;
 
-                    const _allProfiles = _createdProfiles.concat(_rootProfile);
+                        const _createdProfile = this.utilService.createNewProfile(
+                            _createdTeam.id,
+                            _user.id
+                        );
 
-                    const savedProfiles = await this.profilesService._create(transactionManager, _allProfiles) as Profile[];
+                        _createdProfile.user = _user;
 
-                    _createdTeam.profiles = savedProfiles;
-
-                    const ownerSetting = owner.userSetting;
-                    const _createdRootProfile = savedProfiles.find((_profile) => _profile.roles.includes(Role.OWNER)) as Profile;
-
-                    const defaultAvailableTimes: AvailableTime[] = this.timeUtilService.getDefaultAvailableTimes();
-
-                    const availabilityDefaultName = this.utilService.getDefaultAvailabilityName(ownerSetting.preferredLanguage);
-
-                    const savedAvailability = await this.availabilityService._create(
-                        transactionManager,
-                        _createdTeam.uuid,
-                        _createdRootProfile.id,
-                        {
-                            availableTimes: defaultAvailableTimes,
-                            name: availabilityDefaultName,
-                            overrides: [],
-                            timezone: ownerSetting.preferredTimezone
-                        },
-                        {
-                            default: true
+                        if (isOwnerProfile) {
+                            _createdProfile.status = ProfileStatus.ACTIVATED;
+                            _createdProfile.roles = [Role.OWNER];
                         }
-                    );
+
+                        return _createdProfile;
+                    });
+
+                    this.logger.info({
+                        message: 'Creating profiles from member list',
+                        createdProfilesLength: _profiles.length
+                    });
+
+                    const savedProfiles = await this.profilesService._create(transactionManager, _profiles) as Profile[];
+
+                    const patchedProfiles = await Promise.all(savedProfiles.map(async (_savedProfile) => {
+
+                        const profileMember = _savedProfile.user;
+
+                        const _userSetting = profileMember.userSetting;
+                        const { preferredLanguage, preferredTimezone } = _userSetting;
+                        const defaultAvailability = this.utilService.getDefaultAvailability(preferredLanguage, preferredTimezone);
+
+                        const savedAvailability = await this.availabilityService._create(
+                            transactionManager,
+                            _createdTeam.uuid,
+                            _savedProfile.id,
+                            defaultAvailability,
+                            {
+                                default: true
+                            }
+                        );
+
+                        _savedProfile.availabilities = [savedAvailability];
+
+                        return _savedProfile;
+                    }));
+
+                    _createdTeam.profiles = patchedProfiles;
+
+                    this.logger.info({
+                        message: 'Profiles are created successfully. Trying to create an event group',
+                        patchedProfilesLength: patchedProfiles.length
+                    });
+
+                    const _createdRootProfile = patchedProfiles.find((_profile) => _profile.userId === owner.id) as Profile;
+
+                    const ownerDefaultAvailability = _createdRootProfile.availabilities[0];
 
                     // create a default event group
                     const eventGroupRepository = transactionManager.getRepository(EventGroup);
@@ -273,6 +311,14 @@ export class TeamService {
                     initialEventGroup.teamId = _createdTeam.id;
 
                     const savedEventGroup = await eventGroupRepository.save(initialEventGroup);
+
+                    this.logger.info({
+                        message: 'EventGroup is created. Trying to create an event.',
+                        createdTeamId: _createdTeam.id,
+                        createdTeamUUID: _createdTeam.uuid,
+                        createdRootProfileId: _createdRootProfile.id,
+                        ownerDefaultAvailabilityId: ownerDefaultAvailability.id
+                    });
 
                     // create a default event
                     const initialEvent = this.utilService.getDefaultEvent({
@@ -285,9 +331,16 @@ export class TeamService {
                         transactionManager,
                         _createdTeam.uuid,
                         _createdRootProfile.id,
-                        savedAvailability.id,
+                        ownerDefaultAvailability.id,
                         initialEvent
                     );
+                    this.logger.info({
+                        message: 'Creating an event is success. Close transaction.',
+                        createdTeamId: _createdTeam.id,
+                        createdTeamUUID: _createdTeam.uuid,
+                        createdRootProfileId: _createdRootProfile.id,
+                        ownerDefaultAvailabilityId: ownerDefaultAvailability.id
+                    });
 
                     return {
                         createdTeam: _createdTeam,

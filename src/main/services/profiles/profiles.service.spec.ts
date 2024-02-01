@@ -16,6 +16,7 @@ import { OrdersService } from '@services/orders/orders.service';
 import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
 import { PaymentsService } from '@services/payments/payments.service';
 import { TeamService } from '@services/team/team.service';
+import { AvailabilityService } from '@services/availability/availability.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { User } from '@entity/users/user.entity';
@@ -42,6 +43,7 @@ describe('ProfilesService', () => {
     let paymentsServiceStub: sinon.SinonStubbedInstance<PaymentsService>;
     let notificationServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
     let teamServiceStub: sinon.SinonStubbedInstance<TeamService>;
+    let availabilityServiceStub: sinon.SinonStubbedInstance<AvailabilityService>;
 
     let profilesRedisRepositoryStub: sinon.SinonStubbedInstance<ProfilesRedisRepository>;
 
@@ -60,6 +62,7 @@ describe('ProfilesService', () => {
         paymentsServiceStub = sinon.createStubInstance(PaymentsService);
         notificationServiceStub = sinon.createStubInstance(NotificationsService);
         teamServiceStub = sinon.createStubInstance(TeamService);
+        availabilityServiceStub = sinon.createStubInstance(AvailabilityService);
 
         profilesRedisRepositoryStub = sinon.createStubInstance<ProfilesRedisRepository>(ProfilesRedisRepository);
 
@@ -104,6 +107,10 @@ describe('ProfilesService', () => {
                 {
                     provide: TeamService,
                     useValue: teamServiceStub
+                },
+                {
+                    provide: AvailabilityService,
+                    useValue: availabilityServiceStub
                 },
                 {
                     provide: ProfilesRedisRepository,
@@ -666,38 +673,44 @@ describe('ProfilesService', () => {
             expect(profileRepositoryStub.save.called).ok;
         });
 
-        it('should be created invited profiles', async () => {
+        it('should be created invited profiles: interface', async () => {
             const userMock = stubOne(User);
 
             const invitedProfileStubs = stub(Profile);
+            const defaultAvailabilityMock = stubOne(Availability);
 
             serviceSandbox.stub(service, '_createInvitedProfiles')
                 .returns(of(invitedProfileStubs));
 
             const createdProfiles = await firstValueFrom(service.createInvitedProfiles(
-                userMock
+                userMock,
+                defaultAvailabilityMock
             ));
 
             expect(createdProfiles).ok;
             expect(createdProfiles.length).greaterThan(0);
         });
 
-        it('should be created invited profiles', async () => {
+        it('should be created invited profiles with transaction', async () => {
             const userMock = stubOne(User);
             const orderStub = stubOne(Order);
             const teamStubs = stub(Team).map((_team) => ({ ..._team, orderId: orderStub.id }));
+            const defaultAvailabilityMockStub = stubOne(Availability);
 
             profilesRedisRepositoryStub.getTeamInvitations.resolves(teamStubs);
 
             profileRepositoryStub.create.returnsArg(0);
             profileRepositoryStub.save.resolvesArg(0);
 
+            availabilityServiceStub._create.resolvesArg(3);
+
             ordersServiceStub.fetch.returns(of(orderStub));
             ordersServiceStub._update.returns(of(true));
 
             const createdProfiles = await firstValueFrom(service._createInvitedProfiles(
                 datasourceMock as unknown as EntityManager,
-                userMock
+                userMock,
+                defaultAvailabilityMockStub
             ));
 
             expect(createdProfiles).ok;

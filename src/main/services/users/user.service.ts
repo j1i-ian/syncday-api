@@ -6,7 +6,6 @@ import { Observable, concatMap, defer, firstValueFrom, from, map, mergeMap, of, 
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Availability } from '@core/entities/availability/availability.entity';
-import { AvailableTime } from '@core/entities/availability/availability-time.entity';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
@@ -108,7 +107,12 @@ export class UserService {
             findOptions.push({ phone: In(phones) });
         }
 
-        const loadedUsers = await this.userRepository.findBy(findOptions);
+        const loadedUsers = await this.userRepository.find({
+            relations: {
+                userSetting: true
+            },
+            where: findOptions
+        });
 
         return loadedUsers;
     }
@@ -328,6 +332,11 @@ export class UserService {
         const profileName = temporaryUser.name;
         const newUser = this.userRepository.create(temporaryUser);
 
+        const defaultAvailability = this.utilService.getDefaultAvailability(
+            temporaryUser.language,
+            timezone
+        );
+
         this.logger.info({
             message: 'Creating profile, team, user transaction start',
             email
@@ -361,7 +370,8 @@ export class UserService {
                     concatMap((createUserTeamProfile) =>
                         this.profilesService._createInvitedProfiles(
                             transactionManager,
-                            createUserTeamProfile.createdUser
+                            createUserTeamProfile.createdUser,
+                            defaultAvailability
                         ).pipe(
                             tap(() => {
                                 this.logger.info({
@@ -429,6 +439,8 @@ export class UserService {
             phone
         });
 
+        const defaultAvailability = this.utilService.getDefaultAvailability(language, timezone);
+
         return isVerifiedPhoneNumber$.pipe(
             mergeMap(() => from(defer(() => this.datasource.transaction((transactionManager) =>
                 firstValueFrom(from(
@@ -446,7 +458,11 @@ export class UserService {
                     )
                 ).pipe(
                     concatMap((createUserTeamProfile) =>
-                        this.profilesService._createInvitedProfiles(transactionManager, createUserTeamProfile.createdUser)
+                        this.profilesService._createInvitedProfiles(
+                            transactionManager,
+                            createUserTeamProfile.createdUser,
+                            defaultAvailability
+                        )
                             .pipe(
                                 mergeMap((_profiles) => from(_profiles)),
                                 mergeMap((_createdProfile) => this.profilesService.completeInvitation(
@@ -577,20 +593,17 @@ export class UserService {
             }
         ) as Profile;
 
-        const defaultAvailableTimes: AvailableTime[] = this.timeUtilService.getDefaultAvailableTimes();
+        const defaultAvailability = this.utilService.getDefaultAvailability(
+            userSetting.preferredLanguage,
+            userSetting.preferredTimezone
+        );
 
-        const availabilityDefaultName = this.utilService.getDefaultAvailabilityName(language);
 
         const savedAvailability = await this.availabilityService._create(
             manager,
             savedTeam.uuid,
             savedProfile.id,
-            {
-                availableTimes: defaultAvailableTimes,
-                name: availabilityDefaultName,
-                overrides: [],
-                timezone: userSetting.preferredTimezone
-            },
+            defaultAvailability,
             {
                 default: true
             }

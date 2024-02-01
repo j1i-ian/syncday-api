@@ -20,6 +20,7 @@ import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { Weekday } from '@entity/availability/weekday.enum';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { TestMockUtil } from '@test/test-mock-util';
@@ -54,6 +55,20 @@ describe('UtilService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    it('should be generated default available times', () => {
+
+        const availableTimes = service.getDefaultAvailableTimes();
+
+        expect(availableTimes).ok;
+        expect(availableTimes.length).greaterThan(0);
+
+        const mondayAvailableTime = availableTimes[0];
+        expect(mondayAvailableTime).ok;
+        expect(mondayAvailableTime.day).equals(Weekday.MONDAY);
+        expect(mondayAvailableTime.timeRanges.length).equals(1);
+        expect(mondayAvailableTime.timeRanges[0].startTime).equals('09:00:00');
     });
 
     describe('Search Option Patching Test', () => {

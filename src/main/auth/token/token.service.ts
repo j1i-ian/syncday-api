@@ -159,8 +159,13 @@ export class TokenService {
                 team = createdTeam;
                 isNewbie = true;
 
+                const defaultAvailability = this.utilService.getDefaultAvailability(
+                    language,
+                    timezone
+                );
+
                 const profiles = await firstValueFrom(
-                    this.profileService.createInvitedProfiles(createdUser)
+                    this.profileService.createInvitedProfiles(createdUser, defaultAvailability)
                         .pipe(
                             map((_profiles) => _profiles ? [ createdProfile ].concat(_profiles) : [createdProfile]),
                             mergeMap((_profiles) =>

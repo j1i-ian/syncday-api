@@ -38,7 +38,9 @@ export class EventsService {
                         }
                     },
                     eventDetail: true,
-                    eventProfiles: true
+                    eventProfiles: {
+                        profile: true
+                    }
                 },
                 where: {
                     status: searchOption.status,

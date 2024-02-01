@@ -6,7 +6,6 @@ import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity'
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
-import { Weekday } from '@entity/availability/weekday.enum';
 
 type LocalizedDate = {
     [key in keyof Intl.DateTimeFormatOptions]: string;
@@ -14,29 +13,6 @@ type LocalizedDate = {
 
 @Injectable()
 export class TimeUtilService {
-
-    getDefaultAvailableTimes(): AvailableTime[] {
-
-        const workingDaysCount = Weekday.FRIDAY - Weekday.MONDAY + 1;
-
-        const initialAvailableTimes = Array(workingDaysCount)
-            .fill(undefined)
-            .map((_el, index) => index + 1)
-            .map((weekdayIndex) => {
-                const _initialAvailableTime = new AvailableTime();
-                _initialAvailableTime.day = weekdayIndex;
-                _initialAvailableTime.timeRanges = [
-                    {
-                        startTime: '09:00:00',
-                        endTime: '17:00:00'
-                    }
-                ];
-
-                return _initialAvailableTime;
-            });
-
-        return initialAvailableTimes;
-    }
 
     isPastTimestamp(startDateTimestamp: number, ensuredEndDateTimestamp: number): boolean {
         return startDateTimestamp < Date.now() ||
