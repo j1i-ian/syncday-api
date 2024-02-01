@@ -513,7 +513,15 @@ export class EventsService {
             eventId
         } as EventProfile));
 
-        await this.eventProfileRepository.save(shallowedEventProfiles);
+        await this.datasource.transaction(async (transactionManager) => {
+            const _eventProfileRepository = transactionManager.getRepository(EventProfile);
+
+            await _eventProfileRepository.delete({
+                eventId
+            });
+
+            await _eventProfileRepository.save(shallowedEventProfiles);
+        });
 
         return true;
     }

@@ -846,7 +846,7 @@ describe('EventsService', () => {
         });
     });
 
-    describe('Test Event Linking', () => {
+    describe('Test Linking availability to events', () => {
         afterEach(() => {
             validatorStub.validate.reset();
             eventProfileRepositoryStub.update.reset();
@@ -862,6 +862,54 @@ describe('EventsService', () => {
 
             expect(validatorStub.validate.called).true;
             expect(eventProfileRepositoryStub.update.called).true;
+        });
+    });
+
+    describe('Test Linking availability to profiles', () => {
+        afterEach(() => {
+            validatorStub.validate.reset();
+
+            eventRepositoryStub.findOneOrFail.reset();
+            eventProfileRepositoryStub.delete.reset();
+            eventProfileRepositoryStub.save.reset();
+        });
+
+        it('should be linked to availability for profiles', async () => {
+            const availabilitiesMock = stub(Availability, 2, {
+                default: true
+            });
+            const profilesMock = stub(Profile, 2, {
+                availabilities: availabilitiesMock
+            });
+            const teamMock = stubOne(Team, {
+                profiles: profilesMock
+            });
+            const eventGroupMock = stubOne(EventGroup, {
+                team: teamMock
+            });
+            const eventMockStub = stubOne(Event, {
+                eventGroup: eventGroupMock
+            });
+
+            const deleteResultStub = TestMockUtil.getTypeormDeleteResultMock();
+
+            eventRepositoryStub.findOneOrFail.resolves(eventMockStub);
+            eventProfileRepositoryStub.delete.resolves(deleteResultStub);
+            eventProfileRepositoryStub.save.resolvesArg(0);
+
+            const profileIds = profilesMock.map((_profile) => _profile.id);
+
+            const success = await service.linkToProfiles(
+                teamMock.id,
+                eventMockStub.id,
+                profileIds
+            );
+            expect(success).true;
+
+            expect(validatorStub.validate.called).ok;
+            expect(eventRepositoryStub.findOneOrFail.called).ok;
+            expect(eventProfileRepositoryStub.delete.called).ok;
+            expect(eventProfileRepositoryStub.save.called).ok;
         });
     });
 
