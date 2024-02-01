@@ -556,6 +556,12 @@ describe('EventsService', () => {
 
     describe('Test Evnet Update', () => {
 
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
         afterEach(() => {
             validatorStub.validate.reset();
 
@@ -568,6 +574,8 @@ describe('EventsService', () => {
             eventDetailRepositoryStub.findOneByOrFail.reset();
             eventRedisRepositoryStub.deleteEventLinkSetStatus.reset();
             eventRedisRepositoryStub.setEventLinkSetStatus.reset();
+
+            serviceSandbox.restore();
         });
 
         it('should be thrown an error for any event update request that does not belong to requester', async () => {
@@ -578,14 +586,19 @@ describe('EventsService', () => {
 
             const teamMock = stubOne(Team);
             const eventDetailMock = stubOne(EventDetail);
+            const newHosts = stub(EventProfile);
             const eventMock = stubOne(Event, {
-                eventDetail: eventDetailMock
+                eventDetail: eventDetailMock,
+                eventProfiles: newHosts
             });
 
             eventRedisRepositoryStub.getEventLinkSetStatus.resolves(true);
 
             eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
             eventRepositoryStub.update.resolves(updateResultStub);
+
+            serviceSandbox.stub(service, '_linkToProfiles').resolves(true);
+
             eventDetailRepositoryStub.update.resolves(updateResultStub);
 
             await expect(service.update(
@@ -610,9 +623,11 @@ describe('EventsService', () => {
             const eventLinkMock = 'fake';
             const newEventLinkMock = 'fake2';
             const eventDetailMock = stubOne(EventDetail);
+            const newHosts = stub(EventProfile);
             const eventMock = stubOne(Event, {
                 eventDetail: eventDetailMock,
-                link: eventLinkMock
+                link: eventLinkMock,
+                eventProfiles: newHosts
             });
 
             const validatedEventStub = stubOne(Event, {
@@ -627,6 +642,8 @@ describe('EventsService', () => {
             eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
 
             eventRepositoryStub.update.resolves(updateResultStub);
+
+            serviceSandbox.stub(service, '_linkToProfiles').resolves(true);
 
             eventMock.link = newEventLinkMock;
 
@@ -651,9 +668,11 @@ describe('EventsService', () => {
             const teamMock = stubOne(Team);
             const eventIdMock = 1;
             const eventDetailMock = stubOne(EventDetail);
+            const newHosts = stub(EventProfile);
             const eventMock = stubOne(Event, {
                 id: eventIdMock,
-                eventDetail: eventDetailMock
+                eventDetail: eventDetailMock,
+                eventProfiles: newHosts
             });
 
             validatorStub.validate.resolves(eventMock);
@@ -663,6 +682,9 @@ describe('EventsService', () => {
             eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
 
             eventRepositoryStub.update.resolves(updateResultStub);
+
+            serviceSandbox.stub(service, '_linkToProfiles').resolves(true);
+
             eventDetailRepositoryStub.update.resolves(updateResultStub);
 
             const updateResult = await service.update(
@@ -688,9 +710,11 @@ describe('EventsService', () => {
             const teamMock = stubOne(Team);
             const eventIdMock = 1;
             const eventDetailMock = stubOne(EventDetail);
+            const newHosts = stub(EventProfile);
             const eventMock = stubOne(Event, {
                 id: eventIdMock,
-                eventDetail: eventDetailMock
+                eventDetail: eventDetailMock,
+                eventProfiles: newHosts
             });
 
             validatorStub.validate.resolves(eventMock);
@@ -700,6 +724,9 @@ describe('EventsService', () => {
             eventDetailRepositoryStub.findOneByOrFail.resolves(eventDetailMock);
 
             eventRepositoryStub.update.resolves(updateResultStub);
+
+            serviceSandbox.stub(service, '_linkToProfiles').resolves(true);
+
             eventDetailRepositoryStub.update.resolves(updateResultStub);
 
             const updateResult = await service.update(
@@ -866,15 +893,42 @@ describe('EventsService', () => {
     });
 
     describe('Test Linking availability to profiles', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
         afterEach(() => {
             validatorStub.validate.reset();
 
             eventRepositoryStub.findOneOrFail.reset();
             eventProfileRepositoryStub.delete.reset();
             eventProfileRepositoryStub.save.reset();
+
+            serviceSandbox.restore();
         });
 
         it('should be linked to availability for profiles', async () => {
+
+            const teamMock = stubOne(Team);
+            const eventMockStub = stubOne(Event);
+            const profilesMock = stub(Profile);
+            const profileIds = profilesMock.map((_profile) => _profile.id);
+
+            serviceSandbox.stub(service, '_linkToProfiles').resolves(true);
+
+            const success = await service.linkToProfiles(
+                teamMock.id,
+                eventMockStub.id,
+                profileIds
+            );
+            expect(success).true;
+
+            expect(validatorStub.validate.called).ok;
+        });
+
+        it('should be linked to availability for profiles with transaction', async () => {
             const availabilitiesMock = stub(Availability, 2, {
                 default: true
             });
@@ -899,14 +953,14 @@ describe('EventsService', () => {
 
             const profileIds = profilesMock.map((_profile) => _profile.id);
 
-            const success = await service.linkToProfiles(
+            const success = await service._linkToProfiles(
+                datasourceMock as unknown as EntityManager,
                 teamMock.id,
                 eventMockStub.id,
                 profileIds
             );
             expect(success).true;
 
-            expect(validatorStub.validate.called).ok;
             expect(eventRepositoryStub.findOneOrFail.called).ok;
             expect(eventProfileRepositoryStub.delete.called).ok;
             expect(eventProfileRepositoryStub.save.called).ok;
