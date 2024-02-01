@@ -40,8 +40,7 @@ export class AvailabilityController {
         @AuthProfile('id') profileId: number,
         @AuthProfile('uuid') profileUUID: string,
         @AuthProfile('teamId') teamId: number,
-        @AuthProfile('teamUUID') teamUUID: string,
-        @AuthProfile('roles') roles: Role[]
+        @AuthProfile('teamUUID') teamUUID: string
     ): Observable<GetAvailabilityResponseDto[]> {
         return this.availabilityService
             .search({
@@ -49,7 +48,7 @@ export class AvailabilityController {
                 teamUUID,
                 profileId,
                 profileUUID
-            }, roles)
+            })
             .pipe(
                 map((loadedAvailabilities) =>
                     plainToInstance(GetAvailabilityResponseDto, loadedAvailabilities, {

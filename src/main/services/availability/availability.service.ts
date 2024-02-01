@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
 import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
-import { DataSource, EntityManager, FindOptionsWhere, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
-import { Role } from '@interfaces/profiles/role.enum';
 import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface';
 import { KeySearchOption } from '@interfaces/key-search-option.type';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
@@ -32,25 +31,15 @@ export class AvailabilityService {
     ) {}
 
     search(
-        searchOption: Partial<AvailabilitySearchOption>,
-        roles: Role[]
+        searchOption: Partial<AvailabilitySearchOption>
     ): Observable<Availability[]> {
-
-        const hasTeamPermission = roles.includes(Role.MANAGER) || roles.includes(Role.OWNER);
-
-        const availabilityCondition: FindOptionsWhere<Availability> = hasTeamPermission ?
-            {
-                profile: {
-                    teamId: searchOption.teamId
-                }
-            } : {
-                profileId: searchOption.profileId
-            };
 
         return forkJoin({
             availabilityEntities: from(
                 this.availabilityRepository.find({
-                    where: availabilityCondition,
+                    where: {
+                        profileId: searchOption.profileId
+                    },
                     order: {
                         default: 'DESC'
                     }
