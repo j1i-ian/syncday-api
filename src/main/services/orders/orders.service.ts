@@ -45,14 +45,14 @@ export class OrdersService {
 
         const skip = page * take;
 
-        return from(this.orderRepository.find({
+        return defer(() => from(this.orderRepository.find({
             where: findOptionsWhere,
             order: {
                 createdAt: 'DESC'
             },
             skip,
             take
-        }));
+        })));
     }
 
     fetch(searchOptions: {
@@ -106,7 +106,7 @@ export class OrdersService {
             } as FindOptionsWhere<Order>;
         }
 
-        return from(defer(() => this.orderRepository.findOne({
+        return defer(() => from(this.orderRepository.findOne({
             relations: ['team'],
             where: findOptionsWhere
         })));
@@ -151,7 +151,7 @@ export class OrdersService {
 
         return of(transactionManager.getRepository(Order))
             .pipe(
-                mergeMap((orderRepository) => orderRepository.update(orderId, partialOrder)),
+                mergeMap((orderRepository) => defer(() => from(orderRepository.update(orderId, partialOrder)))),
                 map((updateResult) => !!(updateResult.affected && updateResult.affected > 0))
             );
     }

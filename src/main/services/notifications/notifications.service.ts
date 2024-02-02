@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Observable, combineLatest, from, map, mergeMap, reduce } from 'rxjs';
+import { Observable, combineLatest, defer, from, map, mergeMap, reduce } from 'rxjs';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
@@ -96,7 +96,7 @@ export class NotificationsService {
         // load event by event id
         return combineLatest([
             this.eventsService.findOne(eventId, teamId),
-            from(this.teamSettingService.fetchByTeamId(teamId))
+            defer(() => from(this.teamSettingService.fetchByTeamId(teamId)))
         ])
             .pipe(
                 map(([loadedEvent, teamSetting]) => {

@@ -71,7 +71,7 @@ describe('OAuth2AccountsService', () => {
 
     it('should be found a oauth 2 account', async () => {
 
-        const userEmail = stubOne(User).email;
+        const userEmail = stubOne(User).email as string;
         const oauth2AccountStub = stubOne(OAuth2Account);
 
         oauth2AccountRepositoryStub.findOne.resolves(oauth2AccountStub);

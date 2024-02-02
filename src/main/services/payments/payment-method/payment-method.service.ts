@@ -1,7 +1,7 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { Observable, from, map, mergeMap } from 'rxjs';
+import { Observable, defer, from, map, mergeMap } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -42,7 +42,7 @@ export class PaymentMethodService {
     }: {
         teamId: number;
     }): Observable<PaymentMethod> {
-        return from(this.paymentMethodRepository.findOneOrFail({
+        return defer(() => from(this.paymentMethodRepository.findOneOrFail({
             relations: {
                 teams: true
             },
@@ -51,7 +51,7 @@ export class PaymentMethodService {
                     id: teamId
                 }
             }
-        }));
+        })));
     }
 
     create(
@@ -61,11 +61,11 @@ export class PaymentMethodService {
 
         newPaymentMethod.teams = [{ id: teamId }] as Team[];
 
-        return from(this.profilesService.fetch({
+        return defer(() => from(this.profilesService.fetch({
             teamId,
             role: Role.OWNER,
             withUserData: true
-        })).pipe(
+        }))).pipe(
             map((ownerProfile) => {
 
                 const ownerName: string = (ownerProfile.name
@@ -84,14 +84,14 @@ export class PaymentMethodService {
                 };
             }),
             mergeMap(({ buyer, uuid: ownerUUID }) =>
-                this.datasource.transaction((transactionManager) =>
+                defer(() => from(this.datasource.transaction((transactionManager) =>
                     this._create(
                         transactionManager,
                         newPaymentMethod,
                         buyer,
                         ownerUUID
                     )
-                )
+                )))
             )
         );
     }
@@ -161,10 +161,10 @@ export class PaymentMethodService {
         teamId: number,
         updatePaymentMethod: Pick<PaymentMethod, 'creditCard'>
     ): Observable<boolean> {
-        return from(this.paymentMethodRepository.findOneByOrFail({
+        return defer(() => from(this.paymentMethodRepository.findOneByOrFail({
             id,
             teams: { id: teamId }
-        })).pipe(
+        }))).pipe(
             mergeMap((loadedPaymentMethod) =>
                 this.paymentMethodRepository.update(
                     loadedPaymentMethod.id,

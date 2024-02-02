@@ -4,7 +4,7 @@ import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { oauth2_v2 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { Observable, firstValueFrom, from, map, mergeMap, of } from 'rxjs';
+import { Observable, firstValueFrom, map, mergeMap, of } from 'rxjs';
 import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
@@ -256,12 +256,11 @@ export class TokenService {
         });
 
         const decoedProfileByRefreshToken$ = isNewProfileTokenRequest ?
-            from(
-                this.profileService.fetch({
-                    teamId,
-                    userId
-                })
-            ) :  of(decoedProfileByRefreshToken as Partial<Profile>);
+            this.profileService.fetch({
+                teamId,
+                userId
+            })
+            :  of(decoedProfileByRefreshToken as Partial<Profile>);
 
         return decoedProfileByRefreshToken$.pipe(
             map((_decoedProfileByRefreshToken) => {

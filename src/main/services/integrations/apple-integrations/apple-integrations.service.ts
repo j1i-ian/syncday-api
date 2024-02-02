@@ -2,7 +2,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Observable, catchError, from, map, mergeMap, throwError } from 'rxjs';
+import { Observable, catchError, defer, from, map, mergeMap, throwError } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
@@ -47,12 +47,12 @@ export class AppleIntegrationsService implements
     }
 
     validate(loadedAppleCalDAVIntegration: AppleCalDAVIntegration): Observable<boolean> {
-        return from(
+        return defer(() => from(
             this.appleIntegrationFacade.generateCalDAVClient({
                 username: loadedAppleCalDAVIntegration.email,
                 password: loadedAppleCalDAVIntegration.appSpecificPassword
             })
-        ).pipe(
+        )).pipe(
             catchError((error) => {
                 this.logger.error({
                     integration: loadedAppleCalDAVIntegration,
@@ -168,12 +168,12 @@ export class AppleIntegrationsService implements
 
     patch(vendorIntegrationId: number, profileId: number, partialIntegration?: Partial<AppleCalDAVIntegration> | undefined): Observable<boolean> {
 
-        return from(
+        return defer(() => from(
             this.appleCalDAVIntegrationRepository.findOneByOrFail({
                 id: vendorIntegrationId,
                 profileId
             })
-        ).pipe(
+        )).pipe(
             map((loadedAppleIntegration) => {
 
                 loadedAppleIntegration.email = partialIntegration?.email ?? loadedAppleIntegration.email;
@@ -188,14 +188,14 @@ export class AppleIntegrationsService implements
             catchError((errorOrException: Error) => {
 
                 if (errorOrException.message?.trim() === 'Invalid credentials') {
-                    return from(
+                    return defer(() => from(
                         this.appleCalDAVIntegrationRepository.update(
                             vendorIntegrationId,
                             {
                                 status: IntegrationStatus.REVOKED
                             }
                         )
-                    ).pipe(
+                    )).pipe(
                         mergeMap(() => throwError(() => errorOrException))
                     );
                 } else {
@@ -203,7 +203,7 @@ export class AppleIntegrationsService implements
                 }
             }),
             mergeMap(() =>
-                from(
+                defer(() => from(
                     this.appleCalDAVIntegrationRepository.update(
                         vendorIntegrationId,
                         {
@@ -212,7 +212,7 @@ export class AppleIntegrationsService implements
                             appSpecificPassword: partialIntegration?.appSpecificPassword
                         }
                     )
-                ).pipe(
+                )).pipe(
                     map(
                         (updateResult) =>
                             !!(

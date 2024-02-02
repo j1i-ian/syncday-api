@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
-import { Observable, firstValueFrom, forkJoin, from, map, mergeMap, toArray } from 'rxjs';
+import { Observable, defer, firstValueFrom, forkJoin, from, map, mergeMap, toArray } from 'rxjs';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
@@ -35,7 +35,7 @@ export class AvailabilityService {
     ): Observable<Availability[]> {
 
         return forkJoin({
-            availabilityEntities: from(
+            availabilityEntities: defer(() => from(
                 this.availabilityRepository.find({
                     where: {
                         profileId: searchOption.profileId
@@ -44,10 +44,10 @@ export class AvailabilityService {
                         default: 'DESC'
                     }
                 })
-            ),
-            availabilityBodyRecord: from(
+            )),
+            availabilityBodyRecord: defer(() => from(
                 this.availabilityRedisRepository.getAvailabilityBodyRecord((searchOption as TeamSearchOption).teamUUID)
-            )
+            ))
         }).pipe(
             map(({ availabilityEntities, availabilityBodyRecord }) =>
                 availabilityEntities.map((availability) => {
@@ -68,20 +68,20 @@ export class AvailabilityService {
         profileId: number,
         availabilityId: number
     ): Observable<Availability> {
-        return from(
+        return defer(() => from(
             this.availabilityRepository.findOneByOrFail({
                 id: availabilityId,
                 profileId
             })
-        ).pipe(
+        )).pipe(
             mergeMap((availability) =>
-                from(
+                defer(() => from(
                     this.availabilityRedisRepository.getAvailabilityBody(
                         teamUUID,
                         profileId,
                         availability.uuid
                     )
-                ).pipe(
+                )).pipe(
                     map((availabilityBody) => {
                         availability.availableTimes = availabilityBody.availableTimes;
                         availability.overrides = availabilityBody.overrides;
@@ -96,7 +96,7 @@ export class AvailabilityService {
         teamWorkspace: string,
         eventLink: string
     ): Observable<Availability[]> {
-        return from(
+        return defer(() => from(
             this.availabilityRepository.find({
                 relations: {
                     profile: {
@@ -123,16 +123,16 @@ export class AvailabilityService {
                     }
                 }
             })
-        ).pipe(
+        )).pipe(
             mergeMap((availabilities) => from(availabilities)),
             mergeMap((availability) =>
-                from(
+                defer(() => from(
                     this.availabilityRedisRepository.getAvailabilityBody(
                         availability.profile.team.uuid,
                         availability.profileId,
                         availability.uuid
                     )
-                ).pipe(
+                )).pipe(
                     map((availabilityBody) => {
                         availability.availableTimes = availabilityBody.availableTimes;
                         availability.overrides = availabilityBody.overrides;

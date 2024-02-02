@@ -1,4 +1,4 @@
-import { firstValueFrom, from, map, mergeMap, reduce, tap } from 'rxjs';
+import { defer, firstValueFrom, from, map, mergeMap, reduce, tap } from 'rxjs';
 import { Inject, Injectable } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -21,7 +21,7 @@ export class IntegrationsValidator {
         const allCountedCalendarSubjectIntegrations = await firstValueFrom(
             from(calendarSubjectIntegrationFactories)
                 .pipe(
-                    mergeMap((integration) => from(integration.count({ profileId }))),
+                    mergeMap((integration) => defer(() => from(integration.count({ profileId })))),
                     reduce(
                         (acc, curr) => acc + curr,
                         0
@@ -51,10 +51,10 @@ export class IntegrationsValidator {
             from(calendarSubjectIntegrationFactories)
                 .pipe(
                     map((integrationFactory) => integrationFactory.getCalendarIntegrationsService()),
-                    mergeMap((calendarIntegrationService) => from(calendarIntegrationService.findOne({
+                    mergeMap((calendarIntegrationService) => defer(() => from(calendarIntegrationService.findOne({
                         profileId,
                         outboundWriteSync: true
-                    }))),
+                    })))),
                     tap((outboundCalendarIntegration) => {
 
                         const outboundCalendarIntegrationId = outboundCalendarIntegration?.id;

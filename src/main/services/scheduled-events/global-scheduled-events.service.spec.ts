@@ -355,7 +355,7 @@ describe('GlobalScheduledEventsService', () => {
 
                     const createdCalendarEventMock = testMockUtil.getCreatedCalendarEventMock();
 
-                    eventsServiceStub.findOneByTeamWorkspaceAndUUID.resolves(eventStub);
+                    eventsServiceStub.findOneByTeamWorkspaceAndUUID.returns(of(eventStub));
 
                     calendarIntegrationsServiceLocatorStub.getAllCalendarIntegrationServices.returns([
                         googleCalendarIntegrationsServiceStub

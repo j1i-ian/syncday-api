@@ -29,7 +29,7 @@ export class EventsService {
     ) {}
 
     search(searchOption: EventsSearchOption): Observable<Event[]> {
-        return from(
+        return defer(() => from(
             this.eventRepository.find({
                 relations: {
                     eventGroup: {
@@ -58,7 +58,7 @@ export class EventsService {
                     priority: 'DESC'
                 }
             })
-        ).pipe(
+        )).pipe(
             // TODO: should be refactored
             mergeMap((_events) => {
                 const eventDetailUUIDs = _events.map((_event) => _event.eventDetail.uuid);
@@ -80,9 +80,9 @@ export class EventsService {
     }
 
     findOne(eventId: number, teamId: number): Observable<Event> {
-        return from(
+        return defer(() => from(
             this.validator.validate(teamId, eventId, Event)
-        ).pipe(
+        )).pipe(
             mergeMap(() =>
                 this.eventRepository.findOneOrFail({
                     relations: ['eventDetail'],
@@ -112,7 +112,7 @@ export class EventsService {
     }
 
     findOneByTeamWorkspaceAndUUID(teamWorkspace: string, eventUUID: string): Observable<Event> {
-        return from(defer(() =>
+        return defer(() => from(
             this.eventRepository.findOneOrFail({
                 relations: {
                     eventDetail: true,
@@ -152,7 +152,7 @@ export class EventsService {
 
     findOneByTeamWorkspaceAndLink(teamWorkspace: string, eventLink: string): Observable<Event> {
 
-        return from(this.eventRepository.findOneOrFail({
+        return defer(() => from(this.eventRepository.findOneOrFail({
             relations: {
                 eventDetail: true,
                 eventProfiles: {
@@ -180,7 +180,7 @@ export class EventsService {
                     }
                 }
             }
-        })).pipe(
+        }))).pipe(
             mergeMap((loadedEvent) => {
                 const eventDetail = loadedEvent.eventDetail;
                 const eventDetailUUID = eventDetail.uuid;

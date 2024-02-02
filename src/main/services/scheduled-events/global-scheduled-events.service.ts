@@ -76,9 +76,9 @@ export class GlobalScheduledEventsService {
     }
 
     findOne(scheduleUUID: string): Observable<ScheduledEvent> {
-        return from(this.scheduleRepository.findOneByOrFail({
+        return defer(() => from(this.scheduleRepository.findOneByOrFail({
             uuid: scheduleUUID
-        })).pipe(
+        }))).pipe(
             mergeMap((scheduledEvent) => this.scheduleRedisRepository.getScheduleBody(scheduledEvent.uuid)
                 .pipe(
                     map((scheduleBody) => {
@@ -124,9 +124,7 @@ export class GlobalScheduledEventsService {
 
         const _scheduledEventRepository = entityManager.getRepository(ScheduledEvent);
 
-        const loadedEventByTeamWorkspace$ = from(
-            this.eventsService.findOneByTeamWorkspaceAndUUID(teamWorkspace, eventUUID)
-        );
+        const loadedEventByTeamWorkspace$ = this.eventsService.findOneByTeamWorkspaceAndUUID(teamWorkspace, eventUUID);
 
         const calendarIntegrationServices = this.calendarIntegrationsServiceLocator.getAllCalendarIntegrationServices();
         const conferenceLinkIntegrationServices = this.integrationsServiceLocator.getAllConferenceLinkIntegrationService();
@@ -205,14 +203,14 @@ export class GlobalScheduledEventsService {
 
                         const calendarIntegrationService = this.calendarIntegrationsServiceLocator.getCalendarIntegrationService(outboundCalendarIntegrationVendor);
 
-                        return from(
+                        return defer(() => from(
                             calendarIntegrationService.createCalendarEvent(
                                 (loadedOutboundCalendarIntegrationOrNull).getIntegration(),
                                 (loadedOutboundCalendarIntegrationOrNull),
                                 availabilityTimezone,
                                 patchedSchedule
                             )
-                        ).pipe(
+                        )).pipe(
                             map((createdCalendarEvent) => {
 
                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -228,21 +226,21 @@ export class GlobalScheduledEventsService {
 
                                             const integrationFactory = this.integrationsServiceLocator.getIntegrationFactory(integrationVendor);
 
-                                            const loadedIntegration$ = from(integrationFactory.findOne({
+                                            const loadedIntegration$ = defer(() => from(integrationFactory.findOne({
                                                 profileId: hostProfile.id
-                                            }));
+                                            })));
 
                                             return loadedIntegration$.pipe(
                                                 mergeMap((loadedIntegration) => {
 
                                                     const createMeeting$ = loadedIntegration ?
-                                                        from(conferenceLinkIntegrationService.createMeeting(
+                                                        defer(() => from(conferenceLinkIntegrationService.createMeeting(
                                                             loadedIntegration,
                                                             contacts,
                                                             patchedSchedule,
                                                             availabilityTimezone,
                                                             createdCalendarEvent
-                                                        )) : of(null);
+                                                        ))) : of(null);
 
                                                     return createMeeting$;
                                                 }),
@@ -258,12 +256,12 @@ export class GlobalScheduledEventsService {
                                         }
                                     )
                                 )),
-                            mergeMap((createdCalendarEvent) => from(calendarIntegrationService.patchCalendarEvent(
+                            mergeMap((createdCalendarEvent) => defer(() => from(calendarIntegrationService.patchCalendarEvent(
                                 loadedOutboundCalendarIntegrationOrNull.getIntegration(),
                                 loadedOutboundCalendarIntegrationOrNull,
                                 patchedSchedule,
                                 createdCalendarEvent
-                            )).pipe(
+                            ))).pipe(
                                 map(() => patchedSchedule)
                             ))
                         );
@@ -271,7 +269,7 @@ export class GlobalScheduledEventsService {
                 }
             ),
             last(),
-            mergeMap((patchedSchedule) => from(_scheduledEventRepository.save(patchedSchedule))),
+            mergeMap((patchedSchedule) => defer(() => from(_scheduledEventRepository.save(patchedSchedule)))),
             mergeMap((createdSchedule) =>
                 this.scheduleRedisRepository.save(createdSchedule.uuid, {
                     inviteeAnswers: newScheduledEvent.inviteeAnswers,
@@ -294,7 +292,7 @@ export class GlobalScheduledEventsService {
 
         const _scheduleRepository = entityManager.getRepository(ScheduledEvent);
 
-        return from(_scheduleRepository.update(scheduleId, partialScheduledEvent))
+        return defer(() => from(_scheduleRepository.update(scheduleId, partialScheduledEvent)))
             .pipe(
                 map((updateResult) => !!updateResult.affected && updateResult.affected > 0)
             );

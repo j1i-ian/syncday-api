@@ -16,7 +16,7 @@ import {
     NotImplementedException,
     ForbiddenException
 } from '@nestjs/common';
-import { Observable, from, map } from 'rxjs';
+import { Observable, defer, from, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { Request, Response } from 'express';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
@@ -83,11 +83,11 @@ export class AvailabilityController {
         @AuthProfile('teamUUID') teamUUID: string,
         @Body() createAvailabilityDto: CreateAvailabilityRequestDto
     ): Observable<CreateAvailabilityResponseDto> {
-        return from(this.availabilityService.create(
+        return defer(() => from(this.availabilityService.create(
             teamUUID,
             profileId,
             createAvailabilityDto
-        )).pipe(
+        ))).pipe(
             map((loadedAvailability) =>
                 plainToInstance(CreateAvailabilityResponseDto, loadedAvailability, {
                     excludeExtraneousValues: true
@@ -104,9 +104,9 @@ export class AvailabilityController {
         @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @Body() updateAvailabilityDto: UpdateAvailabilityRequestDto
     ): Observable<boolean> {
-        return from(
+        return defer(() => from(
             this.availabilityService.update(teamUUID, profileId, availabilityId, updateAvailabilityDto)
-        );
+        ));
     }
 
     @Patch()
@@ -116,7 +116,7 @@ export class AvailabilityController {
         @AuthProfile('teamUUID') teamUUID: string,
         @Body() patchAvailabilityDto: PatchAvailabilityRequestDto
     ): Observable<boolean> {
-        return from(this.availabilityService.patchAll(teamUUID, profileId, patchAvailabilityDto));
+        return defer(() => from(this.availabilityService.patchAll(teamUUID, profileId, patchAvailabilityDto)));
     }
 
     @Patch(':availabilityId')
@@ -127,9 +127,9 @@ export class AvailabilityController {
         @Param('availabilityId', ParseIntPipe) availabilityId: number,
         @Body() patchAvailabilityDto: PatchAvailabilityRequestDto
     ): Observable<boolean> {
-        return from(
+        return defer(() => from(
             this.availabilityService.patch(teamUUID, profileId, availabilityId, patchAvailabilityDto)
-        );
+        ));
     }
 
     @Delete(':availabilityId')
@@ -139,7 +139,7 @@ export class AvailabilityController {
         @AuthProfile('teamUUID') teamUUID: string,
         @Param('availabilityId', ParseIntPipe) availabilityId: number
     ): Observable<boolean> {
-        return from(this.availabilityService.remove(teamUUID, profileId, availabilityId));
+        return defer(() => from(this.availabilityService.remove(teamUUID, profileId, availabilityId)));
     }
 
     clone(

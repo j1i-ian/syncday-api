@@ -186,14 +186,14 @@ export class ProfilesService {
                 tap((searchQueryBuilder) => {
                     searchQueryBuilder.take(20);
                 }),
-                mergeMap((searchQueryBuilder) => searchQueryBuilder.getMany())
+                mergeMap((searchQueryBuilder) => defer(() => from(searchQueryBuilder.getMany())))
             );
     }
 
     searchInvitations(teamUUID: string): Observable<InvitedNewTeamMember[]> {
-        return from(this.profilesRedisRepository.getAllTeamInvitations(
+        return defer(() => from(this.profilesRedisRepository.getAllTeamInvitations(
             teamUUID
-        )).pipe(
+        ))).pipe(
             mergeMap((_invitations) => from(_invitations)),
             map((_invitation) => this.utilService.convertToInvitedNewTeamMember(_invitation)),
             toArray()
@@ -238,7 +238,7 @@ export class ProfilesService {
             } as FindOptionsWhere<Profile>;
         }
 
-        return from(this.profileRepository.findOneOrFail({
+        return defer(() => from(this.profileRepository.findOneOrFail({
             relations: {
                 user: {
                     oauth2Accounts: true
@@ -249,11 +249,11 @@ export class ProfilesService {
                 zoomIntegrations: true
             },
             where: findWhereOption
-        }));
+        })));
     }
 
     _fetchTeamOwnerProfile(teamId: number): Observable<Profile> {
-        return from(this.profileRepository.findOneOrFail({
+        return defer(() => from(this.profileRepository.findOneOrFail({
             select: {
                 id: true,
                 user: { email: true, phone: true },
@@ -267,7 +267,7 @@ export class ProfilesService {
                 teamId,
                 roles: Raw((alias) => `${alias} LIKE '%${Role.OWNER}%'`)
             }
-        }));
+        })));
     }
 
     createBulk(
@@ -287,7 +287,7 @@ export class ProfilesService {
 
         const teamPaymentMethod$ = newPaymentMethod
             ? of(null)
-            : from(this.paymentMethodService.fetch({ teamId }));
+            : this.paymentMethodService.fetch({ teamId });
 
         const ownerProfile$ = this._fetchTeamOwnerProfile(teamId);
         const buyerTeam$ = ownerProfile$
@@ -309,11 +309,11 @@ export class ProfilesService {
 
         return combineLatest([
             // product id 2 is 'invitation'
-            this.productsService.findTeamPlanProduct(2),
-            from(this.userService.search({
+            defer(() => from(this.productsService.findTeamPlanProduct(2))),
+            defer(() => from(this.userService.search({
                 emails: emailBulk,
                 phones: phoneNumberBulk
-            })),
+            }))),
             ownerProfile$,
             buyerTeam$,
             teamPaymentMethod$
@@ -445,19 +445,19 @@ export class ProfilesService {
 
                 const invitedNewUsers = this.utilService.filterInvitedNewUsers(newInvitedNewMembers, searchedUsers);
 
-                const signedUpUserInvitationNotifications$ = from(this.notificationsService.sendTeamInvitation(
+                const signedUpUserInvitationNotifications$ = defer(() => from(this.notificationsService.sendTeamInvitation(
                     team.name,
                     hostName,
                     searchedUsers as InvitedNewTeamMember[],
                     true
-                ));
+                )));
 
-                const unsignedUserInvitationNotifications$ = from(this.notificationsService.sendTeamInvitation(
+                const unsignedUserInvitationNotifications$ = defer(() => from(this.notificationsService.sendTeamInvitation(
                     team.name,
                     hostName,
                     invitedNewUsers,
                     false
-                ));
+                )));
 
                 const saveInvitedNewTeamMember$ = of(invitedNewUsers.length > 0)
                     .pipe(
@@ -489,7 +489,7 @@ export class ProfilesService {
         defaultAvailability: Availability
     ): Observable<Profile[]> {
 
-        return from(defer(() =>
+        return defer(() => from(
             this.datasource.transaction(
                 (transactionManager) =>
                     firstValueFrom(
@@ -514,7 +514,7 @@ export class ProfilesService {
             phone: user.phone
         });
 
-        return from(this.profilesRedisRepository.getTeamInvitations(emailOrPhone as string))
+        return defer(() => from(this.profilesRedisRepository.getTeamInvitations(emailOrPhone as string)))
             .pipe(
                 tap((teamEntitiesAndOrderIds) => {
                     this.logger.info({
@@ -546,7 +546,7 @@ export class ProfilesService {
                     });
                 }),
                 mergeMap((_newProfiles) =>
-                    from(defer(() =>
+                    defer(() => from(
                         _profileRepository.save(_newProfiles)
                     ))
                 ),
@@ -560,12 +560,12 @@ export class ProfilesService {
                 })
             ).pipe(
                 mergeMap((profiles) => from(profiles)),
-                mergeMap((savedProfile) => from(this.availabilityService._create(
+                mergeMap((savedProfile) => defer(() => from(this.availabilityService._create(
                     transactionManager,
                     savedProfile.teamUUID,
                     savedProfile.id,
                     defaultAvailability
-                )).pipe(
+                ))).pipe(
                     map(() => savedProfile)
                 )),
                 mergeMap((_createdProfile) =>
@@ -624,7 +624,7 @@ export class ProfilesService {
         invitedNewMembers: InvitedNewTeamMember[],
         orderId: number
     ): Observable<boolean> {
-        return from(defer(() => this.profilesRedisRepository.setTeamInvitations(
+        return defer(() => from(this.profilesRedisRepository.setTeamInvitations(
             teamId,
             teamUUID,
             invitedNewMembers,
@@ -664,12 +664,12 @@ export class ProfilesService {
     }
 
     patchAll(userId: number, partialProfile: Partial<Profile>): Observable<boolean> {
-        return from(
+        return defer(() => from(
             this.profileRepository.update(
                 { userId },
                 partialProfile
             )
-        ).pipe(
+        )).pipe(
             map((updateResult) => !!(updateResult &&
                 updateResult.affected &&
                 updateResult.affected > 0))
@@ -682,7 +682,7 @@ export class ProfilesService {
         targetProfileId: number,
         updateRoles: Role[]
     ): Observable<boolean> {
-        return from(defer(() => this.datasource.transaction(async (manager) => {
+        return defer(() => from(this.datasource.transaction(async (manager) => {
             const result = await firstValueFrom(this._updateRoles(
                 manager,
                 teamId,
@@ -708,10 +708,10 @@ export class ProfilesService {
         const roleUpdate$ = transactionProfileRepository$
             .pipe(
                 mergeMap((_profileRepository) =>
-                    from(_profileRepository.update(
+                    defer(() => from(_profileRepository.update(
                         { id: targetProfileId, teamId },
                         { roles: updateRoles }
-                    ))
+                    )))
                 ),
                 map((__updateResult: UpdateResult) => this.utilService.convertUpdateResultToBoolean(__updateResult))
             );
@@ -764,7 +764,7 @@ export class ProfilesService {
             name: canceler
         } = authProfile;
 
-        const targetProfile$ = from(defer(() => this.profileRepository.findOneByOrFail({
+        const targetProfile$ = defer(() => from(this.profileRepository.findOneByOrFail({
             id: profileId,
             teamId
         })));
@@ -857,7 +857,7 @@ export class ProfilesService {
                 });
             }),
             concatMap((exception) =>
-                from(this.datasource.transaction((transactionManager) =>
+                defer(() => from(this.datasource.transaction((transactionManager) =>
                     firstValueFrom(
                         concat(
                             of(transactionManager.getRepository(Availability))
@@ -900,7 +900,7 @@ export class ProfilesService {
                             map(() => true),
                             defaultIfEmpty(true)
                         ))
-                )).pipe(
+                ))).pipe(
                     tap((resultAndException) => {
                         this.logger.info({
                             message: 'Profile Delete Transaction is completed. Trying to validate delete reuslts',

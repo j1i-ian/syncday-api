@@ -87,9 +87,9 @@ export class TeamService {
 
         const patchedQueryBuilder = this.__getTeamOptionQuery(option, userId, teamQueryBuilder);
 
-        return from(
+        return defer(() => from(
             patchedQueryBuilder.getMany()
-        );
+        ));
     }
 
     get(
@@ -104,13 +104,13 @@ export class TeamService {
 
         patchedQueryBuilder.andWhere('team.id = :teamId', { teamId });
 
-        return from(
-            defer(() => patchedQueryBuilder.getOneOrFail())
+        return defer(() => from(
+            patchedQueryBuilder.getOneOrFail())
         );
     }
 
     findByWorkspace(teamWorkspace: string): Observable<Team> {
-        return from(
+        return defer(() => from(
             this.teamRepository.findOneOrFail({
                 where: {
                     teamSetting: {
@@ -127,7 +127,7 @@ export class TeamService {
                     }
                 }
             })
-        );
+        ));
     }
 
     /**
@@ -151,11 +151,11 @@ export class TeamService {
         ownerUserId: number
     ): Observable<Team> {
 
-        const checkAlreadyUsedWorkspaceIn$ = from(
+        const checkAlreadyUsedWorkspaceIn$ = defer(() => from(
             this.teamSettingService.fetchTeamWorkspaceStatus(
                 newTeamSetting.workspace
             )
-        ).pipe(
+        )).pipe(
             tap((isAlreadyUsedIn) => {
                 if (isAlreadyUsedIn) {
                     throw new AlreadyUsedInWorkspace();
@@ -358,12 +358,12 @@ export class TeamService {
                 const hostName = createdTeam.name;
                 const invitedNewUsers = this.utilService.filterInvitedNewUsers(teamMembers, searchedUsers);
 
-                const signedUpUserInvitationNotifications$ = from(this.notificationsService.sendTeamInvitation(
+                const signedUpUserInvitationNotifications$ = defer(() => from(this.notificationsService.sendTeamInvitation(
                     createdTeam.name,
                     hostName,
                     searchedUsers as InvitedNewTeamMember[],
                     true
-                ));
+                )));
 
                 const saveInvitedNewTeamMember$ = of(invitedNewUsers.length > 0)
                     .pipe(
@@ -377,12 +377,12 @@ export class TeamService {
                         defaultIfEmpty(true)
                     );
 
-                const unsignedUserInvitationNotifications$ = from(this.notificationsService.sendTeamInvitation(
+                const unsignedUserInvitationNotifications$ = defer(() => from(this.notificationsService.sendTeamInvitation(
                     createdTeam.name,
                     hostName,
                     invitedNewUsers,
                     false
-                ));
+                )));
 
                 return saveInvitedNewTeamMember$
                     .pipe(
@@ -426,7 +426,7 @@ export class TeamService {
         teamId: number,
         patchTeamRequestDto: Pick<Team, 'name' | 'logo'>
     ): Observable<boolean> {
-        return from(
+        return defer(() => from(
             this.teamRepository.update(
                 { id: teamId },
                 {
@@ -434,7 +434,7 @@ export class TeamService {
                     logo: patchTeamRequestDto.logo
                 }
             )
-        ).pipe(
+        )).pipe(
             map((updateResult) => !!(updateResult &&
                 updateResult.affected &&
                 updateResult.affected > 0))
@@ -455,7 +455,7 @@ export class TeamService {
                 }
             })
         );
-        const validateInvitations$ = from(this.profilesService.searchInvitations(teamUUID))
+        const validateInvitations$ = this.profilesService.searchInvitations(teamUUID)
             .pipe(
                 map((invitations) => invitations.length > 0),
                 tap((hasInvitations) => {
@@ -464,7 +464,7 @@ export class TeamService {
                     }
                 }));
 
-        const team$ = from(defer(() => this.teamRepository.findOneByOrFail({ id: teamId })));
+        const team$ = defer(() => from(this.teamRepository.findOneByOrFail({ id: teamId })));
 
         const refundParams$ = this.ordersService.fetch({
             teamId,
@@ -542,7 +542,7 @@ export class TeamService {
                     );
             }),
             mergeMap((exception) =>
-                from(this.datasource.transaction((transactionManager) =>
+                defer(() => from(this.datasource.transaction((transactionManager) =>
                     firstValueFrom(
                         concat(
                             this.teamSettingService._delete(
@@ -568,7 +568,7 @@ export class TeamService {
                             defaultIfEmpty(true)
                         )
                     )
-                )).pipe(
+                ))).pipe(
                     tap(() => {
                         if (exception instanceof BootpayException) {
                             throw exception;

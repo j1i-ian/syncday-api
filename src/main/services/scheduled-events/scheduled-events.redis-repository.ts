@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cluster } from 'ioredis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Observable, from, map } from 'rxjs';
+import { Observable, defer, from, map } from 'rxjs';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { ScheduleBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
@@ -19,7 +19,7 @@ export class ScheduledEventsRedisRepository {
     getScheduleBody(scheduleUUID: string): Observable<ScheduleBody> {
         const scheduleBodyKey = this.syncdayRedisService._getScheduleBodyKey(scheduleUUID);
 
-        return from(this.cluster.get(scheduleBodyKey))
+        return defer(() => from(this.cluster.get(scheduleBodyKey)))
             .pipe(
                 map(
                     (scheduleBodyJson: string | null) => {
@@ -51,7 +51,7 @@ export class ScheduledEventsRedisRepository {
     }
 
     save(scheduleUUID: string, scheduleBody: ScheduleBody): Observable<ScheduleBody> {
-        return from(this.set(scheduleUUID, scheduleBody))
+        return defer(() => from(this.set(scheduleUUID, scheduleBody)))
             .pipe(
                 map((createSuccess) => {
                     if (!createSuccess) {

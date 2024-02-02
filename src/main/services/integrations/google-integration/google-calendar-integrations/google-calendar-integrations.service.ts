@@ -2,7 +2,7 @@
 import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsWhere, In, MoreThan, Not, Repository } from 'typeorm';
-import { Observable, firstValueFrom, from } from 'rxjs';
+import { Observable, defer, firstValueFrom, from } from 'rxjs';
 import { Auth, calendar_v3 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -216,7 +216,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             message: 'find one google calendar integration'
         });
 
-        return from(
+        return defer(() => from(
             this.googleCalendarIntegrationRepository.findOne({
                 relations: [
                     'googleIntegration',
@@ -228,7 +228,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                 ],
                 where: options
             })
-        );
+        ));
     }
 
     patch(

@@ -571,7 +571,7 @@ export class TestIntegrationUtil {
     setNewFakeUserEmail(
         withGoogleProfileSetting = false,
         newFakeUserEmail = faker.internet.email(faker.name.fullName())
-    ): User {
+    ): User & { email: string } {
 
         const fakeUser = this.getFakeUser();
 
@@ -581,7 +581,7 @@ export class TestIntegrationUtil {
             this.setNewFakerGoogleUserEmail(newFakeUserEmail);
         }
 
-        return fakeUser;
+        return fakeUser as User & { email: string };
     }
 
     setNewFakerGoogleUserEmail(newFakeUserEmail: string): void {

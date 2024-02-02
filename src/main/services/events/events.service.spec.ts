@@ -208,7 +208,7 @@ describe('EventsService', () => {
 
             validatorStub.validate.resolves();
             eventRepositoryStub.findOneOrFail.resolves(eventStub);
-            eventRedisRepositoryStub.getInviteeQuestions.returns(from(inviteeStubs));
+            eventRedisRepositoryStub.getInviteeQuestions.returns(of(inviteeStubs));
             eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
             eventRedisRepositoryStub.getEventSetting.returns(of(eventSettingMock));
 

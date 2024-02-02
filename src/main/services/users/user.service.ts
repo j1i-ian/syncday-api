@@ -260,13 +260,13 @@ export class UserService {
                 message: 'Create user by email'
             });
 
-            createUser$ = from(
+            createUser$ = defer(() => from(
                 this._createUserWithVerificationByEmail(
                     emailOrIntegrationVendorOrPhone,
                     verificationCodeOrOAuth2UserProfileOrPlainPassword as string,
                     timezoneOrName
                 )
-            );
+            ));
         } else {
 
             this.logger.info({
@@ -348,7 +348,7 @@ export class UserService {
             createdTeam
         } = await this.datasource.transaction((transactionManager) =>
             firstValueFrom(
-                from(defer(() =>
+                defer(() => from(
                     this._createUser(
                         transactionManager,
                         newUser,
@@ -426,7 +426,7 @@ export class UserService {
         language: Language
     ): Observable<CreatedUserTeamProfile> {
 
-        const isVerifiedPhoneNumber$ = from(defer(() => this.syncdayRedisService.getPhoneVerificationStatus(phone, uuid))).pipe(
+        const isVerifiedPhoneNumber$ = defer(() => from(this.syncdayRedisService.getPhoneVerificationStatus(phone, uuid))).pipe(
             tap((isVerifiedPhoneNumber) => {
                 if (!isVerifiedPhoneNumber) {
                     throw new PhoneVertificationFailException();
@@ -442,8 +442,8 @@ export class UserService {
         const defaultAvailability = this.utilService.getDefaultAvailability(language, timezone);
 
         return isVerifiedPhoneNumber$.pipe(
-            mergeMap(() => from(defer(() => this.datasource.transaction((transactionManager) =>
-                firstValueFrom(from(
+            mergeMap(() => defer(() => from(this.datasource.transaction((transactionManager) =>
+                firstValueFrom(defer(() => from(
                     this._createUser(
                         transactionManager,
                         newUser,
@@ -456,7 +456,7 @@ export class UserService {
                             uuidWorkspace: true
                         }
                     )
-                ).pipe(
+                )).pipe(
                     concatMap((createUserTeamProfile) =>
                         this.profilesService._createInvitedProfiles(
                             transactionManager,

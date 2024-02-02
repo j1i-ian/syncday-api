@@ -1,4 +1,4 @@
-import { Observable, forkJoin, from, map, mergeMap } from 'rxjs';
+import { Observable, defer, forkJoin, from, map, mergeMap } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
 import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
@@ -40,7 +40,9 @@ export class EventsRedisRepository {
             readPipeline.get(_eventSettingKey);
         });
 
-        return from(readPipeline.exec() as Promise<Array<[unknown, InviteeQuestion[] | NotificationInfo | EventSetting]>>)
+        return defer(() => from(
+            readPipeline.exec() as Promise<Array<[unknown, InviteeQuestion[] | NotificationInfo | EventSetting]>>
+        ))
             .pipe(
                 map((_results) => eventDetailUUIDs.reduce((eventDetailsRecord, _eventDetailUUID) => {
                     const [, _inviteeQuestions] = _results.shift() as [unknown, string];
@@ -65,7 +67,7 @@ export class EventsRedisRepository {
     getEventLinkStatus(workspace: string, link: string): Observable<boolean> {
         const eventLinkStatusKey = this.syncdayRedisService.getEventLinkStatusKey(workspace, link);
 
-        return from(this.cluster.get(eventLinkStatusKey)).pipe(
+        return defer(() => from(this.cluster.get(eventLinkStatusKey))).pipe(
             map((result) => {
                 const isValidString = !!result && result !== '';
                 const _ensuredResult = isValidString ? JSON.parse(result) as boolean: false;
@@ -77,7 +79,9 @@ export class EventsRedisRepository {
     getInviteeQuestions(eventDetailUUID: string): Observable<InviteeQuestion[]> {
         const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID);
 
-        return from(this.cluster.get(inviteeQuestionKey)).pipe(
+        return defer(() => from(
+            this.cluster.get(inviteeQuestionKey)
+        )).pipe(
             map((result) => {
                 const isValidString = !!result && result !== '';
                 const _ensuredInviteeQuestions = isValidString ? JSON.parse(result) as InviteeQuestion[] : [];
@@ -89,7 +93,9 @@ export class EventsRedisRepository {
     getNotificationInfo(eventDetailUUID: string): Observable<NotificationInfo> {
         const notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID);
 
-        return from(this.cluster.get(notificationInfoKey)).pipe(
+        return defer(() => from(
+            this.cluster.get(notificationInfoKey)
+        )).pipe(
             map((result) => {
                 const isValidString = !!result && result !== '';
                 const _ensuredNotificationInfo = isValidString ? JSON.parse(result) as NotificationInfo : {};
@@ -101,7 +107,9 @@ export class EventsRedisRepository {
     getEventSetting(eventDetailUUID: string): Observable<EventSetting> {
         const eventSettingKey = this.syncdayRedisService.getEventSettingKey(eventDetailUUID);
 
-        return from(this.cluster.get(eventSettingKey)).pipe(
+        return defer(() => from(
+            this.cluster.get(eventSettingKey)
+        )).pipe(
             map((result) => {
                 const isValidString = !!result && result !== '';
                 const _ensuredEventSetting = isValidString ? JSON.parse(result) : {};

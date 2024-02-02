@@ -112,12 +112,12 @@ export class PaymentsService {
         isPartialCancelation: boolean
     ): Observable<boolean> {
 
-        return from(defer(() => this.paymentRedisRepository.getPGPaymentResult(relatedOrder.uuid)))
+        return defer(() => from(this.paymentRedisRepository.getPGPaymentResult(relatedOrder.uuid)))
             .pipe(
                 filter((pgPaymentResult) => pgPaymentResult.status !== BootpayPGPaymentStatus.CANCELLED),
                 combineLatestWith(of(new BootpayService())),
                 mergeMap(([pgPaymentResult, bootpayService]) =>
-                    from(bootpayService.init(this.bootpayConfiguration))
+                    defer(() => from(bootpayService.init(this.bootpayConfiguration)))
                         .pipe(
                             concatMap(() => bootpayService.refund(
                                 relatedOrder.uuid,
