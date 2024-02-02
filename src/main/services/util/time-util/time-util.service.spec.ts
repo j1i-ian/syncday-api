@@ -3,11 +3,13 @@ import * as icsModule from 'ics';
 import { BadRequestException } from '@nestjs/common';
 import { QuestionInputType } from '@interfaces/events/invitee/question-input-type';
 import { Weekday } from '@interfaces/availabilities/weekday.enum';
-import { AvailableTime } from '@interfaces/availabilities/available-time';
+import { TimeSlotCompare } from '@interfaces/scheduled-events/time-slot-compare.enum';
 import { Host } from '@entity/scheduled-events/host.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { Availability } from '@entity/availability/availability.entity';
+import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { TimeUtilService } from './time-util.service';
 
@@ -40,172 +42,579 @@ describe('TimeUtilService', () => {
         expect(service).ok;
     });
 
-    [
-        {
-            description: 'should be equal to the New York localized date with the input date in New York Time',
-            hostTimezone: 'America/New_York',
-            hostAvailableStartTimeString: '10:00',
-            availableStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
-            expectedLocalizedStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
-            inviteeRequestTime: new Date('2023-07-13 13:00:00 GMT-04:00'),
-            overrideOptions: null
-        },
-        {
-            description: 'should be equal to the New York localized date with the input date in New York Time for date override calculation',
-            hostTimezone: 'America/New_York',
-            hostAvailableStartTimeString: '10:00',
-            availableStartTime: new Date('2023-07-13T00:00:00'),
-            expectedLocalizedStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
-            inviteeRequestTime: new Date('2023-07-13 13:00:00 GMT-04:00'),
-            overrideOptions: {
-                day: 13
-            }
-        },
-        {
-            description: 'should be equal to the New York localized date with the input date in New York Time for date override calculation',
-            hostTimezone: 'Asia/Seoul',
-            hostAvailableStartTimeString: '13:00',
-            availableStartTime: new Date('2023-07-13T00:00:00'),
-            expectedLocalizedStartTime: new Date('2023-07-13 13:00:00 GMT+09:00'),
-            inviteeRequestTime: new Date('2023-07-13 18:00:00 GMT-04:00'),
-            overrideOptions: {
-                day: 13
-            }
-        }
-    ].forEach(function({
-        description,
-        hostTimezone,
-        hostAvailableStartTimeString,
-        availableStartTime,
-        expectedLocalizedStartTime,
-        inviteeRequestTime,
-        overrideOptions
-    }) {
+    describe('intersectAvailability Test', () => {
 
-        it(description, () => {
+        let serviceSandbox: sinon.SinonSandbox;
 
-            const localizedDateTime = service.localizeDateTime(
-                availableStartTime,
-                hostTimezone,
-                hostAvailableStartTimeString,
-                overrideOptions
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            serviceSandbox.restore();
+        });
+
+        it('should be calculated the intersect availablility', () => {
+            const availabilityA = stubOne(Availability, {
+                timezone: 'Asia/Seoul'
+            });
+            const availabilityB = stubOne(Availability, {
+                timezone: 'Asia/Seoul'
+            });
+
+            const availableTimesStub = stub(AvailableTime);
+
+            serviceSandbox.stub(service, 'intersectAvailableTimes').returns(availableTimesStub);
+            serviceSandbox.stub(service, 'intersectOverridedAvailableTimes').returns([]);
+
+            const actual = service.intersectAvailability(availabilityA, availabilityB);
+
+            expect(actual).ok;
+        });
+    });
+
+    describe('Intersect overrided available times', () => {
+
+        [
+            {
+                description: 'should be calculated intersect overrided available times',
+                overridedAvailableTimesA: [
+                    {
+                        targetDate: new Date('2024-02-14T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '09:00',
+                                endTime: '17:00'
+                            }
+                        ]
+                    }
+                ] as OverridedAvailabilityTime[],
+                overridedAvailableTimesB: [
+                    {
+                        targetDate: new Date('2024-02-14T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '08:00',
+                                endTime: '19:00'
+                            }
+                        ]
+                    }
+                ] as OverridedAvailabilityTime[],
+                expected: [
+                    {
+                        targetDate: new Date('2024-02-14T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '09:00',
+                                endTime: '17:00'
+                            }
+                        ]
+                    }
+                ] as OverridedAvailabilityTime[]
+            },
+            {
+                description: 'should be calculated intersect overrided available times without unavailable overridings',
+                overridedAvailableTimesA: [
+                    {
+                        targetDate: new Date('2024-02-14T00:00:00.000Z'),
+                        timeRanges: []
+                    },
+                    {
+                        targetDate: new Date('2024-02-16T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '09:00',
+                                endTime: '17:00'
+                            }
+                        ]
+                    }
+                ] as OverridedAvailabilityTime[],
+                overridedAvailableTimesB: [
+                    {
+                        targetDate: new Date('2024-02-14T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '10:00',
+                                endTime: '19:00'
+                            }
+                        ]
+                    },
+                    {
+                        targetDate: new Date('2024-02-16T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '08:00',
+                                endTime: '19:00'
+                            }
+                        ]
+                    }
+                ] as OverridedAvailabilityTime[],
+                expected: [
+                    {
+                        targetDate: new Date('2024-02-16T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '09:00',
+                                endTime: '17:00'
+                            }
+                        ]
+                    }
+                ] as OverridedAvailabilityTime[]
+            },
+            {
+                description: 'should be calculated intersect overrided available times',
+                overridedAvailableTimesA: [
+                    {
+                        targetDate: new Date('2024-02-15T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '09:00',
+                                endTime: '17:00'
+                            }
+                        ]
+                    },
+                    {
+                        targetDate: new Date('2024-02-16T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '09:00',
+                                endTime: '17:00'
+                            }
+                        ]
+                    }
+                ] as OverridedAvailabilityTime[],
+                overridedAvailableTimesB: [
+                    {
+                        targetDate: new Date('2024-02-15T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '08:00',
+                                endTime: '19:00'
+                            }
+                        ]
+                    },
+                    {
+                        targetDate: new Date('2024-02-16T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '00:00',
+                                endTime: '02:00'
+                            },
+                            {
+                                startTime: '13:00',
+                                endTime: '17:30'
+                            },
+                            {
+                                startTime: '18:00',
+                                endTime: '19:00'
+                            }
+                        ]
+                    },
+                    {
+                        targetDate: new Date('2024-02-18T00:00:00.000Z'),
+                        timeRanges: []
+                    }
+                ] as OverridedAvailabilityTime[],
+                expected: [
+                    {
+                        targetDate: new Date('2024-02-15T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '09:00',
+                                endTime: '17:00'
+                            }
+                        ]
+                    },
+                    {
+                        targetDate: new Date('2024-02-16T00:00:00.000Z'),
+                        timeRanges: [
+                            {
+                                startTime: '13:00',
+                                endTime: '17:00'
+                            }
+                        ]
+                    }
+                ] as OverridedAvailabilityTime[]
+            }
+        ].forEach(function({
+            description,
+            overridedAvailableTimesA,
+            overridedAvailableTimesB,
+            expected
+        }) {
+            it(description, () => {
+
+                const actual = service.intersectOverridedAvailableTimes(
+                    overridedAvailableTimesA,
+                    overridedAvailableTimesB
+                );
+
+                expect(actual).to.deep.equals(expected);
+            });
+        });
+    });
+
+    describe('Intersect Available Times', () => {
+        [
+            {
+                description: 'should be calculated intersect available times',
+                availableTimesA: [
+                    {
+                        day: Weekday.MONDAY,
+                        timeRanges: [
+                            { startTime: '17:00', endTime: '20:00' }
+                        ]
+                    },
+                    {
+                        day: Weekday.TUESDAY,
+                        timeRanges: [
+                            { startTime: '15:00', endTime: '20:00' }
+                        ]
+                    },
+                    {
+                        day: Weekday.WEDNESDAY,
+                        timeRanges: [
+                            { startTime: '10:00', endTime: '15:00' }
+                        ]
+                    }
+                ] as AvailableTime[],
+                availableTimesB: [
+                    {
+                        day: Weekday.SUNDAY,
+                        timeRanges: [
+                            { startTime: '00:00', endTime: '02:00' }
+                        ]
+                    },
+                    {
+                        day: Weekday.MONDAY,
+                        timeRanges: [
+                            { startTime: '15:00', endTime: '18:00' }
+                        ]
+                    },
+                    {
+                        day: Weekday.WEDNESDAY,
+                        timeRanges: [
+                            { startTime: '10:00', endTime: '12:00' }
+                        ]
+                    }
+                ] as AvailableTime[],
+                expectedIntersectAvailableTimes:  [
+                    {
+                        day: Weekday.MONDAY,
+                        timeRanges: [
+                            { startTime: '17:00', endTime: '18:00' }
+                        ]
+                    },
+                    {
+                        day: Weekday.WEDNESDAY,
+                        timeRanges: [
+                            { startTime: '10:00', endTime: '12:00' }
+                        ]
+                    }
+                ]as AvailableTime[]
+            }
+        ].forEach(function({
+            description,
+            availableTimesA,
+            availableTimesB,
+            expectedIntersectAvailableTimes
+        }) {
+            it(description, () => {
+                const actual = service.intersectAvailableTimes(availableTimesA, availableTimesB);
+                expect(actual).deep.equal(expectedIntersectAvailableTimes);
+            });
+        });
+    });
+
+    describe('intersectTimeRanges Test', () => {
+        [
+            {
+                description: 'should be calculated intersect time ranges',
+                timeRangesA: [
+                    { startTime: '17:00', endTime: '18:00' }
+                ] as TimeRange[],
+                timeRangesB: [
+                    { startTime: '15:00', endTime: '20:00' }
+                ] as TimeRange[],
+                expectedIntersectTimeRanges:  [
+                    { startTime: '17:00', endTime: '18:00' }
+                ] as TimeRange[]
+            },
+            {
+                description: 'should be calculated intersect time ranges',
+                timeRangesA: [
+                    { startTime: '15:00', endTime: '20:00' }
+                ] as TimeRange[],
+                timeRangesB: [
+                    { startTime: '17:00', endTime: '18:00' }
+                ] as TimeRange[],
+                expectedIntersectTimeRanges:  [
+                    { startTime: '17:00', endTime: '18:00' }
+                ] as TimeRange[]
+            },
+            {
+                description: 'should be calculated intersect time ranges: empty slot should be removed',
+                timeRangesA: [
+                    { startTime: '10:00', endTime: '19:30' }
+                ] as TimeRange[],
+                timeRangesB: [
+                    { startTime: '10:30', endTime: '12:30' },
+                    { startTime: '13:30', endTime: '18:00' },
+                    { startTime: '19:30', endTime: '20:00' }
+                ] as TimeRange[],
+                expectedIntersectTimeRanges:  [
+                    { startTime: '10:30', endTime: '12:30' },
+                    { startTime: '13:30', endTime: '18:00' }
+                ] as TimeRange[]
+            },
+            {
+                description: 'should be calculated intersect time ranges: empty slot should be removed',
+                timeRangesA: [
+                    { startTime: '08:00', endTime: '11:30' },
+                    { startTime: '12:30', endTime: '21:30' }
+                ] as TimeRange[],
+                timeRangesB: [
+                    { startTime: '08:30', endTime: '12:30' },
+                    { startTime: '13:30', endTime: '15:00' },
+                    { startTime: '16:30', endTime: '18:00' },
+                    { startTime: '19:30', endTime: '23:00' }
+                ] as TimeRange[],
+                expectedIntersectTimeRanges:  [
+                    { startTime: '08:30', endTime: '11:30' },
+                    { startTime: '13:30', endTime: '15:00' },
+                    { startTime: '16:30', endTime: '18:00' },
+                    { startTime: '19:30', endTime: '21:30' }
+                ] as TimeRange[]
+            }
+        ].forEach(function({
+            description,
+            timeRangesA,
+            timeRangesB,
+            expectedIntersectTimeRanges
+        }) {
+            it(description, () => {
+                const actualIntersectTimeRanges = service.intersectTimeRanges(timeRangesA, timeRangesB);
+
+                expect(actualIntersectTimeRanges).to.deep.equal(expectedIntersectTimeRanges);
+            });
+        });
+    });
+
+    describe('Test compareTimeSlot', () => {
+
+        [
+            {
+                description: 'should return the correct minimum time slot',
+                timeSlotA: '10:30',
+                timeSlotB: '11:15',
+                timeSlotCompare: TimeSlotCompare.MIN
+            },
+            {
+                description: 'should return the correct maximum time slot',
+                timeSlotA: '13:45',
+                timeSlotB: '12:30',
+                timeSlotCompare: TimeSlotCompare.MAX
+            }
+        ].forEach(function({
+            description,
+            timeSlotA,
+            timeSlotB,
+            timeSlotCompare
+        }) {
+            it(description, () => {
+
+                const result = service.compareTimeSlot(timeSlotA, timeSlotB, timeSlotCompare);
+
+                expect(result).eqls(timeSlotA);
+            });
+        });
+
+        it('should handle equal hours correctly', () => {
+            const timeSlotA = '09:00';
+            const timeSlotB = '09:30';
+            const minimum: TimeSlotCompare.MIN = 0;
+            const maximum: TimeSlotCompare.MAX = 1;
+
+            const resultMin = service.compareTimeSlot(timeSlotA, timeSlotB, minimum);
+            const resultMax = service.compareTimeSlot(timeSlotA, timeSlotB, maximum);
+
+            expect(resultMin).eqls(timeSlotA);
+            expect(resultMax).eqls(timeSlotB);
+        });
+    });
+
+    describe('localizeDateTime Test', () => {
+
+        [
+            {
+                description: 'should be equal to the New York localized date with the input date in New York Time',
+                hostTimezone: 'America/New_York',
+                hostAvailableStartTimeString: '10:00',
+                availableStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
+                expectedLocalizedStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
+                inviteeRequestTime: new Date('2023-07-13 13:00:00 GMT-04:00'),
+                overrideOptions: null
+            },
+            {
+                description: 'should be equal to the New York localized date with the input date in New York Time for date override calculation',
+                hostTimezone: 'America/New_York',
+                hostAvailableStartTimeString: '10:00',
+                availableStartTime: new Date('2023-07-13T00:00:00'),
+                expectedLocalizedStartTime: new Date('2023-07-13 10:00:00 GMT-04:00'),
+                inviteeRequestTime: new Date('2023-07-13 13:00:00 GMT-04:00'),
+                overrideOptions: {
+                    day: 13
+                }
+            },
+            {
+                description: 'should be equal to the New York localized date with the input date in New York Time for date override calculation',
+                hostTimezone: 'Asia/Seoul',
+                hostAvailableStartTimeString: '13:00',
+                availableStartTime: new Date('2023-07-13T00:00:00'),
+                expectedLocalizedStartTime: new Date('2023-07-13 13:00:00 GMT+09:00'),
+                inviteeRequestTime: new Date('2023-07-13 18:00:00 GMT-04:00'),
+                overrideOptions: {
+                    day: 13
+                }
+            }
+        ].forEach(function({
+            description,
+            hostTimezone,
+            hostAvailableStartTimeString,
+            availableStartTime,
+            expectedLocalizedStartTime,
+            inviteeRequestTime,
+            overrideOptions
+        }) {
+
+            it(description, () => {
+
+                const localizedDateTime = service.localizeDateTime(
+                    availableStartTime,
+                    hostTimezone,
+                    hostAvailableStartTimeString,
+                    overrideOptions
+                );
+
+                const localizedDateTimestamp = localizedDateTime.getTime();
+                expect(localizedDateTimestamp).equals(expectedLocalizedStartTime.getTime());
+
+                const isInviteeRequestTimeInOverrideRange = localizedDateTime.getTime() < inviteeRequestTime.getTime();
+                expect(isInviteeRequestTimeInOverrideRange).true;
+            });
+        });
+    });
+
+    describe('ICS String convert Test', () => {
+
+        it('should be converted to ics string', () => {
+            const uuidMock = 'AABBCCDDEEFF';
+            const organizerEmailMock = TestMockUtil.faker.internet.email();
+            const scheduledEventMock = stubOne(ScheduledEvent, {
+                scheduledTime: {
+                    startTimestamp: new Date(),
+                    endTimestamp: new Date()
+                },
+                host: {
+                    name: 'hostName'
+                } as Host,
+                inviteeAnswers: [
+                    {
+                        name: 'sampleInviteeName',
+                        inputType: QuestionInputType.TEXT,
+                        required: true
+                    }
+                ],
+                scheduledEventNotifications: []
+            });
+
+            const icsStringStub = 'sampleICSString';
+
+            icsModuleCreateEventStub.returns({
+                error: null,
+                value: icsStringStub
+            });
+
+            const convertedICSString = service.convertToICSString(
+                uuidMock,
+                organizerEmailMock,
+                scheduledEventMock
             );
 
-            const localizedDateTimestamp = localizedDateTime.getTime();
-            expect(localizedDateTimestamp).equals(expectedLocalizedStartTime.getTime());
-
-            const isInviteeRequestTimeInOverrideRange = localizedDateTime.getTime() < inviteeRequestTime.getTime();
-            expect(isInviteeRequestTimeInOverrideRange).true;
-        });
-    });
-
-    it('should be converted to ics string', () => {
-        const uuidMock = 'AABBCCDDEEFF';
-        const organizerEmailMock = TestMockUtil.faker.internet.email();
-        const scheduledEventMock = stubOne(ScheduledEvent, {
-            scheduledTime: {
-                startTimestamp: new Date(),
-                endTimestamp: new Date()
-            },
-            host: {
-                name: 'hostName'
-            } as Host,
-            inviteeAnswers: [
-                {
-                    name: 'sampleInviteeName',
-                    inputType: QuestionInputType.TEXT,
-                    required: true
-                }
-            ],
-            scheduledEventNotifications: []
+            expect(convertedICSString).ok;
         });
 
-        const icsStringStub = 'sampleICSString';
+        it('should be converted to ics string without METHOD: string for RFC ', () => {
+            const uuidMock = 'AABBCCDDEEFF';
+            const organizerEmailMock = TestMockUtil.faker.internet.email();
+            const scheduledEventMock = stubOne(ScheduledEvent, {
+                scheduledTime: {
+                    startTimestamp: new Date(),
+                    endTimestamp: new Date()
+                },
+                host: {
+                    name: 'hostName'
+                } as Host,
+                inviteeAnswers: [
+                    {
+                        name: 'sampleInviteeName',
+                        inputType: QuestionInputType.TEXT,
+                        required: true
+                    }
+                ],
+                scheduledEventNotifications: []
+            });
 
-        icsModuleCreateEventStub.returns({
-            error: null,
-            value: icsStringStub
+            const icsStringStub = 'sampleICSString.. METHOD:POST\r\n\r\n';
+            const expectedICSString = 'sampleICSString.. \r\n';
+
+            icsModuleCreateEventStub.returns({
+                error: null,
+                value: icsStringStub
+            });
+
+            const actualConvertedICSString = service.convertToICSString(
+                uuidMock,
+                organizerEmailMock,
+                scheduledEventMock
+            );
+
+            expect(actualConvertedICSString).ok;
+            expect(actualConvertedICSString).equals(expectedICSString);
         });
 
-        const convertedICSString = service.convertToICSString(
-            uuidMock,
-            organizerEmailMock,
-            scheduledEventMock
-        );
+        it('should be thrown an error for ics converting error', () => {
+            const uuidMock = 'AABBCCDDEEFF';
+            const organizerEmailMock = TestMockUtil.faker.internet.email();
+            const scheduledEventMock = stubOne(ScheduledEvent, {
+                scheduledTime: {
+                    startTimestamp: new Date(),
+                    endTimestamp: new Date()
+                },
+                host: {
+                    name: 'hostName'
+                } as Host,
+                inviteeAnswers: [
+                    {
+                        name: 'sampleInviteeName',
+                        inputType: QuestionInputType.TEXT,
+                        required: true
+                    }
+                ],
+                scheduledEventNotifications: []
+            });
 
-        expect(convertedICSString).ok;
-    });
+            icsModuleCreateEventStub.returns({
+                error: new Error(),
+                value: null
+            });
 
-    it('should be converted to ics string without METHOD: string for RFC ', () => {
-        const uuidMock = 'AABBCCDDEEFF';
-        const organizerEmailMock = TestMockUtil.faker.internet.email();
-        const scheduledEventMock = stubOne(ScheduledEvent, {
-            scheduledTime: {
-                startTimestamp: new Date(),
-                endTimestamp: new Date()
-            },
-            host: {
-                name: 'hostName'
-            } as Host,
-            inviteeAnswers: [
-                {
-                    name: 'sampleInviteeName',
-                    inputType: QuestionInputType.TEXT,
-                    required: true
-                }
-            ],
-            scheduledEventNotifications: []
+            expect(() => service.convertToICSString(
+                uuidMock,
+                organizerEmailMock,
+                scheduledEventMock
+            )).throws(BadRequestException);
         });
-
-        const icsStringStub = 'sampleICSString.. METHOD:POST\r\n\r\n';
-        const expectedICSString = 'sampleICSString.. \r\n';
-
-        icsModuleCreateEventStub.returns({
-            error: null,
-            value: icsStringStub
-        });
-
-        const actualConvertedICSString = service.convertToICSString(
-            uuidMock,
-            organizerEmailMock,
-            scheduledEventMock
-        );
-
-        expect(actualConvertedICSString).ok;
-        expect(actualConvertedICSString).equals(expectedICSString);
-    });
-
-    it('should be thrown an error for ics converting error', () => {
-        const uuidMock = 'AABBCCDDEEFF';
-        const organizerEmailMock = TestMockUtil.faker.internet.email();
-        const scheduledEventMock = stubOne(ScheduledEvent, {
-            scheduledTime: {
-                startTimestamp: new Date(),
-                endTimestamp: new Date()
-            },
-            host: {
-                name: 'hostName'
-            } as Host,
-            inviteeAnswers: [
-                {
-                    name: 'sampleInviteeName',
-                    inputType: QuestionInputType.TEXT,
-                    required: true
-                }
-            ],
-            scheduledEventNotifications: []
-        });
-
-        icsModuleCreateEventStub.returns({
-            error: new Error(),
-            value: null
-        });
-
-        expect(() => service.convertToICSString(
-            uuidMock,
-            organizerEmailMock,
-            scheduledEventMock
-        )).throws(BadRequestException);
     });
 
     it('should be got a timezone gmt string', () => {

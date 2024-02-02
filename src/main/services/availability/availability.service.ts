@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
-import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
+import { Observable, firstValueFrom, forkJoin, from, map, mergeMap, toArray } from 'rxjs';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Availability } from '@core/entities/availability/availability.entity';
@@ -92,13 +92,22 @@ export class AvailabilityService {
         );
     }
 
-    fetchDetailByTeamWorkspaceAndLink(
+    searchByTeamWorkspaceAndLink(
         teamWorkspace: string,
         eventLink: string
-    ): Observable<Availability> {
+    ): Observable<Availability[]> {
         return from(
-            this.availabilityRepository.findOneOrFail({
-                relations: ['events', 'profile.team', 'profile.team.teamSetting'],
+            this.availabilityRepository.find({
+                relations: {
+                    profile: {
+                        team: {
+                            teamSetting: true
+                        }
+                    },
+                    eventProfile: {
+                        event: true
+                    }
+                },
                 where: {
                     profile: {
                         team: {
@@ -115,6 +124,7 @@ export class AvailabilityService {
                 }
             })
         ).pipe(
+            mergeMap((availabilities) => from(availabilities)),
             mergeMap((availability) =>
                 from(
                     this.availabilityRedisRepository.getAvailabilityBody(
@@ -129,7 +139,8 @@ export class AvailabilityService {
                         return availability;
                     })
                 )
-            )
+            ),
+            toArray()
         );
     }
 

@@ -5,7 +5,6 @@ import { firstValueFrom, of } from 'rxjs';
 import { InternalServerErrorException } from '@nestjs/common';
 import { Availability } from '@core/entities/availability/availability.entity';
 import { User } from '@core/entities/users/user.entity';
-import { Role } from '@interfaces/profiles/role.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsService } from '@services/events/events.service';
 import { Event } from '@entity/events/event.entity';
@@ -91,8 +90,6 @@ describe('AvailabilityService', () => {
             const availabilityBodyStubs =
                 testMockUtil.getAvailabilityBodyRecordMocks(profileStub.id, availabilities);
 
-            const roles = [Role.OWNER];
-
             availabilityRepositoryStub.find.resolves(availabilities);
             availabilityRedisRepositoryStub.getAvailabilityBodyRecord.resolves(
                 availabilityBodyStubs
@@ -102,7 +99,7 @@ describe('AvailabilityService', () => {
                 service.search({
                     profileId: profileStub.id,
                     profileUUID: profileStub.uuid
-                }, roles)
+                })
             );
 
             expect(list).ok;
@@ -123,13 +120,12 @@ describe('AvailabilityService', () => {
             availabilityRedisRepositoryStub.getAvailabilityBodyRecord.resolves(
                 availabilityBodyStubs
             );
-            const roles = [Role.MEMBER];
 
             const list = await firstValueFrom(
                 service.search({
                     profileId: profileStub.id,
                     profileUUID: profileStub.uuid
-                }, roles)
+                })
             );
 
             expect(list).ok;
@@ -165,11 +161,11 @@ describe('AvailabilityService', () => {
             });
             const availabilityBodyStub = testMockUtil.getAvailabilityBodyMock(availabilityStub);
 
-            availabilityRepositoryStub.findOneOrFail.resolves(availabilityStub);
+            availabilityRepositoryStub.find.resolves([availabilityStub]);
             availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyStub);
 
             const loadedAvailability = await firstValueFrom(
-                service.fetchDetailByTeamWorkspaceAndLink(
+                service.searchByTeamWorkspaceAndLink(
                     teamStub.workspace as string,
                     eventStub.link
                 )

@@ -338,7 +338,11 @@ describe('GlobalScheduledEventsService', () => {
 
                     const googleIntegrationServiceStub = serviceSandbox.createStubInstance(GoogleIntegrationsService);
 
-                    const availabilityMock = stubOne(Availability);
+                    const hostAvailabilityMock = stubOne(Availability);
+                    const hostAvailabilityBodyMock = testMockUtil.getAvailabilityBodyMock(hostAvailabilityMock);
+                    hostAvailabilityMock.availableTimes = hostAvailabilityBodyMock.availableTimes;
+                    hostAvailabilityMock.overrides = hostAvailabilityBodyMock.overrides;
+
                     const teamSettingMock = stubOne(TeamSetting);
                     const userSettingStub = stubOne(UserSetting);
                     const userMock = stubOne(User, {
@@ -349,7 +353,6 @@ describe('GlobalScheduledEventsService', () => {
                     const eventStub = getEventStub();
                     const scheduleStub = getScheduleStub();
 
-                    const availabilityBodyMock = testMockUtil.getAvailabilityBodyMock();
                     const createdCalendarEventMock = testMockUtil.getCreatedCalendarEventMock();
 
                     eventsServiceStub.findOneByTeamWorkspaceAndUUID.resolves(eventStub);
@@ -365,7 +368,6 @@ describe('GlobalScheduledEventsService', () => {
                     ]);
                     googleConferenceLinkIntegrationServiceStub.getIntegrationVendor.returns(IntegrationVendor.GOOGLE);
 
-                    availabilityRedisRepositoryStub.getAvailabilityBody.resolves(availabilityBodyMock);
                     utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
 
                     const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
@@ -402,7 +404,7 @@ describe('GlobalScheduledEventsService', () => {
                             teamMock,
                             userMock,
                             profileMock,
-                            availabilityMock
+                            hostAvailabilityMock
                         )
                     );
 
@@ -412,7 +414,6 @@ describe('GlobalScheduledEventsService', () => {
                     expect(integrationsServiceLocatorStub.getIntegrationFactory.called).true;
                     expect(integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.called).true;
                     expect(googleIntegrationServiceStub.findOne.called).true;
-                    expect(availabilityRedisRepositoryStub.getAvailabilityBody.called).true;
                     expect(utilServiceStub.getPatchedScheduledEvent.called).true;
                     expect(validateStub.called).true;
 

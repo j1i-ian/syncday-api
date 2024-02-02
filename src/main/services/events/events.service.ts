@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
+import { Observable, defer, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
@@ -112,7 +112,7 @@ export class EventsService {
     }
 
     findOneByTeamWorkspaceAndUUID(teamWorkspace: string, eventUUID: string): Observable<Event> {
-        return from(
+        return from(defer(() =>
             this.eventRepository.findOneOrFail({
                 relations: {
                     eventDetail: true,
@@ -134,7 +134,7 @@ export class EventsService {
                     }
                 }
             })
-        ).pipe(
+        )).pipe(
             mergeMap((loadedEvent) => {
                 const eventDetail = loadedEvent.eventDetail;
                 const eventDetailUUID = eventDetail.uuid;

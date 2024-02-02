@@ -1,11 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Attendee, DateArray, createEvent } from 'ics';
 import { TimezoneOffset } from '@core/interfaces/integrations/timezone-offset.interface';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { TimeSlotCompare } from '@interfaces/scheduled-events/time-slot-compare.enum';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
+import { Weekday } from '@entity/availability/weekday.enum';
+import { Availability } from '@entity/availability/availability.entity';
 
 type LocalizedDate = {
     [key in keyof Intl.DateTimeFormatOptions]: string;
@@ -13,6 +16,210 @@ type LocalizedDate = {
 
 @Injectable()
 export class TimeUtilService {
+
+    intersectAvailability(
+        availabilityA: Availability,
+        availabilityB: Availability
+    ): Availability {
+        const {
+            availableTimes: availableTimesA,
+            overrides: overridedAvailableTimesA,
+            timezone: timezoneA
+        } = availabilityA;
+        const {
+            availableTimes: availableTimesB,
+            overrides: overridedAvailableTimesB,
+            timezone: timezoneB
+        } = availabilityB;
+
+        if (timezoneA !== timezoneB) {
+            throw new InternalServerErrorException('Different timezone is not yet supported');
+        }
+
+        const intersectAvailableTimes = this.intersectAvailableTimes(
+            availableTimesA,
+            availableTimesB
+        );
+        const intersectOverridedAvailableTimes = this.intersectOverridedAvailableTimes(
+            overridedAvailableTimesA,
+            overridedAvailableTimesB
+        );
+
+        const intersectAvailability = new Availability({
+            availableTimes: intersectAvailableTimes,
+            overrides: intersectOverridedAvailableTimes
+        });
+
+        return intersectAvailability;
+    }
+
+    intersectOverridedAvailableTimes(
+        overridedAvailableTimesA: OverridedAvailabilityTime[],
+        overridedAvailableTimesB: OverridedAvailabilityTime[]
+    ): OverridedAvailabilityTime[] {
+
+        const intersectOverridedAvailableTimes: OverridedAvailabilityTime[] = [];
+
+        const availableTimeMapByTargetDate = new Map<string, {
+            a: TimeRange[];
+            b: TimeRange[];
+        }>();
+
+        for (const overridedAvailableTimeA of overridedAvailableTimesA) {
+            for (const overridedAvailableTimeB of overridedAvailableTimesB) {
+
+                const isSameDate = new Date(overridedAvailableTimeA.targetDate).toISOString() === new Date(overridedAvailableTimeB.targetDate).toISOString();
+                const isNotUnavailableSetting = overridedAvailableTimeA.timeRanges.length > 0 && overridedAvailableTimeB.timeRanges.length > 0;
+
+                if (isSameDate && isNotUnavailableSetting) {
+
+                    const targetDate = new Date(overridedAvailableTimeA.targetDate);
+                    const targetDateString = targetDate.toISOString();
+
+                    availableTimeMapByTargetDate.set(targetDateString, {
+                        a: overridedAvailableTimeA.timeRanges,
+                        b: overridedAvailableTimeB.timeRanges
+                    });
+                }
+            }
+        }
+
+        if (availableTimeMapByTargetDate.size !== 0) {
+            const interator = availableTimeMapByTargetDate.entries();
+
+            while (true) {
+                const { value, done } = interator.next();
+
+                if (done) {
+                    break;
+                }
+
+                const targetDateString = value[0] ;
+                const {
+                    a: timeRangesA,
+                    b: timeRangesB
+                } = value[1] as {
+                    a: TimeRange[];
+                    b: TimeRange[];
+                };
+
+                const intersectTimeRanges = this.intersectTimeRanges(
+                    timeRangesA,
+                    timeRangesB
+                );
+
+                if (intersectTimeRanges.length > 0) {
+                    intersectOverridedAvailableTimes.push({
+                        targetDate: new Date(targetDateString),
+                        timeRanges: intersectTimeRanges
+                    } as OverridedAvailabilityTime);
+                }
+            }
+        }
+
+        return intersectOverridedAvailableTimes;
+    }
+
+    intersectAvailableTimes(availableTimesA: AvailableTime[], availableTimesB: AvailableTime[]): AvailableTime[] {
+
+        const intersectAvailableTimes: AvailableTime[] = [];
+
+        const weekdays = Object.values(Weekday) as Weekday[];
+
+        for (const weekday of weekdays) {
+            const availableTimesAForWeekday = availableTimesA.find((availableTime) => availableTime.day === weekday);
+            const availableTimesBForWeekday = availableTimesB.find((availableTime) => availableTime.day === weekday);
+
+            if (availableTimesAForWeekday && availableTimesBForWeekday) {
+                const intersectTimeRanges = this.intersectTimeRanges(
+                    availableTimesAForWeekday.timeRanges,
+                    availableTimesBForWeekday.timeRanges
+                );
+
+                intersectAvailableTimes.push({
+                    day: weekday,
+                    timeRanges: intersectTimeRanges
+                });
+            }
+        }
+
+        return intersectAvailableTimes;
+    }
+
+    intersectTimeRanges(timeRangesA: TimeRange[], timeRangesB: TimeRange[]): TimeRange[] {
+        let pingA = 0;
+        let pingB = 0;
+
+        const intersectTimeRanges: TimeRange[] = [];
+
+        while (true) {
+
+            const timeRangeA = timeRangesA[pingA];
+            const timeRangeB = timeRangesB[pingB];
+
+            if (!timeRangeA || !timeRangeB) {
+                break;
+            } else {
+
+                const maximizedStartTime = this.compareTimeSlot(timeRangeA.startTime, timeRangeB.startTime, TimeSlotCompare.MAX);
+                const minimizedEndTime = this.compareTimeSlot(timeRangeA.endTime, timeRangeB.endTime, TimeSlotCompare.MIN);
+
+                const isSameTime = maximizedStartTime !== minimizedEndTime;
+                const linearedStartTimeOrNonLinearedEndTime = this.compareTimeSlot(maximizedStartTime, minimizedEndTime, TimeSlotCompare.MIN);
+
+                const isLinearDeployment = linearedStartTimeOrNonLinearedEndTime === maximizedStartTime;
+
+                if (isSameTime && isLinearDeployment) {
+
+                    intersectTimeRanges.push({
+                        startTime: maximizedStartTime,
+                        endTime: minimizedEndTime
+                    });
+                }
+
+                // update index
+                const isTimeRangeAEndTime = minimizedEndTime === timeRangeA.endTime;
+                if (isTimeRangeAEndTime) {
+                    pingA++;
+                } else {
+                    pingB++;
+                }
+            }
+        }
+
+        return intersectTimeRanges;
+    }
+
+    compareTimeSlot(
+        timeSlotStringA: string,
+        timeSlotStringB: string,
+        minimum = TimeSlotCompare.MIN
+    ): string {
+        const [ AHourString, AMinuteString ] = timeSlotStringA.split(':');
+        const [ BHourString, BMinuteString ] = timeSlotStringB.split(':');
+
+        const AHour = +AHourString;
+        const AMinute = +AMinuteString;
+
+        const BHour = +BHourString;
+        const BMinute = +BMinuteString;
+
+        let minTime = '';
+        let maxTime = '';
+
+        if (+AHour < +BHour) {
+            minTime = timeSlotStringA;
+            maxTime = timeSlotStringB;
+        } else if (AHour === BHour) {
+            minTime = AMinute > BMinute ? timeSlotStringB : timeSlotStringA;
+            maxTime = AMinute > BMinute ? timeSlotStringA : timeSlotStringB;
+        } else {
+            minTime = timeSlotStringB;
+            maxTime = timeSlotStringA;
+        }
+
+        return minimum === TimeSlotCompare.MIN ? minTime : maxTime;
+    }
 
     isPastTimestamp(startDateTimestamp: number, ensuredEndDateTimestamp: number): boolean {
         return startDateTimestamp < Date.now() ||

@@ -4,6 +4,7 @@ import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
 import { TeamService } from '@services/team/team.service';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
@@ -17,6 +18,7 @@ describe('BookingsService', () => {
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
     let availabilityServiceStub: sinon.SinonStubbedInstance<AvailabilityService>;
     let schedulesServiceStub: sinon.SinonStubbedInstance<GlobalScheduledEventsService>;
+    let timeUtilServiceStub: sinon.SinonStubbedInstance<TimeUtilService>;
 
     before(async () => {
 
@@ -24,6 +26,7 @@ describe('BookingsService', () => {
         availabilityServiceStub = sinon.createStubInstance(AvailabilityService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
         schedulesServiceStub = sinon.createStubInstance(GlobalScheduledEventsService);
+        timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -43,6 +46,10 @@ describe('BookingsService', () => {
                 {
                     provide: GlobalScheduledEventsService,
                     useValue: schedulesServiceStub
+                },
+                {
+                    provide: TimeUtilService,
+                    useValue: timeUtilServiceStub
                 }
             ]
         }).compile();
@@ -108,12 +115,12 @@ describe('BookingsService', () => {
         const eventLinkMock = stubOne(Event).link;
         const availabilityStub = stubOne(Availability);
 
-        availabilityServiceStub.fetchDetailByTeamWorkspaceAndLink.returns(of(availabilityStub));
+        availabilityServiceStub.searchByTeamWorkspaceAndLink.returns(of([availabilityStub]));
 
-        await firstValueFrom(service.fetchHostAvailabilityDetail(teamWorkspaceMock as string, eventLinkMock));
+        await firstValueFrom(service.getHostAvailability(teamWorkspaceMock as string, eventLinkMock));
 
-        expect(availabilityServiceStub.fetchDetailByTeamWorkspaceAndLink.called).true;
+        expect(availabilityServiceStub.searchByTeamWorkspaceAndLink.called).true;
 
-        availabilityServiceStub.fetchDetailByTeamWorkspaceAndLink.reset();
+        availabilityServiceStub.searchByTeamWorkspaceAndLink.reset();
     });
 });

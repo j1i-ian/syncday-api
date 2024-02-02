@@ -49,6 +49,7 @@ export class AvailabilityRedisRepository {
         if (!availabilityBodyJsonString) {
             this.logger.error({
                 message: 'CannotFindAvailabilityBody',
+                profileId,
                 availabilityUUID,
                 teamUUID,
                 availabilityBodyKey

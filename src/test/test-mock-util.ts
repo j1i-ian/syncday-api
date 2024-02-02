@@ -117,7 +117,7 @@ export class TestMockUtil {
         }).map((_user, index) => index % 2 ? {
             email: _user.email,
             teamId: teamIdMock
-        } : {
+        } as InvitedNewTeamMember : {
             phone: _user.phone,
             teamId: teamIdMock
         } as InvitedNewTeamMember);

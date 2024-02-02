@@ -581,7 +581,10 @@ export class UtilService {
                         const noHostPhone =
                             _notification.type === NotificationType.TEXT
                             && !host.phone;
-                        isValid = !noHostPhone;
+                        const noHostEmail =
+                            _notification.type === NotificationType.EMAIL
+                            && !host.email;
+                        isValid = !noHostPhone && !noHostEmail;
                     } else {
                         isValid = true;
                     }
@@ -641,7 +644,7 @@ export class UtilService {
         notificationType: NotificationType
     ): string {
 
-        let value;
+        let value: string;
 
         if (notificationType === NotificationType.EMAIL && host.email) {
             value = host.email;

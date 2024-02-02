@@ -66,7 +66,7 @@ export class BookingsController {
         @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string,
         @Query('eventLink', ParseEncodedUrl) eventLink: string
     ): Observable<HostAvailabilityDto> {
-        return this.bookingsService.fetchHostAvailabilityDetail(teamWorkspace, eventLink)
+        return this.bookingsService.getHostAvailability(teamWorkspace, eventLink)
             .pipe(
                 map((availability) => plainToInstance(HostAvailabilityDto, availability, {
                     excludeExtraneousValues: true

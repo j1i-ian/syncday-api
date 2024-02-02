@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Observable, from, map, mergeMap } from 'rxjs';
+import { Observable, combineLatest, from, map, mergeMap, reduce } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { HostEvent } from '@interfaces/bookings/host-event';
@@ -7,6 +7,7 @@ import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
 import { TeamService } from '@services/team/team.service';
+import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
@@ -21,7 +22,8 @@ export class BookingsService {
         private readonly teamService: TeamService,
         private readonly availabilityService: AvailabilityService,
         private readonly eventService: EventsService,
-        private readonly scheduledEventsService: GlobalScheduledEventsService
+        private readonly scheduledEventsService: GlobalScheduledEventsService,
+        private readonly timeUtilService: TimeUtilService
     ) {}
 
     fetchHost(teamWorkspace: string): Observable<Team> {
@@ -50,8 +52,14 @@ export class BookingsService {
             );
     }
 
-    fetchHostAvailabilityDetail(teamWorkspace: string, eventLink: string): Observable<Availability> {
-        return this.availabilityService.fetchDetailByTeamWorkspaceAndLink(teamWorkspace, eventLink);
+    getHostAvailability(teamWorkspace: string, eventLink: string): Observable<Availability> {
+        return this.availabilityService.searchByTeamWorkspaceAndLink(teamWorkspace, eventLink)
+            .pipe(
+                mergeMap((availabilities) => from(availabilities)),
+                reduce((intersectAvailability, availability) => availability
+                    ? this.timeUtilService.intersectAvailability(intersectAvailability, availability)
+                    : availability)
+            );
     }
 
     searchScheduledEvents(searchOption: Partial<ScheduledEventSearchOption>): Observable<ScheduledEventResponseDto[]> {
@@ -68,17 +76,27 @@ export class BookingsService {
 
     createScheduledEvent(teamWorkspace: string, eventUUID: string, newScheduledEvent: ScheduledEvent): Observable<ScheduledEvent> {
 
-        return from(this.teamService.findByWorkspace(teamWorkspace))
+        const hostAvailability$ = this.eventService.findOneByTeamWorkspaceAndUUID(teamWorkspace, eventUUID)
+            .pipe(
+                mergeMap((event) =>
+                    this.getHostAvailability(teamWorkspace, event.link)
+                )
+            );
+
+        return combineLatest([
+            this.teamService.findByWorkspace(teamWorkspace),
+            hostAvailability$
+        ])
             .pipe(
                 mergeMap(
-                    (loadedTeam) => this.scheduledEventsService.create(
+                    ([loadedTeam, hostAvailability]) => this.scheduledEventsService.create(
                         teamWorkspace,
                         eventUUID,
                         newScheduledEvent,
                         loadedTeam,
                         loadedTeam.profiles[0].user,
                         loadedTeam.profiles[0],
-                        loadedTeam.profiles[0].availabilities[0]
+                        hostAvailability
                     )
                 )
             );
