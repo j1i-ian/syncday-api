@@ -21,6 +21,7 @@ import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.e
 import { Role } from '@interfaces/profiles/role.enum';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
+import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -40,6 +41,7 @@ import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity'
 import { Weekday } from '@entity/availability/weekday.enum';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { Availability } from '@entity/availability/availability.entity';
+import { Team } from '@entity/teams/team.entity';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
@@ -492,13 +494,16 @@ export class UtilService {
             name: availabilityDefaultName,
             availableTimes: defaultAvailableTimes,
             overrides: [],
-            timezone
+            timezone,
+            default: true
         });
     }
 
     getPatchedScheduledEvent(
-        host: User,
-        hostProfile: Profile,
+        team: Team,
+        hostUser: User,
+        mainProfile: Profile,
+        profiles: Profile[],
         sourceEvent: Event,
         newScheduledEvent: ScheduledEvent,
         workspace: string,
@@ -510,36 +515,49 @@ export class UtilService {
         newScheduledEvent.status = ScheduledStatus.OPENED;
         newScheduledEvent.contacts = sourceEvent.contacts;
         newScheduledEvent.type = sourceEvent.type;
-        newScheduledEvent.eventDetailId = sourceEvent.eventDetail.id;
 
         newScheduledEvent.additionalDescription = sourceEvent.eventDetail.description;
 
         newScheduledEvent.scheduledNotificationInfo.host = sourceEvent.eventDetail.notificationInfo?.host;
         newScheduledEvent.conferenceLinks = [];
 
+        const language = hostUser.userSetting.preferredLanguage;
+
         newScheduledEvent.host = {
-            uuid: hostProfile.uuid,
-            name: hostProfile.name,
-            workspace,
-            timezone,
-            email: host.email,
-            phone: host.phone,
-            language: host.userSetting.preferredLanguage
+            uuid: mainProfile.uuid,
+            name: mainProfile.name,
+            workspace
         } as Host;
 
+        newScheduledEvent.hostProfiles = profiles.map((_profile) => ({
+            profileId: _profile.id,
+            profileUUID: _profile.uuid,
+            workspace,
+            timezone,
+            language
+        } as HostProfile));
+
         newScheduledEvent.scheduledEventNotifications = this.getPatchedScheduleNotification(
-            host,
+            hostUser,
+            mainProfile,
             newScheduledEvent,
             sourceEvent.eventDetail.notificationInfo,
             newScheduledEvent.scheduledNotificationInfo
         );
+
+        // patch consumerable data
+        newScheduledEvent.teamId = team.id;
+        newScheduledEvent.teamUUID = team.uuid;
+        newScheduledEvent.eventId = sourceEvent.id;
+        newScheduledEvent.eventUUID = sourceEvent.uuid;
 
         return newScheduledEvent;
     }
 
     // FIXME: it should be replaced with scheduled event notification creating directly.
     getPatchedScheduleNotification(
-        host: User,
+        hostUser: User,
+        mainProfile: Profile,
         scheduledEvent: ScheduledEvent,
         sourceNotificationInfo: NotificationInfo,
         notificationInfo: NotificationInfo
@@ -580,10 +598,10 @@ export class UtilService {
                     if (isHost) {
                         const noHostPhone =
                             _notification.type === NotificationType.TEXT
-                            && !host.phone;
+                            && !hostUser.phone;
                         const noHostEmail =
                             _notification.type === NotificationType.EMAIL
-                            && !host.email;
+                            && !hostUser.email;
                         isValid = !noHostPhone && !noHostEmail;
                     } else {
                         isValid = true;
@@ -596,7 +614,7 @@ export class UtilService {
 
                             const hostOrInviteeReminderValue = isHost ?
                                 this.getHostValue(
-                                    host,
+                                    hostUser,
                                     _notification.type
                                 ) : (__reminder as ScheduledReminder).typeValue;
 
@@ -628,6 +646,7 @@ export class UtilService {
                                 reminderType: __reminder.type,
                                 reminderValue: hostOrInviteeReminderValue,
                                 remindAt,
+                                profileId: mainProfile.id,
                                 deletedAt
                             } as ScheduledEventNotification;
                         })

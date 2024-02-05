@@ -80,9 +80,18 @@ export class AppleConverterService {
                 host: {
                     uuid: profile.uuid,
                     name: profile.name,
-                    timezone,
                     workspace: teamSetting.workspace
                 },
+                hostProfiles: [
+                    {
+                        name: profile.name,
+                        profileId: profile.id,
+                        profileUUID: profile.uuid,
+                        workspace: teamSetting.workspace,
+                        timezone,
+                        language: userSetting.preferredLanguage
+                    }
+                ],
                 scheduledTime: {
                     startTimestamp: startDate,
                     endTimestamp: endDate

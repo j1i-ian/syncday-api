@@ -21,6 +21,7 @@ import { Profile } from '@entity/profiles/profile.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
+import { Team } from '@entity/teams/team.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { TestMockUtil } from '@test/test-mock-util';
@@ -567,6 +568,7 @@ describe('UtilService', () => {
             });
             const profileMock = stubOne(Profile);
             const eventDetailMock = stubOne(EventDetail);
+            const teamMock = stubOne(Team);
             const teamSetting = stubOne(TeamSetting);
             const availability = stubOne(Availability);
             const eventMock = stubOne(Event, {
@@ -583,8 +585,10 @@ describe('UtilService', () => {
             serviceSandbox.stub(service, 'getPatchedScheduleNotification').returns(scheduledEventNotificationStubs);
 
             const patchedSchedule = service.getPatchedScheduledEvent(
+                teamMock,
                 userMock,
                 profileMock,
+                [profileMock],
                 eventMock,
                 newScheduledEventMock,
                 teamSetting.workspace,

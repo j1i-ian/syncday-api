@@ -25,6 +25,7 @@ import { Product } from '@entity/products/product.entity';
 import { Order } from '@entity/orders/order.entity';
 import { Payment } from '@entity/payments/payment.entity';
 import { Availability } from '@entity/availability/availability.entity';
+import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { ProfilesService } from './profiles.service';
 
@@ -49,6 +50,7 @@ describe('ProfilesService', () => {
 
     let profileRepositoryStub: sinon.SinonStubbedInstance<Repository<Profile>>;
     let availabilityRepositoryStub: sinon.SinonStubbedInstance<Repository<Availability>>;
+    let scheduledEventNotificationRepositoryStub: sinon.SinonStubbedInstance<Repository<ScheduledEventNotification>>;
 
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
@@ -68,6 +70,7 @@ describe('ProfilesService', () => {
 
         profileRepositoryStub = sinon.createStubInstance<Repository<Profile>>(Repository);
         availabilityRepositoryStub = sinon.createStubInstance<Repository<Availability>>(Repository);
+        scheduledEventNotificationRepositoryStub = sinon.createStubInstance<Repository<ScheduledEventNotification>>(Repository);
 
         module = await Test.createTestingModule({
             providers: [
@@ -127,6 +130,10 @@ describe('ProfilesService', () => {
                 {
                     provide: getRepositoryToken(Availability),
                     useValue: availabilityRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(ScheduledEventNotification),
+                    useValue: scheduledEventNotificationRepositoryStub
                 },
                 {
                     provide: WINSTON_MODULE_PROVIDER,
@@ -934,6 +941,7 @@ describe('ProfilesService', () => {
 
             availabilityRepositoryStub.softDelete.resolves(updateResultStub);
             availabilityRepositoryStub.update.resolves(updateResultStub);
+            scheduledEventNotificationRepositoryStub.delete.resolves(deleteResultStub);
             profileRepositoryStub.delete.resolves(deleteResultStub);
             paymentsServiceStub._save.resolves();
 
@@ -951,6 +959,7 @@ describe('ProfilesService', () => {
             expect(paymentsServiceStub._refund.called).true;
             expect(availabilityRepositoryStub.softDelete.called).true;
             expect(availabilityRepositoryStub.update.called).true;
+            expect(scheduledEventNotificationRepositoryStub.delete.called).true;
             expect(profileRepositoryStub.delete.called).true;
             expect(paymentsServiceStub._save.called).true;
         });

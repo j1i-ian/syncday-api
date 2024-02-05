@@ -29,7 +29,12 @@ export class BookingsController {
     ): Observable<FetchHostResponseDto> {
 
         return this.bookingsService.fetchHost(teamWorkspace)
-            .pipe(map((user) => plainToInstance(FetchHostResponseDto, user, {
+            .pipe(map((team) => plainToInstance(FetchHostResponseDto, {
+                ...team,
+                logo: team.teamSetting.brandImagePath,
+                greetings: team.teamSetting.greetings,
+                brandImageExpose: team.teamSetting.brandImageExpose
+            } as unknown as FetchHostResponseDto, {
                 excludeExtraneousValues: true
             })));
     }
@@ -76,13 +81,11 @@ export class BookingsController {
 
     @Get('scheduled-events')
     searchScheduledEvents(
-        @Query('hostUUID', ValidateQueryParamPipe, ParseEncodedUrl) hostUUID: string,
         @Query('eventUUID') eventUUID: string,
         @Query('since') since = Date.now(),
         @Query('until') until?: number | undefined
     ): Observable<SearchScheduledEventResponseDto[]> {
         return this.bookingsService.searchScheduledEvents({
-            hostUUID,
             eventUUID,
             since: +since,
             until: until ? +until : undefined
@@ -122,7 +125,9 @@ export class BookingsController {
             strategy: 'exposeAll',
             exposeDefaultValues: true
         });
-        newScheduledEvent.invitee.locale = language;
+        newScheduledEvent.invitees = [
+            { locale: language, timezone: createScheduleRequestDto.invitee.timezone }
+        ];
 
         return this.bookingsService.createScheduledEvent(
             createScheduleRequestDto.workspace,

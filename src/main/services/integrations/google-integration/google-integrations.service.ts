@@ -14,6 +14,7 @@ import { IntegrationScheduledEventsService } from '@core/interfaces/integrations
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
@@ -243,11 +244,21 @@ export class GoogleIntegrationsService implements
                     uuid: profile.uuid,
                     name: profile.name,
                     workspace,
+                    logo: teamSetting.brandImagePath
+                } as Host;
+
+                const hostProfile: HostProfile = {
+                    name: profile.name,
+                    profileId: profile.id,
+                    profileUUID: profile.uuid,
+                    workspace,
                     timezone,
                     email: user.email,
                     phone: user.phone,
                     language
-                } as Host;
+                };
+
+                _googleIntegrationSchedule.hostProfiles = [hostProfile];
                 _googleIntegrationSchedule.googleCalendarIntegrationId = _googleCalendarIntegration?.id as number;
 
                 return _googleIntegrationSchedule;

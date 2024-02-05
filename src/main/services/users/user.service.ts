@@ -839,11 +839,9 @@ export class UserService {
                 profiles: {
                     availabilities: true,
                     team: {
-                        eventGroup: {
+                        eventGroups: {
                             events: {
-                                eventDetail: {
-                                    scheduledEvents: true
-                                }
+                                eventDetail: true
                             }
                         },
                         teamSetting: true
@@ -861,11 +859,11 @@ export class UserService {
         const { availabilities } = defaultProfile;
         const { googleIntergrations, team } = defaultProfile;
         const {
-            eventGroup: eventGroups,
+            eventGroups: eventGroups,
             teamSetting
         } = team;
 
-        const eventGroup = eventGroups.pop() as EventGroup ;
+        const eventGroup = eventGroups.pop() as EventGroup;
 
         const { events } = eventGroup;
 

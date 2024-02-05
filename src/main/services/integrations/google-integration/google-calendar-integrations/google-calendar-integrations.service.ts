@@ -145,13 +145,22 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             _newSchedule.googleCalendarIntegrationId = googleCalendarIntegration.id;
             _newSchedule.host = {
                 uuid: profile.uuid,
-                name: profile.name,
                 workspace: teamSetting.workspace,
-                timezone: userSetting.preferredTimezone,
-                email: user.email,
-                phone: user.phone,
-                language: userSetting.preferredLanguage
+                name: profile.name as string,
+                logo: profile.image as string
             };
+            _newSchedule.hostProfiles = [
+                {
+                    name: profile.name,
+                    profileId: profile.id,
+                    profileUUID: profile.uuid,
+                    workspace: teamSetting.workspace,
+                    timezone: userSetting.preferredTimezone,
+                    email: user.email,
+                    phone: user.phone,
+                    language: userSetting.preferredLanguage
+                }
+            ];
             return _newSchedule;
         });
 

@@ -124,10 +124,12 @@ describe('AppleIntegrationsService', () => {
 
                 const appleIntegrationMock = stubOne(AppleCalDAVIntegration);
 
+                const validate$ = service.validate(appleIntegrationMock);
+
                 if (shouldThrowException) {
-                    await expect(firstValueFrom(service.validate(appleIntegrationMock))).rejected;
+                    await expect(firstValueFrom(validate$)).rejected;
                 } else {
-                    await firstValueFrom(service.validate(appleIntegrationMock));
+                    await firstValueFrom(validate$);
                 }
 
                 expect(appleIntegrationFacadeServiceStub.generateCalDAVClient.called).true;

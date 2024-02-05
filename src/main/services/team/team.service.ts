@@ -21,7 +21,7 @@ import {
     zip
 } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
@@ -109,13 +109,28 @@ export class TeamService {
         );
     }
 
-    findByWorkspace(teamWorkspace: string): Observable<Team> {
+    findByWorkspace(
+        teamWorkspace: string,
+        eventUUID?: string | null
+    ): Observable<Team> {
+
+        const eventGroupFindWhereOption: FindOptionsWhere<Team> = eventUUID
+            ? {
+                eventGroups: {
+                    events: {
+                        uuid: eventUUID
+                    }
+                }
+            }
+            : {};
+
         return defer(() => from(
             this.teamRepository.findOneOrFail({
                 where: {
                     teamSetting: {
                         workspace: teamWorkspace
-                    }
+                    },
+                    ...eventGroupFindWhereOption
                 },
                 relations: {
                     teamSetting: true,

@@ -17,7 +17,6 @@ export class NativeScheduledEventsService implements ScheduledEventsService {
     search(scheduleSearchOption: Partial<ScheduledEventSearchOption>): Observable<InviteeScheduledEvent[]> {
 
         const {
-            hostUUID,
             eventUUID,
             since,
             until,
@@ -36,17 +35,8 @@ export class NativeScheduledEventsService implements ScheduledEventsService {
         const ensuredUntilDateTime = until ? new Date(until) : defaultUntilDateTime;
 
         const nativeScheduleDefaultOption: FindOptionsWhere<ScheduledEvent> = {
-            host: {
-                uuid: hostUUID
-            },
-            eventDetail: {
-                event: {
-                    uuid: eventUUID,
-                    eventGroup: {
-                        teamId
-                    }
-                }
-            }
+            eventUUID,
+            teamId
         };
 
         const nativeScheduleConditionOptions: Array<FindOptionsWhere<ScheduledEvent>> = [

@@ -47,7 +47,8 @@ export class TimeUtilService {
 
         const intersectAvailability = new Availability({
             availableTimes: intersectAvailableTimes,
-            overrides: intersectOverridedAvailableTimes
+            overrides: intersectOverridedAvailableTimes,
+            timezone: timezoneA
         });
 
         return intersectAvailability;

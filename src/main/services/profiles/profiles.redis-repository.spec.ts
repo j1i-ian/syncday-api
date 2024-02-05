@@ -119,7 +119,7 @@ describe('Profiles Redis Repository Test', () => {
 
             const teamStubs = stub(Team);
             const teamKeyStubs = teamStubs.map((_team) => `${_team.id}:${_team.uuid}`);
-            const emailMock = stubOne(User).email;
+            const emailMock = stubOne(User).email as string;
 
             clusterStub.smembers.resolves(teamKeyStubs);
 
@@ -175,7 +175,7 @@ describe('Profiles Redis Repository Test', () => {
         it('should be removed the team invitations as invitation complete', async () => {
 
             const teamMock = stubOne(Team);
-            const userEmail = stubOne(User).email;
+            const userEmail = stubOne(User).email as string;
 
             clusterStub.exec.resolves([]);
 

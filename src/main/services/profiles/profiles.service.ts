@@ -1,6 +1,6 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, EntityManager, FindOptionsWhere, Like, Raw, Repository, UpdateResult } from 'typeorm';
+import { Brackets, DataSource, EntityManager, FindOptionsWhere, Like, MoreThan, Raw, Repository, UpdateResult } from 'typeorm';
 import {
     Observable,
     catchError,
@@ -48,6 +48,7 @@ import { Profile } from '@entity/profiles/profile.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { Order } from '@entity/orders/order.entity';
+import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
 import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
 import { BootpayException } from '@exceptions/bootpay.exception';
 
@@ -257,7 +258,7 @@ export class ProfilesService {
             select: {
                 id: true,
                 user: { email: true, phone: true },
-                team: { name: true, createdAt: true }
+                team: { id: true, uuid: true, name: true, createdAt: true }
             },
             relations: {
                 user: true,
@@ -856,6 +857,7 @@ export class ProfilesService {
                     teamId
                 });
             }),
+            defaultIfEmpty(false),
             concatMap((exception) =>
                 defer(() => from(this.datasource.transaction((transactionManager) =>
                     firstValueFrom(
@@ -879,6 +881,13 @@ export class ProfilesService {
                                     mergeMap((_profileRepository) => _profileRepository.delete({
                                         id: profileId,
                                         teamId
+                                    }))
+                                ),
+                            of(transactionManager.getRepository(ScheduledEventNotification))
+                                .pipe(
+                                    mergeMap((_scheduledEventNotification) => _scheduledEventNotification.delete({
+                                        profileId,
+                                        remindAt: MoreThan(new Date())
                                     }))
                                 )
                         ).pipe(

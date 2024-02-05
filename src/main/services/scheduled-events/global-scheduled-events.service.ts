@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, bufferCount, combineLatest, concatMap, defer, forkJoin, from, last, map, mergeMap, of, tap } from 'rxjs';
+import { Observable, combineLatest, concatMap, defer, filter, forkJoin, from, last, map, mergeMap, of, tap, throwIfEmpty } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -12,7 +12,6 @@ import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.e
 import { EventsService } from '@services/events/events.service';
 import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
 import { UtilService } from '@services/util/util.service';
-import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { NativeScheduledEventsService } from '@services/scheduled-events/native-scheduled-events.service';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
@@ -43,8 +42,7 @@ export class GlobalScheduledEventsService {
         private readonly nativeSchedulesService: NativeScheduledEventsService,
         private readonly calendarIntegrationsServiceLocator: CalendarIntegrationsServiceLocator,
         private readonly scheduleRedisRepository: ScheduledEventsRedisRepository,
-        private readonly availabilityRedisRepository: AvailabilityRedisRepository,
-        @InjectRepository(ScheduledEvent) private readonly scheduleRepository: Repository<ScheduledEvent>,
+        @InjectRepository(ScheduledEvent) private readonly scheduledEventRepository: Repository<ScheduledEvent>,
         @InjectRepository(GoogleIntegrationScheduledEvent) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationScheduledEvent>,
         @InjectRepository(AppleCalDAVIntegrationScheduledEvent) private readonly appleCalDAVIntegrationScheduleRepository: Repository<AppleCalDAVIntegrationScheduledEvent>,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
@@ -76,7 +74,7 @@ export class GlobalScheduledEventsService {
     }
 
     findOne(scheduleUUID: string): Observable<ScheduledEvent> {
-        return defer(() => from(this.scheduleRepository.findOneByOrFail({
+        return defer(() => from(this.scheduledEventRepository.findOneByOrFail({
             uuid: scheduleUUID
         }))).pipe(
             mergeMap((scheduledEvent) => this.scheduleRedisRepository.getScheduleBody(scheduledEvent.uuid)
@@ -96,17 +94,17 @@ export class GlobalScheduledEventsService {
         newScheduledEvent: ScheduledEvent,
         team: Team,
         host: User,
-        hostProfile: Profile,
+        hostProfiles: Profile[],
         hostAvailability: Availability
     ): Observable<ScheduledEvent> {
         return this._create(
-            this.scheduleRepository.manager,
+            this.scheduledEventRepository.manager,
             teamWorkspace,
             eventUUID,
             newScheduledEvent,
             team,
             host,
-            hostProfile,
+            hostProfiles,
             hostAvailability
         );
     }
@@ -118,9 +116,16 @@ export class GlobalScheduledEventsService {
         newScheduledEvent: ScheduledEvent,
         team: Team,
         host: User,
-        hostProfile: Profile,
+        hostProfiles: Profile[],
         hostAvailability: Availability
     ): Observable<ScheduledEvent> {
+
+        this.logger.info({
+            message: 'Scheduled Event Creating is started',
+            teamWorkspace,
+            hostUser: host,
+            hostProfiles: hostProfiles.length
+        });
 
         const _scheduledEventRepository = entityManager.getRepository(ScheduledEvent);
 
@@ -134,7 +139,7 @@ export class GlobalScheduledEventsService {
                 concatMap(
                     (calendarIntegrationService) => calendarIntegrationService.findOne({
                         outboundWriteSync: true,
-                        profileId: hostProfile.id
+                        profileId: hostProfiles[0].id
                     })
                 )
             );
@@ -147,8 +152,10 @@ export class GlobalScheduledEventsService {
                         overrides: hostAvailability.overrides
                     } as AvailabilityBody),
                     of(this.utilService.getPatchedScheduledEvent(
+                        team,
                         host,
-                        hostProfile,
+                        hostProfiles[0],
+                        hostProfiles,
                         event,
                         newScheduledEvent,
                         teamWorkspace,
@@ -159,6 +166,13 @@ export class GlobalScheduledEventsService {
                     of(event.contacts)
                 ])
             ),
+            tap(([ availabilityBody ]) => {
+
+                this.logger.info({
+                    message: 'Scheduled Event Initializing is completed. Trying to validate request times and integrated calendars',
+                    availabilityBody
+                });
+            }),
             // TODO: Maybe we can replace tap operator after proving that it can stop data stream and throw to exception flow
             concatMap(
                 ([
@@ -182,11 +196,7 @@ export class GlobalScheduledEventsService {
                         ] as [ScheduledEvent, CalendarIntegration | null, string, Contact[]])
                     )
             ),
-            /**
-             * Buffer validations for preventing invalid scheduling.
-             */
-            bufferCount(calendarIntegrationServices.length),
-            concatMap((buffers) => from(buffers)),
+            last(),
             mergeMap(
                 ([
                     patchedSchedule,
@@ -227,7 +237,7 @@ export class GlobalScheduledEventsService {
                                             const integrationFactory = this.integrationsServiceLocator.getIntegrationFactory(integrationVendor);
 
                                             const loadedIntegration$ = defer(() => from(integrationFactory.findOne({
-                                                profileId: hostProfile.id
+                                                profileId: hostProfiles[0].id
                                             })));
 
                                             return loadedIntegration$.pipe(
@@ -268,8 +278,21 @@ export class GlobalScheduledEventsService {
                     }
                 }
             ),
-            last(),
+            last()
+        ).pipe(
+            tap((patchedSchedule) => {
+                this.logger.info({
+                    message: 'Trying to create the scheduled event..',
+                    patchedSchedule
+                });
+            }),
+            map((patchedSchedule) => this.scheduledEventRepository.create(patchedSchedule)),
             mergeMap((patchedSchedule) => defer(() => from(_scheduledEventRepository.save(patchedSchedule)))),
+            tap(() => {
+                this.logger.info({
+                    message: 'Saving the Scheduled event relation data. Trying to save the redis data..'
+                });
+            }),
             mergeMap((createdSchedule) =>
                 this.scheduleRedisRepository.save(createdSchedule.uuid, {
                     inviteeAnswers: newScheduledEvent.inviteeAnswers,
@@ -395,12 +418,12 @@ export class GlobalScheduledEventsService {
             ensuredStartDateTime,
             ensuredEndDateTime,
             {
-                eventDetailId: scheduledEvent.eventDetailId
+                eventId: scheduledEvent.eventId
             }
         );
 
         // investigate to find conflicted schedules
-        const loadedSchedules$ = defer(() => from(this.scheduleRepository.findOneBy(
+        const loadedSchedules$ = defer(() => from(this.scheduledEventRepository.findOneBy(
             scheduleConditionOptions
         )));
 
@@ -449,15 +472,9 @@ export class GlobalScheduledEventsService {
                     loadedVendorIntegrationScheduleOrNull
                 });
             }),
-            map(([loadedScheduleOrNull, loadedVendorIntegrationScheduleOrNull]) => {
-                const _isValidSchedule = !loadedScheduleOrNull && !loadedVendorIntegrationScheduleOrNull;
-
-                if (_isValidSchedule) {
-                    return scheduledEvent;
-                } else {
-                    throw new CannotCreateByInvalidTimeRange();
-                }
-            })
+            filter(([loadedScheduleOrNull, loadedVendorIntegrationScheduleOrNull]) => !loadedScheduleOrNull && !loadedVendorIntegrationScheduleOrNull),
+            map(() => scheduledEvent),
+            throwIfEmpty(() => new CannotCreateByInvalidTimeRange())
         );
     }
 

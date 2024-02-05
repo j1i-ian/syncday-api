@@ -84,7 +84,7 @@ export class BookingsService {
             );
 
         return combineLatest([
-            this.teamService.findByWorkspace(teamWorkspace),
+            this.teamService.findByWorkspace(teamWorkspace, eventUUID),
             hostAvailability$
         ])
             .pipe(
@@ -95,7 +95,7 @@ export class BookingsService {
                         newScheduledEvent,
                         loadedTeam,
                         loadedTeam.profiles[0].user,
-                        loadedTeam.profiles[0],
+                        loadedTeam.profiles,
                         hostAvailability
                     )
                 )

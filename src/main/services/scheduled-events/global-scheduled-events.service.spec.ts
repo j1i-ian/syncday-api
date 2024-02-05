@@ -10,7 +10,6 @@ import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
-import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { NativeScheduledEventsService } from '@services/scheduled-events/native-scheduled-events.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
@@ -52,7 +51,6 @@ describe('GlobalScheduledEventsService', () => {
 
     let googleCalendarIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleCalendarIntegrationsService>;
     let schedulesRedisRepositoryStub: sinon.SinonStubbedInstance<ScheduledEventsRedisRepository>;
-    let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
     let scheduledEventRepositoryStub: sinon.SinonStubbedInstance<Repository<ScheduledEvent>>;
     let googleIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<GoogleIntegrationScheduledEvent>>;
     let appleCalDAVIntegrationScheduleRepositoryStub: sinon.SinonStubbedInstance<Repository<AppleCalDAVIntegrationScheduledEvent>>;
@@ -75,7 +73,6 @@ describe('GlobalScheduledEventsService', () => {
 
         googleCalendarIntegrationsServiceStub = sinon.createStubInstance(GoogleCalendarIntegrationsService);
         schedulesRedisRepositoryStub = sinon.createStubInstance(ScheduledEventsRedisRepository);
-        availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
         scheduledEventRepositoryStub = sinon.createStubInstance<Repository<ScheduledEvent>>(Repository);
         googleIntegrationScheduleRepositoryStub = sinon.createStubInstance<Repository<GoogleIntegrationScheduledEvent>>(
             Repository
@@ -127,10 +124,6 @@ describe('GlobalScheduledEventsService', () => {
                 {
                     provide: ScheduledEventsRedisRepository,
                     useValue: schedulesRedisRepositoryStub
-                },
-                {
-                    provide: AvailabilityRedisRepository,
-                    useValue: availabilityRedisRepositoryStub
                 },
                 {
                     provide: getRepositoryToken(ScheduledEvent),
@@ -192,8 +185,6 @@ describe('GlobalScheduledEventsService', () => {
             scheduledEventRepositoryStub.update.reset();
             googleIntegrationScheduleRepositoryStub.findOneBy.reset();
             appleCalDAVIntegrationScheduleRepositoryStub.findOneBy.reset();
-
-            availabilityRedisRepositoryStub.getAvailabilityBody.reset();
 
             serviceSandbox.restore();
         });
@@ -403,7 +394,7 @@ describe('GlobalScheduledEventsService', () => {
                             scheduleStub,
                             teamMock,
                             userMock,
-                            profileMock,
+                            [profileMock],
                             hostAvailabilityMock
                         )
                     );
