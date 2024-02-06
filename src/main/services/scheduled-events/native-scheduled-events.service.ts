@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Observable, defer, from } from 'rxjs';
-import { FindOptionsOrder, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { FindOperator, FindOptionsOrder, FindOptionsWhere, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ScheduledEventsService } from '@core/interfaces/scheduled-events/scheduled-events.service.interface';
 import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee-scheduled-events.interface';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
+import { ScheduledStatus } from '@interfaces/scheduled-events/scheduled-status.enum';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 
 @Injectable()
@@ -22,6 +23,8 @@ export class NativeScheduledEventsService implements ScheduledEventsService {
             until,
             page,
             take,
+            status,
+            statusGroup,
             teamId,
             orderScheduledTimeStartTimestamp
         } = scheduleSearchOption;
@@ -34,9 +37,18 @@ export class NativeScheduledEventsService implements ScheduledEventsService {
         const ensuredSinceDateTime = since ? new Date(since) : new Date();
         const ensuredUntilDateTime = until ? new Date(until) : defaultUntilDateTime;
 
+        let statusCondition: FindOperator<ScheduledStatus>;
+
+        if (statusGroup === 'upcoming') {
+            statusCondition = In([ScheduledStatus.OPENED, ScheduledStatus.CONFIRMED, ScheduledStatus.REMINDED]);
+        } else {
+            statusCondition = In([ScheduledStatus.CANCELED, ScheduledStatus.COMPLETED]);
+        }
+
         const nativeScheduleDefaultOption: FindOptionsWhere<ScheduledEvent> = {
             eventUUID,
-            teamId
+            teamId,
+            status: status || statusCondition
         };
 
         const nativeScheduleConditionOptions: Array<FindOptionsWhere<ScheduledEvent>> = [

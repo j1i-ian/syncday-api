@@ -3,6 +3,7 @@ import { Observable, from, map, switchMap, toArray } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { Language } from '@interfaces/users/language.enum';
+import { Invitee } from '@interfaces/scheduled-events/invitee';
 import { BookingsService } from '@services/bookings/bookings.service';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { FetchHostResponseDto } from '@dto/bookings/fetch-host-response.dto';
@@ -126,8 +127,8 @@ export class BookingsController {
             exposeDefaultValues: true
         });
         newScheduledEvent.invitees = [
-            { locale: language, timezone: createScheduleRequestDto.invitee.timezone }
-        ];
+            { ...createScheduleRequestDto.invitee, locale: language }
+        ] as Invitee[];
 
         return this.bookingsService.createScheduledEvent(
             createScheduleRequestDto.workspace,

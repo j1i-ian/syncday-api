@@ -532,6 +532,7 @@ export class UtilService {
         newScheduledEvent.hostProfiles = profiles.map((_profile) => ({
             profileId: _profile.id,
             profileUUID: _profile.uuid,
+            name: _profile.name,
             workspace,
             timezone,
             language

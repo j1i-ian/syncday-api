@@ -20,6 +20,7 @@ export class ScheduledEventsController {
         @Query() searchOptions: Partial<ScheduledEventSearchOption>,
         @Query('page') page = 0,
         @Query('take') take = 6,
+        @Query('statusGroup') statusGroup = 'upcoming' as ScheduledEventSearchOption['statusGroup'],
         @AuthProfile() authProfile: AppJwtPayload
     ): Observable<ScheduledEvent[]> {
 
@@ -34,6 +35,7 @@ export class ScheduledEventsController {
             profileId: parsedSearchOption.id,
             hostUUID: parsedSearchOption.uuid,
             orderScheduledTimeStartTimestamp: searchOptions.orderScheduledTimeStartTimestamp,
+            statusGroup,
             ...parsedSearchOption
         }) as Observable<ScheduledEvent[]>;
     }
