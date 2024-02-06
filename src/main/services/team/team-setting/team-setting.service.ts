@@ -109,12 +109,12 @@ export class TeamSettingService {
 
         const _teamSettingRepository = manager.getRepository(TeamSetting);
 
+        await _teamSettingRepository.update({ teamId }, { workspace: newWorkspace });
+
         const workspaceStatus = await this._updateTeamWorkspaceRecord(
             previousWorkspace,
             newWorkspace
         );
-
-        await _teamSettingRepository.update({ teamId }, { workspace: newWorkspace });
 
         return workspaceStatus;
     }

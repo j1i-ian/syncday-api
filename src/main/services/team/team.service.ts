@@ -427,12 +427,24 @@ export class TeamService {
         const savedTeam = await teamRepository.save(createdTeam);
         const workspace = newTeamSetting.workspace;
 
+        this.logger.info({
+            message: 'Trying to update a team workspace',
+            savedTeamId: savedTeam.id,
+            workspace
+        });
+
         await this.teamSettingService._updateTeamWorkspace(
             manager,
             savedTeam.id,
             null,
             workspace
         );
+
+        this.logger.info({
+            message: 'Team workspace updating is done',
+            savedTeamId: savedTeam.id,
+            workspace
+        });
 
         return savedTeam;
     }

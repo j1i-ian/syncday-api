@@ -515,6 +515,10 @@ export class UserService {
             }
         }
 
+        this.logger.info({
+            message: 'Email validation is passed'
+        });
+
         if (alreadySignedUpUserCheck) {
             const alreadySignedUser = await this.findUserByLocalAuth(newUser.email as string);
 
@@ -522,6 +526,10 @@ export class UserService {
                 throw new AlreadySignedUpEmailException('Already signed up email.');
             }
         }
+
+        this.logger.info({
+            message: 'Local auth validation is passed'
+        });
 
         if (alreadySignedUpUserCheckByPhone) {
             const alreadySignedUsers = await this.search({ phone: newUser.phone as string });
@@ -531,6 +539,10 @@ export class UserService {
                 throw new AlreadySignedUpPhoneException('Already signed up phone.');
             }
         }
+
+        this.logger.info({
+            message: 'Phone validation is passed'
+        });
 
         const _createdUser = this.userRepository.create(newUser);
 
@@ -549,6 +561,13 @@ export class UserService {
          */
         let workspace = this.utilService.uuid();
 
+        this.logger.info({
+            message: 'Patch workspace',
+            email: _createdUser.email,
+            uuidWorkspace,
+            createdUserEmailAndUUIDWorkspaceOptionResult: _createdUser.email && uuidWorkspace === false
+        });
+
         if (_createdUser.email && uuidWorkspace === false) {
             const emailId = _createdUser.email.replaceAll('.', '').split('@').shift();
             workspace = emailId || profileName;
@@ -558,6 +577,12 @@ export class UserService {
             workspace
         );
         const shouldAddRandomSuffix = alreadyUsedIn;
+
+        this.logger.info({
+            message: 'Checked to used in a workspace',
+            shouldAddRandomSuffix,
+            alreadyUsedIn
+        });
 
         const defaultTeamWorkspace = this.utilService.getDefaultTeamWorkspace(
             workspace,
@@ -569,16 +594,35 @@ export class UserService {
             }
         );
 
+        this.logger.info({
+            message: 'Trying to create new team ..',
+            defaultTeamWorkspace
+        });
+
         const savedTeam = await this.teamService._create(
             manager,
             { name: profileName },
             { workspace: defaultTeamWorkspace }
         );
 
+        this.logger.info({
+            message: 'creating new team is completed successfully. Trying to create a user',
+            profileName,
+            defaultTeamWorkspace
+        });
+
         const savedUser = await _userRepository.save({
             ..._createdUser,
             hashedPassword,
             userSetting
+        });
+
+        this.logger.info({
+            message: 'creating new user is completed successfully. Trying to create a profile',
+            profileName,
+            defaultTeamWorkspace,
+            savedTeamId: savedTeam.id,
+            savedUserId: savedUser.id
         });
 
         const savedProfile = await this.profilesService._create(
@@ -593,11 +637,24 @@ export class UserService {
             }
         ) as Profile;
 
+        this.logger.info({
+            message: 'creating new profile is completed successfully',
+            profileName,
+            defaultTeamWorkspace,
+            savedTeamId: savedTeam.id,
+            savedUserId: savedUser.id
+        });
+
         const defaultAvailability = this.utilService.getDefaultAvailability(
             userSetting.preferredLanguage,
             userSetting.preferredTimezone
         );
 
+        this.logger.info({
+            message: 'Trying to create a default availability',
+            savedTeamUUID: savedTeam.uuid,
+            savedProfileId: savedProfile.id
+        });
 
         const savedAvailability = await this.availabilityService._create(
             manager,
@@ -608,6 +665,12 @@ export class UserService {
                 default: true
             }
         );
+
+        this.logger.info({
+            message: 'Creating the default availability is done. Trying to create a event types',
+            savedTeamUUID: savedTeam.uuid,
+            savedProfileId: savedProfile.id
+        });
 
         const initialEventGroup = new EventGroup();
         initialEventGroup.teamId = savedTeam.id;
@@ -632,6 +695,12 @@ export class UserService {
             initialEvent
         );
 
+        this.logger.info({
+            message: 'All creating for sign up is completed successfully',
+            savedTeamUUID: savedTeam.uuid,
+            savedProfileId: savedProfile.id
+        });
+
         const createdUser = plainToInstance(User, savedUser);
         const createdTeam = plainToInstance(Team, savedTeam);
 
@@ -653,6 +722,11 @@ export class UserService {
         language: Language,
         integrationParams?: Partial<OAuth2MetaInfo>
     ): Promise<CreatedUserTeamProfile> {
+
+        this.logger.info({
+            message: 'Start transaction for creating a user with oauth2',
+            oauth2UserEmail
+        });
 
         const createdUserAndTeam = await this.datasource.transaction(async (manager) => {
             const newUserEmail = createUserRequestDto.email;
@@ -688,14 +762,35 @@ export class UserService {
                 workspace: teamWorkspace
             } as TeamSetting;
 
+            this.logger.info({
+                message: 'Start to create a team and user with profile',
+                newProfileName,
+                teamWorkspace
+            });
+
             const {
                 createdUser: _createdUser,
                 createdProfile: _createdProfile,
                 createdTeam: _createdTeam
-            } = await this._createUser(manager, newUser, newProfileName, language, timezone, {
-                plainPassword: undefined,
-                alreadySignedUpUserCheck: false,
-                emailVerification: false
+            } = await this._createUser(
+                manager,
+                newUser,
+                newProfileName,
+                language,
+                timezone,
+                {
+                    plainPassword: undefined,
+                    alreadySignedUpUserCheck: false,
+                    emailVerification: false,
+                    uuidWorkspace: false
+                }
+            );
+
+            this.logger.info({
+                message: 'Creting a team and user with profile is completed. Trying to create a oauth2 account',
+                newProfileName,
+                teamWorkspace,
+                oauth2Type
             });
 
             const _newOAuth2Account: OAuth2Account = {
@@ -720,6 +815,12 @@ export class UserService {
                     options
                 } = integrationParams as OAuth2MetaInfo;
 
+                this.logger.info({
+                    message: 'Creting a google integration service',
+                    oauth2UserEmail,
+                    teamWorkspace
+                });
+
                 const _createdGoogleIntegration = await this.googleIntegrationService._create(
                     manager,
                     _createdProfile,
@@ -732,14 +833,13 @@ export class UserService {
                     options
                 );
                 _createdProfile.googleIntergrations = [_createdGoogleIntegration];
-            }
 
-            await this.teamSettingService._updateTeamWorkspace(
-                manager,
-                _createdTeam.id,
-                null,
-                _createdTeam.teamSetting.workspace
-            );
+                this.logger.info({
+                    message: 'Creating a Google integration is done.',
+                    oauth2UserEmail,
+                    teamWorkspace
+                });
+            }
 
             return {
                 createdUser: _createdUser,
