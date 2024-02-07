@@ -56,10 +56,12 @@ export class ProfilesController {
     search(
         @AuthProfile() authProfile: AppJwtPayload,
         @Query() searchOptions: Partial<ProfileSearchOption>,
-        @Query('withUserData') withUserDataString: string | boolean | undefined
+        @Query('withUserData') withUserDataString: string | boolean | undefined,
+        @Query('withUnsigedUserInvitation') withUnsigedUserInvitationString: string | boolean | undefined
     ): Observable<FetchProfileResponseDto[]> {
 
         searchOptions.withUserData = withUserDataString === 'true' || withUserDataString === true;
+        searchOptions.withUnsigedUserInvitation = withUnsigedUserInvitationString === 'true' || withUnsigedUserInvitationString === true;
 
         const patchedSearchOption = this.utilService.patchSearchOption(
             searchOptions,
@@ -68,7 +70,9 @@ export class ProfilesController {
 
         return this.profileService.search({
             withUserData: searchOptions.withUserData,
+            withUnsigedUserInvitation: searchOptions.withUnsigedUserInvitation,
             teamId: patchedSearchOption.teamId,
+            teamUUID: patchedSearchOption.teamUUID,
             userId: patchedSearchOption.userId
         }).pipe(
             map((searchedProfiles) =>

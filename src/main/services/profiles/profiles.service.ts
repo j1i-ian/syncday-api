@@ -138,13 +138,30 @@ export class ProfilesService {
         return filtered$;
     }
 
+    countTeamInvitations(teamUUID: string): Promise<number> {
+        return this.profilesRedisRepository.countTeamInvitations(teamUUID);
+    }
+
     search(
         {
             userId,
             teamId,
-            withUserData
+            teamUUID,
+            withUserData,
+            withUnsigedUserInvitation
         }: Partial<ProfileSearchOption>
     ): Observable<Profile[]> {
+
+        const unsignedUserInvitationProfiles$: Observable<Profile[]> =
+        of([teamUUID as string, withUnsigedUserInvitation])
+            .pipe(
+                filter(([_teamUUID, _withUnsigedUserInvitation]) => !!(_teamUUID && _withUnsigedUserInvitation)),
+                concatMap(([_teamUUID]) => defer(() => from(this.profilesRedisRepository.getAllTeamInvitations(_teamUUID as string)))),
+                mergeMap((_emailOrPhoneBulk) => from(_emailOrPhoneBulk)),
+                map((_emailOrPhone) => this.utilService.convertInvitationToProfile(_emailOrPhone)),
+                toArray(),
+                defaultIfEmpty([])
+            );
 
         return of(this.profileRepository.createQueryBuilder('profile'))
             .pipe(
@@ -187,7 +204,13 @@ export class ProfilesService {
                 tap((searchQueryBuilder) => {
                     searchQueryBuilder.take(20);
                 }),
-                mergeMap((searchQueryBuilder) => defer(() => from(searchQueryBuilder.getMany())))
+                mergeMap((searchQueryBuilder) => defer(() => from(searchQueryBuilder.getMany()))),
+                mergeMap(
+                    (_profiles) => unsignedUserInvitationProfiles$
+                        .pipe(
+                            map((invitationProfiles) => _profiles.concat(invitationProfiles))
+                        )
+                )
             );
     }
 

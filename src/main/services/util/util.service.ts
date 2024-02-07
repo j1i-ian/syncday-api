@@ -22,6 +22,7 @@ import { Role } from '@interfaces/profiles/role.enum';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
+import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -69,11 +70,28 @@ type EventDetailInit = Omit<EventDetail,
 | 'scheduledEvents'
 >;
 
-type SearchOption = Pick<AppJwtPayload, 'teamId' | 'id' | 'uuid' | 'userId'>;
+type SearchOption = Pick<AppJwtPayload, 'teamId' | 'teamUUID' | 'id' | 'uuid' | 'userId'>;
 
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
+
+    convertInvitationToProfile(emailOrPhone: string): Profile {
+
+        const isEmail = emailOrPhone.includes('@') === true;
+
+        const invitationUser = isEmail
+            ? { email: emailOrPhone, phone: null }
+            : { email: null, phone: emailOrPhone };
+
+        return {
+            id: -1,
+            name: emailOrPhone,
+            user: invitationUser,
+            roles: [] as Role[],
+            status: ProfileStatus.PENDING
+        } as Profile;
+    }
 
     patchSearchOption(
         searchOption: Partial<SearchOption>,
@@ -88,6 +106,7 @@ export class UtilService {
 
         const {
             teamId: authTeamId,
+            teamUUID: authTeamUUID,
             id: authProfileId,
             userId: authUserId,
             roles
@@ -109,10 +128,12 @@ export class UtilService {
             hasQueryPermissionByRole
                 ? {
                     teamId: authTeamId,
+                    teamUUID: authTeamUUID,
                     id: queryProfileId,
                     userId: queryUserId
                 } : {
                     teamId: authTeamId,
+                    teamUUID: authTeamUUID,
                     id: authProfileId,
                     userId: authUserId,
                     uuid: authProfile.uuid
@@ -121,6 +142,7 @@ export class UtilService {
 
         parsedSearchOption = {
             teamId: patchedSearchOption.teamId,
+            teamUUID: patchedSearchOption.teamUUID,
             id: isProfileIdSearch ? patchedSearchOption.id : undefined,
             userId: isUserIdSearch ? patchedSearchOption.userId : undefined
         };

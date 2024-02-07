@@ -77,6 +77,15 @@ export class ProfilesRedisRepository {
         });
     }
 
+    async countTeamInvitations(teamUUID: string): Promise<number> {
+
+        const teamInvitationsKey = this.syncdayRedisService.getTeamInvitationsKey(teamUUID);
+
+        const invitationCount = await this.cluster.scard(teamInvitationsKey);
+
+        return invitationCount;
+    }
+
     async getAllTeamInvitations(teamUUID: string): Promise<string[]> {
 
         const teamInvitationsKey = this.syncdayRedisService.getTeamInvitationsKey(teamUUID);

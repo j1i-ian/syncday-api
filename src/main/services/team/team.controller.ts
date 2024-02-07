@@ -47,6 +47,7 @@ export class TeamController {
     @Get(':teamId(\\d+)')
     get(
         @AuthProfile('teamId') teamId: number,
+        @AuthProfile('teamUUID') teamUUID: string,
         @AuthProfile('userId') userId: number,
         @Query('withMemberCounts') withMemberCounts: string | boolean
     ): Observable<Team> {
@@ -54,7 +55,8 @@ export class TeamController {
         withMemberCounts = withMemberCounts === 'true';
 
         return this.teamService.get(teamId, userId, {
-            withMemberCounts
+            withMemberCounts,
+            teamUUID
         });
     }
 

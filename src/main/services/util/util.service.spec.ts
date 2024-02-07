@@ -58,6 +58,41 @@ describe('UtilService', () => {
         expect(service).ok;
     });
 
+    describe('Converting to the profile Test', () => {
+
+        [
+            {
+                description: 'should be converted to the profile from email',
+                emailOrPhone: 'alan@sync.day',
+                invitationDataType: 'email'
+            },
+            {
+                description: 'should be converted to the profile from phone number',
+                emailOrPhone: '+821012345678',
+                invitationDataType: 'phone'
+            }
+        ].forEach(function({
+            description,
+            emailOrPhone,
+            invitationDataType
+        }) {
+            it(description, () => {
+                const convertedProfile = service.convertInvitationToProfile(emailOrPhone);
+
+                expect(convertedProfile).ok;
+                expect(convertedProfile.id).is.equals(-1);
+
+                if (invitationDataType === 'email') {
+                    expect(convertedProfile.user.email).equals(emailOrPhone);
+                    expect(convertedProfile.user.phone).not.ok;
+                } else {
+                    expect(convertedProfile.user.email).not.ok;
+                    expect(convertedProfile.user.phone).equals(emailOrPhone);
+                }
+            });
+        });
+    });
+
     it('should be generated default available times', () => {
 
         const availableTimes = service.getDefaultAvailableTimes();
@@ -127,9 +162,9 @@ describe('UtilService', () => {
                 }
             ] as Array<{
                 description: string;
-                searchOptionMock: Partial<Pick<AppJwtPayload, 'teamId' | 'id' | 'userId'>>;
+                searchOptionMock: Partial<Pick<AppJwtPayload, 'teamId' | 'teamUUID' | 'id' | 'userId'>>;
                 authProfileMock: AppJwtPayload;
-                expected: Partial<Pick<AppJwtPayload, 'teamId' | 'id' | 'userId'>>;
+                expected: Partial<Pick<AppJwtPayload, 'teamId' | 'teamUUID' | 'id' | 'userId'>>;
             }>
         ).forEach(function({
             description,
@@ -149,10 +184,12 @@ describe('UtilService', () => {
                 const {
                     id: expectedProfileId,
                     teamId: expectedTeamId,
+                    teamUUID: expectedTeamUUID,
                     userId: expectedUserId
                 } = expected;
 
                 expect(parsedSearchOption.teamId).equals(expectedTeamId);
+                expect(parsedSearchOption.teamUUID).equals(expectedTeamUUID);
                 expect(parsedSearchOption.id).equals(expectedProfileId);
                 expect(parsedSearchOption.userId).equals(expectedUserId);
             });

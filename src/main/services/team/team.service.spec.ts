@@ -244,7 +244,13 @@ describe('TeamService', () => {
             const teamStub = stubOne(Team, {
                 memberCount: 12121
             });
+            const invitationCountStub = 8282;
+
+            const expectedMemberCount = teamStub.memberCount + invitationCountStub;
+
             const userIdMock = stubOne(User).id;
+
+            profilesServiceStub.countTeamInvitations.resolves(invitationCountStub);
 
             serviceSandbox.stub(service, '__getTeamOptionQuery')
                 .returns(teamQueryBuilderStub);
@@ -252,20 +258,23 @@ describe('TeamService', () => {
             teamQueryBuilderStub.getOneOrFail.resolves(teamStub);
 
             const teamIdMock = teamStub.id;
+            const teamUUIDMock = teamStub.uuid;
 
             const fetchedTeam = await firstValueFrom(
                 service.get(
                     teamIdMock,
                     userIdMock,
                     {
-                        withMemberCounts: true
+                        withMemberCounts: true,
+                        teamUUID: teamUUIDMock
                     }
                 )
             );
 
             expect(fetchedTeam).ok;
-            expect(fetchedTeam.memberCount).equals(teamStub.memberCount);
+            expect(fetchedTeam.memberCount).equals(expectedMemberCount);
 
+            expect(profilesServiceStub.countTeamInvitations.called).true;
             expect(teamRepositoryStub.createQueryBuilder.called).true;
             expect(teamQueryBuilderStub.andWhere.called).true;
             expect(teamQueryBuilderStub.getOneOrFail.called).true;

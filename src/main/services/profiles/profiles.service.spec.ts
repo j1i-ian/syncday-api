@@ -321,6 +321,22 @@ describe('ProfilesService', () => {
         });
     });
 
+    describe('Count invitation Test', () => {
+
+        it('coverage fill: countTeamInvitations', async () => {
+
+            const teamUUIDMock = stubOne(Team).uuid;
+            const invitationCountStub = 1;
+
+            profilesRedisRepositoryStub.countTeamInvitations.resolves(invitationCountStub);
+
+            const actualInvitationCount = await service.countTeamInvitations(teamUUIDMock);
+
+            expect(actualInvitationCount).equals(invitationCountStub);
+        });
+
+    });
+
     describe('Profile Search Test', () => {
         let serviceSandbox: sinon.SinonSandbox;
 

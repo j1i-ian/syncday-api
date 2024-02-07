@@ -7,6 +7,7 @@ import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repos
 import { Team } from '@entity/teams/team.entity';
 import { User } from '@entity/users/user.entity';
 import { Order } from '@entity/orders/order.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { TestMockUtil } from '@test/test-mock-util';
 
@@ -131,6 +132,18 @@ describe('Profiles Redis Repository Test', () => {
             expect(loadedTeamIds.length).greaterThan(0);
 
             expect(clusterStub.smembers.called).true;
+        });
+
+        it('should be got team invitation count', async () => {
+            const teamUUIDMock = stubOne(Team).uuid;
+            const profileStubs = stub(Profile);
+
+            clusterStub.scard.resolves(profileStubs.length);
+
+            const patchedCount = await service.countTeamInvitations(teamUUIDMock);
+
+            expect(patchedCount).ok;
+            expect(clusterStub.scard.called).true;
         });
 
         it('should be got all team invitations', async () => {

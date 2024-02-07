@@ -18,7 +18,8 @@ import {
     tap,
     throwIfEmpty,
     toArray,
-    zip
+    zip,
+    zipWith
 } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsWhere, Repository } from 'typeorm';
@@ -42,7 +43,6 @@ import { ProfilesService } from '@services/profiles/profiles.service';
 import { UtilService } from '@services/util/util.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { EventsService } from '@services/events/events.service';
-import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
@@ -62,7 +62,6 @@ export class TeamService {
 
     constructor(
         private readonly utilService: UtilService,
-        private readonly timeUtilService: TimeUtilService,
         private readonly teamSettingService: TeamSettingService,
         private readonly productsService: ProductsService,
         private readonly ordersService: OrdersService,
@@ -98,15 +97,33 @@ export class TeamService {
         option: Partial<TeamSearchOption>
     ): Observable<Team> {
 
-        const teamQueryBuilder = this.teamRepository.createQueryBuilder('team');
+        const {
+            withMemberCounts,
+            teamUUID
+        } = option;
 
-        const patchedQueryBuilder = this.__getTeamOptionQuery(option, userId, teamQueryBuilder);
+        const invitationCount$ = of([ withMemberCounts, teamUUID ])
+            .pipe(
+                filter(([_withMemberCounts, teamUUID]) => !!(teamUUID && _withMemberCounts === true)),
+                mergeMap(() => this.profilesService.countTeamInvitations(teamUUID as string)),
+                defaultIfEmpty(0)
+            );
 
-        patchedQueryBuilder.andWhere('team.id = :teamId', { teamId });
-
-        return defer(() => from(
-            patchedQueryBuilder.getOneOrFail())
-        );
+        return of(this.teamRepository.createQueryBuilder('team'))
+            .pipe(
+                map((_teamQueryBuilder) => this.__getTeamOptionQuery(option, userId, _teamQueryBuilder)),
+                tap((_patchedQueryBuilder) => {
+                    _patchedQueryBuilder.andWhere('team.id = :teamId', { teamId });
+                }),
+                mergeMap((_patchedQueryBuilder) => defer(() => from(
+                    _patchedQueryBuilder.getOneOrFail())
+                )),
+                zipWith(invitationCount$),
+                map(([team, invitationCount]) => {
+                    team.memberCount += invitationCount;
+                    return team;
+                })
+            );
     }
 
     findByWorkspace(
