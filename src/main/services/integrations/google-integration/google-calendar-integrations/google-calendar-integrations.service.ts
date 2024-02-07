@@ -255,21 +255,37 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         Array<Partial<GoogleCalendarIntegration> & Pick<GoogleCalendarIntegration, 'id' | 'setting'>>
     ): Promise<boolean> {
 
+        this.logger.info({
+            message: 'Patching all google calendar is started',
+            profileId,
+            calendarIntegrationsLength: calendarIntegrations.length
+        });
+
         const calendarIntegrationIds = calendarIntegrations.map(
             (_calendarIntegration) => _calendarIntegration.id
         );
 
         const calendarIntegrationRepository = this.getCalendarIntegrationRepository();
+
+        this.logger.info({
+            message: 'Trying to search calendar integrations',
+            profileId
+        });
+
         // check owner permission
         const loadedCalendars = await calendarIntegrationRepository.find({
-            relations: [
-                'googleIntegration',
-                'googleIntegration.profiles',
-                'googleIntegration.profiles.team',
-                'googleIntegration.profiles.team.teamSetting',
-                'googleIntegration.profiles.user',
-                'googleIntegration.profiles.userSetting'
-            ],
+            relations: {
+                googleIntegration: {
+                    profiles: {
+                        team: {
+                            teamSetting: true
+                        },
+                        user: {
+                            userSetting: true
+                        }
+                    }
+                }
+            },
             where: {
                 googleIntegration: {
                     profiles: {
@@ -288,10 +304,22 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
             throw new NotAnOwnerException();
         }
 
+        this.logger.info({
+            message: 'Trying to filter delete or create scheduled event objects',
+            profileId
+        });
+
         const calendarsToDeleteSchedules = calendarIntegrations.filter((calendarSettingStatus) =>
             calendarSettingStatus.setting.conflictCheck === false
         );
         const calendarIdsToDeleteSchedules = calendarsToDeleteSchedules.map((_calendarsToDeleteSchedule) => _calendarsToDeleteSchedule.id);
+
+        this.logger.info({
+            message: 'Start transaction for synchronizing google calendar. Delete target schdule filtering is done',
+            profileId,
+            calendarsToDeleteSchedulesLength: calendarsToDeleteSchedules.length,
+            calendarIdsToDeleteSchedules: calendarIdsToDeleteSchedules.length
+        });
 
         await this.datasource.transaction(async (_transactionManager) => {
             const _googleCalendarIntegrationRepo = _transactionManager.getRepository(GoogleCalendarIntegration);
@@ -301,6 +329,12 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                 _transactionManager,
                 profileId
             ));
+
+            this.logger.info({
+                message: 'Reset outbound setting success. Trying to delete or save google calendar integration scheduled events',
+                profileId,
+                _resetSuccess
+            });
 
             const _resultToDeleteSchedules = await _googleIntegrationScheduleRepo.delete({
                 googleCalendarIntegrationId: In(calendarIdsToDeleteSchedules)
@@ -314,6 +348,12 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                     transaction: true
                 }
             );
+
+            this.logger.info({
+                message: 'Delete google integration schedule, saving calendar integration is done',
+                profileId,
+                _resultToDeleteSchedulesSuccess
+            });
 
             // It is more cost-effective to update already loaded calendars than to execute an SQL query with relation join
             const updatedCalendars = loadedCalendars.map((_loadedCalendar) => {
@@ -348,6 +388,12 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
                 const loadedTeamSetting = loadedProfile.team.teamSetting;
                 const loadedUser = loadedProfile.user;
                 const loadedUserSetting = loadedProfile.user.userSetting;
+
+                this.logger.info({
+                    message: 'Patch scheduled event data',
+                    profileId,
+                    loadedProfile
+                });
 
                 await Promise.all(
                     _inboundGoogleCalendarIntegrations

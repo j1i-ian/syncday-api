@@ -106,12 +106,15 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
 
         return defer(() => from(
             this.appleCalDAVCalendarIntegrationRepository.findOne({
-                relations: [
-                    'appleCalDAVIntegration',
-                    'appleCalDAVIntegration.profile',
-                    'appleCalDAVIntegration.profile.team',
-                    'appleCalDAVIntegration.profile.team.teamSetting'
-                ],
+                relations: {
+                    appleCalDAVIntegration: {
+                        profile: {
+                            team: {
+                                teamSetting: true
+                            }
+                        }
+                    }
+                },
                 where: options
             })
         ));
@@ -138,14 +141,18 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         const calendarIntegrationRepository = this.getCalendarIntegrationRepository();
         // check owner permission
         const loadedCalendarIntegrations = await calendarIntegrationRepository.find({
-            relations: [
-                'appleCalDAVIntegration',
-                'appleCalDAVIntegration.profile',
-                'appleCalDAVIntegration.profile.user',
-                'appleCalDAVIntegration.profile.user.userSetting',
-                'appleCalDAVIntegration.profile.team',
-                'appleCalDAVIntegration.profile.team.teamSetting'
-            ],
+            relations: {
+                appleCalDAVIntegration: {
+                    profile: {
+                        team: {
+                            teamSetting: true
+                        },
+                        user: {
+                            userSetting: true
+                        }
+                    }
+                }
+            },
             where: {
                 appleCalDAVIntegration: {
                     profileId

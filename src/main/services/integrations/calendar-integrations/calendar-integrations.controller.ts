@@ -1,7 +1,8 @@
-import { Body, Controller, HttpCode, HttpStatus, Patch, Get, BadRequestException, Inject, Logger, InternalServerErrorException } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Patch, Get, BadRequestException, Inject, InternalServerErrorException } from '@nestjs/common';
 import { Observable, catchError, from, map, mergeAll, mergeMap, of, toArray } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
@@ -50,6 +51,11 @@ export class CalendarIntegrationsController {
         @Body() calendarIntegrations: CalendarIntegration[]
     ): Observable<boolean> {
 
+        this.logger.info({
+            message: 'Patching all calendar integrations',
+            profileId
+        });
+
         // When user requests multiple outbounds it is considered as exception
         // but in the future we should remove exception after multiple outbound implement
         const requestedOutboundCalendars = calendarIntegrations.filter((_calIntegration) => _calIntegration.setting.outboundWriteSync === true);
@@ -60,7 +66,18 @@ export class CalendarIntegrationsController {
             throw new BadRequestException('Outbound calendar should be unique');
         }
 
+        this.logger.info({
+            message: 'Calendar update request validation is passed',
+            profileId,
+            requestedOutboundCalendarsLength: requestedOutboundCalendars.length
+        });
+
         const calendarIntegrationsServices = this.calendarIntegrationsServiceLocator.getAllCalendarIntegrationServices();
+
+        this.logger.info({
+            message: 'Start calendar updating stream',
+            profileId
+        });
 
         return from(calendarIntegrationsServices)
             .pipe(
@@ -72,7 +89,17 @@ export class CalendarIntegrationsController {
                         (_calIntegration) => _calIntegration.vendor === _vendor
                     );
 
-                    if (hasOutboundUpdate || _filteredCalendars.length > 0) {
+                    const shouldPatch = hasOutboundUpdate || _filteredCalendars.length > 0;
+
+                    this.logger.info({
+                        message: 'Trying to patch all calendar integration',
+                        profileId,
+                        _vendor,
+                        _filteredCalendarsLength: _filteredCalendars.length,
+                        calendarIntegrationsServiceName: calendarIntegrationsService.constructor.name
+                    });
+
+                    if (shouldPatch) {
                         return calendarIntegrationsService.patchAll(
                             profileId,
                             _filteredCalendars
@@ -89,7 +116,7 @@ export class CalendarIntegrationsController {
 
                         if (hasError) {
                             this.logger.error({
-                                message: '',
+                                message: 'Unable to complete the calendar setting patch',
                                 results
                             });
 
