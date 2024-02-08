@@ -20,7 +20,6 @@ import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service
 import { GoogleOAuth2TokenService } from '@services/oauth2/google-oauth2-token/google-oauth2-token.service';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { AvailabilityService } from '@services/availability/availability.service';
-import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { EventsService } from '@services/events/events.service';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
@@ -52,7 +51,6 @@ describe('Test User Service', () => {
     let oauth2TokenServiceStub: sinon.SinonStubbedInstance<GoogleOAuth2TokenService>;
     let oauth2TokenServiceConverterStub: sinon.SinonStubbedInstance<GoogleConverterService>;
 
-    let timeUtilServiceStub: sinon.SinonStubbedInstance<TimeUtilService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let syncdayRedisServiceStub: sinon.SinonStubbedInstance<SyncdayRedisService>;
     let oauth2AccountsServiceStub: sinon.SinonStubbedInstance<OAuth2AccountsService>;
@@ -87,7 +85,6 @@ describe('Test User Service', () => {
         sinon.stub(GoogleOAuth2TokenService.prototype, 'converter')
             .get(() =>  oauth2TokenServiceConverterStub);
 
-        timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
         utilServiceStub = sinon.createStubInstance(UtilService);
         syncdayRedisServiceStub = sinon.createStubInstance(SyncdayRedisService);
         oauth2AccountsServiceStub = sinon.createStubInstance(OAuth2AccountsService);
@@ -116,10 +113,6 @@ describe('Test User Service', () => {
                 {
                     provide: OAuth2TokenServiceLocator,
                     useValue: oauth2TokenServiceLocatorStub
-                },
-                {
-                    provide: TimeUtilService,
-                    useValue: timeUtilServiceStub
                 },
                 {
                     provide: UtilService,
@@ -473,7 +466,7 @@ describe('Test User Service', () => {
                 createdUser,
                 createdProfile,
                 createdTeam
-            } = await service._createUser(
+            } = await firstValueFrom(service._createUser(
                 datasourceMock as EntityManager,
                 userStub,
                 profileStub.name as string,
@@ -484,7 +477,7 @@ describe('Test User Service', () => {
                     emailVerification: true,
                     alreadySignedUpUserCheck: true
                 }
-            );
+            ));
 
             expect(verificationServiceStub.isVerifiedUser.called).true;
             expect(findUserByEmailStub.called).true;
@@ -509,7 +502,7 @@ describe('Test User Service', () => {
             expect(createdTeam.teamSetting.workspace).contains(expectedWorkspace);
         });
 
-        it('should be not created user with email when user is already exist', async () => {
+        it('should be not created user with email when user is already exist (searched by email)', async () => {
             const timezoneMock = stubOne(UserSetting).preferredTimezone;
             const alreadySignedUpUserProfile = stubOne(Profile, {
                 name: 'foo',
@@ -520,12 +513,15 @@ describe('Test User Service', () => {
             });
             const plainPasswordDummy = 'test';
             const languageDummy = Language.ENGLISH;
+
+            verificationServiceStub.isVerifiedUser.resolves(true);
+
             serviceSandbox.stub(service, 'findUserByLocalAuth').resolves(alreadySignedUpUser);
 
             const userStub = stubOne(User);
             const profileNameMock = 'bar';
 
-            await expect(
+            await expect(firstValueFrom(
                 service._createUser(
                     datasourceMock as EntityManager,
                     userStub,
@@ -534,9 +530,10 @@ describe('Test User Service', () => {
                     timezoneMock,
                     {
                         plainPassword: plainPasswordDummy,
-                        emailVerification: true
+                        emailVerification: true,
+                        alreadySignedUpUserCheck: true
                     })
-            ).rejectedWith(BadRequestException);
+            )).rejectedWith(BadRequestException);
         });
 
         // TODO: Breakdown of [should be created user with email] test
@@ -559,7 +556,7 @@ describe('Test User Service', () => {
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
 
-            await expect(
+            await expect(firstValueFrom(
                 service._createUser(
                     datasourceMock as EntityManager,
                     userStub,
@@ -571,7 +568,7 @@ describe('Test User Service', () => {
                         emailVerification: true
                     }
                 )
-            ).rejectedWith(BadRequestException, 'Verification is not completed');
+            )).rejectedWith(BadRequestException, 'Verification is not completed');
         });
 
         it('should be created user with phone', async () => {
@@ -622,7 +619,7 @@ describe('Test User Service', () => {
                 createdUser,
                 createdProfile,
                 createdTeam
-            } = await service._createUser(
+            } = await firstValueFrom(service._createUser(
                 datasourceMock as EntityManager,
                 userStub,
                 profileStub.name as string,
@@ -634,7 +631,7 @@ describe('Test User Service', () => {
                     alreadySignedUpUserCheck: false,
                     alreadySignedUpUserCheckByPhone: true
                 }
-            );
+            ));
 
             expect(verificationServiceStub.isVerifiedUser.called).true;
             expect(searchStub.called).true;
@@ -676,7 +673,7 @@ describe('Test User Service', () => {
             const userStub = stubOne(User);
             const profileNameMock = 'bar';
 
-            await expect(
+            await expect(firstValueFrom(
                 service._createUser(
                     datasourceMock as EntityManager,
                     userStub,
@@ -688,7 +685,7 @@ describe('Test User Service', () => {
                         emailVerification: false,
                         alreadySignedUpUserCheckByPhone: true
                     })
-            ).rejectedWith(BadRequestException);
+            )).rejectedWith(BadRequestException);
         });
 
     });
@@ -736,11 +733,11 @@ describe('Test User Service', () => {
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
 
-            serviceSandbox.stub(service, '_createUser').resolves({
+            serviceSandbox.stub(service, '_createUser').returns(of({
                 createdUser: userStub,
                 createdProfile: profileStub,
                 createdTeam: teamStub
-            });
+            }));
 
             profilesServiceStub._createInvitedProfiles.returns(of([profileStub]));
             profilesServiceStub.completeInvitation.returns(of(true));
@@ -770,7 +767,7 @@ describe('Test User Service', () => {
 
             syncdayRedisServiceStub.getEmailVerification.resolves(null);
 
-            serviceSandbox.stub(service, '_createUser');
+            serviceSandbox.stub(service, '_createUser').returns(of());
 
             await expect(
                 service._createUserWithVerificationByEmail(emailMock, verificationCodeMock, timezoneMcok)
@@ -801,11 +798,11 @@ describe('Test User Service', () => {
                 profiles: []
             });
 
-            _createUserStub = serviceSandbox.stub(service, '_createUser').resolves({
+            _createUserStub = serviceSandbox.stub(service, '_createUser').returns(of({
                 createdProfile: profileStub,
                 createdTeam: teamStub,
                 createdUser: userStub
-            });
+            }));
 
             invitiedProfileStub = stubOne(Profile);
             profilesServiceStub._createInvitedProfiles.returns(of([invitiedProfileStub]));
@@ -907,7 +904,7 @@ describe('Test User Service', () => {
             const googleIntergrations = stub(GoogleIntegration);
             const teamSettingStub = stubOne(TeamSetting);
             const team = stubOne(Team, {
-                eventGroup: [eventGroup],
+                eventGroups: [eventGroup],
                 teamSetting: teamSettingStub
             });
             const profile = stubOne(Profile, {

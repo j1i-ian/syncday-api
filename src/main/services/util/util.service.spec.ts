@@ -695,8 +695,7 @@ describe('UtilService', () => {
                 emailMock,
                 profileNameMock,
                 {
-                    randomSuffix: false,
-                    uuidWorkspace: false
+                    randomSuffix: false
                 }
             );
 
@@ -715,8 +714,7 @@ describe('UtilService', () => {
                 emailMock,
                 profileNameMock,
                 {
-                    randomSuffix: true,
-                    uuidWorkspace: false
+                    randomSuffix: true
                 }
             );
 
@@ -736,8 +734,7 @@ describe('UtilService', () => {
                 emailMock,
                 profileNameMock,
                 {
-                    randomSuffix: true,
-                    uuidWorkspace: false
+                    randomSuffix: true
                 }
             );
 
@@ -752,21 +749,21 @@ describe('UtilService', () => {
 
             const emailDummy = null;
 
-            const profileNameMock = 'alan123';
+            const phoneNumberMock = '+821012345678';
+            const expectedLink = '01012345678';
 
             const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
                 workspaceMock,
                 emailDummy,
-                profileNameMock,
+                phoneNumberMock,
                 {
-                    randomSuffix: false,
-                    uuidWorkspace: false
+                    randomSuffix: false
                 }
             );
 
             expect(defaultTeamWorkspace).ok;
             expect(defaultTeamWorkspace).not.equals(emailDummy);
-            expect(defaultTeamWorkspace).contains(profileNameMock);
+            expect(defaultTeamWorkspace).equals(expectedLink);
         });
     });
 

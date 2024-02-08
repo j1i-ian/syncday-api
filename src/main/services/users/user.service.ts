@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable, InternalServerErrorException, 
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsRelations, FindOptionsSelect, FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { Observable, concatMap, defer, firstValueFrom, from, map, mergeMap, of, tap, toArray } from 'rxjs';
+import { Observable, concatMap, defaultIfEmpty, defer, filter, firstValueFrom, forkJoin, from, map, mergeMap, of, tap, toArray, zip, zipWith } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Availability } from '@core/entities/availability/availability.entity';
@@ -26,7 +26,6 @@ import { OAuth2MetaInfo } from '@services/users/oauth2-metainfo.interface';
 import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service-locator';
 import { OAuth2UserProfile } from '@services/users/oauth2-user-profile.interface';
 import { AvailabilityService } from '@services/availability/availability.service';
-import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { EventsService } from '@services/events/events.service';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
@@ -57,14 +56,12 @@ interface CreateUserOptions {
     emailVerification?: boolean;
     alreadySignedUpUserCheck?: boolean;
     alreadySignedUpUserCheckByPhone?: boolean;
-    uuidWorkspace?: boolean;
 }
 
 @Injectable()
 export class UserService {
     constructor(
         private readonly oauth2TokenServiceLocator: OAuth2TokenServiceLocator,
-        private readonly timeUtilService: TimeUtilService,
         private readonly utilService: UtilService,
         private readonly syncdayRedisService: SyncdayRedisService,
         private readonly oauth2AccountService: OAuth2AccountsService,
@@ -242,7 +239,8 @@ export class UserService {
         if (isCreateUserByPhone) {
 
             this.logger.info({
-                message: 'Create user by phone number'
+                message: 'Create user by phone number',
+                name: timezoneOrName
             });
 
             createUser$ =
@@ -348,19 +346,17 @@ export class UserService {
             createdTeam
         } = await this.datasource.transaction((transactionManager) =>
             firstValueFrom(
-                defer(() => from(
-                    this._createUser(
-                        transactionManager,
-                        newUser,
-                        profileName,
-                        temporaryUser.language,
-                        timezone,
-                        {
-                            plainPassword: temporaryUser.plainPassword,
-                            emailVerification: true
-                        }
-                    )
-                )).pipe(
+                this._createUser(
+                    transactionManager,
+                    newUser,
+                    profileName,
+                    temporaryUser.language,
+                    timezone,
+                    {
+                        plainPassword: temporaryUser.plainPassword,
+                        emailVerification: true
+                    }
+                ).pipe(
                     tap(() => {
                         this.logger.info({
                             message: 'Creating the user is success. Start to create the profile and detect invitations',
@@ -443,20 +439,17 @@ export class UserService {
 
         return isVerifiedPhoneNumber$.pipe(
             mergeMap(() => defer(() => from(this.datasource.transaction((transactionManager) =>
-                firstValueFrom(defer(() => from(
-                    this._createUser(
-                        transactionManager,
-                        newUser,
-                        name,
-                        language,
-                        timezone,
-                        {
-                            plainPassword,
-                            alreadySignedUpUserCheckByPhone: true,
-                            uuidWorkspace: true
-                        }
-                    )
-                )).pipe(
+                firstValueFrom(this._createUser(
+                    transactionManager,
+                    newUser,
+                    name,
+                    language,
+                    timezone,
+                    {
+                        plainPassword,
+                        alreadySignedUpUserCheckByPhone: true
+                    }
+                ).pipe(
                     concatMap((createUserTeamProfile) =>
                         this.profilesService._createInvitedProfiles(
                             transactionManager,
@@ -478,13 +471,12 @@ export class UserService {
                                 })
                             )
                     )
-                )
-                )
+                ))
             ))
             )));
     }
 
-    async _createUser(
+    _createUser(
         manager: EntityManager,
         newUser: User,
         profileName: string,
@@ -494,221 +486,263 @@ export class UserService {
             plainPassword,
             emailVerification,
             alreadySignedUpUserCheck,
-            alreadySignedUpUserCheckByPhone,
-            uuidWorkspace
+            alreadySignedUpUserCheckByPhone
         }: CreateUserOptions = {
             plainPassword: undefined,
             emailVerification: false,
             alreadySignedUpUserCheck: true,
-            alreadySignedUpUserCheckByPhone: false,
-            uuidWorkspace: false
+            alreadySignedUpUserCheckByPhone: false
         }
-    ): Promise<CreatedUserTeamProfile> {
-        /**
-         * TODO: it should be applied Criteria Pattern.
-         */
-        if (emailVerification) {
-            const isVerifiedEmail = await this.verificationService.isVerifiedUser(newUser.email as string);
+    ): Observable<CreatedUserTeamProfile> {
 
-            if (isVerifiedEmail !== true) {
-                throw new BadRequestException('Verification is not completed');
-            }
-        }
+        const emailVerification$ = of(!!emailVerification)
+            .pipe(
+                filter((_emailVerification) => _emailVerification),
+                mergeMap(() => defer(() => from(this.verificationService.isVerifiedUser(newUser.email as string)))),
+                map((isVerifiedEmail) => {
+                    if (isVerifiedEmail === false) {
+                        throw new BadRequestException('Verification is not completed');
+                    }
+                }),
+                tap(() => {
 
-        this.logger.info({
-            message: 'Email validation is passed'
-        });
+                    this.logger.info({
+                        message: 'Email validation is passed'
+                    });
+                }),
+                defaultIfEmpty(true)
+            );
 
-        if (alreadySignedUpUserCheck) {
-            const alreadySignedUser = await this.findUserByLocalAuth(newUser.email as string);
+        const alreadySignedUpUserCheck$ = of(!!alreadySignedUpUserCheck)
+            .pipe(
+                filter((_alreadySignedUpUserCheck) => _alreadySignedUpUserCheck),
+                mergeMap(() => defer(() => from(this.findUserByLocalAuth(newUser.email as string)))),
+                map((foundUser) => {
+                    const isEmailSearched = !!foundUser;
 
-            if (alreadySignedUser) {
-                throw new AlreadySignedUpEmailException('Already signed up email.');
-            }
-        }
+                    if (isEmailSearched) {
+                        throw new AlreadySignedUpEmailException('Already signed up email.');
+                    }
+                }),
+                tap(() => {
+                    this.logger.info({
+                        message: 'Local auth validation is passed'
+                    });
+                }),
+                defaultIfEmpty(true)
+            );
 
-        this.logger.info({
-            message: 'Local auth validation is passed'
-        });
+        const alreadySignedUpUserCheckByPhone$ = of(!!alreadySignedUpUserCheckByPhone)
+            .pipe(
+                filter((_alreadySignedUpUserCheckByPhone) => _alreadySignedUpUserCheckByPhone),
+                mergeMap(() => defer(() => from(this.search({ phone: newUser.phone as string })))),
+                map((searchedUsers) => {
+                    const isPhoneNumberSearched = searchedUsers.length > 0;
 
-        if (alreadySignedUpUserCheckByPhone) {
-            const alreadySignedUsers = await this.search({ phone: newUser.phone as string });
-            const alreadySignedUser = alreadySignedUsers[0];
+                    if (isPhoneNumberSearched) {
+                        throw new AlreadySignedUpPhoneException('Already signed up phone.');
+                    }
+                }),
+                tap(() => {
+                    this.logger.info({
+                        message: 'Phone validation is passed'
+                    });
+                }),
+                defaultIfEmpty(true)
+            );
 
-            if (alreadySignedUser) {
-                throw new AlreadySignedUpPhoneException('Already signed up phone.');
-            }
-        }
+        const validations$ = zip([
+            emailVerification$,
+            alreadySignedUpUserCheck$,
+            alreadySignedUpUserCheckByPhone$
+        ]);
 
-        this.logger.info({
-            message: 'Phone validation is passed'
-        });
+        const createdUser$ = of(this.userRepository.create(newUser));
 
-        const _createdUser = this.userRepository.create(newUser);
+        const workspace$ = createdUser$
+            .pipe(
+                tap((_createdUser) => {
+                    this.logger.info({
+                        message: 'Patch workspace',
+                        email: _createdUser.email,
+                        phone: _createdUser.phone
+                    });
+                }),
+                map((_createdUser) => _createdUser.email?.replaceAll('.', '').split('@').shift() || profileName)
+            );
 
-        const defaultUserSetting = this.utilService.getUserDefaultSetting(language, {
-            timezone
-        }) as UserSetting;
-
-        const userSetting = defaultUserSetting;
-
-        const hashedPassword = plainPassword && this.utilService.hash(plainPassword);
-
-        const _userRepository = manager.getRepository(User);
-
-        /**
-         * The workspace is assigned a UUID for users who have signed up with a phone number
-         */
-        let workspace = this.utilService.uuid();
-
-        this.logger.info({
-            message: 'Patch workspace',
-            email: _createdUser.email,
-            uuidWorkspace,
-            createdUserEmailAndUUIDWorkspaceOptionResult: _createdUser.email && uuidWorkspace === false
-        });
-
-        if (_createdUser.email && uuidWorkspace === false) {
-            const emailId = _createdUser.email.replaceAll('.', '').split('@').shift();
-            workspace = emailId || profileName;
-        }
-
-        const alreadyUsedIn = await this.teamSettingService.fetchTeamWorkspaceStatus(
-            workspace
-        );
-        const shouldAddRandomSuffix = alreadyUsedIn;
-
-        this.logger.info({
-            message: 'Checked to used in a workspace',
-            shouldAddRandomSuffix,
-            alreadyUsedIn
-        });
-
-        const defaultTeamWorkspace = this.utilService.getDefaultTeamWorkspace(
-            workspace,
-            _createdUser.email,
-            profileName,
-            {
-                randomSuffix: shouldAddRandomSuffix,
-                uuidWorkspace: uuidWorkspace || false
-            }
+        const shouldAddRandomSuffix$ = workspace$.pipe(
+            mergeMap((_workspace) => defer(() => from(this.teamSettingService.fetchTeamWorkspaceStatus(_workspace))))
         );
 
-        this.logger.info({
-            message: 'Trying to create new team ..',
-            defaultTeamWorkspace
-        });
+        const defaultTeamWorkspace$ = zip(workspace$, createdUser$, shouldAddRandomSuffix$)
+            .pipe(
+                map(([workspace, _createdUser, shouldAddRandomSuffix]) => this.utilService.getDefaultTeamWorkspace(
+                    workspace,
+                    _createdUser.email,
+                    _createdUser.phone,
+                    {
+                        randomSuffix: shouldAddRandomSuffix
+                    })
+                ),
+                tap((_defaultTeamWorkspace) => {
 
-        const savedTeam = await this.teamService._create(
-            manager,
-            { name: profileName },
-            { workspace: defaultTeamWorkspace }
+                    this.logger.info({
+                        message: 'Trying to create new team ..',
+                        defaultTeamWorkspace: _defaultTeamWorkspace
+                    });
+                })
+            );
+
+        const savedTeam$ = defaultTeamWorkspace$.pipe(
+            mergeMap((_defaultTeamWorkspace) => defer(() => from(this.teamService._create(
+                manager,
+                { name: profileName },
+                { workspace: _defaultTeamWorkspace }
+            )))),
+            tap(() => {
+                this.logger.info({
+                    message: 'creating new team is completed successfully. Trying to create a user',
+                    profileName
+                });
+            })
         );
 
-        this.logger.info({
-            message: 'creating new team is completed successfully. Trying to create a user',
-            profileName,
-            defaultTeamWorkspace
-        });
+        const _userSetting$ = of(this.utilService.getUserDefaultSetting(language, { timezone }) as UserSetting);
 
-        const savedUser = await _userRepository.save({
-            ..._createdUser,
-            hashedPassword,
-            userSetting
-        });
-
-        this.logger.info({
-            message: 'creating new user is completed successfully. Trying to create a profile',
-            profileName,
-            defaultTeamWorkspace,
-            savedTeamId: savedTeam.id,
-            savedUserId: savedUser.id
-        });
-
-        const savedProfile = await this.profilesService._create(
-            manager,
-            {
-                name: profileName,
-                default: true,
-                status: ProfileStatus.ACTIVATED,
-                roles: [Role.OWNER],
-                teamId: savedTeam.id,
-                userId: savedUser.id
-            }
-        ) as Profile;
-
-        this.logger.info({
-            message: 'creating new profile is completed successfully',
-            profileName,
-            defaultTeamWorkspace,
-            savedTeamId: savedTeam.id,
-            savedUserId: savedUser.id
-        });
-
-        const defaultAvailability = this.utilService.getDefaultAvailability(
-            userSetting.preferredLanguage,
-            userSetting.preferredTimezone
+        const savedUser$ = forkJoin({
+            _createdUser: createdUser$,
+            _userSetting: _userSetting$,
+            _userRepository: of(manager.getRepository(User)),
+            _hashedPassword: of(plainPassword ? this.utilService.hash(plainPassword) : null)
+        }).pipe(
+            mergeMap(({
+                _createdUser,
+                _userSetting: userSetting,
+                _userRepository: userRepository,
+                _hashedPassword: hashedPassword
+            }) => defer(() => from(userRepository.save({
+                ..._createdUser,
+                hashedPassword,
+                userSetting
+            } as User))))
         );
 
-        this.logger.info({
-            message: 'Trying to create a default availability',
-            savedTeamUUID: savedTeam.uuid,
-            savedProfileId: savedProfile.id
-        });
+        const savedProfile$: Observable<Profile> = forkJoin({
+            savedTeam: savedTeam$,
+            savedUser: savedUser$
+        }).pipe(
+            tap(({ savedTeam, savedUser }) => {
 
-        const savedAvailability = await this.availabilityService._create(
-            manager,
-            savedTeam.uuid,
-            savedProfile.id,
-            defaultAvailability,
-            {
-                default: true
-            }
+                this.logger.info({
+                    message: 'creating new user with team is completed successfully. Trying to create a profile',
+                    profileName,
+                    savedTeamId: savedTeam.id,
+                    savedUserId: savedUser.id
+                });
+            }),
+            mergeMap(({ savedTeam, savedUser }) =>
+                defer(() => from(this.profilesService._create(
+                    manager,
+                    {
+                        name: profileName,
+                        default: true,
+                        status: ProfileStatus.ACTIVATED,
+                        roles: [Role.OWNER],
+                        teamId: savedTeam.id,
+                        userId: savedUser.id
+                    }
+                )) as Observable<Profile>)
+            ),
+            tap(() => {
+                this.logger.info({
+                    message: 'creating new profile is completed successfully',
+                    profileName
+                });
+            })
         );
 
-        this.logger.info({
-            message: 'Creating the default availability is done. Trying to create a event types',
-            savedTeamUUID: savedTeam.uuid,
-            savedProfileId: savedProfile.id
-        });
-
-        const initialEventGroup = new EventGroup();
-        initialEventGroup.teamId = savedTeam.id;
-
-        const eventGroupRepository = manager.getRepository(EventGroup);
-        const savedEventGroup = await eventGroupRepository.save(initialEventGroup);
-
-        const hasNoEmailUser = !_createdUser.email;
-
-        const initialEvent = this.utilService.getDefaultEvent({
-            name: '30 Minute Meeting',
-            link: '30-minute-meeting',
-            eventGroupId: savedEventGroup.id,
-            hasNoEmailUser
-        });
-
-        await this.eventsService._create(
-            manager,
-            savedTeam.uuid,
-            savedProfile.id,
-            savedAvailability.id,
-            initialEvent
+        const savedAvailability$ = _userSetting$.pipe(
+            map((_userSetting) => this.utilService.getDefaultAvailability(
+                _userSetting.preferredLanguage,
+                _userSetting.preferredTimezone
+            )),
+            zipWith(savedTeam$, savedProfile$),
+            mergeMap(([defaultAvailability, savedTeam, savedProfile]) => defer(() => from(this.availabilityService._create(
+                manager,
+                savedTeam.uuid,
+                savedProfile.id,
+                defaultAvailability,
+                {
+                    default: true
+                }
+            )))),
+            tap(() => {
+                this.logger.info({
+                    message: 'Creating the default availability is done. Trying to create a event types'
+                });
+            })
         );
 
-        this.logger.info({
-            message: 'All creating for sign up is completed successfully',
-            savedTeamUUID: savedTeam.uuid,
-            savedProfileId: savedProfile.id
-        });
+        const savedEventGroup$ = forkJoin({
+            initialEventGroup: savedTeam$.pipe(map((_savedTeam) => {
+                const _initialEventGroup = new EventGroup();
+                _initialEventGroup.teamId = _savedTeam.id;
 
-        const createdUser = plainToInstance(User, savedUser);
-        const createdTeam = plainToInstance(Team, savedTeam);
+                return _initialEventGroup;
+            })),
+            eventGroupRepository: of(manager.getRepository(EventGroup))
+        }).pipe(
+            mergeMap(({ eventGroupRepository, initialEventGroup }) =>
+                defer(() => from(eventGroupRepository.save(initialEventGroup)))
+            )
+        );
 
-        return {
-            createdUser,
-            createdProfile: savedProfile,
-            createdTeam
-        };
+        const initialEvent$ = savedUser$
+            .pipe(
+                map((_savedUser) => !_savedUser.email),
+                zipWith(savedEventGroup$),
+                map(([ hasNoEmailUser, savedEventGroup ]) => this.utilService.getDefaultEvent({
+                    name: '30 Minute Meeting',
+                    link: '30-minute-meeting',
+                    eventGroupId: savedEventGroup.id,
+                    hasNoEmailUser
+                }))
+            );
+
+        const savedEvent$ = zip([
+            savedTeam$,
+            savedProfile$,
+            savedAvailability$,
+            initialEvent$
+        ]).pipe(
+            mergeMap(([savedTeam, savedProfile, savedAvailability, initialEvent]) =>
+                defer(() => from(this.eventsService._create(
+                    manager,
+                    savedTeam.uuid,
+                    savedProfile.id,
+                    savedAvailability.id,
+                    initialEvent
+                )))
+            )
+        );
+
+        return validations$
+            .pipe(
+                mergeMap(() => savedEvent$),
+                mergeMap(() => forkJoin({
+                    createdUser: savedUser$.pipe(map((savedUser) => plainToInstance(User, savedUser))),
+                    createdTeam: savedTeam$.pipe(map((savedTeam) => plainToInstance(Team, savedTeam))),
+                    createdProfile: savedProfile$
+                })),
+                tap(({ createdTeam, createdProfile }) => {
+                    this.logger.info({
+                        message: 'All creating for sign up is completed successfully',
+                        savedTeamUUID: createdTeam.uuid,
+                        savedProfileId: createdProfile.id
+                    });
+                })
+            );
     }
 
     async createUserWithOAuth2(
@@ -752,10 +786,9 @@ export class UserService {
             const teamWorkspace = this.utilService.getDefaultTeamWorkspace(
                 null,
                 newUserEmail,
-                newProfileName,
+                newUser.phone,
                 {
-                    randomSuffix: false,
-                    uuidWorkspace: false
+                    randomSuffix: false
                 }
             );
             const newTeamSetting = {
@@ -772,7 +805,7 @@ export class UserService {
                 createdUser: _createdUser,
                 createdProfile: _createdProfile,
                 createdTeam: _createdTeam
-            } = await this._createUser(
+            } = await firstValueFrom(this._createUser(
                 manager,
                 newUser,
                 newProfileName,
@@ -781,10 +814,9 @@ export class UserService {
                 {
                     plainPassword: undefined,
                     alreadySignedUpUserCheck: false,
-                    emailVerification: false,
-                    uuidWorkspace: false
+                    emailVerification: false
                 }
-            );
+            ));
 
             this.logger.info({
                 message: 'Creting a team and user with profile is completed. Trying to create a oauth2 account',

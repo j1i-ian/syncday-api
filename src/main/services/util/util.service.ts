@@ -722,26 +722,22 @@ export class UtilService {
     getDefaultTeamWorkspace(
         workspace?: string | null,
         email?: string | null,
-        profileName?: string,
+        phoneNumber?: string | null,
         {
-            randomSuffix,
-            uuidWorkspace
+            randomSuffix
         } = {
-            randomSuffix: false,
-            uuidWorkspace: false
+            randomSuffix: false
         }
     ): string {
 
         const emailId = email?.replaceAll('.', '').split('@').shift();
 
+        const patchedPhoneNumber = phoneNumber?.replace('+82', '0');
+
         workspace = workspace ??
                 emailId ??
-                profileName ??
+                patchedPhoneNumber ??
                 '';
-
-        if (uuidWorkspace) {
-            workspace += this.generateUUID();
-        }
 
         if (randomSuffix) {
             const randomNumberString = this.generateRandomNumberString(4);
