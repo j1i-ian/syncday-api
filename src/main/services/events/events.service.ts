@@ -1,8 +1,10 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Observable, defer, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { Event } from '@core/entities/events/event.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
@@ -22,6 +24,7 @@ export class EventsService {
         private readonly validator: Validator,
         private readonly eventRedisRepository: EventsRedisRepository,
         private readonly utilService: UtilService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(EventGroup) private readonly eventGroupRepository: Repository<EventGroup>,
         @InjectRepository(Event) private readonly eventRepository: Repository<Event>,
@@ -208,6 +211,13 @@ export class EventsService {
         profileId: number,
         newEvent: Event
     ): Promise<Event> {
+
+        this.logger.info({
+            message: 'Set up to create a new event. Validate default availability..',
+            teamId,
+            profileId
+        });
+
         const defaultEventGroup = await this.eventGroupRepository.findOneOrFail({
             relations: {
                 team: {
@@ -230,25 +240,45 @@ export class EventsService {
         });
 
         const defaultAvailability = defaultEventGroup.team.profiles[0].availabilities.pop();
+        const noDefaultAvailability = !defaultAvailability;
 
-        if (!defaultAvailability) {
+        if (noDefaultAvailability) {
             throw new NoDefaultAvailabilityException();
         }
+
+        this.logger.info({
+            message: 'Default availability is checked. Trying to validate the patched event link is valid..',
+            teamId,
+            teamUUID,
+            profileId,
+            newEventLink: newEvent.link
+        });
 
         const defaultAvailabilityId = defaultAvailability.id;
 
         newEvent.eventGroupId = defaultEventGroup.id;
 
-        const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(teamUUID, newEvent.name);
+        const newEventLink = 'new-event-type';
 
-        const newEventLink = newEvent.name.replace(/\s/g, '-');
+        const isAlreadyUsedIn = await this.eventRedisRepository.getEventLinkSetStatus(teamUUID, newEventLink);
+
+        this.logger.info({
+            message: 'Log requested event link status',
+            newEventLink,
+            isAlreadyUsedIn
+        });
 
         if (isAlreadyUsedIn) {
             const generatedEventSuffix = this.utilService.generateUniqueNumber();
-            newEvent.link = `${newEventLink}-${generatedEventSuffix}`;
+            newEvent.link = [newEventLink, generatedEventSuffix].join('-');
         } else {
             newEvent.link = newEventLink;
         }
+
+        this.logger.info({
+            message: 'Event Creating set up is done. Start creating new event with transaction',
+            patchedNewEventLink: newEvent.link
+        });
 
         return this._create(
             this.eventRepository.manager,
@@ -276,6 +306,12 @@ export class EventsService {
             availabilityId: defaultAvailabilityId
         } as EventProfile;
 
+        this.logger.info({
+            message: 'Initialize eventProfiles with default availability id',
+            defaultAvailabilityId,
+            initialEventProfile
+        });
+
         ensuredNewEvent.eventProfiles = [initialEventProfile] as EventProfile[];
 
         // save relation data
@@ -288,7 +324,14 @@ export class EventsService {
         const newEventDetail = ensuredNewEvent.eventDetail;
         const { inviteeQuestions, notificationInfo, eventSetting } = newEventDetail;
 
+        this.logger.info({
+            message: 'Creating event with event detail, eventProfiles is completed. Set event link status then saving notification info, invitee questions',
+            teamUUID,
+            savedEventLink: savedEvent.link
+        });
+
         await this.eventRedisRepository.setEventLinkSetStatus(teamUUID, savedEvent.link);
+
         const savedEventDetailBody = await this.eventRedisRepository.save(
             savedEventDetail.uuid,
             inviteeQuestions,
@@ -298,6 +341,11 @@ export class EventsService {
 
         savedEvent.eventDetail.inviteeQuestions = savedEventDetailBody.inviteeQuestions;
         savedEvent.eventDetail.notificationInfo = savedEventDetailBody.notificationInfo;
+
+        this.logger.info({
+            message: 'Creating event transaction is going to be committed',
+            savedEventId: savedEvent.id
+        });
 
         return savedEvent;
     }

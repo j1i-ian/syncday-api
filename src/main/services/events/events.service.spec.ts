@@ -3,6 +3,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom, from, of } from 'rxjs';
 import { InternalServerErrorException } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Event } from '@core/entities/events/event.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventGroup } from '@core/entities/events/event-group.entity';
@@ -64,6 +65,10 @@ describe('EventsService', () => {
                     useValue: validatorStub
                 },
                 {
+                    provide: UtilService,
+                    useValue: utilServiceStub
+                },
+                {
                     provide: SyncdayRedisService,
                     useValue: syncdayRedisServiceStub
                 },
@@ -88,8 +93,8 @@ describe('EventsService', () => {
                     useValue: eventProfileRepositoryStub
                 },
                 {
-                    provide: UtilService,
-                    useValue: utilServiceStub
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: TestMockUtil.getLoggerStub()
                 }
             ]
         }).compile();
