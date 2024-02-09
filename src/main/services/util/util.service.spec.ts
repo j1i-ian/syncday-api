@@ -225,7 +225,7 @@ describe('UtilService', () => {
     });
 
     describe('Proration Test', () => {
-        it('It should be calculated that the proration for an amount of 26,970, results in whole numbers of 870', () => {
+        it('should be calculated that the proration for an amount of 26,970, results in whole numbers of 870', () => {
             const amountMock = 26970;
 
             const _15daysBeforePaymentPeriodMock = new Date();
@@ -234,6 +234,23 @@ describe('UtilService', () => {
             const actualProration = service.getProration(
                 amountMock,
                 _15daysBeforePaymentPeriodMock
+            );
+
+            const expectedProration = (amountMock / 31) * 15;
+
+            expect(actualProration).ok;
+            expect(actualProration).equals(expectedProration);
+        });
+
+        it('should be calculated that the proration when team is created 3 month and half ago for an amount of 26,970, results in whole numbers of 870', () => {
+            const amountMock = 26970;
+
+            const _3monthAndHalfAgoPaymentPeriodMock = new Date();
+            _3monthAndHalfAgoPaymentPeriodMock.setDate(_3monthAndHalfAgoPaymentPeriodMock.getDate() - 3 * 31 - 15);
+
+            const actualProration = service.getProration(
+                amountMock,
+                _3monthAndHalfAgoPaymentPeriodMock
             );
 
             const expectedProration = (amountMock / 31) * 15;

@@ -170,11 +170,14 @@ export class UtilService {
         paymentPeriod: Date
     ): number {
 
+        const daysOfMonth = 31;
         const aDay = (1000 * 60 * 60 * 24);
 
-        const prorationDate = Math.floor((Date.now() - new Date(paymentPeriod).getTime()) / aDay);
+        const sinceDays = Math.floor((Date.now() - new Date(paymentPeriod).getTime()) / aDay);
 
-        const pricePerDate = amount / 31;
+        const prorationDate = daysOfMonth - (sinceDays % daysOfMonth) - 1;
+
+        const pricePerDate = amount / daysOfMonth;
 
         const proration = Math.ceil(pricePerDate * prorationDate / 10) * 10;
 
