@@ -23,6 +23,8 @@ import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
+import { PageOption } from '@interfaces/page-option.interface';
+import { TimestampSearchOption } from '@interfaces/timestamp-search-option.interface';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -94,9 +96,9 @@ export class UtilService {
     }
 
     patchSearchOption(
-        searchOption: Partial<SearchOption>,
+        searchOption: Partial<SearchOption & PageOption & TimestampSearchOption>,
         authProfile: AppJwtPayload
-    ): Partial<SearchOption> {
+    ): Partial<SearchOption & PageOption & TimestampSearchOption> {
 
         const {
             teamId: queryTeamId,
@@ -147,7 +149,20 @@ export class UtilService {
             userId: isUserIdSearch ? patchedSearchOption.userId : undefined
         };
 
-        return parsedSearchOption;
+        const page = searchOption.page && +searchOption.page;
+        const take = searchOption.take && +searchOption.take;
+
+        const since = searchOption.since && +searchOption.since;
+        const until = searchOption.until && +searchOption.until;
+
+        return {
+            ...searchOption,
+            ...parsedSearchOption,
+            page,
+            take,
+            since,
+            until
+        };
     }
 
     getProration(

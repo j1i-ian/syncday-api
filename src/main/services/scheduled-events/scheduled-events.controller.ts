@@ -1,5 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, mergeMap, of } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
@@ -18,25 +18,18 @@ export class ScheduledEventsController {
     @Get()
     search(
         @Query() searchOptions: Partial<ScheduledEventSearchOption>,
-        @Query('page') page = 0,
-        @Query('take') take = 6,
-        @Query('statusGroup') statusGroup = 'upcoming' as ScheduledEventSearchOption['statusGroup'],
         @AuthProfile() authProfile: AppJwtPayload
     ): Observable<ScheduledEvent[]> {
 
-        const parsedSearchOption = this.utilService.patchSearchOption(
+        return of(this.utilService.patchSearchOption(
             searchOptions as AppJwtPayload,
             authProfile
+        )).pipe(
+            mergeMap((parsedSearchOption) =>
+                this.nativeScheduledEventsService.search(
+                    parsedSearchOption
+                ) as Observable<ScheduledEvent[]>
+            )
         );
-
-        return this.nativeScheduledEventsService.search({
-            page,
-            take,
-            profileId: parsedSearchOption.id,
-            hostUUID: parsedSearchOption.uuid,
-            orderScheduledTimeStartTimestamp: searchOptions.orderScheduledTimeStartTimestamp,
-            statusGroup,
-            ...parsedSearchOption
-        }) as Observable<ScheduledEvent[]>;
     }
 }

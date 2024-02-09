@@ -9,6 +9,7 @@ import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { Role } from '@interfaces/profiles/role.enum';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
+import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
@@ -32,6 +33,8 @@ interface RoleUpdateTestParameters {
     authRole: Role;
     desireRole: Role;
 }
+
+type BasicSearchOption = Partial<Pick<AppJwtPayload, 'teamId' | 'teamUUID' | 'id' | 'userId'> & ScheduledEventSearchOption>;
 
 describe('UtilService', () => {
     let service: UtilService;
@@ -159,12 +162,18 @@ describe('UtilService', () => {
                     searchOptionMock: { teamId: 6, id: 7, userId: 8 },
                     authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MANAGER] },
                     expected: { teamId: 1, id: 7, userId: 8 }
+                },
+                {
+                    description: 'should be ensured that page, take, since, until option should be parsed to integer value',
+                    searchOptionMock: { page: '1', take: '2', since: '1696836098843', until: '1707463298843' },
+                    authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MANAGER] },
+                    expected: { page: 1, take: 2, since: 1696836098843, until: 1707463298843, teamId: 1 }
                 }
             ] as Array<{
                 description: string;
-                searchOptionMock: Partial<Pick<AppJwtPayload, 'teamId' | 'teamUUID' | 'id' | 'userId'>>;
+                searchOptionMock: BasicSearchOption;
                 authProfileMock: AppJwtPayload;
-                expected: Partial<Pick<AppJwtPayload, 'teamId' | 'teamUUID' | 'id' | 'userId'>>;
+                expected: BasicSearchOption;
             }>
         ).forEach(function({
             description,
