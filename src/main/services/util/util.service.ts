@@ -165,17 +165,48 @@ export class UtilService {
         };
     }
 
+    getProrationDate(paymentPeriodDate: Date): number {
+
+        const daysOfMonth = 31;
+
+        const aDay = (1000 * 60 * 60 * 24);
+
+        const teamCreationDayIsService = 1;
+
+        const sinceDays = Math.floor((Date.now() - paymentPeriodDate.getTime()) / aDay);
+
+        const prorationDate = daysOfMonth - (sinceDays % daysOfMonth) - teamCreationDayIsService;
+
+        return prorationDate;
+    }
+
+    getNextPaymentDate(paymentPeriodDate: Date): Date {
+
+        const teamCreationDayIsService = 1;
+
+        const prorationDate = this.getProrationDate(paymentPeriodDate);
+
+        const nextPaymentDate = new Date();
+
+        nextPaymentDate.setHours(
+            paymentPeriodDate.getHours(),
+            paymentPeriodDate.getMinutes(),
+            paymentPeriodDate.getSeconds(),
+            paymentPeriodDate.getMilliseconds()
+        );
+
+        nextPaymentDate.setDate(nextPaymentDate.getDate() + prorationDate + teamCreationDayIsService);
+
+        return nextPaymentDate;
+    }
+
     getProration(
         amount: number,
         paymentPeriod: Date
     ): number {
-
         const daysOfMonth = 31;
-        const aDay = (1000 * 60 * 60 * 24);
 
-        const sinceDays = Math.floor((Date.now() - new Date(paymentPeriod).getTime()) / aDay);
-
-        const prorationDate = daysOfMonth - (sinceDays % daysOfMonth) - 1;
+        const prorationDate = this.getProrationDate(paymentPeriod);
 
         const pricePerDate = amount / daysOfMonth;
 

@@ -224,6 +224,63 @@ describe('UtilService', () => {
         });
     });
 
+    describe('getProrationDate Test', () => {
+
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            serviceSandbox.restore();
+        });
+
+        it('should be got the proration date', () => {
+
+            const teamCreateDateMock = new Date('2024-01-01');
+
+            const nowStub = new Date('2024-02-09T14:25:44.762Z');
+
+            // team creation date is not including in proration date
+            const expectedProrationDate = 22;
+
+            serviceSandbox.stub(Date, 'now').returns(nowStub.getTime());
+
+            const nextPeriodDate = service.getProrationDate(teamCreateDateMock);
+
+            expect(nextPeriodDate).equals(expectedProrationDate);
+        });
+    });
+
+    describe('getNextPaymentDate Test', () => {
+
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            serviceSandbox.restore();
+        });
+
+        it('should be got the next payment date', () => {
+
+            const teamCreateDateMock = new Date('2024-01-01');
+
+            const expectedNextPaymentDate = new Date('2024-03-03');
+            const nowStub = new Date('2024-02-09T14:25:44.762Z');
+
+            serviceSandbox.stub(Date, 'now').returns(nowStub.getTime());
+            serviceSandbox.useFakeTimers(nowStub);
+
+            const nextPaymentDate = service.getNextPaymentDate(teamCreateDateMock);
+
+            expect(nextPaymentDate.getTime()).equals(expectedNextPaymentDate.getTime());
+        });
+    });
+
     describe('Proration Test', () => {
         it('should be calculated that the proration for an amount of 26,970, results in whole numbers of 870', () => {
             const amountMock = 26970;
@@ -235,8 +292,10 @@ describe('UtilService', () => {
                 amountMock,
                 _15daysBeforePaymentPeriodMock
             );
+            const teamCreationDayIsService = 1;
+            const expectedProrationDate = (31 - 15 - teamCreationDayIsService);
 
-            const expectedProration = (amountMock / 31) * 15;
+            const expectedProration = (amountMock / 31) * expectedProrationDate;
 
             expect(actualProration).ok;
             expect(actualProration).equals(expectedProration);
@@ -252,8 +311,10 @@ describe('UtilService', () => {
                 amountMock,
                 _3monthAndHalfAgoPaymentPeriodMock
             );
+            const teamCreationDayIsService = 1;
+            const expectedProrationDate = (31 - 15 - teamCreationDayIsService);
 
-            const expectedProration = (amountMock / 31) * 15;
+            const expectedProration = (amountMock / 31) * expectedProrationDate;
 
             expect(actualProration).ok;
             expect(actualProration).equals(expectedProration);
