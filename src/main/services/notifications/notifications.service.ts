@@ -70,7 +70,8 @@ export class NotificationsService {
                         email = invitedNewTeamMember.email;
                     } else {
 
-                        const phoneNumber = invitedNewTeamMember.phone as string;
+                        phoneNumber = invitedNewTeamMember.phone as string;
+
                         const isKoreanPhoneNumber = phoneNumber.includes('+82');
 
                         syncdayNotificationPublishKey = isKoreanPhoneNumber
