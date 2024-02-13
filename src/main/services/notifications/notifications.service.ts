@@ -58,6 +58,7 @@ export class NotificationsService {
 
                     let syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
                     let phoneNumber: string | undefined;
+                    let email: string | undefined;
                     let template: TextTemplate | EmailTemplate;
 
                     const { invitedNewTeamMember } = invitationNotificationRequest;
@@ -65,6 +66,8 @@ export class NotificationsService {
                     if (invitedNewTeamMember.email) {
                         syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
                         template = EmailTemplate.INVITATION;
+
+                        email = invitedNewTeamMember.email;
                     } else {
 
                         const phoneNumber = invitedNewTeamMember.phone as string;
@@ -80,7 +83,8 @@ export class NotificationsService {
                     this.logger.info({
                         message: 'Trying to send a message..',
                         teamName,
-                        template
+                        template,
+                        email
                     });
 
                     return this.sendMessage(
@@ -88,7 +92,8 @@ export class NotificationsService {
                         {
                             template,
                             data: JSON.stringify(invitationNotificationRequest),
-                            phoneNumber
+                            phoneNumber,
+                            email
                         }
                     );
                 }),
@@ -200,7 +205,7 @@ export class NotificationsService {
 
         const notificationData = {
             template: EmailTemplate.WELCOME,
-            recipient: userEmail,
+            email: userEmail,
             language: preferredLanguage,
             data: JSON.stringify({ userName })
         } as SyncdayAwsSnsRequest;
