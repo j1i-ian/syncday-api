@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { SNSClient } from '@aws-sdk/client-sns';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
@@ -85,6 +86,10 @@ describe('NotificationsService', () => {
                 {
                     provide: TeamSettingService,
                     useValue: teamSettingServiceStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: TestMockUtil.getLoggerStub()
                 }
             ]
         }).compile();

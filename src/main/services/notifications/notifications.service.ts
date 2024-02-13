@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Observable, combineLatest, defer, from, map, mergeMap, reduce } from 'rxjs';
+import { Observable, combineLatest, defer, from, map, mergeMap, reduce, tap } from 'rxjs';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
 import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws-sns-request.interface';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
@@ -26,7 +28,8 @@ export class NotificationsService {
         private readonly eventsService: EventsService,
         private readonly teamSettingService: TeamSettingService,
         private readonly configService: ConfigService,
-        private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService
+        private readonly syncdayAwsSdkClientService: SyncdayAwsSdkClientService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
     sendTeamInvitation(
@@ -35,6 +38,13 @@ export class NotificationsService {
         invitedNewTeamMembers: InvitedNewTeamMember[],
         isAlreadySignedUpSyncUser: boolean
     ): Observable<boolean> {
+
+        this.logger.info({
+            message: 'Team Invitation Notification is sending..',
+            teamName,
+            hostName,
+            invitedNewTeamMembersLength: invitedNewTeamMembers.length
+        });
 
         return from(invitedNewTeamMembers)
             .pipe(
@@ -67,6 +77,12 @@ export class NotificationsService {
                         template = TextTemplate.INVITATION;
                     }
 
+                    this.logger.info({
+                        message: 'Trying to send a message..',
+                        teamName,
+                        template
+                    });
+
                     return this.sendMessage(
                         syncdayNotificationPublishKey,
                         {
@@ -76,7 +92,13 @@ export class NotificationsService {
                         }
                     );
                 }),
-                reduce((acc, curr) => acc && curr)
+                reduce((acc, curr) => acc && curr),
+                tap(() => {
+                    this.logger.info({
+                        message: 'Team Invitation Notification has been sent.',
+                        teamName
+                    });
+                })
             );
     }
 
