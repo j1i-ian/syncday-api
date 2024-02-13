@@ -950,7 +950,7 @@ describe('ProfilesService', () => {
             paymentsServiceStub._refund.returns(of(true));
 
             serviceSandbox.stub(service, '_fetchTeamOwnerProfile').returns(of(authProfile));
-            teamServiceStub.get.resolves(teamStub);
+            teamServiceStub.get.returns(of(teamStub));
             ordersServiceStub.fetch.resolves(relatedOrderStub);
 
             utilServiceStub.getProration.returns(0);

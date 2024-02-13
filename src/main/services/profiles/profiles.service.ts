@@ -811,7 +811,7 @@ export class ProfilesService {
                     }
                 }))
             );
-        const team$ = this.teamService.get(teamId, authProfile.userId, {});
+        const team$ = from(firstValueFrom(this.teamService.get(teamId, authProfile.userId, {})));
 
         const refundParams$ = zip(targetProfile$, order$)
             .pipe(
@@ -889,7 +889,14 @@ export class ProfilesService {
                                 .pipe(
                                     concatMap((_availabilityRepository) => _availabilityRepository.softDelete({
                                         profileId
-                                    }))
+                                    })),
+                                    tap(() => {
+                                        this.logger.info({
+                                            message: 'Transaction: Availability soft delete is completed',
+                                            profileId,
+                                            teamId
+                                        });
+                                    })
                                 ),
                             of(transactionManager.getRepository(Availability))
                                 .pipe(
@@ -897,21 +904,42 @@ export class ProfilesService {
                                     concatMap(([_availabilityRepository, ownerProfile]) => _availabilityRepository.update(
                                         { profileId },
                                         { profileId: ownerProfile.id }
-                                    ))
+                                    )),
+                                    tap(() => {
+                                        this.logger.info({
+                                            message: 'Transaction: Availability update is completed',
+                                            profileId,
+                                            teamId
+                                        });
+                                    })
                                 ),
                             of(transactionManager.getRepository(Profile))
                                 .pipe(
                                     mergeMap((_profileRepository) => _profileRepository.delete({
                                         id: profileId,
                                         teamId
-                                    }))
+                                    })),
+                                    tap(() => {
+                                        this.logger.info({
+                                            message: 'Transaction: Profile is deleted',
+                                            profileId,
+                                            teamId
+                                        });
+                                    })
                                 ),
                             of(transactionManager.getRepository(ScheduledEventNotification))
                                 .pipe(
                                     mergeMap((_scheduledEventNotification) => _scheduledEventNotification.delete({
                                         profileId,
                                         remindAt: MoreThan(new Date())
-                                    }))
+                                    })),
+                                    tap(() => {
+                                        this.logger.info({
+                                            message: 'Transaction: Scheduled event notifications are deleted',
+                                            profileId,
+                                            teamId
+                                        });
+                                    })
                                 )
                         ).pipe(
                             reduce((acc, updateResult) => acc && !!(
@@ -919,6 +947,11 @@ export class ProfilesService {
                                     && updateResult.affected
                                     && updateResult.affected > 0)
                             , true),
+                            tap(() => {
+                                this.logger.info({
+                                    message: 'Transaction: All transactions are completed. Trying to save the payment...'
+                                });
+                            }),
                             mergeMap(() => zip(order$, refundParams$)),
                             filter(([ relatedOrder ]) => relatedOrder !== null),
                             mergeMap(([
