@@ -116,58 +116,75 @@ describe('UtilService', () => {
             [
                 {
                     description: 'should be ensured that the team ID option is patched in the absence of query parameters, provided the user possesses member permissions',
-                    searchOptionMock: { teamId: undefined, id: undefined, userId: undefined },
+                    searchOptionMock: { teamId: undefined, profileId: undefined, userId: undefined },
                     authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MEMBER] },
-                    expected: { teamId: 1, id: 2, userId: 3 }
+                    expected: { teamId: 1, profileId: 2, userId: 3 }
                 },
                 {
-
                     description: 'should be ensured that the team ID option is patched in the absence of query parameters, provided the user possesses manager permissions',
-                    searchOptionMock: { teamId: undefined, id: undefined, userId: undefined },
+                    searchOptionMock: { teamId: undefined, profileId: undefined, userId: undefined },
                     authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MANAGER] },
-                    expected: { teamId: 1, id: undefined, userId: undefined }
+                    expected: { teamId: 1, profileId: undefined, userId: undefined }
                 },
                 {
                     description: 'should be ensured that the team ID option is patched in the absence of query parameters, provided the user possesses owner permissions',
-                    searchOptionMock: { teamId: undefined, id: undefined, userId: undefined },
+                    searchOptionMock: { teamId: undefined, profileId: undefined, userId: undefined },
                     authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.OWNER] },
-                    expected: { teamId: 1, id: undefined, userId: undefined }
+                    expected: { teamId: 1, profileId: undefined, userId: undefined }
+                },
+                {
+                    description: 'should be ensured that the user id option is patched with team id when user id is not owned',
+                    searchOptionMock: { teamId: undefined, profileId: undefined, userId: '3' },
+                    authProfileMock: { teamId: 1, id: 2, userId: 2, roles: [Role.MANAGER] },
+                    expected: { teamId: 1, profileId: undefined, userId: 3 }
+                },
+                {
+                    description: 'should be ensured that the user id option is patched without team id when user id is owned',
+                    searchOptionMock: { teamId: undefined, profileId: undefined, userId: '2' },
+                    authProfileMock: { teamId: 1, id: 2, userId: 2, roles: [Role.MANAGER] },
+                    expected: { teamId: undefined, profileId: undefined, userId: 2 }
                 },
                 {
                     description: 'should be ensured that the team id search option is patched when the team id is queried',
-                    searchOptionMock: { teamId: 1, id: undefined, userId: undefined },
+                    searchOptionMock: { teamId: 1, profileId: undefined, userId: undefined },
                     authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MEMBER] },
-                    expected: { teamId: 1, id: undefined, userId: undefined }
+                    expected: { teamId: 1, profileId: undefined, userId: undefined }
                 },
                 {
                     description: 'should be ensured that the team id search option is patched when the team id is queried with wrong value fixing automatically',
-                    searchOptionMock: { teamId: 4, id: undefined, userId: undefined },
+                    searchOptionMock: { teamId: 4, profileId: undefined, userId: undefined },
                     authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MEMBER] },
-                    expected: { teamId: 1, id: undefined, userId: undefined }
+                    expected: { teamId: 1, profileId: undefined, userId: undefined }
                 },
                 {
                     description: 'should be ensured that the user id search option is patched when user id is queried with wrong value fixing automatically',
-                    searchOptionMock: { teamId: undefined, id: undefined, userId: 3 },
+                    searchOptionMock: { teamId: undefined, profileId: undefined, userId: 3 },
                     authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MEMBER] },
-                    expected: { teamId: 1, id: 2, userId: 3 }
+                    expected: { teamId: 1, profileId: 2, userId: 3 }
                 },
                 {
                     description: 'should be ensured that the profile id search option is patched when profile id is queried with wrong value fixing automatically',
-                    searchOptionMock: { teamId: 6, id: 7, userId: 8 },
+                    searchOptionMock: { teamId: 6, profileId: 7, userId: 8 },
                     authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MEMBER] },
-                    expected: { teamId: 1, id: 2, userId: 3 }
+                    expected: { teamId: 1, profileId: 2, userId: 3 }
                 },
                 {
                     description: 'should be ensured that user and profile id search option as query params are patched when profile id is queried and user has a permission',
-                    searchOptionMock: { teamId: 6, id: 7, userId: 8 },
+                    searchOptionMock: { teamId: 6, iprofileIdd: 7, userId: 8 },
                     authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MANAGER] },
-                    expected: { teamId: 1, id: 7, userId: 8 }
+                    expected: { teamId: 1, profileId: 7, userId: 8 }
                 },
                 {
                     description: 'should be ensured that page, take, since, until option should be parsed to integer value',
                     searchOptionMock: { page: '1', take: '2', since: '1696836098843', until: '1707463298843' },
                     authProfileMock: { teamId: 1, id: 2, userId: 3, roles: [Role.MANAGER] },
                     expected: { page: 1, take: 2, since: 1696836098843, until: 1707463298843, teamId: 1 }
+                },
+                {
+                    description: 'should be ensured that own user id search option without any team option for searching new profiles',
+                    searchOptionMock: { userId: '2' },
+                    authProfileMock: { teamId: 1, id: 2, userId: 2, roles: [Role.MANAGER] },
+                    expected: { userId: 2 }
                 }
             ] as Array<{
                 description: string;

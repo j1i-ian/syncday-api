@@ -25,6 +25,7 @@ import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { PageOption } from '@interfaces/page-option.interface';
 import { TimestampSearchOption } from '@interfaces/timestamp-search-option.interface';
+import { KeySearchOption } from '@interfaces/key-search-option.type';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -72,7 +73,7 @@ type EventDetailInit = Omit<EventDetail,
 | 'scheduledEvents'
 >;
 
-type SearchOption = Pick<AppJwtPayload, 'teamId' | 'teamUUID' | 'id' | 'uuid' | 'userId'>;
+type SearchOption = KeySearchOption & KeySearchOption<'team'> & KeySearchOption<'profile'> & KeySearchOption<'user'>;
 
 @Injectable()
 export class UtilService {
@@ -102,7 +103,7 @@ export class UtilService {
 
         const {
             teamId: queryTeamId,
-            id: queryProfileId,
+            profileId: queryProfileId,
             userId: queryUserId
         } = searchOption;
 
@@ -114,6 +115,9 @@ export class UtilService {
             roles
         } = authProfile;
 
+        const ensuredQueryUserId = queryUserId ? +queryUserId : undefined;
+        const ensuredQueryProfileId = queryProfileId ? +queryProfileId : undefined;
+
         let parsedSearchOption: Partial<SearchOption> = {};
 
         const isOwner = roles.includes(Role.OWNER);
@@ -123,20 +127,21 @@ export class UtilService {
         const isTeamIdSearch = !!queryTeamId;
         const noTeamSearch = isTeamIdSearch === false;
 
+        const isOwnUserIdSearch = ensuredQueryUserId === authUserId;
         const isUserIdSearch = !!(noTeamSearch || queryUserId);
         const isProfileIdSearch = !!(noTeamSearch || queryProfileId);
 
         const patchedSearchOption: SearchOption =  (
             hasQueryPermissionByRole
                 ? {
-                    teamId: authTeamId,
-                    teamUUID: authTeamUUID,
-                    id: queryProfileId,
-                    userId: queryUserId
+                    teamId: isOwnUserIdSearch ? undefined : authTeamId,
+                    teamUUID: isOwnUserIdSearch ? undefined : authTeamUUID,
+                    profileId: ensuredQueryProfileId,
+                    userId: ensuredQueryUserId
                 } : {
                     teamId: authTeamId,
                     teamUUID: authTeamUUID,
-                    id: authProfileId,
+                    profileId: authProfileId,
                     userId: authUserId,
                     uuid: authProfile.uuid
                 }
@@ -145,7 +150,7 @@ export class UtilService {
         parsedSearchOption = {
             teamId: patchedSearchOption.teamId,
             teamUUID: patchedSearchOption.teamUUID,
-            id: isProfileIdSearch ? patchedSearchOption.id : undefined,
+            profileId: isProfileIdSearch ? patchedSearchOption.id : undefined,
             userId: isUserIdSearch ? patchedSearchOption.userId : undefined
         };
 

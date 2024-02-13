@@ -71,6 +71,8 @@ export class ProfilesController {
         return this.profileService.search({
             withUserData: searchOptions.withUserData,
             withUnsigedUserInvitation: searchOptions.withUnsigedUserInvitation,
+            id: patchedSearchOption.profileId,
+            uuid: patchedSearchOption.profileUUID,
             teamId: patchedSearchOption.teamId,
             teamUUID: patchedSearchOption.teamUUID,
             userId: patchedSearchOption.userId
