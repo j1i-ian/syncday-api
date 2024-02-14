@@ -42,7 +42,7 @@ export class NativeScheduledEventsService implements ScheduledEventsService {
         if (statusGroup === 'upcoming') {
             statusCondition = In([ScheduledStatus.OPENED, ScheduledStatus.CONFIRMED, ScheduledStatus.REMINDED]);
         } else {
-            statusCondition = In([ScheduledStatus.CANCELED, ScheduledStatus.COMPLETED]);
+            statusCondition = In([ScheduledStatus.OPENED, ScheduledStatus.CANCELED, ScheduledStatus.COMPLETED]);
         }
 
         const nativeScheduleDefaultOption: FindOptionsWhere<ScheduledEvent> = {
