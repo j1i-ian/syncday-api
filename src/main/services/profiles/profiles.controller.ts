@@ -186,6 +186,21 @@ export class ProfilesController {
         );
     }
 
+    @Delete()
+    @HttpCode(HttpStatus.NO_CONTENT)
+    removeUnsignedUser(
+        @AuthProfile() authProfile: Profile,
+        @Body() invitedNewTeamMember: InvitedNewTeamMember
+    ): Observable<boolean> {
+
+        const emailOrPhone = (invitedNewTeamMember.email || invitedNewTeamMember.phone) as string;
+
+        return this.profileService.removeUnsignedUserInvitation(
+            authProfile.teamId,
+            authProfile.teamUUID,
+            emailOrPhone
+        );
+    }
 
     /**
      * Http status code 208 - Already Reported

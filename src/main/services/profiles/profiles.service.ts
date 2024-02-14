@@ -983,6 +983,19 @@ export class ProfilesService {
         );
     }
 
+    removeUnsignedUserInvitation(
+        teamId: number,
+        teamUUID: string,
+        emailOrPhoneNumber: string
+    ): Observable<boolean> {
+
+        return defer(() => this.profilesRedisRepository.deleteTeamInvitations(
+            teamId,
+            teamUUID,
+            emailOrPhoneNumber
+        ));
+    }
+
     validateRoleUpdateRequest(
         authRoles: Role[],
         updateRoles: Role[]
