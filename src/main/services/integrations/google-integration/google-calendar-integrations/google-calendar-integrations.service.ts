@@ -227,14 +227,18 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
 
         return defer(() => from(
             this.googleCalendarIntegrationRepository.findOne({
-                relations: [
-                    'googleIntegration',
-                    'googleIntegration.profiles',
-                    'googleIntegration.profiles.user',
-                    'googleIntegration.profiles.user.userSetting',
-                    'googleIntegration.profiles.team',
-                    'googleIntegration.profiles.team.teamSetting'
-                ],
+                relations: {
+                    googleIntegration: {
+                        profiles: {
+                            user: {
+                                userSetting: true
+                            },
+                            team: {
+                                teamSetting: true
+                            }
+                        }
+                    }
+                },
                 where: options
             })
         ));

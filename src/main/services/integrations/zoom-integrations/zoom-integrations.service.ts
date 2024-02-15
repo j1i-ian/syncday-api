@@ -86,7 +86,9 @@ export class ZoomIntegrationsService implements
         const { profileId } = searchZoomIntegrationOptions;
 
         return this.zoomIntegrationRepository.findOne({
-            relations: ['users'],
+            relations: {
+                profiles: true
+            },
             where: {
                 profiles: {
                     id: profileId

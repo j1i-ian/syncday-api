@@ -196,7 +196,6 @@ export class GlobalScheduledEventsService {
                         ] as [ScheduledEvent, CalendarIntegration | null, string, Contact[]])
                     )
             ),
-            last(),
             mergeMap(
                 ([
                     patchedSchedule,
@@ -204,6 +203,12 @@ export class GlobalScheduledEventsService {
                     availabilityTimezone,
                     contacts
                 ]) => {
+
+                    this.logger.info({
+                        message: 'is loaded outbound calendar integration null ?',
+                        loadedOutboundCalendarIntegrationOrNull: !!loadedOutboundCalendarIntegrationOrNull,
+                        integrationVendor: loadedOutboundCalendarIntegrationOrNull?.getIntegrationVendor()
+                    });
 
                     if (!loadedOutboundCalendarIntegrationOrNull) {
                         return of(patchedSchedule);
