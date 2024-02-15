@@ -23,10 +23,13 @@ export class GlobalInterceptor implements NestInterceptor {
             protocol: request.protocol
         };
 
-        this.logger.info({
-            message: 'request logged',
-            requestLog
-        });
+        // skip aws health check request
+        if (request.url !== '/') {
+            this.logger.info({
+                message: 'request logged',
+                requestLog
+            });
+        }
 
         return next.handle();
     }
