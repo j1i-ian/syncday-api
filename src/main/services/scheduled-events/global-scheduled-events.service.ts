@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, combineLatest, concatMap, defer, filter, forkJoin, from, last, map, mergeMap, of, tap, throwIfEmpty } from 'rxjs';
+import { Observable, combineLatest, concatMap, defer, filter, forkJoin, from, last, map, mergeMap, of, tap, throwIfEmpty, toArray } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -16,6 +16,7 @@ import { IntegrationsServiceLocator } from '@services/integrations/integrations.
 import { NativeScheduledEventsService } from '@services/scheduled-events/native-scheduled-events.service';
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
@@ -40,6 +41,7 @@ export class GlobalScheduledEventsService {
         private readonly timeUtilService: TimeUtilService,
         private readonly eventsService: EventsService,
         private readonly nativeSchedulesService: NativeScheduledEventsService,
+        private readonly notificationsService: NotificationsService,
         private readonly calendarIntegrationsServiceLocator: CalendarIntegrationsServiceLocator,
         private readonly scheduleRedisRepository: ScheduledEventsRedisRepository,
         @InjectRepository(ScheduledEvent) private readonly scheduledEventRepository: Repository<ScheduledEvent>,
@@ -106,6 +108,18 @@ export class GlobalScheduledEventsService {
             host,
             hostProfiles,
             hostAvailability
+        ).pipe(
+            mergeMap((_createdSchedule) => from(_createdSchedule.scheduledEventNotifications)
+                .pipe(
+                    mergeMap((_scheduledEventNotification) =>
+                        this.notificationsService.sendBookingComplete(
+                            _scheduledEventNotification
+                        )
+                    ),
+                    toArray(),
+                    map(() => _createdSchedule)
+                )
+            )
         );
     }
 
@@ -308,7 +322,12 @@ export class GlobalScheduledEventsService {
 
                     return createdSchedule;
                 }))
-            )
+            ),
+            tap(() => {
+                this.logger.info({
+                    message: 'Booking is completed successfully'
+                });
+            })
         );
     }
 

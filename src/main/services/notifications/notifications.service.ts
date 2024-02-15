@@ -32,6 +32,29 @@ export class NotificationsService {
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
+    sendBookingComplete(
+        scheduledEventNotification: ScheduledEventNotification
+    ): Observable<boolean> {
+
+        const publishKey = this.utilService.getSyncdayNotificationPublishKey(scheduledEventNotification);
+        const notificationData = this.utilService.getNotificationData(scheduledEventNotification);
+
+        this.logger.info({
+            message: 'Booking confirm notification is sending..',
+            scheduledEventNotification,
+            publishKey,
+            notificationData
+        });
+
+        return defer(() => from(
+            this.sendMessage(
+                publishKey,
+                notificationData
+            )
+        ));
+
+    }
+
     sendTeamInvitation(
         teamName: string,
         hostName: string,
@@ -186,7 +209,7 @@ export class NotificationsService {
         return true;
     }
 
-    async sendMessage(
+    sendMessage(
         syncdayNotificationPublishKey: SyncdayNotificationPublishKey,
         notificationData: SyncdayAwsSnsRequest
     ): Promise<boolean> {
@@ -195,10 +218,14 @@ export class NotificationsService {
             StringValue: JSON.stringify([syncdayNotificationPublishKey])
         };
 
-        return await this._sendNotification(messageAttribute, notificationData);
+        return this._sendNotification(messageAttribute, notificationData);
     }
 
-    sendWelcomeEmailForNewUser(userName: string | null, userEmail: string, preferredLanguage: Language): Promise<boolean> {
+    sendWelcomeEmailForNewUser(
+        userName: string | null,
+        userEmail: string,
+        preferredLanguage: Language
+    ): Promise<boolean> {
         const messageAttribute: MessageAttributeValue = {
             DataType: 'String.Array',
             StringValue: JSON.stringify([SyncdayNotificationPublishKey.EMAIL])

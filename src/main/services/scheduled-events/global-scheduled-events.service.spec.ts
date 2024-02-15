@@ -18,6 +18,7 @@ import { CalendarIntegrationsServiceLocator } from '@services/integrations/calen
 import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
@@ -60,6 +61,7 @@ describe('GlobalScheduledEventsService', () => {
     const _1Hour = 60 * 60 * 1000;
 
     let googleConferenceLinkIntegrationServiceStub: sinon.SinonStubbedInstance<GoogleConferenceLinkIntegrationService>;
+    let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
 
     before(async () => {
 
@@ -89,6 +91,7 @@ describe('GlobalScheduledEventsService', () => {
         ]);
 
         googleConferenceLinkIntegrationServiceStub = sinon.createStubInstance(GoogleConferenceLinkIntegrationService);
+        notificationsServiceStub = sinon.createStubInstance(NotificationsService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -124,6 +127,10 @@ describe('GlobalScheduledEventsService', () => {
                 {
                     provide: ScheduledEventsRedisRepository,
                     useValue: schedulesRedisRepositoryStub
+                },
+                {
+                    provide: NotificationsService,
+                    useValue: notificationsServiceStub
                 },
                 {
                     provide: getRepositoryToken(ScheduledEvent),

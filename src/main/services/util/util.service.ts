@@ -295,6 +295,62 @@ export class UtilService {
         return oauth2Type;
     }
 
+    getSyncdayNotificationPublishKey(scheduledEventNotification: ScheduledEventNotification): SyncdayNotificationPublishKey {
+
+        const notificationOrReminderType = scheduledEventNotification.notificationType === NotificationType.EMAIL
+            ? scheduledEventNotification.notificationType
+            : scheduledEventNotification.reminderType;
+
+        let syncdayNotificationPublishKey;
+
+        switch (notificationOrReminderType) {
+            case ReminderType.SMS:
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.SMS_GLOBAL;
+                break;
+            case ReminderType.WAHTSAPP:
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.WHATSAPP;
+                break;
+            case ReminderType.KAKAOTALK:
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.KAKAOTALK;
+                break;
+            default:
+                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
+                break;
+        }
+
+        return syncdayNotificationPublishKey;
+    }
+
+    getNotificationData(scheduledEventNotification: ScheduledEventNotification): SyncdayAwsSnsRequest {
+
+        const isEmail = scheduledEventNotification.notificationType === NotificationType.EMAIL;
+        const email = isEmail ? scheduledEventNotification.reminderValue : undefined;
+        const phoneNumber = isEmail ? undefined : scheduledEventNotification.reminderValue;
+
+        const isHost = scheduledEventNotification.notificationTarget === NotificationTarget.HOST;
+
+        let template: EmailTemplate | TextTemplate;
+
+        if (isEmail) {
+            template = EmailTemplate.CONFIRMED;
+        } else {
+            if (isHost) {
+                template = TextTemplate.EVENT_CREATED_HOST;
+            } else {
+                template = TextTemplate.EVENT_CREATED_INVITEE;
+            }
+        }
+
+        const notificationData = {
+            template,
+            email,
+            phoneNumber,
+            scheduledEventId: scheduledEventNotification.scheduledEventId
+        } as SyncdayAwsSnsRequest;
+
+        return notificationData;
+    }
+
     convertScheduleNotificationToNotificationDataAndPublishKey(
         scheduleNotification: ScheduledEventNotification
     ): {
@@ -312,21 +368,15 @@ export class UtilService {
         let template: EmailTemplate | TextTemplate = isNotificationTargetHost ?
             TextTemplate.EVENT_CANCELLED_HOST : TextTemplate.EVENT_CANCELLED_INVITEE;
 
-        let syncdayNotificationPublishKey: SyncdayNotificationPublishKey;
+        const syncdayNotificationPublishKey = this.getSyncdayNotificationPublishKey(scheduleNotification);
 
         switch (notificationOrReminderType) {
             case ReminderType.SMS:
-                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.SMS_GLOBAL;
-                break;
             case ReminderType.WAHTSAPP:
-                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.WHATSAPP;
-                break;
             case ReminderType.KAKAOTALK:
-                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.KAKAOTALK;
                 break;
             default:
                 template = EmailTemplate.CANCELLED;
-                syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
                 break;
         }
 
