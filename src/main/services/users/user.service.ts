@@ -715,7 +715,7 @@ export class UserService {
                 createdUser: _createdUser,
                 createdProfile: _createdProfile,
                 createdTeam: _createdTeam
-            } = await firstValueFrom(from(this._createUser(
+            } = await this._createUser(
                 manager,
                 newUser,
                 newProfileName,
@@ -726,7 +726,7 @@ export class UserService {
                     alreadySignedUpUserCheck: false,
                     emailVerification: false
                 }
-            )));
+            );
 
             this.logger.info({
                 message: 'Creting a team and user with profile is completed. Trying to create a oauth2 account',
