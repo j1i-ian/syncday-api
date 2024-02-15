@@ -280,6 +280,7 @@ export class ProfilesService {
         return defer(() => from(this.profileRepository.findOneOrFail({
             select: {
                 id: true,
+                name: true,
                 user: { email: true, phone: true },
                 team: { id: true, uuid: true, name: true, createdAt: true }
             },
