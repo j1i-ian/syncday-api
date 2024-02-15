@@ -466,7 +466,7 @@ describe('Test User Service', () => {
                 createdUser,
                 createdProfile,
                 createdTeam
-            } = await firstValueFrom(service._createUser(
+            } = await service._createUser(
                 datasourceMock as EntityManager,
                 userStub,
                 profileStub.name as string,
@@ -477,7 +477,7 @@ describe('Test User Service', () => {
                     emailVerification: true,
                     alreadySignedUpUserCheck: true
                 }
-            ));
+            );
 
             expect(verificationServiceStub.isVerifiedUser.called).true;
             expect(findUserByEmailStub.called).true;
@@ -521,7 +521,7 @@ describe('Test User Service', () => {
             const userStub = stubOne(User);
             const profileNameMock = 'bar';
 
-            await expect(firstValueFrom(
+            await expect(
                 service._createUser(
                     datasourceMock as EntityManager,
                     userStub,
@@ -533,7 +533,7 @@ describe('Test User Service', () => {
                         emailVerification: true,
                         alreadySignedUpUserCheck: true
                     })
-            )).rejectedWith(BadRequestException);
+            ).rejectedWith(BadRequestException);
         });
 
         // TODO: Breakdown of [should be created user with email] test
@@ -556,7 +556,7 @@ describe('Test User Service', () => {
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
 
-            await expect(firstValueFrom(
+            await expect(
                 service._createUser(
                     datasourceMock as EntityManager,
                     userStub,
@@ -568,7 +568,7 @@ describe('Test User Service', () => {
                         emailVerification: true
                     }
                 )
-            )).rejectedWith(BadRequestException, 'Verification is not completed');
+            ).rejectedWith(BadRequestException, 'Verification is not completed');
         });
 
         it('should be created user with phone', async () => {
@@ -619,7 +619,7 @@ describe('Test User Service', () => {
                 createdUser,
                 createdProfile,
                 createdTeam
-            } = await firstValueFrom(service._createUser(
+            } = await service._createUser(
                 datasourceMock as EntityManager,
                 userStub,
                 profileStub.name as string,
@@ -631,7 +631,7 @@ describe('Test User Service', () => {
                     alreadySignedUpUserCheck: false,
                     alreadySignedUpUserCheckByPhone: true
                 }
-            ));
+            );
 
             expect(verificationServiceStub.isVerifiedUser.called).true;
             expect(searchStub.called).true;
@@ -673,7 +673,7 @@ describe('Test User Service', () => {
             const userStub = stubOne(User);
             const profileNameMock = 'bar';
 
-            await expect(firstValueFrom(
+            await expect(
                 service._createUser(
                     datasourceMock as EntityManager,
                     userStub,
@@ -685,7 +685,7 @@ describe('Test User Service', () => {
                         emailVerification: false,
                         alreadySignedUpUserCheckByPhone: true
                     })
-            )).rejectedWith(BadRequestException);
+            ).rejectedWith(BadRequestException);
         });
 
     });
@@ -733,11 +733,11 @@ describe('Test User Service', () => {
             userRepositoryStub.create.returns(userStub);
             userRepositoryStub.save.resolves(userStub);
 
-            serviceSandbox.stub(service, '_createUser').returns(of({
+            serviceSandbox.stub(service, '_createUser').resolves({
                 createdUser: userStub,
                 createdProfile: profileStub,
                 createdTeam: teamStub
-            }));
+            });
 
             profilesServiceStub._createInvitedProfiles.returns(of([profileStub]));
             profilesServiceStub.completeInvitation.returns(of(true));
@@ -767,7 +767,7 @@ describe('Test User Service', () => {
 
             syncdayRedisServiceStub.getEmailVerification.resolves(null);
 
-            serviceSandbox.stub(service, '_createUser').returns(of());
+            serviceSandbox.stub(service, '_createUser').resolves();
 
             await expect(
                 service._createUserWithVerificationByEmail(emailMock, verificationCodeMock, timezoneMcok)
@@ -798,11 +798,11 @@ describe('Test User Service', () => {
                 profiles: []
             });
 
-            _createUserStub = serviceSandbox.stub(service, '_createUser').returns(of({
+            _createUserStub = serviceSandbox.stub(service, '_createUser').resolves({
                 createdProfile: profileStub,
                 createdTeam: teamStub,
                 createdUser: userStub
-            }));
+            });
 
             invitiedProfileStub = stubOne(Profile);
             profilesServiceStub._createInvitedProfiles.returns(of([invitiedProfileStub]));
