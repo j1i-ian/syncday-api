@@ -3,10 +3,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Brackets, DataSource, EntityManager, FindOptionsWhere, Like, MoreThan, Raw, Repository, UpdateResult } from 'typeorm';
 import {
     Observable,
-    catchError,
     combineLatest,
-    combineLatestWith,
-    concat,
     concatMap,
     defaultIfEmpty,
     defer,
@@ -20,10 +17,8 @@ import {
     of,
     reduce,
     tap,
-    throwIfEmpty,
     toArray,
-    zip,
-    zipWith
+    zip
 } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -50,7 +45,6 @@ import { Availability } from '@entity/availability/availability.entity';
 import { Order } from '@entity/orders/order.entity';
 import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
 import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
-import { BootpayException } from '@exceptions/bootpay.exception';
 
 @Injectable()
 export class ProfilesService {
@@ -778,210 +772,145 @@ export class ProfilesService {
      * @param profileId
      * @returns
      */
-    remove(
+    async remove(
         teamId: number,
         authProfile: Profile,
         profileId: number
-    ): Observable<boolean> {
+    ): Promise<boolean> {
 
         const {
             id: authProfileId,
             name: canceler
         } = authProfile;
 
-        const targetProfile$ = defer(() => from(this.profileRepository.findOneByOrFail({
+        const deleteProfile = await this.profileRepository.findOneByOrFail({
             id: profileId,
             teamId
-        })));
+        });
 
-        const validateRequestPermission$ = targetProfile$.pipe(
-            tap((deleteProfile) => {
-                this.validateDeleteProfilePermission(
-                    authProfile,
-                    deleteProfile
-                );
-            })
+        this.validateDeleteProfilePermission(
+            authProfile,
+            deleteProfile
         );
 
-        const order$ = targetProfile$
-            .pipe(
-                mergeMap((_deleteProfile) => this.ordersService.fetch({
-                    teamId,
-                    orderOption: {
-                        profileIds: [_deleteProfile.id]
-                    }
-                }))
+        const relatedOrder = await firstValueFrom(this.ordersService.fetch({
+            teamId,
+            orderOption: {
+                profileIds: [deleteProfile.id]
+            }
+        })) as Order;
+
+        const team = await firstValueFrom(this.teamService.get(teamId, authProfile.userId, {}));
+
+        const profileName = deleteProfile.name || deleteProfile.id;
+        const unitPrice = Math.floor(relatedOrder.amount / relatedOrder.unit);
+        const refundParams = {
+            unitPrice,
+            profileName,
+            isPartialCancelation: relatedOrder.unit > 1,
+            proration: this.utilService.getProration(
+                unitPrice,
+                team.createdAt
+            ),
+            refundMessage: `Profile ${profileName} is removed by ${canceler || authProfileId}`
+        };
+
+        try {
+            await firstValueFrom(this.paymentsService._refund(
+                relatedOrder ,
+                canceler as string,
+                refundParams.refundMessage,
+                refundParams.proration,
+                refundParams.isPartialCancelation
+            ));
+
+            this.logger.info({
+                message: 'Profile Remove: Refund is complete successfully. Trying to soft delete and update the availabilities..',
+                authProfileId: authProfile.id,
+                profileId,
+                teamId
+            });
+        } catch (bootpayError: unknown) {
+
+            const error = this.utilService.convertToBootpayException(bootpayError as InternalBootpayException);
+
+            this.logger.error({
+                message: 'Error while refunding the order',
+                authProfileId: authProfile.id,
+                error
+            });
+        }
+
+        const ownerProfile = await firstValueFrom(this._fetchTeamOwnerProfile(teamId));
+
+        this.logger.info({
+            message: 'Profile Remove: Start transaction',
+            authProfileId: authProfile.id,
+            refundParams
+        });
+
+        const success = await this.datasource.transaction(async (transactionManager) => {
+            const _availabilityRepository = transactionManager.getRepository(Availability);
+            const _profileRepository = transactionManager.getRepository(Profile);
+            const _scheduledEventNotification = transactionManager.getRepository(ScheduledEventNotification);
+
+            _availabilityRepository.softDelete({
+                profileId
+            });
+            this.logger.info({
+                message: 'Transaction: Availability soft delete is completed',
+                profileId,
+                teamId
+            });
+
+            await _availabilityRepository.update(
+                { profileId },
+                { profileId: ownerProfile.id }
             );
-        const team$ = from(firstValueFrom(this.teamService.get(teamId, authProfile.userId, {})));
 
-        const refundParams$ = zip(targetProfile$, order$)
-            .pipe(
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                filter(([_, _relatedOrder]) => _relatedOrder !== null),
-                map(([_deleteProfile, _relatedOrder]) => [_deleteProfile, _relatedOrder] as [Profile, Order]),
-                map(([_deleteProfile, _relatedOrder]) => ({
-                    unitPrice: Math.floor(_relatedOrder.amount / _relatedOrder.unit),
-                    profileName: _deleteProfile.name || _deleteProfile.id,
-                    isPartialCancelation: _relatedOrder.unit > 1
-                })),
-                combineLatestWith(team$),
-                map(([_refundParams, _team]) => ({
-                    ..._refundParams,
-                    proration: this.utilService.getProration(
-                        _refundParams.unitPrice,
-                        _team.createdAt
-                    ),
-                    refundMessage: `Profile ${_refundParams.profileName} is removed by ${canceler || authProfileId}`
-                }))
-            );
+            this.logger.info({
+                message: 'Transaction: Availability update is completed',
+                profileId,
+                teamId
+            });
 
-        const refund$ = zip(refundParams$, order$)
-            .pipe(
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                filter(([_, relatedOrder]) => relatedOrder !== null),
-                concatMap(([refundParams, relatedOrder]) => this.paymentsService._refund(
-                    relatedOrder as Order,
-                    canceler as string,
-                    refundParams.refundMessage,
-                    refundParams.proration,
-                    refundParams.isPartialCancelation
-                ))
-            );
-        const ownerProfile$ = this._fetchTeamOwnerProfile(teamId);
+            await _profileRepository.delete({
+                id: profileId,
+                teamId
+            });
+            this.logger.info({
+                message: 'Transaction: Profile is deleted',
+                profileId,
+                teamId
+            });
 
-        return validateRequestPermission$.pipe(
-            tap((refundParams) => {
-                this.logger.info({
-                    message: 'Profile Remove: Start transaction',
-                    authProfileId: authProfile.id,
-                    refundParams
-                });
-            }),
-            concatMap(() => refund$),
-            catchError((error) => {
+            const scheduledEventNotificationDeleteResult = await _scheduledEventNotification.delete({
+                profileId,
+                remindAt: MoreThan(new Date())
+            });
+            this.logger.info({
+                message: 'Transaction: Scheduled event notifications are deleted',
+                profileId,
+                teamId
+            });
+            const scheduledEventNotificationDeleteSuccess = !!(scheduledEventNotificationDeleteResult
+            && scheduledEventNotificationDeleteResult.affected
+            && scheduledEventNotificationDeleteResult.affected > 0);
 
-                this.logger.error({
-                    message: 'Error while refunding the order',
-                    authProfileId: authProfile.id,
-                    error
-                });
+            await firstValueFrom(this.paymentsService._save(
+                transactionManager,
+                relatedOrder ,
+                refundParams.proration
+            ));
 
-                return of(error)
-                    .pipe(
-                        filter((error) => error.error_code && error.message),
-                        map((bootpayError: InternalBootpayException) => this.utilService.convertToBootpayException(bootpayError)),
-                        throwIfEmpty(() => error)
-                    );
-            }),
-            tap(() => {
-                this.logger.info({
-                    message: 'Profile Remove: Refund is complete successfully. Trying to soft delete and update the availabilities..',
-                    authProfileId: authProfile.id,
-                    profileId,
-                    teamId
-                });
-            }),
-            defaultIfEmpty(false),
-            concatMap((exception) =>
-                defer(() => from(this.datasource.transaction((transactionManager) =>
-                    firstValueFrom(
-                        concat(
-                            of(transactionManager.getRepository(Availability))
-                                .pipe(
-                                    concatMap((_availabilityRepository) => _availabilityRepository.softDelete({
-                                        profileId
-                                    })),
-                                    tap(() => {
-                                        this.logger.info({
-                                            message: 'Transaction: Availability soft delete is completed',
-                                            profileId,
-                                            teamId
-                                        });
-                                    })
-                                ),
-                            of(transactionManager.getRepository(Availability))
-                                .pipe(
-                                    zipWith(ownerProfile$),
-                                    concatMap(([_availabilityRepository, ownerProfile]) => _availabilityRepository.update(
-                                        { profileId },
-                                        { profileId: ownerProfile.id }
-                                    )),
-                                    tap(() => {
-                                        this.logger.info({
-                                            message: 'Transaction: Availability update is completed',
-                                            profileId,
-                                            teamId
-                                        });
-                                    })
-                                ),
-                            of(transactionManager.getRepository(Profile))
-                                .pipe(
-                                    mergeMap((_profileRepository) => _profileRepository.delete({
-                                        id: profileId,
-                                        teamId
-                                    })),
-                                    tap(() => {
-                                        this.logger.info({
-                                            message: 'Transaction: Profile is deleted',
-                                            profileId,
-                                            teamId
-                                        });
-                                    })
-                                ),
-                            of(transactionManager.getRepository(ScheduledEventNotification))
-                                .pipe(
-                                    mergeMap((_scheduledEventNotification) => _scheduledEventNotification.delete({
-                                        profileId,
-                                        remindAt: MoreThan(new Date())
-                                    })),
-                                    tap(() => {
-                                        this.logger.info({
-                                            message: 'Transaction: Scheduled event notifications are deleted',
-                                            profileId,
-                                            teamId
-                                        });
-                                    })
-                                )
-                        ).pipe(
-                            reduce((acc, updateResult) => acc && !!(
-                                updateResult
-                                    && updateResult.affected
-                                    && updateResult.affected > 0)
-                            , true),
-                            tap(() => {
-                                this.logger.info({
-                                    message: 'Transaction: All transactions are completed. Trying to save the payment...'
-                                });
-                            }),
-                            mergeMap(() => zip(order$, refundParams$)),
-                            filter(([ relatedOrder ]) => relatedOrder !== null),
-                            mergeMap(([
-                                relatedOrder,
-                                { proration }
-                            ]) => this.paymentsService._save(
-                                transactionManager,
-                                relatedOrder as Order,
-                                proration
-                            )),
-                            map(() => true),
-                            defaultIfEmpty(true)
-                        ))
-                ))).pipe(
-                    tap((resultAndException) => {
-                        this.logger.info({
-                            message: 'Profile Delete Transaction is completed. Trying to validate delete reuslts',
-                            resultAndException
-                        });
-                    }),
-                    /** TODO: Study about finalized operator and thats pipe range */
-                    tap(() => {
-                        if (exception instanceof BootpayException) {
-                            throw exception;
-                        }
-                    })
-                )
-            )
-        );
+            this.logger.info({
+                message: 'Transaction: All transactions are completed. Trying to save the payment...'
+            });
+
+            return scheduledEventNotificationDeleteSuccess;
+        });
+
+        return success;
     }
 
     removeUnsignedUserInvitation(

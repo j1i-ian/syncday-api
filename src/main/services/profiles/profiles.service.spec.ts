@@ -932,6 +932,7 @@ describe('ProfilesService', () => {
         it('should be removed a profile', async () => {
 
             const teamStub = stubOne(Team);
+            const paymentStub = stubOne(Payment);
             const relatedOrderStub = stubOne(Order);
             const authProfile = stubOne(Profile, {
                 roles: [Role.OWNER]
@@ -951,7 +952,7 @@ describe('ProfilesService', () => {
 
             serviceSandbox.stub(service, '_fetchTeamOwnerProfile').returns(of(authProfile));
             teamServiceStub.get.returns(of(teamStub));
-            ordersServiceStub.fetch.resolves(relatedOrderStub);
+            ordersServiceStub.fetch.returns(of(relatedOrderStub));
 
             utilServiceStub.getProration.returns(0);
 
@@ -959,13 +960,13 @@ describe('ProfilesService', () => {
             availabilityRepositoryStub.update.resolves(updateResultStub);
             scheduledEventNotificationRepositoryStub.delete.resolves(deleteResultStub);
             profileRepositoryStub.delete.resolves(deleteResultStub);
-            paymentsServiceStub._save.resolves();
+            paymentsServiceStub._save.returns(of(paymentStub));
 
-            await firstValueFrom(service.remove(
+            await service.remove(
                 teamStub.id,
                 authProfile,
                 profileIdMock
-            ));
+            );
 
             expect(profileRepositoryStub.findOneByOrFail.called).true;
 

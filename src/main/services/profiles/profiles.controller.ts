@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Inject, Param, Patch, Post, Put, Query, Res } from '@nestjs/common';
-import { Observable, catchError, filter, map, of, tap, throwIfEmpty } from 'rxjs';
+import { Observable, catchError, defer, filter, from, map, of, tap, throwIfEmpty } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -228,11 +228,11 @@ export class ProfilesController {
             authProfile.roles
         );
 
-        return this.profileService.remove(
+        return defer(() => from(this.profileService.remove(
             authProfile.teamId,
             authProfile,
             profileId
-        ).pipe(
+        ))).pipe(
             tap(() => {
                 this.logger.info({
                     message: 'Profile Delete is completed',
