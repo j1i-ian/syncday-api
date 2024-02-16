@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Observable, combineLatest, from, map, mergeMap, reduce } from 'rxjs';
+import { Observable, from, map, mergeMap, reduce, zip } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { HostEvent } from '@interfaces/bookings/host-event';
@@ -83,7 +83,7 @@ export class BookingsService {
                 )
             );
 
-        return combineLatest([
+        return zip([
             this.teamService.findByWorkspace(teamWorkspace, eventUUID),
             hostAvailability$
         ])

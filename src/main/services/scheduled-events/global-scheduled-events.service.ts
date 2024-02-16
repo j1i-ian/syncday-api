@@ -26,6 +26,7 @@ import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { Availability } from '@entity/availability/availability.entity';
+import { ScheduledStatus } from '@entity/scheduled-events/scheduled-status.enum';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
@@ -117,6 +118,13 @@ export class GlobalScheduledEventsService {
                         )
                     ),
                     toArray(),
+                    map(() => _createdSchedule)
+                )
+            ),
+            mergeMap((_createdSchedule) =>
+                defer(() => from(this.scheduledEventRepository.update(_createdSchedule.id, {
+                    status: ScheduledStatus.CONFIRMED
+                }))).pipe(
                     map(() => _createdSchedule)
                 )
             )
