@@ -629,7 +629,8 @@ export class UserService {
         const initialEvent = this.utilService.getDefaultEvent({
             name: '30 Minute Meeting',
             link: '30-minute-meeting',
-            eventGroupId: savedEventGroup.id,
+            eventGroupId: savedEventGroup.id
+        }, {
             hasNoEmailUser: !savedUser.email
         });
 
@@ -638,7 +639,8 @@ export class UserService {
             savedTeam.uuid,
             savedProfile.id,
             savedAvailability.id,
-            initialEvent
+            initialEvent,
+            savedUser
         );
 
         this.logger.info({

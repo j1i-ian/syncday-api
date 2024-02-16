@@ -14,6 +14,7 @@ import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { EventProfile } from '@entity/events/event-profile.entity';
+import { User } from '@entity/users/user.entity';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
@@ -382,6 +383,7 @@ describe('EventsService', () => {
         it('should be created an event with transaction' , async () => {
             const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
+            const userMock = stubOne(User);
 
             const eventDetailBodyStub = {
                 inviteeQuestions: inviteeQuestionStubs,
@@ -409,7 +411,8 @@ describe('EventsService', () => {
                 teamUUIDDummy,
                 profileMock.id,
                 availabilityMock.id,
-                eventMockStub
+                eventMockStub,
+                userMock
             );
 
             expect(createdEvent.eventDetail).ok;

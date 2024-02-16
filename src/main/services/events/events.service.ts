@@ -12,6 +12,7 @@ import { UtilService } from '@services/util/util.service';
 import { EventStatus } from '@entity/events/event-status.enum';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { EventProfile } from '@entity/events/event-profile.entity';
+import { User } from '@entity/users/user.entity';
 import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { AlreadyUsedInEventLinkException } from '@app/exceptions/events/already-used-in-event-link.exception';
@@ -222,7 +223,8 @@ export class EventsService {
             relations: {
                 team: {
                     profiles: {
-                        availabilities: true
+                        availabilities: true,
+                        user: true
                     }
                 }
             },
@@ -239,7 +241,9 @@ export class EventsService {
             }
         });
 
-        const defaultAvailability = defaultEventGroup.team.profiles[0].availabilities.pop();
+        const profile = defaultEventGroup.team.profiles[0];
+        const defaultAvailability = profile.availabilities[0];
+        const user = profile.user;
         const noDefaultAvailability = !defaultAvailability;
 
         if (noDefaultAvailability) {
@@ -285,7 +289,8 @@ export class EventsService {
             teamUUID,
             profileId,
             defaultAvailabilityId,
-            newEvent
+            newEvent,
+            user
         );
     }
 
@@ -294,12 +299,17 @@ export class EventsService {
         teamUUID: string,
         profileId: number,
         defaultAvailabilityId: number,
-        newEvent: Event
+        newEvent: Event,
+        user: User
     ): Promise<Event> {
 
         const _eventRepository = manager.getRepository(Event);
 
-        const ensuredNewEvent = this.utilService.getDefaultEvent(newEvent);
+        const isEmailUser = !!user.email;
+
+        const ensuredNewEvent = this.utilService.getDefaultEvent(newEvent, {
+            hasNoEmailUser: !isEmailUser
+        });
 
         const initialEventProfile = {
             profileId,

@@ -535,7 +535,7 @@ export class UtilService {
             });
     }
 
-    getDefaultEvent(patchBody?: Partial<Event> & { hasNoEmailUser?: boolean }): Event {
+    getDefaultEvent(patchBody?: Partial<Event>, options?: { hasNoEmailUser?: boolean }): Event {
 
         const _0min = '00:00:00';
 
@@ -549,8 +549,24 @@ export class UtilService {
         const hostNotificationUUID = this.generateUUID();
         const emailReminderUUID = this.generateUUID();
 
-        const defaultNotification = patchBody?.hasNoEmailUser ?
-            {} :
+        const isPhoneNumberUser = options?.hasNoEmailUser;
+
+        const defaultNotification = isPhoneNumberUser ?
+            {
+                host: [],
+                invitee: [
+                    {
+                        uuid: hostNotificationUUID,
+                        type: NotificationType.EMAIL,
+                        reminders: [
+                            {
+                                remindBefore: '01:00:00',
+                                uuid: emailReminderUUID
+                            }
+                        ]
+                    }
+                ]
+            } as NotificationInfo :
             {
                 host: [
                     {
@@ -576,7 +592,7 @@ export class UtilService {
                         ]
                     }
                 ]
-            };
+            } as NotificationInfo;
 
         const initialEventDetail = new EventDetail({
             description: null,

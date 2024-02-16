@@ -364,7 +364,8 @@ export class TeamService {
                         _createdTeam.uuid,
                         _createdRootProfile.id,
                         ownerDefaultAvailability.id,
-                        initialEvent
+                        initialEvent,
+                        owner
                     );
                     this.logger.info({
                         message: 'Creating an event is success. Close transaction.',
