@@ -604,7 +604,6 @@ export class UserService {
             userSetting.preferredTimezone
         );
 
-
         const savedAvailability = await this.availabilityService._create(
             manager,
             savedTeam.uuid,
@@ -784,6 +783,47 @@ export class UserService {
                     teamWorkspace
                 });
             }
+
+            const defaultAvailability = this.utilService.getDefaultAvailability(
+                userSetting.preferredLanguage,
+                userSetting.preferredTimezone
+            );
+
+            const invitedProfiles = await firstValueFrom(this.profilesService._createInvitedProfiles(
+                manager,
+                _createdUser,
+                defaultAvailability
+            ).pipe(
+                tap(() => {
+                    this.logger.info({
+                        message: 'Creating profiles with invitations are completed. Trying to complete invitation..',
+                        email: _createdUser.email
+                    });
+                }),
+                mergeMap((_profiles) => from(_profiles)),
+                mergeMap((_createdProfile) =>
+                    this.profilesService.completeInvitation(
+                        _createdProfile.teamId,
+                        _createdProfile.teamUUID,
+                        _createdUser
+                    ).pipe(map(() => _createdProfile))
+                ),
+                toArray(),
+                tap(() => {
+                    this.logger.info({
+                        message: 'Invitation is done',
+                        email: _createdUser.email
+                    });
+                }),
+                map((createdProfilesByInvitations) => {
+                    const _profiles = [_createdProfile].concat(createdProfilesByInvitations);
+                    return _profiles;
+                })
+            ));
+
+            const profiles = invitedProfiles ? [ _createdProfile ].concat(invitedProfiles) : [_createdProfile];
+
+            _createdUser.profiles = profiles;
 
             return {
                 createdUser: _createdUser,

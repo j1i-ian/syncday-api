@@ -312,8 +312,6 @@ describe('TokenService', () => {
                 isExpectedNewbie: true,
                 createUserCall: true,
                 sendWelcomeEmailForNewUserCall: true,
-                createInvitedProfilesCall: true,
-                completeInvitationCall: true,
                 integrateCall: false,
                 multipleSocialSignInCall: false
             },
@@ -351,8 +349,6 @@ describe('TokenService', () => {
                 isExpectedNewbie: false,
                 createUserCall: false,
                 sendWelcomeEmailForNewUserCall: false,
-                createInvitedProfilesCall: false,
-                completeInvitationCall: false,
                 integrateCall: false,
                 multipleSocialSignInCall: false
             },
@@ -390,8 +386,6 @@ describe('TokenService', () => {
                 isExpectedNewbie: false,
                 createUserCall: false,
                 sendWelcomeEmailForNewUserCall: false,
-                createInvitedProfilesCall: false,
-                completeInvitationCall: false,
                 integrateCall: false,
                 multipleSocialSignInCall: false
             },
@@ -429,8 +423,6 @@ describe('TokenService', () => {
                 isExpectedNewbie: false,
                 createUserCall: false,
                 sendWelcomeEmailForNewUserCall: false,
-                createInvitedProfilesCall: false,
-                completeInvitationCall: false,
                 integrateCall: true,
                 multipleSocialSignInCall: false
             },
@@ -480,8 +472,6 @@ describe('TokenService', () => {
                 isExpectedNewbie: false,
                 createUserCall: false,
                 sendWelcomeEmailForNewUserCall: false,
-                createInvitedProfilesCall: false,
-                completeInvitationCall: false,
                 integrateCall: true,
                 multipleSocialSignInCall: false
             }
@@ -493,8 +483,6 @@ describe('TokenService', () => {
             isExpectedNewbie,
             createUserCall: createUserCall,
             sendWelcomeEmailForNewUserCall,
-            createInvitedProfilesCall,
-            completeInvitationCall,
             integrateCall,
             multipleSocialSignInCall
         }) {
@@ -534,6 +522,7 @@ describe('TokenService', () => {
                     createdProfile: createdProfileStub,
                     createdTeam: createdTeamStub
                 }));
+                notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(sendWelcomeEmailForNewUserCall);
 
                 const issuedTokenStub: CreateTokenResponseDto = {
                     accessToken: 'fakeJwtToken',
@@ -557,9 +546,6 @@ describe('TokenService', () => {
                 expect(_oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.called).true;
 
                 expect(userServiceStub.findUserByLocalAuth.called).true;
-
-                expect(profileServiceStub.createInvitedProfiles.called).equals(createInvitedProfilesCall);
-                expect(profileServiceStub.completeInvitation.called).equals(completeInvitationCall);
 
                 expect(userServiceStub.createUser.called).equals(createUserCall);
                 expect(notificationsServiceStub.sendWelcomeEmailForNewUser.called).equals(sendWelcomeEmailForNewUserCall);

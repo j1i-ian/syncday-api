@@ -508,13 +508,13 @@ export class ProfilesService {
         defaultAvailability: Availability
     ): Observable<Profile[]> {
 
-        return defer(() => from(
+        return from(
             this.datasource.transaction(
                 (transactionManager) =>
                     firstValueFrom(
                         this._createInvitedProfiles(transactionManager, user, defaultAvailability)
                     )
-            ))
+            )
         );
     }
 

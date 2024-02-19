@@ -4,7 +4,7 @@ import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { oauth2_v2 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { Observable, firstValueFrom, map, mergeMap, of } from 'rxjs';
+import { Observable, concatMap, firstValueFrom, map, of, tap } from 'rxjs';
 import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-oauth2-state-params.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
@@ -153,47 +153,30 @@ export class TokenService {
         switch (ensuredIntegrationContext) {
             case IntegrationContext.SIGN_UP:
                 // TODO: it should be migrated to user service.
-                const {
-                    createdProfile,
-                    createdTeam,
-                    createdUser
-                } = await firstValueFrom(this.userService.createUser(
-                    integrationVendor,
-                    oauth2UserProfile,
-                    timezone,
-                    language
-                ));
-                profile = createdProfile;
-                user = createdUser;
-                team = createdTeam;
-                isNewbie = true;
-
-                const defaultAvailability = this.utilService.getDefaultAvailability(
-                    language,
-                    timezone
-                );
-
-                const profiles = await firstValueFrom(
-                    this.profileService.createInvitedProfiles(createdUser, defaultAvailability)
-                        .pipe(
-                            map((_profiles) => _profiles ? [ createdProfile ].concat(_profiles) : [createdProfile]),
-                            mergeMap((_profiles) =>
-                                this.profileService.completeInvitation(
-                                    createdTeam.id,
-                                    createdTeam.uuid,
-                                    createdUser
-                                ).pipe(map(() => _profiles))
+                await firstValueFrom(
+                    this.userService.createUser(
+                        integrationVendor,
+                        oauth2UserProfile,
+                        timezone,
+                        language
+                    ).pipe(
+                        tap(({ createdProfile, createdTeam, createdUser }) => {
+                            profile = createdProfile;
+                            user = createdUser;
+                            team = createdTeam;
+                        }),
+                        concatMap(({ createdProfile, createdUser }) =>
+                            this.notificationsService.sendWelcomeEmailForNewUser(
+                                createdProfile.name,
+                                createdUser.email as string,
+                                createdUser.userSetting.preferredLanguage
                             )
                         )
+                    )
                 );
 
-                await this.notificationsService.sendWelcomeEmailForNewUser(
-                    createdProfile.name,
-                    createdUser.email as string,
-                    createdUser.userSetting.preferredLanguage
-                );
+                isNewbie = true;
 
-                user.profiles = profiles;
                 break;
             case IntegrationContext.SIGN_IN:
                 isNewbie = false;
