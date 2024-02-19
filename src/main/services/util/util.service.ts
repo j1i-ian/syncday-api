@@ -753,6 +753,20 @@ export class UtilService {
                     return isValid;
                 }).flatMap(
                     (_notification) => _notification.reminders
+                        .filter((__reminder) => {
+
+                            const found = sourceNotificationInfo.invitee?.some((_inviteeNotification) =>
+                                _notification.type === _inviteeNotification.type ||
+                                _inviteeNotification.reminders.some(
+                                    (___inviteeReminder) => ___inviteeReminder.type === __reminder.type
+                                ));
+
+                            const isValidInviteeReminder = isHost === false && found;
+                            const isValidReminder = isHost ? true : isValidInviteeReminder;
+
+                            console.log(isValidReminder);
+                            return isValidReminder;
+                        })
                         .map((__reminder) => {
 
                             const hostOrInviteeReminderValue = isHost ?
@@ -769,28 +783,13 @@ export class UtilService {
                                 remindAt.setMinutes(remindAt.getMinutes() - +minute);
                             }
 
-                            let deletedAt: Date | null = null;
-
-                            if (isHost === false) {
-
-                                const found = sourceNotificationInfo.invitee?.some((_inviteeNotification) =>
-                                    _notification.type === _inviteeNotification.type ||
-                                    _inviteeNotification.reminders.some(
-                                        (___inviteeReminder) => ___inviteeReminder.type === __reminder.type
-                                    )
-                                );
-
-                                deletedAt = found ? null : new Date();
-                            }
-
                             return {
                                 notificationTarget,
                                 notificationType: _notification.type,
                                 reminderType: __reminder.type,
                                 reminderValue: hostOrInviteeReminderValue,
                                 remindAt,
-                                profileId: mainProfile.id,
-                                deletedAt
+                                profileId: mainProfile.id
                             } as ScheduledEventNotification;
                         })
                 );
