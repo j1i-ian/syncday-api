@@ -12,13 +12,13 @@ import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
 import { GoogleOAuthTokenService } from '@services/integrations/google-integration/facades/google-oauth-token.service';
 import { GoogleOAuthUserService } from '@services/integrations/google-integration/facades/google-oauth-user.service';
 import { GoogleCalendarListService } from '@services/integrations/google-integration/facades/google-calendar-list.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
 import { IntegrationsFacade } from '@services/integrations/integrations.facade.interface';
-import { User } from '@entity/users/user.entity';
 import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
 
 @Injectable()
@@ -141,7 +141,7 @@ export class GoogleIntegrationFacade implements IntegrationsFacade {
 
     generateGoogleOAuthAuthoizationUrl(
         integrationContext: IntegrationContext,
-        decodedUserOrNull: User | null,
+        decodedAppJwtPayloadOrNull: AppJwtPayload | null,
         timezone: string | null
     ): string {
         const redirectURI = this.signInOrUpRedirectURI;
@@ -157,7 +157,8 @@ export class GoogleIntegrationFacade implements IntegrationsFacade {
 
         const stateParams = {
             integrationContext,
-            requestUserEmail: decodedUserOrNull?.email,
+            requestUserEmail: decodedAppJwtPayloadOrNull?.email,
+            profileId: decodedAppJwtPayloadOrNull?.id,
             timezone
         } as SyncdayOAuth2StateParams;
 

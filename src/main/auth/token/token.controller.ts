@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Observable } from 'rxjs';
+import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-oauth2-state-params.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { AuthUser } from '@decorators/auth-user.decorator';
@@ -111,11 +112,7 @@ export class TokenController {
         const url = new URL(request.url, baseUrl);
         const authorizationCode = url.searchParams.get('code') as string;
         const jsonStringifiedStateParams = url.searchParams.get('state') as string;
-        const stateParams = JSON.parse(jsonStringifiedStateParams) as {
-            timezone: string;
-            requestUserEmail: string | null;
-            integrationContext: IntegrationContext;
-        };
+        const stateParams = JSON.parse(jsonStringifiedStateParams) as SyncdayOAuth2StateParams;
 
         this.logger.debug({
             message: 'Start OAuth2 Callback: Start issueTokenByOAuth2',
@@ -125,9 +122,7 @@ export class TokenController {
         const { issuedToken, isNewbie, insufficientPermission } = await this.tokenService.issueTokenByOAuth2(
             integrationVendor,
             authorizationCode,
-            stateParams.timezone,
-            stateParams.integrationContext,
-            stateParams.requestUserEmail,
+            stateParams,
             language
         );
 

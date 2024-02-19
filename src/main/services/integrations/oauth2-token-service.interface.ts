@@ -1,5 +1,6 @@
 import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { OAuth2Converter } from '@services/integrations/oauth2-converter.interface';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
@@ -11,7 +12,7 @@ export interface OAuth2TokenService {
     generateOAuth2AuthoizationUrl(
         integrationContext: IntegrationContext,
         timezone: string | null,
-        decodedUserOrNull: User | null
+        decodedUserOrNull: AppJwtPayload | null
     ): string;
 
     generateOAuth2RedirectURI(

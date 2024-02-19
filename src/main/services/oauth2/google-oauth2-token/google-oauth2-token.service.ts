@@ -4,6 +4,7 @@ import { Logger } from 'winston';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { OAuth2TokenService } from '@services/integrations/oauth2-token-service.interface';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { GoogleIntegrationFacade } from '@services/integrations/google-integration/google-integration.facade';
@@ -34,11 +35,11 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
     generateOAuth2AuthoizationUrl(
         integrationContext: IntegrationContext,
         timezone: string | null,
-        decodedUserOrNull: User | null
+        decodedAppJwtPayloadOrNull: AppJwtPayload | null
     ): string {
         return this.googleIntegrationFacade.generateGoogleOAuthAuthoizationUrl(
             integrationContext,
-            decodedUserOrNull,
+            decodedAppJwtPayloadOrNull,
             timezone
         );
     }

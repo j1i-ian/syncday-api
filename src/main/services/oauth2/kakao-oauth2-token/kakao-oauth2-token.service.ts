@@ -9,6 +9,7 @@ import { AppConfigService } from '@config/app-config.service';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { OAuth2TokenService } from '@services/integrations/oauth2-token-service.interface';
 import { KakaotalkIntegrationsFacade } from '@services/integrations/kakaotalk-integrations/kakaotalk-integrations.facade';
 import { OAuth2AccountsService } from '@services/users/oauth2-accounts/oauth2-accounts.service';
@@ -38,12 +39,13 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
     generateOAuth2AuthoizationUrl(
         integrationContext: IntegrationContext,
         timezone: string | null,
-        decodedUserOrNull: User | null
+        decodedAppJwtPayloadOrNull: AppJwtPayload | null
     ): string {
 
         const stateParams = {
             integrationContext,
-            requestUserEmail: decodedUserOrNull?.email,
+            requestUserEmail: decodedAppJwtPayloadOrNull?.email,
+            profileId: decodedAppJwtPayloadOrNull?.id,
             timezone
         } as SyncdayOAuth2StateParams;
 

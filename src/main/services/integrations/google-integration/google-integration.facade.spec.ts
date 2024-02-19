@@ -8,12 +8,14 @@ import { OAuth2Setting } from '@core/interfaces/auth/oauth2-setting.interface';
 import { GoogleCredentials } from '@core/interfaces/integrations/google/google-credential.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
+import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { GoogleOAuthClientService } from '@services/integrations/google-integration/facades/google-oauth-client.service';
 import { GoogleOAuthTokenService } from '@services/integrations/google-integration/facades/google-oauth-token.service';
 import { GoogleOAuthUserService } from '@services/integrations/google-integration/facades/google-oauth-user.service';
 import { GoogleCalendarListService } from '@services/integrations/google-integration/facades/google-calendar-list.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
 import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleIntegrationFacade } from './google-integration.facade';
 
@@ -145,7 +147,14 @@ describe('GoogleIntegrationFacade', () => {
 
     it('should be generated google oauth Authorization url', () => {
         const authorizationUrlStub = TestMockUtil.faker.internet.url();
-        const requestUserMock = stubOne(User);
+        const profileMock = stubOne(Profile);
+        const userMock = stubOne(User);
+
+        const appJwtPayloadMock = {
+            ...userMock,
+            ...profileMock
+        } as unknown as AppJwtPayload;
+
         const timezoneDummy = 'fakeTimezone';
 
         const oauth2ClientStub = serviceSandbox.createStubInstance(Auth.OAuth2Client);
@@ -155,7 +164,7 @@ describe('GoogleIntegrationFacade', () => {
 
         const authorizationUrl = service.generateGoogleOAuthAuthoizationUrl(
             IntegrationContext.SIGN_IN,
-            requestUserMock,
+            appJwtPayloadMock,
             timezoneDummy
         );
 

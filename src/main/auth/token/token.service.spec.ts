@@ -8,6 +8,7 @@ import { firstValueFrom, of } from 'rxjs';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
+import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-oauth2-state-params.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { OAuth2Type } from '@interfaces/oauth2-accounts/oauth2-type.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
@@ -17,12 +18,14 @@ import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service
 import { GoogleOAuth2TokenService } from '@services/oauth2/google-oauth2-token/google-oauth2-token.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
+import { OAuth2TokenService } from '@services/integrations/oauth2-token-service.interface';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { CreateTokenResponseDto } from '@dto/auth/tokens/create-token-response.dto';
 import { UserService } from '../../services/users/user.service';
 import { faker } from '@faker-js/faker';
@@ -57,7 +60,7 @@ describe('TokenService', () => {
         oauth2TokenServiceStub = sinon.createStubInstance(GoogleOAuth2TokenService);
         notificationsServiceStub = sinon.createStubInstance(NotificationsService);
 
-        oauth2TokenServiceLocatorStub.get.returns(oauth2TokenServiceStub);
+        oauth2TokenServiceLocatorStub.get.returns(oauth2TokenServiceStub as OAuth2TokenService);
 
         loggerStub = sinon.stub({
             debug: () => {},
@@ -255,7 +258,7 @@ describe('TokenService', () => {
             serviceSandbox = sinon.createSandbox();
 
             _oauth2TokenServiceStub = serviceSandbox.createStubInstance(GoogleOAuth2TokenService);
-            oauth2TokenServiceLocatorStub.get.returns(_oauth2TokenServiceStub);
+            oauth2TokenServiceLocatorStub.get.returns(_oauth2TokenServiceStub as OAuth2TokenService);
 
             profileServiceStub.createInvitedProfiles.returns(of([]));
             profileServiceStub.completeInvitation.returns(of(true));
@@ -338,7 +341,9 @@ describe('TokenService', () => {
                     profiles: [
                         stubOne(Profile, {
                             googleIntergrations: [],
-                            team: stubOne(Team)
+                            team: stubOne(Team, {
+                                teamSetting: stubOne(TeamSetting)
+                            })
                         })
                     ],
                     userSetting: stubOne(UserSetting)
@@ -375,7 +380,9 @@ describe('TokenService', () => {
                     profiles: [
                         stubOne(Profile, {
                             googleIntergrations: [],
-                            team: stubOne(Team)
+                            team: stubOne(Team, {
+                                teamSetting: stubOne(TeamSetting)
+                            })
                         })
                     ],
                     userSetting: stubOne(UserSetting)
@@ -412,7 +419,9 @@ describe('TokenService', () => {
                     profiles: [
                         stubOne(Profile, {
                             googleIntergrations: [],
-                            team: stubOne(Team)
+                            team: stubOne(Team, {
+                                teamSetting: stubOne(TeamSetting)
+                            })
                         })
                     ],
                     userSetting: stubOne(UserSetting)
@@ -461,7 +470,9 @@ describe('TokenService', () => {
                                     email: 'fakeEmail'
                                 }
                             ] as GoogleIntegration[],
-                            team: stubOne(Team)
+                            team: stubOne(Team, {
+                                teamSetting: stubOne(TeamSetting)
+                            })
                         })
                     ],
                     userSetting: stubOne(UserSetting)
@@ -476,7 +487,7 @@ describe('TokenService', () => {
             }
         ].forEach(function({
             description,
-            integratinoContext,
+            integratinoContext: integrationContext,
             googleOAuth2UserWithToken,
             getFindUserStub,
             isExpectedNewbie,
@@ -494,12 +505,20 @@ describe('TokenService', () => {
 
                 const userStub = getFindUserStub();
                 const requestUserEmailMock = userStub?.email ?? null;
+                const profileIdMock = userStub?.profiles[0] ? userStub.profiles[0].id : undefined;
                 const languageDummy = Language.KOREAN;
+
+                const stateParamMock = {
+                    timezone: timezoneDummy,
+                    integrationContext,
+                    requestUserEmail: requestUserEmailMock,
+                    profileId: profileIdMock
+                } as SyncdayOAuth2StateParams;
 
                 _oauth2TokenServiceStub.getOAuth2UserProfile.resolves(googleOAuth2UserWithToken);
                 _oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.resolves(googleOAuth2UserWithToken.googleUser.email);
 
-                evaluateIntegrationContextStub.resolves(integratinoContext);
+                evaluateIntegrationContextStub.resolves(integrationContext);
 
                 userServiceStub.findUserByLocalAuth.resolves(userStub);
 
@@ -509,6 +528,7 @@ describe('TokenService', () => {
                 const createdUserStub = stubOne(User, {
                     userSetting: createdUserSettingStub
                 });
+
                 userServiceStub.createUser.returns(of({
                     createdUser: createdUserStub,
                     createdProfile: createdProfileStub,
@@ -524,9 +544,7 @@ describe('TokenService', () => {
                 const { issuedToken, isNewbie, insufficientPermission } = await service.issueTokenByOAuth2(
                     IntegrationVendor.GOOGLE,
                     authorizationCodeMock,
-                    timezoneDummy,
-                    integratinoContext,
-                    requestUserEmailMock,
+                    stateParamMock,
                     languageDummy
                 );
 
@@ -565,7 +583,7 @@ describe('TokenService', () => {
             serviceSandbox = sinon.createSandbox();
 
             _oauth2TokenServiceStub = serviceSandbox.createStubInstance(GoogleOAuth2TokenService);
-            oauth2TokenServiceLocatorStub.get.returns(_oauth2TokenServiceStub);
+            oauth2TokenServiceLocatorStub.get.returns(_oauth2TokenServiceStub as OAuth2TokenService);
 
             const oauth2AccountStubs = stub(OAuth2Account);
             const googleIntegrationStubs = stub(GoogleIntegration);
@@ -600,7 +618,7 @@ describe('TokenService', () => {
         it('should be converted to oauth2 user profile from authorization code', async () => {
 
             const oauth2UserProfileMock = testMockUtil.getGoogleOAuth2UserWithToken();
-            const emailMock = stubOne(User).email;
+            const emailMock = stubOne(User).email as string;
 
             const googleOAuth2UserWithToken =  await service.evaluateIntegrationContext(
                 IntegrationVendor.GOOGLE,

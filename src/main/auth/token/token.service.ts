@@ -6,6 +6,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Observable, firstValueFrom, map, mergeMap, of } from 'rxjs';
 import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
+import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-oauth2-state-params.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
@@ -62,8 +63,8 @@ export class TokenService {
         accessToken: string | null
     ): string {
 
-        const decodedUserOrNull: User | null = accessToken
-            ? this.jwtService.decode(accessToken) as User
+        const decodedAppJwtPayloadOrNull: AppJwtPayload | null = accessToken
+            ? this.jwtService.decode(accessToken) as AppJwtPayload
             : null;
 
         const oauth2TokenService = this.oauth2TokenServiceLocator.get(integrationVendor);
@@ -71,7 +72,7 @@ export class TokenService {
         return oauth2TokenService.generateOAuth2AuthoizationUrl(
             integrationContext,
             timezone,
-            decodedUserOrNull
+            decodedAppJwtPayloadOrNull
         );
     }
 
@@ -87,17 +88,25 @@ export class TokenService {
     async issueTokenByOAuth2(
         integrationVendor: IntegrationVendor,
         authorizationCode: string,
-        timezone: string,
-        integrationContext: IntegrationContext,
-        requestUserEmail: string | null,
+        stateParams: SyncdayOAuth2StateParams,
         language: Language
     ): Promise<SyncdayOAuth2TokenResponse> {
+
+        const {
+            timezone,
+            integrationContext,
+            requestUserEmail,
+            profileId: profileIdString
+        } = stateParams;
+        const profileId = profileIdString ? +profileIdString : null;
 
         this.logger.info({
             message: 'Start issue token by oauth2',
             requestUserEmail,
-            integrationContext
+            integrationContext,
+            profileId
         });
+
         const oauth2TokenService = this.oauth2TokenServiceLocator.get(integrationVendor);
 
         this.logger.info({
@@ -134,8 +143,8 @@ export class TokenService {
 
         let user: User | null = await this.userService.findUserByLocalAuth(ensuredRequesterEmail);
 
-        let profile = user?.profiles[0] as Profile | null;
-        let team = user?.profiles[0].team as Team | null;
+        let profile = user?.profiles.find((_profile) => _profile.id === profileId && profileId !== null) as Profile | null;
+        let team = profile?.team as Team | null;
 
         this.validateOAuth2Request(user, ensuredIntegrationContext);
 
