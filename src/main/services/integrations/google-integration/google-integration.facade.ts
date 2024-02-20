@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { calendar_v3 } from 'googleapis';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
-import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
+import { GoogleCalendarScheduledEventBody } from '@core/interfaces/integrations/google/google-calendar-scheduled-event-body.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { GoogleAxiosErrorResponse } from '@core/interfaces/integrations/google/google-axios-error-response.interface';
 import { GoogleAxiosErrorReasons } from '@core/interfaces/integrations/google/google-axios-error-reasons.enum';
@@ -120,7 +120,7 @@ export class GoogleIntegrationFacade implements IntegrationsFacade {
 
                     return {
                         [_calendarId]: patchedRawSchedules
-                    } as GoogleCalendarScheduleBody;
+                    } as GoogleCalendarScheduledEventBody;
                 })
         );
 

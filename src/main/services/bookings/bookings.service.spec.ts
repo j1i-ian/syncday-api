@@ -10,6 +10,7 @@ import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { EventProfile } from '@entity/events/event-profile.entity';
+import { EventDetail } from '@entity/events/event-detail.entity';
 import { BookingsService } from './bookings.service';
 
 describe('BookingsService', () => {
@@ -95,8 +96,12 @@ describe('BookingsService', () => {
         const eventProfileStub = stubOne(EventProfile, {
             profile: profileStub
         });
+        const eventDetailStub = stubOne(EventDetail, {
+            hostQuestions: []
+        });
         const eventStub = stubOne(Event, {
-            eventProfiles: [eventProfileStub]
+            eventProfiles: [eventProfileStub],
+            eventDetail: eventDetailStub
         });
 
         eventsServiceStub.findOneByTeamWorkspaceAndLink.returns(of(eventStub));

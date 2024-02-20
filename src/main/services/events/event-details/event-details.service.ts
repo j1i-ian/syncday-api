@@ -32,15 +32,15 @@ export class EventDetailsService {
                 }
             });
 
-            const { eventSetting, inviteeQuestions, notificationInfo, ...eventDetailRelationEntity } = updateEventDetail;
+            const { eventSetting, hostQuestions, notificationInfo, ...eventDetailRelationEntity } = updateEventDetail;
 
             const updateResult = await this.eventDetailRepository.update(loadedEventDetail.id, eventDetailRelationEntity);
 
             const updateSuccess = updateResult && updateResult.affected && updateResult.affected > 0;
 
-            if (eventSetting || inviteeQuestions || notificationInfo) {
+            if (eventSetting || hostQuestions || notificationInfo) {
                 this.eventRedisRepository.updateEventDetailBody(loadedEventDetail.uuid, {
-                    inviteeQuestions,
+                    hostQuestions,
                     notificationInfo,
                     eventSetting
                 });

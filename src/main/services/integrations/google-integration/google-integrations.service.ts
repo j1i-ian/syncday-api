@@ -217,9 +217,9 @@ export class GoogleIntegrationsService implements
         } as GoogleIntegration;
         const createdGoogleIntegration = await _googleIntegrationRepository.save(newGoogleIngration);
 
-        const { schedules: googleCalendarScheduleBody } = googleIntegrationBody;
+        const { schedules: googleCalendarScheduledEventBody } = googleIntegrationBody;
 
-        const hasSchedules = Object.keys(googleCalendarScheduleBody).length > 0;
+        const hasSchedules = Object.keys(googleCalendarScheduledEventBody).length > 0;
 
         // Google Channel Id is same to google calendar integration uuid.
         const primaryCalendarIntegration = createdGoogleIntegration.googleCalendarIntegrations.find((_calendar) => _calendar.primary) as GoogleCalendarIntegration;
@@ -230,7 +230,7 @@ export class GoogleIntegrationsService implements
                 primaryCalendarIntegration.uuid
             );
 
-            const googleIntegrationSchedules = this.googleConverterService.convertToGoogleIntegrationSchedules(googleCalendarScheduleBody);
+            const googleIntegrationSchedules = this.googleConverterService.convertToGoogleIntegrationSchedules(googleCalendarScheduledEventBody);
 
             const _createdGoogleCalendarIntegrations = createdGoogleIntegration.googleCalendarIntegrations;
 

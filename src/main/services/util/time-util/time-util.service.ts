@@ -590,14 +590,14 @@ export class TimeUtilService {
             description,
             location,
             host,
-            inviteeAnswers,
+            invitees,
             scheduledEventNotifications
         } = scheduledEvent;
 
         const startDate = new Date(startTimestamp);
         const endDate = new Date(endTimestamp);
 
-        const inviteeName = inviteeAnswers[0].name;
+        const inviteeName = invitees[0].name;
         const attendees: Attendee[] = scheduledEventNotifications.filter(
             (_scheduledEventNotification) =>
                 _scheduledEventNotification.notificationType === NotificationType.EMAIL

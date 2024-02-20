@@ -10,7 +10,7 @@ export enum RedisStores {
     EVENT_DETAIL = 'event-detail',
     EVENT_SETTING = 'event-setting',
     AVAILABILITY = 'availability',
-    INVITEE_QUESTION = 'invitee-question',
+    HOST_QUESTIONS = 'host-questions',
     NOTIFICATION_INFO = 'notifications',
     SCHEDULES = 'schedules',
     GOOGLE_INTEGRATIONS = 'integrations:google',

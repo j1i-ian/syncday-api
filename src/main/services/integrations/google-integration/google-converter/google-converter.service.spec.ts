@@ -5,15 +5,18 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
+import { QuestionType } from '@interfaces/events/event-details/question-type.enum';
+import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
 import { UtilService } from '@services/util/util.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
-import { QuestionInputType } from '@entity/invitee-questions/question-input-type.enum';
 import { Host } from '@entity/scheduled-events/host.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GoogleConverterService } from './google-converter.service';
 
@@ -138,9 +141,9 @@ describe('GoogleConverterService', () => {
             const convertRRuleGoogleEventToGoogleIntegrationSchedulesStub = serviceSandbox.stub(service, 'convertRRuleGoogleEventToGoogleIntegrationSchedules');
             const convertGoogleScheduleToGoogleIntegrationScheduleStub = serviceSandbox.stub(service, '_convertGoogleScheduleToGoogleIntegrationSchedule');
 
-            const googleCalendarScheduleBodyMock = testMockUtil.getGoogleCalendarScheduleBodyMock();
+            const googleCalendarScheduledEventBodyMock = testMockUtil.getGoogleCalendarScheduledEventBodyMock();
 
-            const converted = service.convertToGoogleIntegrationSchedules(googleCalendarScheduleBodyMock);
+            const converted = service.convertToGoogleIntegrationSchedules(googleCalendarScheduledEventBodyMock);
             expect(converted).ok;
             expect(converted.length).equals(expectedConvertedScheduleCount);
 
@@ -242,10 +245,25 @@ describe('GoogleConverterService', () => {
                     },
                     inviteeAnswers: [
                         {
-                            name: 'alan',
-                            inputType: QuestionInputType.TEXT,
+                            priority: 1,
+                            type:  QuestionType.TEXT,
                             required: true
                         }
+                    ],
+                    invitees: [
+                        {
+                            name: 'alan',
+                            email: 'alan@sync.day',
+                            locale: 'ko-KR',
+                            phoneNumber: '',
+                            timezone: 'Asia/Seoul'
+                        }
+                    ],
+                    hostProfiles: [
+                        {
+                            ...stubOne(Profile),
+                            ...stubOne(User)
+                        } as unknown as HostProfile
                     ],
                     host: stubOne(Host),
                     contacts: [
@@ -273,11 +291,26 @@ describe('GoogleConverterService', () => {
                             }
                         ]
                     },
+                    hostProfiles: [
+                        {
+                            ...stubOne(Profile),
+                            ...stubOne(User)
+                        } as unknown as HostProfile
+                    ],
                     inviteeAnswers: [
                         {
-                            name: 'alan',
-                            inputType: QuestionInputType.TEXT,
+                            priority: 1,
+                            type:  QuestionType.TEXT,
                             required: true
+                        }
+                    ],
+                    invitees: [
+                        {
+                            name: 'alan',
+                            email: 'alan@sync.day',
+                            locale: 'ko-KR',
+                            phoneNumber: '',
+                            timezone: 'Asia/Seoul'
                         }
                     ],
                     host: stubOne(Host),
@@ -306,11 +339,26 @@ describe('GoogleConverterService', () => {
                             }
                         ]
                     },
+                    hostProfiles: [
+                        {
+                            ...stubOne(Profile),
+                            ...stubOne(User)
+                        } as unknown as HostProfile
+                    ],
                     inviteeAnswers: [
                         {
-                            name: 'alan',
-                            inputType: QuestionInputType.TEXT,
+                            priority: 1,
+                            type:  QuestionType.TEXT,
                             required: true
+                        }
+                    ],
+                    invitees: [
+                        {
+                            name: 'alan',
+                            email: 'alan@sync.day',
+                            locale: 'ko-KR',
+                            phoneNumber: '',
+                            timezone: 'Asia/Seoul'
                         }
                     ],
                     host: stubOne(Host),
@@ -339,11 +387,26 @@ describe('GoogleConverterService', () => {
                             }
                         ]
                     },
+                    hostProfiles: [
+                        {
+                            ...stubOne(Profile),
+                            ...stubOne(User)
+                        } as unknown as HostProfile
+                    ],
                     inviteeAnswers: [
                         {
-                            name: 'alan',
-                            inputType: QuestionInputType.TEXT,
+                            priority: 1,
+                            type:  QuestionType.TEXT,
                             required: true
+                        }
+                    ],
+                    invitees: [
+                        {
+                            name: 'alan',
+                            email: 'alan@sync.day',
+                            locale: 'ko-KR',
+                            phoneNumber: '',
+                            timezone: 'Asia/Seoul'
                         }
                     ],
                     host: stubOne(Host),

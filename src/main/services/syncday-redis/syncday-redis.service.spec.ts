@@ -193,12 +193,12 @@ describe('Redis Service Test', () => {
             expect(verification).true;
         });
 
-        it('coverage fill: getInviteeQuestionKey', () => {
+        it('coverage fill: getHostQuestionKey', () => {
             const eventDetailUUIDMock = TestMockUtil.faker.datatype.uuid();
 
-            serviceSandbox.stub(service, <any>'getRedisKey').returns(`local:event-detail:${eventDetailUUIDMock}:invitee-question`);
+            serviceSandbox.stub(service, <any>'getRedisKey').returns(`local:event-detail:${eventDetailUUIDMock}:${RedisStores.HOST_QUESTIONS}`);
 
-            const result = service.getInviteeQuestionKey(eventDetailUUIDMock);
+            const result = service.getHostQuestionsKey(eventDetailUUIDMock);
 
             expect(result).ok;
         });

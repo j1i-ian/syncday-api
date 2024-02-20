@@ -1,17 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { Observable, defer, from } from 'rxjs';
+import { Observable, concatMap, defer, from, map, toArray } from 'rxjs';
 import { FindOperator, FindOptionsOrder, FindOptionsWhere, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ScheduledEventsService } from '@core/interfaces/scheduled-events/scheduled-events.service.interface';
 import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee-scheduled-events.interface';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { ScheduledStatus } from '@interfaces/scheduled-events/scheduled-status.enum';
+import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 
 @Injectable()
 export class NativeScheduledEventsService implements ScheduledEventsService {
 
     constructor(
+        private readonly scheduledEventsRedisRepository: ScheduledEventsRedisRepository,
         @InjectRepository(ScheduledEvent) private readonly scheduledEventRepository: Repository<ScheduledEvent>
     ) {}
 
@@ -82,6 +84,18 @@ export class NativeScheduledEventsService implements ScheduledEventsService {
             skip
         })));
 
-        return syncNativeSchedule$;
+        return syncNativeSchedule$
+            .pipe(
+                concatMap((scheduledEvents) => from(scheduledEvents)),
+                concatMap((scheduledEvent) => this.scheduledEventsRedisRepository.getScheduledEventBody(scheduledEvent.uuid)
+                    .pipe(
+                        map((scheduledEventBody) => {
+                            scheduledEvent.inviteeAnswers = scheduledEventBody.inviteeAnswers;
+                            return scheduledEvent;
+                        })
+                    )
+                ),
+                toArray()
+            );
     }
 }

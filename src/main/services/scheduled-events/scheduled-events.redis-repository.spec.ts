@@ -6,8 +6,8 @@ import { firstValueFrom } from 'rxjs';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
-import { CannotFindScheduleBody } from '@app/exceptions/scheduled-events/cannot-find-schedule-body.exception';
-import { ScheduleBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
+import { CannotFindScheduledEventBody } from '@app/exceptions/scheduled-events/cannot-find-schedule-body.exception';
+import { ScheduledEventBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { TestMockUtil } from '@test/test-mock-util';
 
@@ -50,7 +50,7 @@ describe('Scheduled Events Redis Repository Test', () => {
     describe('Test Scheduled Event on Redis Repository', () => {
 
         afterEach(() => {
-            syncdayRedisServiceStub._getScheduleBodyKey.reset();
+            syncdayRedisServiceStub._getScheduledEventBodyKey.reset();
             clusterStub.get.reset();
             clusterStub.set.reset();
             clusterStub.hset.reset();
@@ -63,30 +63,30 @@ describe('Scheduled Events Redis Repository Test', () => {
         it('should be fetched schedule body', async () => {
 
             const scheduledEventStub = stubOne(ScheduledEvent);
-            const scheduleBodyStub = testMockUtil.getScheduleBodyMock();
+            const scheduledEventBodyStub = testMockUtil.getScheduledEventBodyMock();
 
-            syncdayRedisServiceStub._getScheduleBodyKey.returns('SCHEDULE_BODY_KEY');
-            clusterStub.get.resolves(JSON.stringify(scheduleBodyStub));
+            syncdayRedisServiceStub._getScheduledEventBodyKey.returns('SCHEDULE_BODY_KEY');
+            clusterStub.get.resolves(JSON.stringify(scheduledEventBodyStub));
 
-            const scheduleBody = await firstValueFrom(service.getScheduleBody(scheduledEventStub.uuid));
+            const scheduledEventBody = await firstValueFrom(service.getScheduledEventBody(scheduledEventStub.uuid));
 
-            expect(scheduleBody).deep.equals(scheduleBodyStub);
+            expect(scheduledEventBody).deep.equals(scheduledEventBodyStub);
             expect(clusterStub.get.called).true;
         });
 
         it('should be thrown error when schedule body is null', async () => {
 
             const scheduledEventStub = stubOne(ScheduledEvent);
-            const scheduleBodyStub = null;
+            const scheduledEventBodyStub = null;
 
-            syncdayRedisServiceStub._getScheduleBodyKey.returns('SCHEDULE_BODY_KEY');
-            clusterStub.get.resolves(scheduleBodyStub);
+            syncdayRedisServiceStub._getScheduledEventBodyKey.returns('SCHEDULE_BODY_KEY');
+            clusterStub.get.resolves(scheduledEventBodyStub);
 
             await expect(
                 firstValueFrom(
-                    service.getScheduleBody(scheduledEventStub.uuid)
+                    service.getScheduledEventBody(scheduledEventStub.uuid)
                 )
-            ).rejectedWith(CannotFindScheduleBody);
+            ).rejectedWith(CannotFindScheduledEventBody);
 
             expect(clusterStub.get.called).true;
         });
@@ -95,14 +95,14 @@ describe('Scheduled Events Redis Repository Test', () => {
             const uuidKey = '';
             const createdFieldResult = true;
 
-            syncdayRedisServiceStub._getScheduleBodyKey.returns(uuidKey);
+            syncdayRedisServiceStub._getScheduledEventBodyKey.returns(uuidKey);
 
             clusterStub.set.resolves('OK');
 
             const setResult = await service.set(uuidKey, {
                 inviteeAnswers: [],
                 scheduledNotificationInfo: {}
-            } as ScheduleBody);
+            } as ScheduledEventBody);
 
             expect(setResult).ok;
             expect(setResult).equals(createdFieldResult);
@@ -123,14 +123,14 @@ describe('Scheduled Events Redis Repository Test', () => {
             it('should be saved scheduled event', async () => {
                 const setStub = serviceSandbox.stub(service, 'set');
                 const scheduleUUIDMock = stubOne(ScheduledEvent).uuid;
-                const scheduleBodyMock = testMockUtil.getScheduleBodyMock();
+                const scheduledEventBodyMock = testMockUtil.getScheduledEventBodyMock();
 
                 setStub.resolves(true);
 
                 const saveResult = await firstValueFrom(
                     service.save(
                         scheduleUUIDMock,
-                        scheduleBodyMock
+                        scheduledEventBodyMock
                     )
                 );
 

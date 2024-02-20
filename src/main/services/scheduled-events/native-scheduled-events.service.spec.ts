@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FindManyOptions, FindOptionsWhere, Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
+import { InviteeAnswer } from '@interfaces/scheduled-events/invitee-answers.interface';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
@@ -14,9 +15,10 @@ import { Event } from '@entity/events/event.entity';
 import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.entity';
 import { ScheduledBufferTime } from '@entity/scheduled-events/scheduled-buffer-time.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { ScheduledEventBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
 import { NativeScheduledEventsService } from './native-scheduled-events.service';
 
-describe('NativeSchedulesService', () => {
+describe('NativeScheduledEventsService', () => {
     let service: NativeScheduledEventsService;
 
     let integrationsServiceLocatorStub: sinon.SinonStubbedInstance<IntegrationsServiceLocator>;
@@ -94,7 +96,6 @@ describe('NativeSchedulesService', () => {
             integrationsServiceLocatorStub.getIntegrationFactory.reset();
             integrationsServiceLocatorStub.getFacade.reset();
 
-            scheduledEventsRedisRepositoryStub.save.reset();
             scheduledEventRepositoryStub.save.reset();
             scheduledEventRepositoryStub.findBy.reset();
             scheduledEventRepositoryStub.findOneBy.reset();
@@ -163,8 +164,10 @@ describe('NativeSchedulesService', () => {
 
                 it(description, async () => {
 
-
                     scheduledEventRepositoryStub.find.resolves(scheduleStubs);
+                    scheduledEventsRedisRepositoryStub.getScheduledEventBody.returns(of({
+                        inviteeAnswers: [] as InviteeAnswer[]
+                    } as ScheduledEventBody));
 
                     const searchedSchedules = await firstValueFrom(
                         service.search(searchOption)
@@ -173,6 +176,7 @@ describe('NativeSchedulesService', () => {
                     expect(searchedSchedules).ok;
                     expect(searchedSchedules.length).greaterThan(0);
                     expect(scheduledEventRepositoryStub.find.called).true;
+                    expect(scheduledEventsRedisRepositoryStub.getScheduledEventBody.called).true;
 
                     const actualComposedScheduledEventSearchOptions = (scheduledEventRepositoryStub.find.getCall(0).args[0] as FindManyOptions<ScheduledEvent>).where as Array<FindOptionsWhere<ScheduledEvent>>;
 

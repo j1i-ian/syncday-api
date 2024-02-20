@@ -14,12 +14,10 @@ import { Request } from 'express';
 import { Logger } from 'winston';
 import { TemporaryUser } from '@core/entities/users/temporary-user.entity';
 import { Availability } from '@core/entities/availability/availability.entity';
-import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
-import { QuestionInputType } from '@core/entities/invitee-questions/question-input-type.enum';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
-import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
+import { GoogleCalendarScheduledEventBody } from '@core/interfaces/integrations/google/google-calendar-scheduled-event-body.interface';
 import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
@@ -33,6 +31,8 @@ import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.e
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
+import { HostQuestion } from '@interfaces/events/event-details/host-question.interface';
+import { QuestionType } from '@interfaces/events/event-details/question-type.enum';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
@@ -42,7 +42,7 @@ import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.ent
 import { User } from '@entity/users/user.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
-import { ScheduleBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
+import { ScheduledEventBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
 import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
@@ -475,7 +475,7 @@ export class TestMockUtil {
         };
     }
 
-    getScheduleBodyMock(): ScheduleBody {
+    getScheduledEventBodyMock(): ScheduledEventBody {
 
         return {
             inviteeAnswers: [],
@@ -483,7 +483,7 @@ export class TestMockUtil {
                 host: {},
                 invitee: {}
             } as NotificationInfo
-        } as ScheduleBody;
+        } as ScheduledEventBody;
     }
 
     getAvailabilityBodyMock(availability?: Availability): AvailabilityBody {
@@ -497,16 +497,15 @@ export class TestMockUtil {
         } as AvailabilityBody;
     }
 
-    getInviteeQuestionMock(
+    getHostQuestionMock(
         eventDetailUUID?: string,
-        inviteeQuestion?: Partial<InviteeQuestion>
-    ): InviteeQuestion {
+        hostQuestion?: Partial<HostQuestion>
+    ): HostQuestion {
         return {
-            eventDetailUUID: eventDetailUUID || 'DEFAULT_EVENT_DETAIL_UUID',
-            name: faker.name.jobTitle(),
-            inputType: QuestionInputType.TEXT,
+            priority: 1,
+            type: QuestionType.TEXT,
             required: false,
-            ...inviteeQuestion
+            ...hostQuestion
         };
     }
 
@@ -579,14 +578,14 @@ export class TestMockUtil {
 
         const email = 'private_google_email@sync.day';
         const calendarsMock = this.getGoogleCalendarMock();
-        const googleCalendarScheduleBody = this.getGoogleCalendarScheduleBodyMock();
+        const googleCalendarScheduledEventBody = this.getGoogleCalendarScheduledEventBodyMock();
 
         return {
             googleUser: {
                 email
             },
             calendars: calendarsMock,
-            schedules: googleCalendarScheduleBody
+            schedules: googleCalendarScheduledEventBody
         } as GoogleOAuth2UserWithToken;
     }
 
@@ -594,16 +593,16 @@ export class TestMockUtil {
 
         const email = 'private_google_email@sync.day';
         const calendarsMock = this.getGoogleCalendarMock();
-        const googleCalendarScheduleBody = this.getGoogleCalendarScheduleBodyMock();
+        const googleCalendarScheduledEventBody = this.getGoogleCalendarScheduledEventBodyMock();
 
         return {
             googleUserEmail: email,
             calendars: calendarsMock,
-            schedules: googleCalendarScheduleBody
+            schedules: googleCalendarScheduledEventBody
         };
     }
 
-    getGoogleCalendarScheduleBodyMock(): GoogleCalendarScheduleBody {
+    getGoogleCalendarScheduledEventBodyMock(): GoogleCalendarScheduledEventBody {
 
         const cancelledGoogleScheduleMock = this.getCancelledGoogleScheduleMock();
         const recurrenceGoogleScheduleMock = this.getRecurrenceGoogleScheduleMock();

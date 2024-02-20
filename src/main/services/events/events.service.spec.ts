@@ -142,7 +142,7 @@ describe('EventsService', () => {
 
             eventRepositoryStub.findOneOrFail.reset();
 
-            eventRedisRepositoryStub.getInviteeQuestions.reset();
+            eventRedisRepositoryStub.getHostQuestions.reset();
             eventRedisRepositoryStub.getNotificationInfo.reset();
             eventRedisRepositoryStub.getEventSetting.reset();
         });
@@ -154,14 +154,14 @@ describe('EventsService', () => {
                 eventDetail: eventDetailStub
             });
             const inviteeStubs = Array(10).fill(
-                testMockUtil.getInviteeQuestionMock(eventDetailStub.uuid)
+                testMockUtil.getHostQuestionMock(eventDetailStub.uuid)
             );
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
             const eventSettingMock = testMockUtil.getEventSettingMock();
 
             validatorStub.validate.resolves();
             eventRepositoryStub.findOneOrFail.resolves(eventStub);
-            eventRedisRepositoryStub.getInviteeQuestions.returns(from(inviteeStubs));
+            eventRedisRepositoryStub.getHostQuestions.returns(from(inviteeStubs));
             eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
             eventRedisRepositoryStub.getEventSetting.returns(of(eventSettingMock));
 
@@ -170,7 +170,7 @@ describe('EventsService', () => {
             expect(loadedEventWithDetail).ok;
             expect(loadedEventWithDetail.eventDetail).ok;
             expect(eventRepositoryStub.findOneOrFail.called).true;
-            expect(eventRedisRepositoryStub.getInviteeQuestions.called).true;
+            expect(eventRedisRepositoryStub.getHostQuestions.called).true;
             expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
             expect(eventRedisRepositoryStub.getEventSetting.called).true;
         });
@@ -207,14 +207,14 @@ describe('EventsService', () => {
                 eventDetail: eventDetailStub
             });
             const inviteeStubs = Array(10).fill(
-                testMockUtil.getInviteeQuestionMock(eventDetailStub.uuid)
+                testMockUtil.getHostQuestionMock(eventDetailStub.uuid)
             );
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
             const eventSettingMock = testMockUtil.getEventSettingMock();
 
             validatorStub.validate.resolves();
             eventRepositoryStub.findOneOrFail.resolves(eventStub);
-            eventRedisRepositoryStub.getInviteeQuestions.returns(of(inviteeStubs));
+            eventRedisRepositoryStub.getHostQuestions.returns(of(inviteeStubs));
             eventRedisRepositoryStub.getNotificationInfo.returns(of(notificationInfoStub));
             eventRedisRepositoryStub.getEventSetting.returns(of(eventSettingMock));
 
@@ -228,7 +228,7 @@ describe('EventsService', () => {
             expect(loadedEventWithDetail).ok;
             expect(loadedEventWithDetail.eventDetail).ok;
             expect(eventRepositoryStub.findOneOrFail.called).true;
-            expect(eventRedisRepositoryStub.getInviteeQuestions.called).true;
+            expect(eventRedisRepositoryStub.getHostQuestions.called).true;
             expect(eventRedisRepositoryStub.getNotificationInfo.called).true;
             expect(eventRedisRepositoryStub.getEventSetting.called).true;
         });
@@ -338,16 +338,16 @@ describe('EventsService', () => {
                 profiles: [profileMock]
             });
 
-            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
+            const hostQuestionStubs = [testMockUtil.getHostQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
             const eventDetailBodyStub = {
-                inviteeQuestions: inviteeQuestionStubs,
+                hostQuestions: hostQuestionStubs,
                 notificationInfo: notificationInfoStub
             } as EventsDetailBody;
 
             const eventDetailStub = stubOne(EventDetail, {
-                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
+                hostQuestions: eventDetailBodyStub.hostQuestions,
                 notificationInfo: eventDetailBodyStub.notificationInfo
             });
             const eventMock = stubOne(Event, {
@@ -381,17 +381,17 @@ describe('EventsService', () => {
         });
 
         it('should be created an event with transaction' , async () => {
-            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
+            const hostQuestionStubs = [testMockUtil.getHostQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
             const userMock = stubOne(User);
 
             const eventDetailBodyStub = {
-                inviteeQuestions: inviteeQuestionStubs,
+                hostQuestions: hostQuestionStubs,
                 notificationInfo: notificationInfoStub
             } as EventsDetailBody;
 
             const eventDetailStub = stubOne(EventDetail, {
-                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
+                hostQuestions: eventDetailBodyStub.hostQuestions,
                 notificationInfo: eventDetailBodyStub.notificationInfo
             });
             const eventMockStub = stubOne(Event, {
@@ -416,8 +416,8 @@ describe('EventsService', () => {
             );
 
             expect(createdEvent.eventDetail).ok;
-            expect(createdEvent.eventDetail.inviteeQuestions).ok;
-            expect(createdEvent.eventDetail.inviteeQuestions.length).greaterThan(0);
+            expect(createdEvent.eventDetail.hostQuestions).ok;
+            expect(createdEvent.eventDetail.hostQuestions.length).greaterThan(0);
             expect(createdEvent.eventDetail.notificationInfo).ok;
 
             expect(eventRepositoryStub.save.called).true;
@@ -769,16 +769,16 @@ describe('EventsService', () => {
         it('should be removed event', async () => {
             const teamMock = stubOne(Team);
 
-            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
+            const hostQuestionStubs = [testMockUtil.getHostQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
             const eventDetailBodyStub = {
-                inviteeQuestions: inviteeQuestionStubs,
+                hostQuestions: hostQuestionStubs,
                 notificationInfo: notificationInfoStub
             } as EventsDetailBody;
 
             const eventDetailStub = stubOne(EventDetail, {
-                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
+                hostQuestions: eventDetailBodyStub.hostQuestions,
                 notificationInfo: eventDetailBodyStub.notificationInfo
             });
             const eventMock = stubOne(Event, {
@@ -804,16 +804,16 @@ describe('EventsService', () => {
         it('should be thrown as an error when an event removal occurs within a transaction', async () => {
             const teamMock = stubOne(Team);
 
-            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
+            const hostQuestionStubs = [testMockUtil.getHostQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
             const eventDetailBodyStub = {
-                inviteeQuestions: inviteeQuestionStubs,
+                hostQuestions: hostQuestionStubs,
                 notificationInfo: notificationInfoStub
             } as EventsDetailBody;
 
             const eventDetailStub = stubOne(EventDetail, {
-                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
+                hostQuestions: eventDetailBodyStub.hostQuestions,
                 notificationInfo: eventDetailBodyStub.notificationInfo
             });
             const eventMock = stubOne(Event, {
@@ -852,16 +852,16 @@ describe('EventsService', () => {
         it('should be cloned event', async () => {
             const teamMock = stubOne(Team);
 
-            const inviteeQuestionStubs = [testMockUtil.getInviteeQuestionMock()];
+            const hostQuestionStubs = [testMockUtil.getHostQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
 
             const eventDetailBodyStub = {
-                inviteeQuestions: inviteeQuestionStubs,
+                hostQuestions: hostQuestionStubs,
                 notificationInfo: notificationInfoStub
             } as EventsDetailBody;
 
             const [sourceEventDetailStub, clonedEventDetailStub] = stub(EventDetail, 2, {
-                inviteeQuestions: eventDetailBodyStub.inviteeQuestions,
+                hostQuestions: eventDetailBodyStub.hostQuestions,
                 notificationInfo: eventDetailBodyStub.notificationInfo
             });
             const [sourceEventStub, clonedEventStub] = stub(Event, 2);

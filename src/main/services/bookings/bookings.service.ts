@@ -44,6 +44,8 @@ export class BookingsService {
                 map((event) => {
                     const profileImage = event.eventProfiles[0].profile.image;
 
+                    event.eventDetail.hostQuestions = event.eventDetail.hostQuestions ?? [];
+
                     return {
                         ...event,
                         profileImage

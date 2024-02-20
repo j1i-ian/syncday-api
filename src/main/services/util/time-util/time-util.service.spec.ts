@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import * as icsModule from 'ics';
 import { BadRequestException } from '@nestjs/common';
-import { QuestionInputType } from '@interfaces/events/invitee/question-input-type';
 import { Weekday } from '@interfaces/availabilities/weekday.enum';
 import { TimeSlotCompare } from '@interfaces/scheduled-events/time-slot-compare.enum';
+import { QuestionType } from '@interfaces/events/event-details/question-type.enum';
 import { Host } from '@entity/scheduled-events/host.entity';
 import { TimeRange } from '@entity/events/time-range.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
@@ -518,10 +518,20 @@ describe('TimeUtilService', () => {
                 host: {
                     name: 'hostName'
                 } as Host,
+                hostProfiles: [],
+                invitees: [
+                    {
+                        name: 'alan',
+                        email: 'alan@sync.day',
+                        locale: 'ko-KR',
+                        phoneNumber: '',
+                        timezone: 'Asia/Seoul'
+                    }
+                ],
                 inviteeAnswers: [
                     {
-                        name: 'sampleInviteeName',
-                        inputType: QuestionInputType.TEXT,
+                        priority: 1,
+                        type:  QuestionType.TEXT,
                         required: true
                     }
                 ],
@@ -555,10 +565,20 @@ describe('TimeUtilService', () => {
                 host: {
                     name: 'hostName'
                 } as Host,
+                hostProfiles: [],
+                invitees: [
+                    {
+                        name: 'alan',
+                        email: 'alan@sync.day',
+                        locale: 'ko-KR',
+                        phoneNumber: '',
+                        timezone: 'Asia/Seoul'
+                    }
+                ],
                 inviteeAnswers: [
                     {
-                        name: 'sampleInviteeName',
-                        inputType: QuestionInputType.TEXT,
+                        priority: 1,
+                        type:  QuestionType.TEXT,
                         required: true
                     }
                 ],
@@ -594,10 +614,20 @@ describe('TimeUtilService', () => {
                 host: {
                     name: 'hostName'
                 } as Host,
+                hostProfiles: [],
+                invitees: [
+                    {
+                        name: 'alan',
+                        email: 'alan@sync.day',
+                        locale: 'ko-KR',
+                        phoneNumber: '',
+                        timezone: 'Asia/Seoul'
+                    }
+                ],
                 inviteeAnswers: [
                     {
-                        name: 'sampleInviteeName',
-                        inputType: QuestionInputType.TEXT,
+                        priority: 1,
+                        type:  QuestionType.TEXT,
                         required: true
                     }
                 ],

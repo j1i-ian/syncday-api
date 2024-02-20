@@ -271,10 +271,10 @@ describe('GlobalScheduledEventsService', () => {
         it('should be fetched scheduled event one', async () => {
 
             const scheduledEventStub = stubOne(ScheduledEvent);
-            const scheduleBodyStub = testMockUtil.getScheduleBodyMock();
+            const scheduledEventBodyStub = testMockUtil.getScheduledEventBodyMock();
 
             scheduledEventRepositoryStub.findOneByOrFail.resolves(scheduledEventStub);
-            schedulesRedisRepositoryStub.getScheduleBody.returns(of(scheduleBodyStub));
+            schedulesRedisRepositoryStub.getScheduledEventBody.returns(of(scheduledEventBodyStub));
 
             const fetchedScheduledEvent = await firstValueFrom(
                 service.findOne(scheduledEventStub.uuid)

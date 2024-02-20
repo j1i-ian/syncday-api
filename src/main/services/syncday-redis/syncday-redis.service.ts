@@ -144,10 +144,10 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.VERIFICATIONS_PHONE, [String(phoneNumber), uuid]);
     }
 
-    getInviteeQuestionKey(eventDetailUUID: string): RedisKey {
+    getHostQuestionsKey(eventDetailUUID: string): RedisKey {
         return this.getRedisKey(RedisStores.EVENT_DETAIL, [
             eventDetailUUID,
-            RedisStores.INVITEE_QUESTION
+            RedisStores.HOST_QUESTIONS
         ]);
     }
 
@@ -182,8 +182,8 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.TEAMS, [teamUUID, RedisStores.AVAILABILITY]);
     }
 
-    _getScheduleBodyKey(scheduleUUID: string): RedisKey {
-        return this.getRedisKey(RedisStores.SCHEDULES, [scheduleUUID]);
+    _getScheduledEventBodyKey(scheduledEventUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.SCHEDULES, [scheduledEventUUID]);
     }
 
     __parseHashmapRecords<T>(hashmapRecords: Record<string, string>): Record<string, T> {

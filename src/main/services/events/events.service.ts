@@ -99,13 +99,13 @@ export class EventsService {
                 const eventDetailUUID = eventDetail.uuid;
 
                 return forkJoin({
-                    inviteeQuestions:
-                        this.eventRedisRepository.getInviteeQuestions(eventDetailUUID),
+                    hostQuestions:
+                        this.eventRedisRepository.getHostQuestions(eventDetailUUID),
                     notificationInfo: this.eventRedisRepository.getNotificationInfo(eventDetailUUID),
                     eventSetting: this.eventRedisRepository.getEventSetting(eventDetailUUID)
                 }).pipe(
-                    map(({ inviteeQuestions, notificationInfo, eventSetting }) => {
-                        loadedEvent.eventDetail.inviteeQuestions = inviteeQuestions;
+                    map(({ hostQuestions, notificationInfo, eventSetting }) => {
+                        loadedEvent.eventDetail.hostQuestions = hostQuestions;
                         loadedEvent.eventDetail.notificationInfo = notificationInfo;
                         loadedEvent.eventDetail.eventSetting = eventSetting;
                         return loadedEvent;
@@ -190,13 +190,13 @@ export class EventsService {
                 const eventDetailUUID = eventDetail.uuid;
 
                 return forkJoin({
-                    inviteeQuestions:
-                        this.eventRedisRepository.getInviteeQuestions(eventDetailUUID),
+                    hostQuestions:
+                        this.eventRedisRepository.getHostQuestions(eventDetailUUID),
                     notificationInfo: this.eventRedisRepository.getNotificationInfo(eventDetailUUID),
                     eventSetting: this.eventRedisRepository.getEventSetting(eventDetailUUID)
                 }).pipe(
-                    map(({ inviteeQuestions, notificationInfo, eventSetting }) => {
-                        loadedEvent.eventDetail.inviteeQuestions = inviteeQuestions;
+                    map(({ hostQuestions, notificationInfo, eventSetting }) => {
+                        loadedEvent.eventDetail.hostQuestions = hostQuestions;
                         loadedEvent.eventDetail.notificationInfo = notificationInfo;
                         loadedEvent.eventDetail.eventSetting = eventSetting;
                         return loadedEvent;
@@ -332,7 +332,7 @@ export class EventsService {
 
         // save consumption data
         const newEventDetail = ensuredNewEvent.eventDetail;
-        const { inviteeQuestions, notificationInfo, eventSetting } = newEventDetail;
+        const { hostQuestions, notificationInfo, eventSetting } = newEventDetail;
 
         this.logger.info({
             message: 'Creating event with event detail, eventProfiles is completed. Set event link status then saving notification info, invitee questions',
@@ -344,12 +344,12 @@ export class EventsService {
 
         const savedEventDetailBody = await this.eventRedisRepository.save(
             savedEventDetail.uuid,
-            inviteeQuestions,
+            hostQuestions,
             notificationInfo,
             eventSetting
         );
 
-        savedEvent.eventDetail.inviteeQuestions = savedEventDetailBody.inviteeQuestions;
+        savedEvent.eventDetail.hostQuestions = savedEventDetailBody.hostQuestions;
         savedEvent.eventDetail.notificationInfo = savedEventDetailBody.notificationInfo;
 
         this.logger.info({
@@ -433,6 +433,7 @@ export class EventsService {
             const {
                 notificationInfo: _notificationInfo,
                 eventSetting: _eventSetting,
+                hostQuestions: _hostQuestions,
                 ..._updateEventDetail
             } = plainToInstance(EventDetail, _eventDetail, {
                 strategy: 'exposeAll'
@@ -469,7 +470,7 @@ export class EventsService {
         // update event detail
         await this.eventRedisRepository.save(
             validatedEventDetail.uuid,
-            updatedEventDetail.inviteeQuestions,
+            updatedEventDetail.hostQuestions,
             updatedEventDetail.notificationInfo,
             updatedEventDetail.eventSetting
         );
@@ -540,7 +541,7 @@ export class EventsService {
 
         await this.eventRedisRepository.setEventLinkSetStatus(teamUUID, clonedEvent.link);
 
-        clonedEvent.eventDetail.inviteeQuestions = clonedEventDetailBody.inviteeQuestions;
+        clonedEvent.eventDetail.hostQuestions = clonedEventDetailBody.hostQuestions;
         clonedEvent.eventDetail.notificationInfo = clonedEventDetailBody.notificationInfo;
         clonedEvent.eventDetail.eventSetting = clonedEventDetailBody.eventSetting;
 

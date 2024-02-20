@@ -44,7 +44,7 @@ export class GlobalScheduledEventsService {
         private readonly nativeSchedulesService: NativeScheduledEventsService,
         private readonly notificationsService: NotificationsService,
         private readonly calendarIntegrationsServiceLocator: CalendarIntegrationsServiceLocator,
-        private readonly scheduleRedisRepository: ScheduledEventsRedisRepository,
+        private readonly scheduledEventsRedisRepository: ScheduledEventsRedisRepository,
         @InjectRepository(ScheduledEvent) private readonly scheduledEventRepository: Repository<ScheduledEvent>,
         @InjectRepository(GoogleIntegrationScheduledEvent) private readonly googleIntegrationScheduleRepository: Repository<GoogleIntegrationScheduledEvent>,
         @InjectRepository(AppleCalDAVIntegrationScheduledEvent) private readonly appleCalDAVIntegrationScheduleRepository: Repository<AppleCalDAVIntegrationScheduledEvent>,
@@ -80,10 +80,10 @@ export class GlobalScheduledEventsService {
         return defer(() => from(this.scheduledEventRepository.findOneByOrFail({
             uuid: scheduleUUID
         }))).pipe(
-            mergeMap((scheduledEvent) => this.scheduleRedisRepository.getScheduleBody(scheduledEvent.uuid)
+            mergeMap((scheduledEvent) => this.scheduledEventsRedisRepository.getScheduledEventBody(scheduledEvent.uuid)
                 .pipe(
-                    map((scheduleBody) => {
-                        scheduledEvent.inviteeAnswers = scheduleBody.inviteeAnswers;
+                    map((scheduledEventBody) => {
+                        scheduledEvent.inviteeAnswers = scheduledEventBody.inviteeAnswers;
                         return scheduledEvent;
                     })
                 )
@@ -321,12 +321,12 @@ export class GlobalScheduledEventsService {
                 });
             }),
             mergeMap((createdSchedule) =>
-                this.scheduleRedisRepository.save(createdSchedule.uuid, {
+                this.scheduledEventsRedisRepository.save(createdSchedule.uuid, {
                     inviteeAnswers: newScheduledEvent.inviteeAnswers,
                     scheduledNotificationInfo: newScheduledEvent.scheduledNotificationInfo
-                }).pipe(map((_createdScheduleBody) => {
-                    createdSchedule.inviteeAnswers = _createdScheduleBody.inviteeAnswers ;
-                    createdSchedule.scheduledNotificationInfo = _createdScheduleBody.scheduledNotificationInfo;
+                }).pipe(map((_createdScheduledEventBody) => {
+                    createdSchedule.inviteeAnswers = _createdScheduledEventBody.inviteeAnswers ;
+                    createdSchedule.scheduledNotificationInfo = _createdScheduledEventBody.scheduledNotificationInfo;
 
                     return createdSchedule;
                 }))

@@ -596,7 +596,7 @@ export class UtilService {
 
         const initialEventDetail = new EventDetail({
             description: null,
-            inviteeQuestions: [],
+            hostQuestions: [],
             eventSetting: {
                 enforceInviteePhoneInput: false
             },

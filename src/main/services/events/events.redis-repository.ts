@@ -1,9 +1,9 @@
 import { Observable, defer, forkJoin, from, map, mergeMap } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
-import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 import { EventSetting } from '@interfaces/events/event-setting';
+import { HostQuestion } from '@interfaces/events/event-details/host-question.interface';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
@@ -31,30 +31,30 @@ export class EventsRedisRepository {
 
         // 키들의 값을 가져오기 위한 파이프라인 명령 추가
         eventDetailUUIDs.forEach((_eventDetailUUID) => {
-            const _inviteeQuestionsKey = this.syncdayRedisService.getInviteeQuestionKey(_eventDetailUUID);
+            const _hostQuestionsKey = this.syncdayRedisService.getHostQuestionsKey(_eventDetailUUID);
             const _notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(_eventDetailUUID);
             const _eventSettingKey = this.syncdayRedisService.getEventSettingKey(_eventDetailUUID);
 
-            readPipeline.get(_inviteeQuestionsKey);
+            readPipeline.get(_hostQuestionsKey);
             readPipeline.get(_notificationInfoKey);
             readPipeline.get(_eventSettingKey);
         });
 
         return defer(() => from(
-            readPipeline.exec() as Promise<Array<[unknown, InviteeQuestion[] | NotificationInfo | EventSetting]>>
+            readPipeline.exec() as Promise<Array<[unknown, HostQuestion[] | NotificationInfo | EventSetting]>>
         ))
             .pipe(
                 map((_results) => eventDetailUUIDs.reduce((eventDetailsRecord, _eventDetailUUID) => {
-                    const [, _inviteeQuestions] = _results.shift() as [unknown, string];
+                    const [, _hostQuestions] = _results.shift() as [unknown, string];
                     const [, _notificationInfo] = _results.shift() as [unknown, string];
                     const [, _eventSetting] = _results.shift() as [unknown, string];
 
-                    const _ensuredInviteeQuestions = JSON.parse(_inviteeQuestions || '[]');
+                    const _ensuredHostQuestions = JSON.parse(_hostQuestions || '[]');
                     const _ensuredNotificationInfo = JSON.parse(_notificationInfo || 'null');
                     const _ensuredEventSetting = JSON.parse(_eventSetting || 'null');
 
                     eventDetailsRecord[_eventDetailUUID] = {
-                        inviteeQuestions: _ensuredInviteeQuestions,
+                        hostQuestions: _ensuredHostQuestions,
                         notificationInfo: _ensuredNotificationInfo,
                         eventSetting: _ensuredEventSetting
                     };
@@ -76,16 +76,16 @@ export class EventsRedisRepository {
         );
     }
 
-    getInviteeQuestions(eventDetailUUID: string): Observable<InviteeQuestion[]> {
-        const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID);
+    getHostQuestions(eventDetailUUID: string): Observable<HostQuestion[]> {
+        const hostQuestionsKey = this.syncdayRedisService.getHostQuestionsKey(eventDetailUUID);
 
         return defer(() => from(
-            this.cluster.get(inviteeQuestionKey)
+            this.cluster.get(hostQuestionsKey)
         )).pipe(
             map((result) => {
                 const isValidString = !!result && result !== '';
-                const _ensuredInviteeQuestions = isValidString ? JSON.parse(result) as InviteeQuestion[] : [];
-                return _ensuredInviteeQuestions;
+                const _ensuredHostQuestions = isValidString ? JSON.parse(result) as HostQuestion[] : [];
+                return _ensuredHostQuestions;
             })
         );
     }
@@ -144,24 +144,24 @@ export class EventsRedisRepository {
      * Both elements have too small chunk sizes, so it has not been configured with hash map
      *
      * @param eventDetailUUID
-     * @param newInviteeQuestions
+     * @param newHostQuestions
      * @param newNotificationInfo
      * @returns
      */
     async save(
         eventDetailUUID: string,
-        newInviteeQuestions: InviteeQuestion[],
+        newHostQuestions: HostQuestion[],
         newNotificationInfo: NotificationInfo,
         newEventSetting: EventSetting
     ): Promise<EventsDetailBody> {
-        const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID);
+        const hostQuestionKey = this.syncdayRedisService.getHostQuestionsKey(eventDetailUUID);
         const notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID);
         const eventSettingKey = this.syncdayRedisService.getEventSettingKey(eventDetailUUID);
 
-        const newInviteeQuestionsBody = JSON.stringify(newInviteeQuestions);
-        const createdInviteeQuestionsResult = await this.cluster.set(
-            inviteeQuestionKey,
-            newInviteeQuestionsBody
+        const newHostQuestionsBody = JSON.stringify(newHostQuestions);
+        const createdHostQuestionsResult = await this.cluster.set(
+            hostQuestionKey,
+            newHostQuestionsBody
         );
 
         const newNotificationInfoBody = JSON.stringify(newNotificationInfo);
@@ -171,11 +171,11 @@ export class EventsRedisRepository {
         const createdEventSetting = await this.cluster.set(eventSettingKey, newEventSettingBody);
 
         if (
-            createdInviteeQuestionsResult === 'OK'
+            createdHostQuestionsResult === 'OK'
             && createdNotificationInfoResult === 'OK'
             && createdEventSetting === 'OK') {
             return {
-                inviteeQuestions: newInviteeQuestions,
+                hostQuestions: newHostQuestions,
                 notificationInfo: newNotificationInfo,
                 eventSetting: newEventSetting
             };
@@ -190,18 +190,18 @@ export class EventsRedisRepository {
     ): Promise<boolean> {
 
         const {
-            inviteeQuestions,
+            hostQuestions,
             notificationInfo,
             eventSetting
         } = eventDetailBody;
 
         const updatePipeline = this.cluster.pipeline();
 
-        if (inviteeQuestions) {
-            const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID);
+        if (hostQuestions) {
+            const hostQuestionKey = this.syncdayRedisService.getHostQuestionsKey(eventDetailUUID);
 
-            const updateInviteeQuestionsBody = JSON.stringify(inviteeQuestions);
-            updatePipeline.set(inviteeQuestionKey, updateInviteeQuestionsBody);
+            const updateHostQuestionsBody = JSON.stringify(hostQuestions);
+            updatePipeline.set(hostQuestionKey, updateHostQuestionsBody);
         }
 
         if (notificationInfo) {
@@ -224,29 +224,29 @@ export class EventsRedisRepository {
     }
 
     async remove(eventDetailUUID: string): Promise<boolean> {
-        const inviteeQuestionKey = this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID);
+        const hostQuestionsKey = this.syncdayRedisService.getHostQuestionsKey(eventDetailUUID);
         const notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID);
 
-        const deletedInviteeQuestionNode = await this.cluster.del(inviteeQuestionKey);
+        const deletedHostQuestionNode = await this.cluster.del(hostQuestionsKey);
         const deletedNotificationInfoNode = await this.cluster.del(notificationInfoKey);
 
-        return deletedInviteeQuestionNode > 0 && deletedNotificationInfoNode > 0;
+        return deletedHostQuestionNode > 0 && deletedNotificationInfoNode > 0;
     }
 
     async removeEventDetails(eventDetailUUIDs: string[]): Promise<boolean> {
 
-        const { inviteeQuestionKeys, notificationInfoKeys } =
-            eventDetailUUIDs.reduce((inviteeQuestionAndNotificationInfoKeysArray, eventDetailUUID) =>  {
-                const { inviteeQuestionKeys, notificationInfoKeys } = inviteeQuestionAndNotificationInfoKeysArray;
-                inviteeQuestionKeys.push(this.syncdayRedisService.getInviteeQuestionKey(eventDetailUUID));
+        const { hostQuestionKeys, notificationInfoKeys } =
+            eventDetailUUIDs.reduce((hostQuestionAndNotificationInfoKeysArray, eventDetailUUID) =>  {
+                const { hostQuestionKeys, notificationInfoKeys } = hostQuestionAndNotificationInfoKeysArray;
+                hostQuestionKeys.push(this.syncdayRedisService.getHostQuestionsKey(eventDetailUUID));
                 notificationInfoKeys.push(this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID));
 
-                return { inviteeQuestionKeys, notificationInfoKeys };
-            }, { inviteeQuestionKeys: [] as RedisKey[], notificationInfoKeys:[] as RedisKey[] });
+                return { hostQuestionKeys, notificationInfoKeys };
+            }, { hostQuestionKeys: [] as RedisKey[], notificationInfoKeys:[] as RedisKey[] });
 
         const deletePipeline = this.cluster.pipeline();
 
-        inviteeQuestionKeys.forEach((inviteeQuestionKey) => deletePipeline.del(inviteeQuestionKey));
+        hostQuestionKeys.forEach((hostQuestionKey) => deletePipeline.del(hostQuestionKey));
         notificationInfoKeys.forEach((notificationInfoKey) => deletePipeline.del(notificationInfoKey));
 
         const results = await deletePipeline.exec();
@@ -263,12 +263,12 @@ export class EventsRedisRepository {
 
     clone(sourceEventDetailUUID: string, newEventDetailUUID: string): Observable<EventsDetailBody> {
         return forkJoin({
-            sourceInviteeQuestions: this.getInviteeQuestions(sourceEventDetailUUID),
+            sourceHostQuestions: this.getHostQuestions(sourceEventDetailUUID),
             sourceNotificationInfo: this.getNotificationInfo(sourceEventDetailUUID),
             sourceEventSetting: this.getEventSetting(sourceEventDetailUUID)
         }).pipe(
-            mergeMap(({ sourceInviteeQuestions, sourceNotificationInfo, sourceEventSetting }) =>
-                this.save(newEventDetailUUID, sourceInviteeQuestions, sourceNotificationInfo, sourceEventSetting)
+            mergeMap(({ sourceHostQuestions: sourceHostQuestions, sourceNotificationInfo, sourceEventSetting }) =>
+                this.save(newEventDetailUUID, sourceHostQuestions, sourceNotificationInfo, sourceEventSetting)
             )
         );
     }

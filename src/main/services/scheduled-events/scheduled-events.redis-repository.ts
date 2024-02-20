@@ -4,8 +4,8 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Observable, defer, from, map } from 'rxjs';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
-import { ScheduleBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
-import { CannotFindScheduleBody } from '@app/exceptions/scheduled-events/cannot-find-schedule-body.exception';
+import { ScheduledEventBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
+import { CannotFindScheduledEventBody } from '@app/exceptions/scheduled-events/cannot-find-schedule-body.exception';
 
 @Injectable()
 export class ScheduledEventsRedisRepository {
@@ -16,17 +16,17 @@ export class ScheduledEventsRedisRepository {
 
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
 
-    getScheduleBody(scheduleUUID: string): Observable<ScheduleBody> {
-        const scheduleBodyKey = this.syncdayRedisService._getScheduleBodyKey(scheduleUUID);
+    getScheduledEventBody(scheduledEventUUID: string): Observable<ScheduledEventBody> {
+        const scheduledEventBodyKey = this.syncdayRedisService._getScheduledEventBodyKey(scheduledEventUUID);
 
-        return defer(() => from(this.cluster.get(scheduleBodyKey)))
+        return defer(() => from(this.cluster.get(scheduledEventBodyKey)))
             .pipe(
                 map(
-                    (scheduleBodyJson: string | null) => {
-                        if (scheduleBodyJson) {
-                            return JSON.parse(scheduleBodyJson) as ScheduleBody;
+                    (scheduledEventBodyJson: string | null) => {
+                        if (scheduledEventBodyJson) {
+                            return JSON.parse(scheduledEventBodyJson) as ScheduledEventBody;
                         } else {
-                            throw new CannotFindScheduleBody();
+                            throw new CannotFindScheduledEventBody();
                         }
                     }
                 )
@@ -35,40 +35,40 @@ export class ScheduledEventsRedisRepository {
 
     async set(
         scheduleUUID: string,
-        scheduleBody: ScheduleBody
+        scheduledEventBody: ScheduledEventBody
     ): Promise<boolean> {
 
-        scheduleBody.inviteeAnswers = scheduleBody.inviteeAnswers;
-        scheduleBody.scheduledNotificationInfo = scheduleBody.scheduledNotificationInfo;
+        scheduledEventBody.inviteeAnswers = scheduledEventBody.inviteeAnswers;
+        scheduledEventBody.scheduledNotificationInfo = scheduledEventBody.scheduledNotificationInfo;
 
-        const scheduleBodyKey = this.syncdayRedisService._getScheduleBodyKey(scheduleUUID);
+        const scheduledEventBodyKey = this.syncdayRedisService._getScheduledEventBodyKey(scheduleUUID);
         const createdField = await this.cluster.set(
-            scheduleBodyKey,
-            JSON.stringify(scheduleBody)
+            scheduledEventBodyKey,
+            JSON.stringify(scheduledEventBody)
         );
 
         return createdField === 'OK';
     }
 
-    save(scheduleUUID: string, scheduleBody: ScheduleBody): Observable<ScheduleBody> {
-        return defer(() => from(this.set(scheduleUUID, scheduleBody)))
+    save(scheduleUUID: string, scheduledEventBody: ScheduledEventBody): Observable<ScheduledEventBody> {
+        return defer(() => from(this.set(scheduleUUID, scheduledEventBody)))
             .pipe(
                 map((createSuccess) => {
                     if (!createSuccess) {
-                        throw new CannotFindScheduleBody();
+                        throw new CannotFindScheduledEventBody();
                     }
 
-                    return scheduleBody;
+                    return scheduledEventBody;
                 })
             );
     }
 
     async removeSchedules(scheduleUUIDs: string[]): Promise<boolean> {
-        const scheduleBodyKeys = scheduleUUIDs.map((scheduleUUID) =>
-            this.syncdayRedisService._getScheduleBodyKey(scheduleUUID)
+        const scheduledEventBodyKeys = scheduleUUIDs.map((scheduledEventUUID) =>
+            this.syncdayRedisService._getScheduledEventBodyKey(scheduledEventUUID)
         );
 
-        const deletedScheduledNode = await this.cluster.del(...scheduleBodyKeys);
+        const deletedScheduledNode = await this.cluster.del(...scheduledEventBodyKeys);
 
         const deleteSuccess = deletedScheduledNode >= 0;
 

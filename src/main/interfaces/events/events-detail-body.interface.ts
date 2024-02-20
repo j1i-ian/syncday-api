@@ -1,9 +1,9 @@
-import { InviteeQuestion } from '@core/entities/invitee-questions/invitee-question.entity';
+import { HostQuestion } from '@interfaces/events/event-details/host-question.interface';
 import { EventSetting } from '@interfaces/events/event-setting';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 
 export interface EventsDetailBody {
-    inviteeQuestions: InviteeQuestion[];
+    hostQuestions: HostQuestion[];
     notificationInfo: NotificationInfo;
     eventSetting: EventSetting;
 }

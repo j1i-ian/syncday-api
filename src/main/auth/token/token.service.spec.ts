@@ -6,7 +6,7 @@ import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { firstValueFrom, of } from 'rxjs';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
-import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
+import { GoogleCalendarScheduledEventBody } from '@core/interfaces/integrations/google/google-calendar-scheduled-event-body.interface';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-oauth2-state-params.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
@@ -304,7 +304,7 @@ describe('TokenService', () => {
                     } as calendar_v3.Schema$CalendarList,
                     schedules: {
                         'primary': []
-                    } as GoogleCalendarScheduleBody,
+                    } as GoogleCalendarScheduledEventBody,
                     tokens: {} as OAuthToken,
                     insufficientPermission: false
                 } as GoogleOAuth2UserWithToken,
@@ -330,7 +330,7 @@ describe('TokenService', () => {
                     } as calendar_v3.Schema$CalendarList,
                     schedules: {
                         'primary': []
-                    } as GoogleCalendarScheduleBody,
+                    } as GoogleCalendarScheduledEventBody,
                     tokens: {} as OAuthToken,
                     insufficientPermission: false
                 } as GoogleOAuth2UserWithToken,
@@ -367,7 +367,7 @@ describe('TokenService', () => {
                     } as calendar_v3.Schema$CalendarList,
                     schedules: {
                         'primary': []
-                    } as GoogleCalendarScheduleBody,
+                    } as GoogleCalendarScheduledEventBody,
                     tokens: {} as OAuthToken,
                     insufficientPermission: false
                 } as GoogleOAuth2UserWithToken,
@@ -404,7 +404,7 @@ describe('TokenService', () => {
                     } as calendar_v3.Schema$CalendarList,
                     schedules: {
                         'primary': []
-                    } as GoogleCalendarScheduleBody,
+                    } as GoogleCalendarScheduledEventBody,
                     tokens: {} as OAuthToken,
                     insufficientPermission: false
                 } as GoogleOAuth2UserWithToken,
@@ -441,7 +441,7 @@ describe('TokenService', () => {
                     } as calendar_v3.Schema$CalendarList,
                     schedules: {
                         'primary': []
-                    } as GoogleCalendarScheduleBody,
+                    } as GoogleCalendarScheduledEventBody,
                     tokens: {} as OAuthToken,
                     insufficientPermission: false
                 } as GoogleOAuth2UserWithToken,

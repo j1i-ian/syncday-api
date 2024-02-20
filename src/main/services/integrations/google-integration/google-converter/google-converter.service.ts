@@ -4,7 +4,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { calendar_v3 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { TimezoneOffset } from '@core/interfaces/integrations/timezone-offset.interface';
-import { GoogleCalendarScheduleBody } from '@core/interfaces/integrations/google/google-calendar-schedule-body.interface';
+import { GoogleCalendarScheduledEventBody } from '@core/interfaces/integrations/google/google-calendar-scheduled-event-body.interface';
 import { GoogleCalendarEvent } from '@core/interfaces/integrations/google/google-calendar-event.interface';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
 import { Notification } from '@interfaces/notifications/notification';
@@ -105,12 +105,12 @@ export class GoogleConverterService implements OAuth2Converter {
             );
     }
 
-    convertToGoogleIntegrationSchedules(googleCalendarScheduleBody: GoogleCalendarScheduleBody): GoogleIntegrationScheduledEvent[] {
+    convertToGoogleIntegrationSchedules(googleCalendarScheduledEventBody: GoogleCalendarScheduledEventBody): GoogleIntegrationScheduledEvent[] {
 
-        return Object.entries(googleCalendarScheduleBody)
-            .flatMap(([_calendarId, _googleSchedules]) =>
-                _googleSchedules
-                    .filter((_googleSchedule) => _googleSchedule.recurrence || (_googleSchedule.start && _googleSchedule.end))
+        return Object.entries(googleCalendarScheduledEventBody)
+            .flatMap(([_calendarId, _googleScheduledEvents]) =>
+                _googleScheduledEvents
+                    .filter((_googleScheduledEvent) => _googleScheduledEvent.recurrence || (_googleScheduledEvent.start && _googleScheduledEvent.end))
                     .reduce((_allSchedules, _googleSchedule) => {
 
 
