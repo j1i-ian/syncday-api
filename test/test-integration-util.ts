@@ -174,7 +174,7 @@ export class TestIntegrationUtil {
     }
 
     async createEmailUser(
-        fakeUser: User
+        fakeUser: User & { email: string }
     ): Promise<Pick<User, 'email'>> {
 
         const userNameMock = 'tmp';

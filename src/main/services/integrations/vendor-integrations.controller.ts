@@ -1,9 +1,11 @@
 import { URL } from 'url';
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, Res, UseFilters } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Inject, Param, ParseIntPipe, Patch, Post, Query, Res, UseFilters } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { Observable } from 'rxjs';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { AppConfigService } from '@config/app-config.service';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
@@ -31,7 +33,8 @@ export class VendorIntegrationsController {
         private readonly integrationsServiceLocator: IntegrationsServiceLocator,
         private readonly integrationsValidator: IntegrationsValidator,
         private readonly userService: UserService,
-        private readonly jwtService: JwtService
+        private readonly jwtService: JwtService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
     @Get('redirect')
@@ -81,7 +84,7 @@ export class VendorIntegrationsController {
 
         const loadedOAuth2User = await integrationFacacde.fetchOAuth2User(issuedToken);
 
-        const loadedAppUserByEmail = await this.userService.findUserByLocalAuth(decodedUser.email as string);
+        const loadedAppUserByEmail = await this.userService.findUserByLocalAuth(decodedUser);
 
         if (!loadedAppUserByEmail) {
             throw new BadRequestException(`Invalid user request - email: ${ decodedUser.email as string }`);
@@ -134,10 +137,19 @@ export class VendorIntegrationsController {
     ): Promise<Integration> {
         const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
 
-        const loadedAppUserByEmail = await this.userService.findUserByLocalAuth(authProfile.email);
+        const loadedAppUser = await this.userService.findUserByLocalAuth({
+            id: authProfile.userId,
+            email: authProfile.email
+        });
 
-        if (!loadedAppUserByEmail) {
-            throw new BadRequestException('Invalid user request - email: ' + authProfile.email);
+        if (!loadedAppUser) {
+
+            this.logger.error({
+                message: 'Error while invalid user requests to create an integration',
+                authProfile
+            });
+
+            throw new BadRequestException('Invalid user request exception');
         }
 
         await this.integrationsValidator.validateMaxAddLimit(
@@ -145,11 +157,11 @@ export class VendorIntegrationsController {
             authProfile.id
         );
 
-        const profile = loadedAppUserByEmail.profiles[0];
+        const profile = loadedAppUser.profiles[0];
 
         const createdIntegration = await integrationService.create(
             profile,
-            profile.user.userSetting,
+            loadedAppUser.userSetting,
             profile.team.teamSetting,
             newIntegration,
             newIntegration.timezone

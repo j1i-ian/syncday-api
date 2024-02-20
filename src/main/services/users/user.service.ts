@@ -162,14 +162,20 @@ export class UserService {
         return loadedUser;
     }
 
-    async findUserByLocalAuth(emailOrPhone: string): Promise<User | null> {
+    async findUserByLocalAuth(user: Partial<Pick<User, 'id' | 'email' | 'phone'>>): Promise<User | null> {
 
         const _appJwtPayloadFindOptionsSelect = this.appJwtPayloadFindOptionsSelect;
         const _appJwtPayloadFindOptionsRelations = this.appJwtPayloadFindOptionsRelations;
 
-        const emailFindOptionWhere = emailOrPhone.includes('@')
-            ? { email: emailOrPhone }
-            : { phone: emailOrPhone };
+        let emailFindOptionWhere: FindOptionsWhere<User> = { id: -1 };
+
+        if (user.id) {
+            emailFindOptionWhere = { id: user.id };
+        } else if (user.email) {
+            emailFindOptionWhere = { email: user.email };
+        } else {
+            emailFindOptionWhere = { phone: user.phone as string };
+        }
 
         const loadedUser = await this.userRepository.findOne({
             relations: _appJwtPayloadFindOptionsRelations,
@@ -183,10 +189,10 @@ export class UserService {
     }
 
     async validateEmailAndPassword(
-        emailOrPhoneNumber: string,
+        user: Partial<Pick<User, 'id' | 'email' | 'phone'>>,
         requestPlainPassword: string
     ): Promise<User | null> {
-        const loadedUser = await this.findUserByLocalAuth(emailOrPhoneNumber);
+        const loadedUser = await this.findUserByLocalAuth(user);
 
         let result = false;
         if (loadedUser) {
@@ -506,7 +512,9 @@ export class UserService {
         }
 
         if (alreadySignedUpUserCheck) {
-            const foundUser = await this.findUserByLocalAuth(newUser.email as string);
+            const foundUser = await this.findUserByLocalAuth({
+                email: newUser.email as string
+            });
             const isEmailSearched = !!foundUser;
 
             if (isEmailSearched) {
@@ -1033,7 +1041,8 @@ export class UserService {
             },
             userSetting: {
                 id: true,
-                preferredTimezone: true
+                preferredTimezone: true,
+                preferredLanguage: true
             }
         };
     }

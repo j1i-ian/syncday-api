@@ -20,13 +20,25 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
 
     async validate(emailOrPhoneNumber: string, password: string): Promise<User | null> {
 
+        let phone: string | null = null;
+        let email: string | null = null;
+
         const isEmail = emailOrPhoneNumber.includes('@');
-        if (isEmail === false && emailOrPhoneNumber.startsWith('010')) {
-            emailOrPhoneNumber = emailOrPhoneNumber.replace('010', '+8210');
+        const isKoreanPhoneNumber = emailOrPhoneNumber.startsWith('010');
+
+        if (isEmail) {
+            email = emailOrPhoneNumber;
+        } else {
+            if (isKoreanPhoneNumber) {
+                phone = emailOrPhoneNumber.replace('010', '+8210');
+            }
         }
 
         const validatedUserOrNull = await this.userService.validateEmailAndPassword(
-            emailOrPhoneNumber,
+            {
+                email,
+                phone
+            },
             password
         );
 
