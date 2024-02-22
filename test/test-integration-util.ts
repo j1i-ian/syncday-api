@@ -254,7 +254,7 @@ export class TestIntegrationUtil {
         } as Partial<Response> as Response;
 
         // FE app redirects the user to the /v1/tokens/google API to obtain an OAuth2 authorization URL
-        this.tokenController.issueTokenWithGoogleOAuth2(
+        this.tokenController.issueTokenWithOAuth2(
             integrationContext,
             timezone,
             accessToken,

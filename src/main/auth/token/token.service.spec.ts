@@ -606,11 +606,13 @@ describe('TokenService', () => {
             const oauth2UserProfileMock = testMockUtil.getGoogleOAuth2UserWithToken();
             const emailMock = stubOne(User).email as string;
 
-            const googleOAuth2UserWithToken =  await service.evaluateIntegrationContext(
+            const googleOAuth2UserWithToken = await service.evaluateIntegrationContext(
                 IntegrationVendor.GOOGLE,
                 oauth2UserProfileMock,
                 IntegrationContext.SIGN_IN,
-                emailMock
+                {
+                    ensuredUserEmail: emailMock
+                }
             );
 
             expect(_oauth2TokenServiceStub.getEmailFromOAuth2UserProfile.called).true;

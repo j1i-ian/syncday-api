@@ -41,7 +41,7 @@ export class TokenController {
      */
     @Get(':integrationVendor')
     @Public()
-    issueTokenWithGoogleOAuth2(
+    issueTokenWithOAuth2(
         @Query('integrationContext', new ParseEnumPipe(IntegrationContext)) integrationContext: IntegrationContext,
         @Query('timezone') timezone: string | null = null,
         @Query('Authorization') accessToken: string | null = null,

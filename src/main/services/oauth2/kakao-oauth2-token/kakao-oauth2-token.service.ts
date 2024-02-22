@@ -105,6 +105,15 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
         return oauth2UserProfile.kakao_account.email;
     }
 
+    getPhoneNumberFromOAuth2UserProfile(
+        oauth2UserProfile: KakaotalkUserProfileResponse
+    ): string {
+        // kakao account phone number format is '+82 10-1234-1234'
+        return oauth2UserProfile.kakao_account.phone_number
+            .replaceAll('-', '')
+            .replaceAll(' ', '');
+    }
+
     get converter(): OAuth2Converter {
         return <OAuth2Converter>{
             convertToCreateUserRequestDTO: (
@@ -114,7 +123,11 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
 
                 const { kakao_account, oauth2Token } = oauth2AccountUserProfileMetaInfo;
                 const { email, profile } = kakao_account;
-                const { nickname, is_default_image, thumbnail_image_url: profileThumbnailImageUrl } = profile;
+                const {
+                    nickname,
+                    is_default_image,
+                    thumbnail_image_url: profileThumbnailImageUrl
+                } = profile;
                 const oauth2UserProfileImageUrl = is_default_image ? null : profileThumbnailImageUrl;
 
                 const createUserRequestDto: CreateUserRequestDto = {

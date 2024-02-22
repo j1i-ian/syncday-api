@@ -98,6 +98,11 @@ export class TokenService {
             requestUserEmail,
             profileId: profileIdString
         } = stateParams;
+
+        /**
+         * Profile id that will be integrated with resource.
+         * e.g. Google Calendar
+         */
         const profileId = profileIdString ? +profileIdString : null;
 
         this.logger.info({
@@ -116,7 +121,13 @@ export class TokenService {
         });
         const oauth2UserProfile = await oauth2TokenService.getOAuth2UserProfile(authorizationCode);
 
+        this.logger.info({
+            message: 'OAuth2 user profile is fetched',
+            oauth2UserProfile
+        });
+
         const oauth2UserEmail = oauth2TokenService.getEmailFromOAuth2UserProfile(oauth2UserProfile);
+        const oauth2UserPhoneNumber = oauth2TokenService.getPhoneNumberFromOAuth2UserProfile(oauth2UserProfile);
 
         const ensuredRequesterEmail = requestUserEmail || oauth2UserEmail;
 
@@ -129,7 +140,10 @@ export class TokenService {
             integrationVendor,
             oauth2UserProfile,
             integrationContext,
-            ensuredRequesterEmail
+            {
+                ensuredUserEmail: ensuredRequesterEmail,
+                ensuredUserPhoneNumber: oauth2UserPhoneNumber
+            }
         );
 
         this.logger.info({
@@ -142,7 +156,8 @@ export class TokenService {
         let isNewbie: boolean;
 
         let user: User | null = await this.userService.findUserByLocalAuth({
-            email: ensuredRequesterEmail
+            email: ensuredRequesterEmail,
+            phone: oauth2UserPhoneNumber
         });
 
         let profile = user?.profiles.find((_profile) => _profile.id === profileId && profileId !== null) as Profile | null;
@@ -181,6 +196,11 @@ export class TokenService {
 
                 break;
             case IntegrationContext.SIGN_IN:
+                /**
+                 * Ensure patch for Kakaotalk OAuth2
+                 */
+                profile = user?.profiles[0] ?? null;
+                team = profile?.team ?? null;
                 isNewbie = false;
                 break;
             case IntegrationContext.INTEGRATE:
@@ -338,7 +358,13 @@ export class TokenService {
         integrationVendor: IntegrationVendor,
         oauth2UserProfile: OAuth2AccountUserProfileMetaInfo,
         requestIntegrationContext: IntegrationContext,
-        ensuredUserEmail: string
+        {
+            ensuredUserEmail,
+            ensuredUserPhoneNumber
+        }: {
+            ensuredUserEmail?: string;
+            ensuredUserPhoneNumber?: string;
+        }
     ): Promise<IntegrationContext> {
 
         const oauth2Type = this.utilService.convertIntegrationVendorToOAuth2Type(integrationVendor);
@@ -347,7 +373,8 @@ export class TokenService {
         const oauth2UserEmail = oauth2TokenService.getEmailFromOAuth2UserProfile(oauth2UserProfile);
 
         const loadedUserOrNull = await this.userService.findUserByLocalAuth({
-            email: ensuredUserEmail
+            email: ensuredUserEmail,
+            phone: ensuredUserPhoneNumber
         });
 
         const loadedOAuth2AccountOrNull = loadedUserOrNull?.oauth2Accounts.find(
