@@ -84,16 +84,21 @@ export class NotificationsService {
                     let email: string | undefined;
                     let template: TextTemplate | EmailTemplate;
 
-                    const { invitedNewTeamMember } = invitationNotificationRequest;
+                    const {
+                        invitedNewTeamMember: {
+                            email: inviteeEmail,
+                            phone: inviteePhone
+                        }
+                    } = invitationNotificationRequest;
 
-                    if (invitedNewTeamMember.email) {
+                    if (inviteeEmail) {
                         syncdayNotificationPublishKey = SyncdayNotificationPublishKey.EMAIL;
                         template = EmailTemplate.INVITATION;
 
-                        email = invitedNewTeamMember.email;
+                        email = inviteeEmail;
                     } else {
 
-                        phoneNumber = invitedNewTeamMember.phone as string;
+                        phoneNumber = inviteePhone as string;
 
                         const isKoreanPhoneNumber = phoneNumber.includes('+82');
 
@@ -108,7 +113,8 @@ export class NotificationsService {
                         message: 'Trying to send a message..',
                         teamName,
                         template,
-                        email
+                        email,
+                        invitationNotificationRequest
                     });
 
                     return this.sendMessage(
