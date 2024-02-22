@@ -274,7 +274,7 @@ export class ProfilesService {
     }
 
     _fetchTeamOwnerProfile(teamId: number): Observable<Profile> {
-        return defer(() => from(this.profileRepository.findOneOrFail({
+        return from(this.profileRepository.findOneOrFail({
             select: {
                 id: true,
                 name: true,
@@ -289,7 +289,7 @@ export class ProfilesService {
                 teamId,
                 roles: Raw((alias) => `${alias} LIKE '%${Role.OWNER}%'`)
             }
-        })));
+        }));
     }
 
     createBulk(
