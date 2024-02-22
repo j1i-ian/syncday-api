@@ -23,8 +23,7 @@ export class NotificationsController {
             eventId,
             hostName,
             inviteeName,
-            inviteePhoneNumber,
-            memo
+            inviteePhoneNumber
         } = bookingAskRequestDto;
 
         const ensuredHostName = hostName || authProfile.name;
@@ -34,8 +33,7 @@ export class NotificationsController {
             eventId,
             ensuredHostName,
             inviteeName,
-            inviteePhoneNumber,
-            memo
+            inviteePhoneNumber
         )));
     }
 }
