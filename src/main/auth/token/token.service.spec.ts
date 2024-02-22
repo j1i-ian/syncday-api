@@ -309,11 +309,13 @@ describe('TokenService', () => {
                     insufficientPermission: false
                 } as GoogleOAuth2UserWithToken,
                 getFindUserStub: () => null,
-                isExpectedNewbie: true,
+                expectedIsNewbie: true,
                 createUserCall: true,
                 sendWelcomeEmailForNewUserCall: true,
                 integrateCall: false,
-                multipleSocialSignInCall: false
+                multipleSocialSignInCall: false,
+                expectedProfileId: null,
+                profileIdStringParamMock: null
             },
             {
                 description: 'should be issued token for google oauth sign in user',
@@ -338,6 +340,7 @@ describe('TokenService', () => {
                     oauth2Accounts: [],
                     profiles: [
                         stubOne(Profile, {
+                            id: 1,
                             googleIntergrations: [],
                             team: stubOne(Team, {
                                 teamSetting: stubOne(TeamSetting)
@@ -346,11 +349,13 @@ describe('TokenService', () => {
                     ],
                     userSetting: stubOne(UserSetting)
                 }),
-                isExpectedNewbie: false,
+                expectedIsNewbie: false,
                 createUserCall: false,
                 sendWelcomeEmailForNewUserCall: false,
                 integrateCall: false,
-                multipleSocialSignInCall: false
+                multipleSocialSignInCall: false,
+                expectedProfileId: 1,
+                profileIdStringParamMock: '1'
             },
             {
                 description: 'should be issued token for google oauth sign in user without google integration creating',
@@ -375,6 +380,7 @@ describe('TokenService', () => {
                     oauth2Accounts: [],
                     profiles: [
                         stubOne(Profile, {
+                            id: 1,
                             googleIntergrations: [],
                             team: stubOne(Team, {
                                 teamSetting: stubOne(TeamSetting)
@@ -383,11 +389,60 @@ describe('TokenService', () => {
                     ],
                     userSetting: stubOne(UserSetting)
                 }),
-                isExpectedNewbie: false,
+                expectedIsNewbie: false,
                 createUserCall: false,
                 sendWelcomeEmailForNewUserCall: false,
                 integrateCall: false,
-                multipleSocialSignInCall: false
+                multipleSocialSignInCall: false,
+                expectedProfileId: 1,
+                profileIdStringParamMock: '1'
+            },
+            {
+                description: 'should be issued token with requested profile id',
+                integratinoContext: IntegrationContext.SIGN_IN,
+                googleOAuth2UserWithToken: {
+                    googleUser: {
+                        email: 'fakeEmail',
+                        name: 'fakeName'
+                    },
+                    calendars: {
+                        items: [
+                            { primary: true, timeZone: 'Asia/Seoul' }
+                        ]
+                    } as calendar_v3.Schema$CalendarList,
+                    schedules: {
+                        'primary': []
+                    } as GoogleCalendarScheduledEventBody,
+                    tokens: {} as OAuthToken,
+                    insufficientPermission: false
+                } as GoogleOAuth2UserWithToken,
+                getFindUserStub: () => stubOne(User, {
+                    oauth2Accounts: [],
+                    profiles: [
+                        stubOne(Profile, {
+                            id: 1,
+                            googleIntergrations: [],
+                            team: stubOne(Team, {
+                                teamSetting: stubOne(TeamSetting)
+                            })
+                        }),
+                        stubOne(Profile, {
+                            id: 2,
+                            googleIntergrations: [],
+                            team: stubOne(Team, {
+                                teamSetting: stubOne(TeamSetting)
+                            })
+                        })
+                    ],
+                    userSetting: stubOne(UserSetting)
+                }),
+                expectedIsNewbie: false,
+                createUserCall: false,
+                sendWelcomeEmailForNewUserCall: false,
+                integrateCall: false,
+                multipleSocialSignInCall: false,
+                expectedProfileId: 2,
+                profileIdStringParamMock: '2'
             },
             {
                 description: 'should be issued token with google OAuth for already signed up user',
@@ -412,6 +467,7 @@ describe('TokenService', () => {
                     oauth2Accounts: [],
                     profiles: [
                         stubOne(Profile, {
+                            id: 1,
                             googleIntergrations: [],
                             team: stubOne(Team, {
                                 teamSetting: stubOne(TeamSetting)
@@ -420,11 +476,13 @@ describe('TokenService', () => {
                     ],
                     userSetting: stubOne(UserSetting)
                 }),
-                isExpectedNewbie: false,
+                expectedIsNewbie: false,
                 createUserCall: false,
                 sendWelcomeEmailForNewUserCall: false,
                 integrateCall: true,
-                multipleSocialSignInCall: false
+                multipleSocialSignInCall: false,
+                expectedProfileId: 1,
+                profileIdStringParamMock: '1'
             },
             {
                 description: 'should be issued token if the user already has Google OAuth associated with the same email.',
@@ -456,6 +514,7 @@ describe('TokenService', () => {
                     ] as OAuth2Account[],
                     profiles: [
                         stubOne(Profile, {
+                            id: 1,
                             googleIntergrations: [
                                 {
                                     id: 1,
@@ -469,22 +528,26 @@ describe('TokenService', () => {
                     ],
                     userSetting: stubOne(UserSetting)
                 }),
-                isExpectedNewbie: false,
+                expectedIsNewbie: false,
                 createUserCall: false,
                 sendWelcomeEmailForNewUserCall: false,
                 integrateCall: true,
-                multipleSocialSignInCall: false
+                multipleSocialSignInCall: false,
+                expectedProfileId: 1,
+                profileIdStringParamMock: '1'
             }
         ].forEach(function({
             description,
             integratinoContext: integrationContext,
             googleOAuth2UserWithToken,
             getFindUserStub,
-            isExpectedNewbie,
-            createUserCall: createUserCall,
+            expectedIsNewbie,
+            createUserCall,
             sendWelcomeEmailForNewUserCall,
             integrateCall,
-            multipleSocialSignInCall
+            multipleSocialSignInCall,
+            expectedProfileId,
+            profileIdStringParamMock
         }) {
 
             it(description, async () => {
@@ -493,14 +556,13 @@ describe('TokenService', () => {
 
                 const userStub = getFindUserStub();
                 const requestUserEmailMock = userStub?.email ?? null;
-                const profileIdMock = userStub?.profiles[0] ? userStub.profiles[0].id : undefined;
                 const languageDummy = Language.KOREAN;
 
                 const stateParamMock = {
                     timezone: timezoneDummy,
                     integrationContext,
                     requestUserEmail: requestUserEmailMock,
-                    profileId: profileIdMock
+                    profileId: profileIdStringParamMock
                 } as SyncdayOAuth2StateParams;
 
                 _oauth2TokenServiceStub.getOAuth2UserProfile.resolves(googleOAuth2UserWithToken);
@@ -522,12 +584,14 @@ describe('TokenService', () => {
                     createdProfile: createdProfileStub,
                     createdTeam: createdTeamStub
                 }));
+
                 notificationsServiceStub.sendWelcomeEmailForNewUser.resolves(sendWelcomeEmailForNewUserCall);
 
                 const issuedTokenStub: CreateTokenResponseDto = {
                     accessToken: 'fakeJwtToken',
                     refreshToken: 'fakeRefreshToken'
                 };
+
                 issueTokenStub.returns(issuedTokenStub);
 
                 const { issuedToken, isNewbie, insufficientPermission } = await service.issueTokenByOAuth2(
@@ -538,7 +602,7 @@ describe('TokenService', () => {
                 );
 
                 expect(issuedToken).ok;
-                expect(isNewbie).equals(isExpectedNewbie);
+                expect(isNewbie).equals(expectedIsNewbie);
                 expect(insufficientPermission).equals(googleOAuth2UserWithToken.insufficientPermission);
 
                 expect(oauth2TokenServiceLocatorStub.get.called).true;
@@ -553,6 +617,11 @@ describe('TokenService', () => {
                 expect(_oauth2TokenServiceStub.multipleSocialSignIn.called).equals(multipleSocialSignInCall);
 
                 expect(issueTokenStub.called).true;
+
+                const actualPassedProfile = issueTokenStub.getCall(0).args[0] as Profile;
+                const ensuredProfileId = expectedProfileId || createdProfileStub.id;
+
+                expect(actualPassedProfile.id).equals(ensuredProfileId);
             });
         });
     });

@@ -41,7 +41,7 @@ export interface OAuth2TokenService {
 
     getPhoneNumberFromOAuth2UserProfile(
         oauth2UserProfile: OAuth2AccountUserProfileMetaInfo
-    ): string;
+    ): string | null;
 
     get converter(): OAuth2Converter;
 }

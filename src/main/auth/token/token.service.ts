@@ -100,7 +100,7 @@ export class TokenService {
         } = stateParams;
 
         /**
-         * Profile id that will be integrated with resource.
+         * Profile id will be integrated with resource.
          * e.g. Google Calendar
          */
         const profileId = profileIdString ? +profileIdString : null;
@@ -199,7 +199,7 @@ export class TokenService {
                 /**
                  * Ensure patch for Kakaotalk OAuth2
                  */
-                profile = user?.profiles[0] ?? null;
+                profile = profile ?? user?.profiles[0] ?? null;
                 team = profile?.team ?? null;
                 isNewbie = false;
                 break;
@@ -362,8 +362,8 @@ export class TokenService {
             ensuredUserEmail,
             ensuredUserPhoneNumber
         }: {
-            ensuredUserEmail?: string;
-            ensuredUserPhoneNumber?: string;
+            ensuredUserEmail?: string | null;
+            ensuredUserPhoneNumber?: string | null;
         }
     ): Promise<IntegrationContext> {
 

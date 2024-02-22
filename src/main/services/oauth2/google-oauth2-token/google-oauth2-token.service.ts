@@ -143,8 +143,8 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
         return oauth2UserProfile.googleUser.email;
     }
 
-    getPhoneNumberFromOAuth2UserProfile(): string {
-        throw new Error('Method not implemented.');
+    getPhoneNumberFromOAuth2UserProfile(): string | null {
+        return null;
     }
 
     get converter(): OAuth2Converter {
