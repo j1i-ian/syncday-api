@@ -160,6 +160,9 @@ export class ProfilesService {
         return of(this.profileRepository.createQueryBuilder('profile'))
             .pipe(
                 tap((searchQueryBuilder) => {
+                    searchQueryBuilder.leftJoinAndSelect('profile.googleIntergrations', 'googleIntergrations');
+                }),
+                tap((searchQueryBuilder) => {
                     if (userId) {
                         searchQueryBuilder.where('profile.userId = :userId', { userId });
                     }
