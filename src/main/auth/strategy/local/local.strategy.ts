@@ -31,6 +31,8 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
         } else {
             if (isKoreanPhoneNumber) {
                 phone = emailOrPhoneNumber.replace('010', '+8210');
+            } else {
+                phone = emailOrPhoneNumber;
             }
         }
 
