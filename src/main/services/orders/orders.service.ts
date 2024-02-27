@@ -123,14 +123,13 @@ export class OrdersService {
     ): Promise<Order> {
         const orderRepository = transactionManager.getRepository(Order);
 
-        const totalPrice = proration;
         const discountedPrice = product.price * unit - proration;
-        const memo = `${product.name}, ${product.price} * ${unit} - ${discountedPrice} = ${totalPrice}`;
+        const memo = `${product.name}, ${product.price} * ${unit} - ${proration} = ${discountedPrice}`;
 
         const createdOrder = orderRepository.create({
             name: product.name,
             unit,
-            amount: totalPrice,
+            amount: discountedPrice,
             option,
             productId: product.id,
             status: OrderStatus.CHECKOUT,
