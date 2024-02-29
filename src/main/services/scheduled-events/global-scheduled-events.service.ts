@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, combineLatest, concatMap, defer, filter, forkJoin, from, last, map, mergeMap, of, tap, throwIfEmpty, toArray } from 'rxjs';
+import { Observable, combineLatest, concat, concatMap, defer, filter, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -50,29 +50,39 @@ export class GlobalScheduledEventsService {
         @InjectRepository(AppleCalDAVIntegrationScheduledEvent) private readonly appleCalDAVIntegrationScheduleRepository: Repository<AppleCalDAVIntegrationScheduledEvent>,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
-        this.allIntegrationSchedulesServices = this.integrationsServiceLocator.getAllIntegrationScheduledEventsService();
+        this.allIntegrationScheduledEventServices = this.integrationsServiceLocator.getAllIntegrationScheduledEventsService();
     }
 
-    allIntegrationSchedulesServices: IntegrationScheduledEventsService[];
+    allIntegrationScheduledEventServices: IntegrationScheduledEventsService[];
 
-    search(scheduleSearchOption: Partial<ScheduledEventSearchOption> & Partial<PageOption>): Observable<InviteeScheduledEvent[]> {
+    search(scheduledEventSearchOption: Partial<ScheduledEventSearchOption> & Partial<PageOption>): Observable<InviteeScheduledEvent[]> {
 
-        const syncNativeSchedule$ = this.nativeSchedulesService.search(scheduleSearchOption);
+        this.logger.info({
+            message: 'scheduled events are searched',
+            scheduledEventSearchOption
+        });
 
-        const integrationSchedules$ = this.allIntegrationSchedulesServices.map(
-            (_integrationSchedulesService) =>
-                _integrationSchedulesService.search(
-                    scheduleSearchOption
+        const syncNativeScheduledEvents$ = this.nativeSchedulesService.search(scheduledEventSearchOption);
+
+        const integrationScheduledEvents$ = concat(...this.allIntegrationScheduledEventServices.map(
+            (_integrationScheduledEvnetService) =>
+                _integrationScheduledEvnetService.search(
+                    scheduledEventSearchOption
                 )
+        )).pipe(
+            reduce(
+                (_allScheduledEvents, _scheduledEvents) => _allScheduledEvents.concat(_scheduledEvents), [] as InviteeScheduledEvent[]
+            )
         );
 
-        return forkJoin([syncNativeSchedule$].concat(integrationSchedules$)).pipe(
-            map(
-                (allSchedulesArray) =>
-                    allSchedulesArray.reduce(
-                        (_allSchedules, _schedules) => _allSchedules.concat(_schedules), []
-                    )
-            )
+        return zip([
+            syncNativeScheduledEvents$,
+            integrationScheduledEvents$
+        ]).pipe(
+            map(([
+                syncNativeScheduledEvents,
+                integrationScheduledEvents
+            ]) => syncNativeScheduledEvents.concat(integrationScheduledEvents))
         );
     }
 
