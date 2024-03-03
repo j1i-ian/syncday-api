@@ -65,11 +65,12 @@ export class BookingsService {
     }
 
     searchScheduledEvents(searchOption: Partial<ScheduledEventSearchOption>): Observable<ScheduledEventResponseDto[]> {
-        return this.scheduledEventsService.search(searchOption).pipe(
-            map((scheduledEvents) => scheduledEvents.map(
-                (_scheduledEvent) => plainToInstance(ScheduledEventResponseDto, _scheduledEvent))
-            )
-        );
+        return this.scheduledEventsService.search(searchOption)
+            .pipe(
+                map((scheduledEvents) => scheduledEvents.map(
+                    (_scheduledEvent) => plainToInstance(ScheduledEventResponseDto, _scheduledEvent))
+                )
+            );
     }
 
     fetchScheduledEventOne(scheduleUUID: string): Observable<ScheduledEvent> {

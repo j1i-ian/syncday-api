@@ -91,7 +91,8 @@ export class BookingsController {
             hostUUID,
             eventUUID,
             since: +since,
-            until: until ? +until : undefined
+            until: until ? +until : undefined,
+            statusGroup: 'upcoming'
         })
             .pipe(
                 map((searchedScheduledEvents) =>
