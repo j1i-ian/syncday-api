@@ -1,11 +1,13 @@
 import { URL } from 'url';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { plainToInstance } from 'class-transformer';
 import { Observable } from 'rxjs';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { OAuthToken } from '@core/interfaces/auth/oauth-token.interface';
 import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/google-integration-body.interface';
 import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
@@ -51,7 +53,8 @@ export class GoogleIntegrationsService implements
         private readonly integrationsRedisRepository: IntegrationsRedisRepository,
         @InjectDataSource() private datasource: DataSource,
         @InjectRepository(GoogleIntegration)
-        private readonly googleIntegrationRepository: Repository<GoogleIntegration>
+        private readonly googleIntegrationRepository: Repository<GoogleIntegration>,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -210,6 +213,18 @@ export class GoogleIntegrationsService implements
                 }
 
                 calendar.setting = calendarSetting;
+
+                this.logger.info({
+                    message: 'calendar setting is patched',
+                    calendarId: calendar.id,
+                    userId: user.id,
+                    profileId: profile.id,
+                    calendarSetting,
+                    calendarPrimary: calendar.primary,
+                    isFirstIntegration,
+                    isFirstPrimary
+                });
+
                 // calendar.users = [{ id: user.id }] as User[];
                 return plainToInstance(GoogleCalendarIntegration, calendar);
             }),

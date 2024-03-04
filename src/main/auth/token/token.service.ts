@@ -121,7 +121,7 @@ export class TokenService {
         });
         const oauth2UserProfile = await oauth2TokenService.getOAuth2UserProfile(authorizationCode);
 
-        this.logger.info({
+        this.logger.debug({
             message: 'OAuth2 user profile is fetched',
             oauth2UserProfile
         });

@@ -103,14 +103,15 @@ export class GoogleOAuth2TokenService implements OAuth2TokenService {
 
         const hasOutboundCalendar = await this.integrationsValidator.hasOutboundCalendar(
             this.integrationsServiceLocator,
-            user.id
+            profile.id
         );
         const isFirstIntegration = !hasOutboundCalendar;
 
         this.logger.info({
             message: 'Passed hasOutboundCalendar',
             userId: user.id,
-            profileId: profile.id
+            profileId: profile.id,
+            isFirstIntegration
         });
 
         await this.googleIntegrationService.create(

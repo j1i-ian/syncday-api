@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EntityManager, Repository } from 'typeorm';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { OAuth2Setting } from '@core/interfaces/auth/oauth2-setting.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -90,6 +91,10 @@ describe('GoogleIntegrationsService', () => {
                 {
                     provide: getRepositoryToken(GoogleIntegration),
                     useValue: googleIntegrationRepositoryStub
+                },
+                {
+                    provide: WINSTON_MODULE_PROVIDER,
+                    useValue: TestMockUtil.getLoggerStub()
                 }
             ]
         }).compile();
