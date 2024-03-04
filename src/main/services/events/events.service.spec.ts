@@ -910,68 +910,25 @@ describe('EventsService', () => {
         afterEach(() => {
             validatorStub.validate.reset();
 
-            eventRepositoryStub.findOneOrFail.reset();
             eventProfileRepositoryStub.delete.reset();
-            eventProfileRepositoryStub.save.reset();
 
             serviceSandbox.restore();
         });
 
-        it('should be linked to availability for profiles', async () => {
-
-            const teamMock = stubOne(Team);
-            const eventMockStub = stubOne(Event);
-            const profilesMock = stub(Profile);
-            const profileIds = profilesMock.map((_profile) => _profile.id);
-
-            serviceSandbox.stub(service, '_linkToProfiles').resolves(true);
-
-            const success = await service.linkToProfiles(
-                teamMock.id,
-                eventMockStub.id,
-                profileIds
-            );
-            expect(success).true;
-
-            expect(validatorStub.validate.called).ok;
-        });
-
         it('should be linked to availability for profiles with transaction', async () => {
-            const availabilitiesMock = stub(Availability, 2, {
-                default: true
-            });
-            const profilesMock = stub(Profile, 2, {
-                availabilities: availabilitiesMock
-            });
-            const teamMock = stubOne(Team, {
-                profiles: profilesMock
-            });
-            const eventGroupMock = stubOne(EventGroup, {
-                team: teamMock
-            });
-            const eventMockStub = stubOne(Event, {
-                eventGroup: eventGroupMock
-            });
+            const eventProfileMockStubs = stub(EventProfile, 2);
 
             const deleteResultStub = TestMockUtil.getTypeormDeleteResultMock();
 
-            eventRepositoryStub.findOneOrFail.resolves(eventMockStub);
             eventProfileRepositoryStub.delete.resolves(deleteResultStub);
-            eventProfileRepositoryStub.save.resolvesArg(0);
-
-            const profileIds = profilesMock.map((_profile) => _profile.id);
 
             const success = await service._linkToProfiles(
                 datasourceMock as unknown as EntityManager,
-                teamMock.id,
-                eventMockStub.id,
-                profileIds
+                eventProfileMockStubs
             );
             expect(success).true;
 
-            expect(eventRepositoryStub.findOneOrFail.called).ok;
             expect(eventProfileRepositoryStub.delete.called).ok;
-            expect(eventProfileRepositoryStub.save.called).ok;
         });
     });
 

@@ -447,13 +447,9 @@ export class EventsService {
             const _eventUpdateResult = await _eventRepository.update(eventId, _updateEvent);
             const _isEventUpdateSuccess = _eventUpdateResult.affected && _eventUpdateResult.affected > 0;
 
-            const profileIds = _patchedEventProfiles.map((eventProfile) => eventProfile.profileId);
-
             await this._linkToProfiles(
                 transactionManager,
-                teamId,
-                eventId,
-                profileIds
+                _patchedEventProfiles
             );
 
             const _eventDetailUpdateResult = await _eventDetailRepository.update(validatedEventDetail.id, _updateEventDetail);
@@ -550,77 +546,39 @@ export class EventsService {
 
     async linkToProfiles(
         teamId: number,
-        eventId: number,
-        profileIds: number[]
+        eventProfiles: EventProfile[]
     ): Promise<boolean> {
 
-        await this.validator.validate(teamId, eventId, Event);
+        const eventIds = eventProfiles.map((_eventProfile) => _eventProfile.eventId);
+        for (const _eventId of eventIds) {
+            await this.validator.validate(teamId, _eventId, Event);
+        }
 
         return await this.datasource.transaction(async (transactionManager) =>
             this._linkToProfiles(
                 transactionManager,
-                teamId,
-                eventId,
-                profileIds
+                eventProfiles
             )
         );
     }
 
     async _linkToProfiles(
         transactionManager: EntityManager,
-        teamId: number,
-        eventId: number,
-        profileIds: number[]
+        eventProfiles: EventProfile[]
     ): Promise<boolean> {
 
-        const loadedEvent = await this.eventRepository.findOneOrFail({
-            relations: {
-                eventGroup: {
-                    team: {
-                        profiles: {
-                            availabilities: true
-                        }
-                    }
-                }
-            },
-            where: {
-                id: eventId,
-                eventGroup: {
-                    team: {
-                        id: teamId,
-                        profiles: {
-                            id: In(profileIds),
-                            availabilities: {
-                                default: true
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        const {
-            eventGroup: {
-                team: {
-                    profiles
-                }
-            }
-        } = loadedEvent;
-
-        const shallowedEventProfiles = profiles.map((profile) => ({
-            profileId: profile.id,
-            availabilityId: profile.availabilities[0].id,
-            eventId
-        } as EventProfile));
+        const eventIds = eventProfiles.map((_eventProfile) => _eventProfile.eventId);
+        const profileIds = eventProfiles.map((_eventProfile) => _eventProfile.profileId);
 
         const _eventProfileRepository = transactionManager.getRepository(EventProfile);
 
         const deleteResult = await _eventProfileRepository.delete({
-            eventId
+            eventId: In(eventIds),
+            profileId: In(profileIds)
         });
         const deleteSuccess = !!(deleteResult && deleteResult.affected && deleteResult.affected > 0);
 
-        await _eventProfileRepository.save(shallowedEventProfiles);
+        await _eventProfileRepository.save(eventProfiles);
 
         return deleteSuccess;
     }

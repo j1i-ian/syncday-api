@@ -13,7 +13,8 @@ import {
     Req,
     Res,
     NotImplementedException,
-    Put
+    Put,
+    ForbiddenException
 } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
@@ -132,14 +133,6 @@ export class EventsController {
         return this.eventsService.linkToAvailability(teamId, eventId, profileId, availabilityId);
     }
 
-    connectToProfiles(
-        teamId: number,
-        eventId: number,
-        profileIds: number[]
-    ): Promise<boolean> {
-        return this.eventsService.linkToProfiles(teamId, eventId, profileIds);
-    }
-
     /**
      * Accept http method which is not officially supported by Nest.js
      *
@@ -159,12 +152,7 @@ export class EventsController {
             parseInt: true,
             firstOne: true
         })
-        availabilityId: number | null,
-        @Matrix({
-            key: 'profileId',
-            parseInt: true
-        })
-        profileIds?: number[]
+        availabilityId: number | null
     ): Promise<void> {
         let responseBody;
         let statusCode = 500;
@@ -175,6 +163,10 @@ export class EventsController {
 
         const hasManagerPermission = roles.includes(Role.MANAGER) || roles.includes(Role.OWNER);
 
+        if (!hasManagerPermission) {
+            throw new ForbiddenException('Permission denied');
+        }
+
         switch (req.method) {
             case 'COPY':
                 responseBody = await this.clone(parsedEventId, teamId, teamUUID);
@@ -184,12 +176,6 @@ export class EventsController {
                 if (availabilityId) {
                     await this.connectToAvailability(teamId, parsedEventId, authProfileId, availabilityId);
 
-                } else if (profileIds && hasManagerPermission) {
-                    await this.connectToProfiles(
-                        teamId,
-                        parsedEventId,
-                        profileIds
-                    );
                 }
                 statusCode = HttpStatus.NO_CONTENT;
                 break;
