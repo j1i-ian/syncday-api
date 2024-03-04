@@ -169,9 +169,9 @@ export class NotificationsService {
 
                     return {
                         hostName,
-                        userName: inviteeName,
+                        inviteeName,
                         eventName: loadedEvent.name,
-                        eventUrl: resourecLink,
+                        resourecLink,
                         additionalMessage
                     } as BookingRequest;
                 }),
