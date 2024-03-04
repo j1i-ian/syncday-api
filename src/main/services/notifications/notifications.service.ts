@@ -143,17 +143,23 @@ export class NotificationsService {
         hostName: string,
         inviteeName: string,
         phoneNumber: string,
-        memo?: string
+        additionalMessage?: string
     ): Observable<boolean> {
 
         const reminderType = ReminderType.KAKAOTALK;
-        const conditionalSentence = memo ? ' 님의 메시지 :' : '';
         const syncdayNotificationPublishKey = this.utilService.convertReminderTypeToSyncdayNotificationPublishKey(reminderType);
+
+        this.logger.info({
+            message: 'booking request',
+            eventId,
+            phoneNumber,
+            syncdayNotificationPublishKey
+        });
 
         // load event by event id
         return combineLatest([
             this.eventsService.findOne(eventId, teamId),
-            defer(() => from(this.teamSettingService.fetchByTeamId(teamId)))
+            from(this.teamSettingService.fetchByTeamId(teamId))
         ])
             .pipe(
                 map(([loadedEvent, teamSetting]) => {
@@ -166,8 +172,7 @@ export class NotificationsService {
                         userName: inviteeName,
                         eventName: loadedEvent.name,
                         eventUrl: resourecLink,
-                        conditionalSentence,
-                        additionalMessage: memo
+                        additionalMessage
                     } as BookingRequest;
                 }),
                 mergeMap((bookingRequest) =>
@@ -223,6 +228,12 @@ export class NotificationsService {
             DataType: 'String.Array',
             StringValue: JSON.stringify([syncdayNotificationPublishKey])
         };
+
+        this.logger.info({
+            message: 'Send message',
+            syncdayNotificationPublishKey,
+            notificationData
+        });
 
         return this._sendNotification(messageAttribute, notificationData);
     }

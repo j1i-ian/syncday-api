@@ -1,5 +1,5 @@
 import { Body, Controller, Header, Post } from '@nestjs/common';
-import { Observable, defer, from } from 'rxjs';
+import { Observable, from } from 'rxjs';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { NotificationsService } from '@services/notifications/notifications.service';
@@ -23,17 +23,19 @@ export class NotificationsController {
             eventId,
             hostName,
             inviteeName,
-            inviteePhoneNumber
+            inviteePhoneNumber,
+            additionalMessage
         } = bookingAskRequestDto;
 
         const ensuredHostName = hostName || authProfile.name;
 
-        return defer(() => from(this.notificationsService.sendBookingRequest(
+        return from(this.notificationsService.sendBookingRequest(
             authProfile.teamId,
             eventId,
             ensuredHostName,
             inviteeName,
-            inviteePhoneNumber
-        )));
+            inviteePhoneNumber,
+            additionalMessage
+        ));
     }
 }
