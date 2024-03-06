@@ -54,6 +54,7 @@ interface CreateUserOptions {
     emailVerification?: boolean;
     alreadySignedUpUserCheck?: boolean;
     alreadySignedUpUserCheckByPhone?: boolean;
+    oauth2UserProfileImageUrl?: string | null;
 }
 
 @Injectable()
@@ -490,12 +491,14 @@ export class UserService {
             plainPassword,
             emailVerification,
             alreadySignedUpUserCheck,
-            alreadySignedUpUserCheckByPhone
+            alreadySignedUpUserCheckByPhone,
+            oauth2UserProfileImageUrl
         }: CreateUserOptions = {
             plainPassword: undefined,
             emailVerification: false,
             alreadySignedUpUserCheck: true,
-            alreadySignedUpUserCheckByPhone: false
+            alreadySignedUpUserCheckByPhone: false,
+            oauth2UserProfileImageUrl: null
         }
     ): Promise<CreatedUserTeamProfile> {
 
@@ -565,7 +568,10 @@ export class UserService {
 
         const savedTeam = await this.teamService._create(
             manager,
-            { name: profileName },
+            {
+                name: profileName,
+                logo: oauth2UserProfileImageUrl
+            },
             { workspace: defaultTeamWorkspace }
         );
 
@@ -583,6 +589,7 @@ export class UserService {
             hashedPassword,
             userSetting
         } as User);
+
         this.logger.info({
             message: 'creating new user with team is completed successfully. Trying to create a profile',
             profileName,
@@ -598,7 +605,8 @@ export class UserService {
                 status: ProfileStatus.ACTIVATED,
                 roles: [Role.OWNER],
                 teamId: savedTeam.id,
-                userId: savedUser.id
+                userId: savedUser.id,
+                image: oauth2UserProfileImageUrl
             }
         ) as Profile;
 
@@ -733,7 +741,8 @@ export class UserService {
                 {
                     plainPassword: undefined,
                     alreadySignedUpUserCheck: false,
-                    emailVerification: false
+                    emailVerification: false,
+                    oauth2UserProfileImageUrl
                 }
             );
 
