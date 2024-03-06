@@ -14,7 +14,6 @@ import { IntegrationsServiceLocator } from '@services/integrations/integrations.
 import { UserService } from '@services/users/user.service';
 import { IntegrationsValidator } from '@services/integrations/integrations.validator';
 import { Integration } from '@entity/integrations/integration.entity';
-import { User } from '@entity/users/user.entity';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
@@ -75,7 +74,7 @@ export class VendorIntegrationsController {
             accessToken: string;
         };
 
-        const decodedUser = this.jwtService.decode(stateParams.accessToken) as User;
+        const decodedAppJwtPayload = this.jwtService.decode(stateParams.accessToken) as AppJwtPayload;
 
         const integrationService = this.integrationsServiceLocator.getIntegrationFactory(vendor);
         const integrationFacacde = this.integrationsServiceLocator.getFacade(vendor);
@@ -84,10 +83,13 @@ export class VendorIntegrationsController {
 
         const loadedOAuth2User = await integrationFacacde.fetchOAuth2User(issuedToken);
 
-        const loadedAppUserByEmail = await this.userService.findUserByLocalAuth(decodedUser);
+        const loadedAppUserByEmail = await this.userService.findUserByLocalAuth({
+            id: decodedAppJwtPayload.userId,
+            email: decodedAppJwtPayload.email
+        });
 
         if (!loadedAppUserByEmail) {
-            throw new BadRequestException(`Invalid user request - email: ${ decodedUser.email as string }`);
+            throw new BadRequestException(`Invalid user request - email: ${ decodedAppJwtPayload.email }`);
         }
 
         const profile = loadedAppUserByEmail.profiles[0];
