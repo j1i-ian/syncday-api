@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Inject, Param, Patch, Post, Put, Query, Res } from '@nestjs/common';
-import { Observable, catchError, defer, filter, from, map, of, tap, throwIfEmpty } from 'rxjs';
+import { Observable, catchError, defer, filter, from, map, mergeMap, of, tap, throwIfEmpty } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -175,14 +175,17 @@ export class ProfilesController {
         @Body() patchProfileRolesRequest: PatchProfileRolesRequest
     ): Observable<boolean> {
 
-        // TODO: it should be extracted as decorator
-        this.profileService.validateRoleUpdateRequest(authRoles, patchProfileRolesRequest.roles);
-
-        return this.profileService.updateRoles(
-            teamId,
-            profileId,
-            targetProfileId,
-            patchProfileRolesRequest.roles
+        return from(this.profileService.validateRoleUpdateRequest(
+            authRoles,
+            patchProfileRolesRequest.roles,
+            targetProfileId
+        )).pipe(
+            mergeMap(() => this.profileService.updateRoles(
+                teamId,
+                profileId,
+                targetProfileId,
+                patchProfileRolesRequest.roles
+            ))
         );
     }
 

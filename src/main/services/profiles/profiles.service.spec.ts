@@ -7,6 +7,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Role } from '@interfaces/profiles/role.enum';
 import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.interface';
 import { Orderer } from '@interfaces/orders/orderer.interface';
+import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
@@ -986,38 +987,71 @@ describe('ProfilesService', () => {
 
         afterEach(() => {
             utilServiceStub.isValidRoleUpdateRequest.reset();
+            profileRepositoryStub.findOneByOrFail.reset();
         });
 
         it('should be passed the validation when request is valid', () => {
 
             const authRolesMock = [Role.OWNER];
             const targetRolesMock = [Role.OWNER];
+            const profileStub = stubOne(Profile, {
+                status: ProfileStatus.ACTIVATED
+            });
 
             const roleUpdateRequestValidStub = true;
             utilServiceStub.isValidRoleUpdateRequest.returns(roleUpdateRequestValidStub);
+            profileRepositoryStub.findOneByOrFail.resolves(profileStub);
 
-            expect(() => service.validateRoleUpdateRequest(
+            expect(service.validateRoleUpdateRequest(
                 authRolesMock,
-                targetRolesMock
-            )).not.throw();
+                targetRolesMock,
+                profileStub.id
+            )).not.rejected;
 
             expect(utilServiceStub.isValidRoleUpdateRequest.called).true;
+            expect(profileRepositoryStub.findOneByOrFail.called).true;
         });
 
-        it('should be thrown an forbidden exception for invalid request', () => {
+        it('should be thrown an error when owner tries to migrate owner permission to pending status profile', () => {
+
+            const authRolesMock = [Role.OWNER];
+            const targetRolesMock = [Role.OWNER];
+            const profileStub = stubOne(Profile, {
+                status: ProfileStatus.PENDING
+            });
+
+            const roleUpdateRequestValidStub = true;
+            utilServiceStub.isValidRoleUpdateRequest.returns(roleUpdateRequestValidStub);
+            profileRepositoryStub.findOneByOrFail.resolves(profileStub);
+
+            expect(service.validateRoleUpdateRequest(
+                authRolesMock,
+                targetRolesMock,
+                profileStub.id
+            )).rejectedWith(ForbiddenException);
+
+            expect(utilServiceStub.isValidRoleUpdateRequest.called).true;
+            expect(profileRepositoryStub.findOneByOrFail.called).true;
+        });
+
+        it('should be thrown an forbidden exception for permission over request', () => {
 
             const authRolesMock = [Role.MANAGER];
             const targetRolesMock = [Role.OWNER];
+            const profileStub = stubOne(Profile);
 
             const roleUpdateRequestInvalidStub = false;
             utilServiceStub.isValidRoleUpdateRequest.returns(roleUpdateRequestInvalidStub);
+            profileRepositoryStub.findOneByOrFail.resolves(profileStub);
 
-            expect(() => service.validateRoleUpdateRequest(
+            expect(service.validateRoleUpdateRequest(
                 authRolesMock,
-                targetRolesMock
-            )).throw(ForbiddenException);
+                targetRolesMock,
+                profileStub.id
+            )).rejectedWith(ForbiddenException);
 
             expect(utilServiceStub.isValidRoleUpdateRequest.called).true;
+            expect(profileRepositoryStub.findOneByOrFail.called).false;
         });
     });
 

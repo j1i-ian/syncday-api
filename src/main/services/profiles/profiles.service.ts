@@ -28,6 +28,7 @@ import { ProfileSearchOption } from '@interfaces/profiles/profile-search-option.
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { Orderer } from '@interfaces/orders/orderer.interface';
+import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
@@ -686,12 +687,12 @@ export class ProfilesService {
     }
 
     patchAll(userId: number, partialProfile: Partial<Profile>): Observable<boolean> {
-        return defer(() => from(
+        return from(
             this.profileRepository.update(
                 { userId },
                 partialProfile
             )
-        )).pipe(
+        ).pipe(
             map((updateResult) => !!(updateResult &&
                 updateResult.affected &&
                 updateResult.affected > 0))
@@ -704,7 +705,7 @@ export class ProfilesService {
         targetProfileId: number,
         updateRoles: Role[]
     ): Observable<boolean> {
-        return defer(() => from(this.datasource.transaction(async (manager) => {
+        return from(this.datasource.transaction(async (manager) => {
             const result = await firstValueFrom(this._updateRoles(
                 manager,
                 teamId,
@@ -714,7 +715,7 @@ export class ProfilesService {
             ));
 
             return result;
-        })));
+        }));
     }
 
     _updateRoles(
@@ -731,7 +732,10 @@ export class ProfilesService {
             .pipe(
                 mergeMap((_profileRepository) =>
                     defer(() => from(_profileRepository.update(
-                        { id: targetProfileId, teamId },
+                        {
+                            id: targetProfileId,
+                            teamId
+                        },
                         { roles: updateRoles }
                     )))
                 ),
@@ -744,7 +748,10 @@ export class ProfilesService {
                 .pipe(
                     mergeMap((_profileRepository) =>
                         _profileRepository.update(
-                            { id: profileId, teamId },
+                            {
+                                id: profileId,
+                                teamId
+                            },
                             { roles: [Role.MANAGER] }
                         )),
                     map((__updateResult: UpdateResult) => this.utilService.convertUpdateResultToBoolean(__updateResult))
@@ -929,10 +936,11 @@ export class ProfilesService {
         ));
     }
 
-    validateRoleUpdateRequest(
+    async validateRoleUpdateRequest(
         authRoles: Role[],
-        updateRoles: Role[]
-    ): void {
+        updateRoles: Role[],
+        targetProfileId: number
+    ): Promise<void> {
 
         const isValidRoleUpdateRequest = this.utilService.isValidRoleUpdateRequest(authRoles, updateRoles);
 
@@ -941,6 +949,16 @@ export class ProfilesService {
         if (isForbiddenPermissionRequest) {
             throw new ForbiddenException('Permission denied');
         }
+
+        const loadedTargetProfile = await this.profileRepository.findOneByOrFail({ id: targetProfileId });
+
+        if (
+            updateRoles.includes(Role.OWNER) &&
+            loadedTargetProfile.status === ProfileStatus.PENDING
+        ) {
+            throw new ForbiddenException('Target profile status is invalid');
+        }
+
     }
 
     validateProfileDeleteRequest(
