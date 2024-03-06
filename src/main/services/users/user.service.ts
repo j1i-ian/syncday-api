@@ -545,7 +545,8 @@ export class UserService {
         this.logger.info({
             message: 'Patch workspace',
             email: _createdUser.email,
-            phone: _createdUser.phone
+            phone: _createdUser.phone,
+            newUser
         });
 
         const workspace = _createdUser.email?.replaceAll('.', '').split('@').shift() || profileName;
@@ -678,7 +679,8 @@ export class UserService {
         oauth2Token: OAuthToken,
         {
             oauth2UserEmail,
-            oauth2UserProfileImageUrl
+            oauth2UserProfileImageUrl,
+            oauth2UserPhoneNumber
         }: OAuth2UserProfile,
         language: Language,
         integrationParams?: Partial<OAuth2MetaInfo>
@@ -693,8 +695,10 @@ export class UserService {
             const newUserEmail = createUserRequestDto.email;
             const newUser = {
                 email: newUserEmail,
-                timezone: createUserRequestDto.timezone
-            } as unknown as User;
+                timezone: createUserRequestDto.timezone,
+                image: oauth2UserProfileImageUrl,
+                phone: oauth2UserPhoneNumber
+            } as Partial<User> as User;
 
             const newProfileName = createUserRequestDto.name;
             const newProfile = {

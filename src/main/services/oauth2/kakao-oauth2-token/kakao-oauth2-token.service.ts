@@ -130,6 +130,8 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
                 } = profile;
                 const oauth2UserProfileImageUrl = is_default_image ? null : profileThumbnailImageUrl;
 
+                const phoneNumber = this.getPhoneNumberFromOAuth2UserProfile(oauth2AccountUserProfileMetaInfo);
+
                 const createUserRequestDto: CreateUserRequestDto = {
                     email,
                     name: nickname,
@@ -142,6 +144,7 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
                     oauth2Token,
                     oauth2UserProfile: {
                         oauth2UserEmail: email,
+                        oauth2UserPhoneNumber: phoneNumber,
                         oauth2UserProfileImageUrl
                     }
                 };
