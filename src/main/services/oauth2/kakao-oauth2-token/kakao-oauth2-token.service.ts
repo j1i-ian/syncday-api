@@ -107,11 +107,17 @@ export class KakaoOAuth2TokenService implements OAuth2TokenService {
 
     getPhoneNumberFromOAuth2UserProfile(
         oauth2UserProfile: KakaotalkUserProfileResponse
-    ): string {
+    ): string | null {
         // kakao account phone number format is '+82 10-1234-1234'
-        return oauth2UserProfile.kakao_account.phone_number
-            .replaceAll('-', '')
-            .replaceAll(' ', '');
+        let phoneNumber = null;
+
+        if (oauth2UserProfile.kakao_account.phone_number) {
+            phoneNumber = oauth2UserProfile.kakao_account.phone_number
+                .replaceAll('-', '')
+                .replaceAll(' ', '');
+        }
+
+        return phoneNumber;
     }
 
     get converter(): OAuth2Converter {
