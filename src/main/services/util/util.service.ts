@@ -858,9 +858,17 @@ export class UtilService {
                 patchedPhoneNumber ??
                 '';
 
+        const shouldEnforceRandomSuffix = workspace.length < 3 || workspace === '';
+
         if (randomSuffix) {
             const randomNumberString = this.generateRandomNumberString(4);
             workspace += randomNumberString;
+        } else if (shouldEnforceRandomSuffix) {
+
+            const padded0To99 = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+            workspace += `-${padded0To99}`;
+        } else {
+            workspace = workspace;
         }
 
         return workspace;

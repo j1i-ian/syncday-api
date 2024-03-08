@@ -869,6 +869,29 @@ describe('UtilService', () => {
             expect(defaultTeamWorkspace).not.equals(emailDummy);
             expect(defaultTeamWorkspace).equals(expectedLink);
         });
+
+        it('should be patched enforcibly random suffix when given link string length is less than 3', () => {
+            const workspaceMock = 'ab';
+
+            const expectedWorkspaceLength = workspaceMock.length + 3;
+
+            const emailDummy = null;
+            const phoneNumberMock = null;
+
+            const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
+                workspaceMock,
+                emailDummy,
+                phoneNumberMock,
+                {
+                    randomSuffix: false
+                }
+            );
+
+            expect(defaultTeamWorkspace).ok;
+            expect(defaultTeamWorkspace).not.equals(emailDummy);
+            expect(defaultTeamWorkspace).contains('-');
+            expect(defaultTeamWorkspace.length).equals(expectedWorkspaceLength);
+        });
     });
 
     describe('Test getDefaultAvailabilityName', () => {
