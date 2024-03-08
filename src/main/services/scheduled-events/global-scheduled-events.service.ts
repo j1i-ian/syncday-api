@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, combineLatest, concat, concatMap, defer, filter, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
+import { Observable, combineLatest, concat, concatMap, defer, filter, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, zip } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -120,14 +120,10 @@ export class GlobalScheduledEventsService {
             hostProfiles,
             hostAvailability
         ).pipe(
-            mergeMap((_createdSchedule) => from(_createdSchedule.scheduledEventNotifications)
-                .pipe(
-                    mergeMap((_scheduledEventNotification) =>
-                        this.notificationsService.sendBookingComplete(
-                            _scheduledEventNotification
-                        )
-                    ),
-                    toArray(),
+            mergeMap((_createdSchedule) =>
+                this.notificationsService.sendBookingComplete(
+                    _createdSchedule.scheduledEventNotifications[0]
+                ).pipe(
                     map(() => _createdSchedule)
                 )
             ),

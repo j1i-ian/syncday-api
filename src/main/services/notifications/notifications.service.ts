@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Observable, combineLatest, defer, from, map, mergeMap, reduce, tap } from 'rxjs';
+import { Observable, combineLatest, from, map, mergeMap, reduce, tap } from 'rxjs';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { MessageAttributeValue, PublishCommand, PublishCommandInput } from '@aws-sdk/client-sns';
@@ -46,12 +46,12 @@ export class NotificationsService {
             notificationData
         });
 
-        return defer(() => from(
+        return from(
             this.sendMessage(
                 publishKey,
                 notificationData
             )
-        ));
+        );
 
     }
 
