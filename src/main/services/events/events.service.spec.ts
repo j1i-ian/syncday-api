@@ -910,7 +910,7 @@ describe('EventsService', () => {
         afterEach(() => {
             validatorStub.validate.reset();
 
-            eventProfileRepositoryStub.delete.reset();
+            eventProfileRepositoryStub.update.reset();
 
             serviceSandbox.restore();
         });
@@ -918,9 +918,9 @@ describe('EventsService', () => {
         it('should be linked to availability for profiles with transaction', async () => {
             const eventProfileMockStubs = stub(EventProfile, 2);
 
-            const deleteResultStub = TestMockUtil.getTypeormDeleteResultMock();
+            const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
-            eventProfileRepositoryStub.delete.resolves(deleteResultStub);
+            eventProfileRepositoryStub.update.resolves(updateResultStub);
 
             const success = await service._linkToProfiles(
                 datasourceMock as unknown as EntityManager,
@@ -928,7 +928,7 @@ describe('EventsService', () => {
             );
             expect(success).true;
 
-            expect(eventProfileRepositoryStub.delete.called).ok;
+            expect(eventProfileRepositoryStub.update.called).ok;
         });
     });
 

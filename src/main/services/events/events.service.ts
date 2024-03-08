@@ -567,20 +567,21 @@ export class EventsService {
         eventProfiles: EventProfile[]
     ): Promise<boolean> {
 
-        const eventIds = eventProfiles.map((_eventProfile) => _eventProfile.eventId);
-        const profileIds = eventProfiles.map((_eventProfile) => _eventProfile.profileId);
-
         const _eventProfileRepository = transactionManager.getRepository(EventProfile);
 
-        const deleteResult = await _eventProfileRepository.delete({
-            eventId: In(eventIds),
-            profileId: In(profileIds)
-        });
-        const deleteSuccess = !!(deleteResult && deleteResult.affected && deleteResult.affected > 0);
+        await Promise.all(
+            eventProfiles.map((_eventProfile) => {
+                _eventProfileRepository.update(
+                    {
+                        eventId: _eventProfile.eventId,
+                        profileId: _eventProfile.profileId
+                    },
+                    _eventProfile
+                );
+            })
+        );
 
-        await _eventProfileRepository.save(eventProfiles);
-
-        return deleteSuccess;
+        return true;
     }
 
     async linkToAvailability(
