@@ -24,7 +24,9 @@ export class GlobalInterceptor implements NestInterceptor {
         };
 
         // skip aws health check request
-        if (request.url !== '/') {
+        const isBlackListUrl = this.isBlackListUrl(request.url as string);
+
+        if (isBlackListUrl === false) {
             this.logger.info({
                 message: 'request logged',
                 requestLog
@@ -32,5 +34,10 @@ export class GlobalInterceptor implements NestInterceptor {
         }
 
         return next.handle();
+    }
+
+    isBlackListUrl(url: string): boolean {
+        return url === '/' ||
+            url === '/v1';
     }
 }
