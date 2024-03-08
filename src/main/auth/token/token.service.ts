@@ -202,6 +202,14 @@ export class TokenService {
                 profile = profile ?? user?.profiles[0] ?? null;
                 team = profile?.team ?? null;
                 isNewbie = false;
+
+                this.logger.debug({
+                    message: 'OAuth sign in',
+                    user,
+                    profile,
+                    team,
+                    isNewbie
+                });
                 break;
             case IntegrationContext.INTEGRATE:
                 await oauth2TokenService.integrate(
@@ -213,6 +221,17 @@ export class TokenService {
                 isNewbie = false;
                 break;
             case IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN:
+
+                profile = profile ?? user?.profiles[0] as Profile;
+                team = profile?.team ?? null;
+
+                this.logger.info({
+                    message: 'Multiple signed in',
+                    ensuredRequesterEmail,
+                    profileId: profile.id,
+                    teamId: team.id
+                });
+
                 await oauth2TokenService.multipleSocialSignIn(
                     user as User,
                     ensuredRequesterEmail
