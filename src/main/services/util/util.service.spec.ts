@@ -786,111 +786,109 @@ describe('UtilService', () => {
 
     describe('Test Getting default team workspace', () => {
 
-        it('should be got default team workspace which has email as workspace when there is no email id but has name', () => {
+        const fullName = faker.name.fullName();
+        const fakeEmailPrefix = 'foobar';
+        const fakeEmail = faker.internet.email(fakeEmailPrefix);
 
-            const fullNameMock = faker.name.fullName();
-
-            const workspaceMock = fullNameMock;
-            const emailMock = undefined;
-            const profileNameMock = fullNameMock;
-
-            const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
-                workspaceMock,
-                emailMock,
-                profileNameMock,
-                {
-                    randomSuffix: false
+        [
+            {
+                description: 'should be got default team workspace which has email as workspace when there is no email id but has name',
+                workspaceMockOrDummy: fullName,
+                emailMockOrDummy: undefined,
+                phoneNumberMockOrDummy: fullName,
+                randomSuffixMock: false,
+                additionalValidations: (actualDefaultTeamWorkspace: string) => {
+                    expect(actualDefaultTeamWorkspace).equals(fullName);
                 }
-            );
-
-            expect(defaultTeamWorkspace).ok;
-            expect(defaultTeamWorkspace).equals(profileNameMock);
-        });
-
-        it('should be got default team workspace which has workspace name with generated uuid when there is no name or email', () => {
-
-            const workspaceMock = undefined;
-            const emailMock = undefined;
-            const profileNameMock = undefined;
-
-            const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
-                workspaceMock,
-                emailMock,
-                profileNameMock,
-                {
-                    randomSuffix: true
+            },
+            {
+                description: 'should be got default team workspace which has workspace name with generated uuid when there is no name or email',
+                workspaceMockOrDummy: undefined,
+                emailMockOrDummy: undefined,
+                phoneNumberMockOrDummy: undefined,
+                randomSuffixMock: true,
+                additionalValidations: () => {}
+            },
+            {
+                description: 'should be got default team workspace which has email as workspace with generated number when option random suffix is enabled',
+                workspaceMockOrDummy: undefined,
+                emailMockOrDummy: fakeEmail,
+                phoneNumberMockOrDummy: undefined,
+                randomSuffixMock: true,
+                additionalValidations: (actualDefaultTeamWorkspace: string) => {
+                    expect(actualDefaultTeamWorkspace).contains(fakeEmailPrefix);
+                    expect(actualDefaultTeamWorkspace).not.equals(fakeEmailPrefix);
+                    expect(actualDefaultTeamWorkspace).not.equals(fakeEmail);
                 }
-            );
+            },
+            {
+                description: 'should be got the default team workspace which has phone number as workspace with Korean phone number',
+                workspaceMockOrDummy: undefined,
+                emailMockOrDummy: null,
+                phoneNumberMockOrDummy: '+821012345678',
+                randomSuffixMock: false,
+                additionalValidations: (actualDefaultTeamWorkspace: string) => {
+                    const expectedLink = '01012345678';
 
-            expect(defaultTeamWorkspace).ok;
-        });
-
-        it('should be got default team workspace which has email as workspace with generated number when option random suffix is enabled', () => {
-            const workspaceMock = undefined;
-
-            const emailPrefix = 'foobar';
-            const emailMock = faker.internet.email(emailPrefix);
-
-            const profileNameMock = undefined;
-
-            const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
-                workspaceMock,
-                emailMock,
-                profileNameMock,
-                {
-                    randomSuffix: true
+                    expect(actualDefaultTeamWorkspace).ok;
+                    expect(actualDefaultTeamWorkspace).not.null;
+                    expect(actualDefaultTeamWorkspace).equals(expectedLink);
                 }
-            );
+            },
+            {
+                description: 'should be patched enforcibly random suffix when given link string length is less than 3 (two character)',
+                workspaceMockOrDummy: 'ab',
+                emailMockOrDummy: null,
+                phoneNumberMockOrDummy: null,
+                randomSuffixMock: false,
+                additionalValidations: (actualDefaultTeamWorkspace: string) => {
 
-            expect(defaultTeamWorkspace).ok;
-            expect(defaultTeamWorkspace).contains(emailPrefix);
-            expect(defaultTeamWorkspace).not.equals(emailPrefix);
-            expect(defaultTeamWorkspace).not.equals(emailMock);
-        });
+                    const expectedWorkspaceLength = 5;
 
-        it('should be got the default team workspace which has phone number as workspace with Korean phone number', () => {
-            const workspaceMock = undefined;
-
-            const emailDummy = null;
-
-            const phoneNumberMock = '+821012345678';
-            const expectedLink = '01012345678';
-
-            const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
-                workspaceMock,
-                emailDummy,
-                phoneNumberMock,
-                {
-                    randomSuffix: false
+                    expect(actualDefaultTeamWorkspace).not.null;
+                    expect(actualDefaultTeamWorkspace).contains('-');
+                    expect(actualDefaultTeamWorkspace.length).equals(expectedWorkspaceLength);
                 }
-            );
+            },
+            {
+                description: 'should be patched enforcibly random suffix when given email id string length is less than 3 (one character)',
+                workspaceMockOrDummy: undefined,
+                emailMockOrDummy: 'p@sync.day',
+                phoneNumberMockOrDummy: undefined,
+                randomSuffixMock: false,
+                additionalValidations: (actualDefaultTeamWorkspace: string) => {
 
-            expect(defaultTeamWorkspace).ok;
-            expect(defaultTeamWorkspace).not.equals(emailDummy);
-            expect(defaultTeamWorkspace).equals(expectedLink);
-        });
+                    const expectedWorkspaceLength = 4;
 
-        it('should be patched enforcibly random suffix when given link string length is less than 3', () => {
-            const workspaceMock = 'ab';
-
-            const expectedWorkspaceLength = workspaceMock.length + 3;
-
-            const emailDummy = null;
-            const phoneNumberMock = null;
-
-            const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
-                workspaceMock,
-                emailDummy,
-                phoneNumberMock,
-                {
-                    randomSuffix: false
+                    expect(actualDefaultTeamWorkspace).not.null;
+                    expect(actualDefaultTeamWorkspace).contains('-');
+                    expect(actualDefaultTeamWorkspace.length).equals(expectedWorkspaceLength);
                 }
-            );
+            }
+        ].forEach(function({
+            description,
+            workspaceMockOrDummy,
+            emailMockOrDummy,
+            phoneNumberMockOrDummy,
+            randomSuffixMock,
+            additionalValidations
+        }) {
 
-            expect(defaultTeamWorkspace).ok;
-            expect(defaultTeamWorkspace).not.equals(emailDummy);
-            expect(defaultTeamWorkspace).contains('-');
-            expect(defaultTeamWorkspace.length).equals(expectedWorkspaceLength);
+            it(description, () => {
+
+                const defaultTeamWorkspace = service.getDefaultTeamWorkspace(
+                    workspaceMockOrDummy,
+                    emailMockOrDummy,
+                    phoneNumberMockOrDummy,
+                    {
+                        randomSuffix: randomSuffixMock
+                    }
+                );
+
+                expect(defaultTeamWorkspace).ok;
+
+                additionalValidations(defaultTeamWorkspace);
+            });
         });
     });
 

@@ -558,13 +558,15 @@ export class UserService {
             _createdUser.email,
             _createdUser.phone,
             {
-                randomSuffix:  shouldAddRandomSuffix
+                randomSuffix: shouldAddRandomSuffix
             }
         );
 
         this.logger.info({
             message: 'Trying to create new team ..',
-            defaultTeamWorkspace
+            workspace,
+            defaultTeamWorkspace,
+            shouldAddRandomSuffix
         });
 
         const savedTeam = await this.teamService._create(
@@ -688,7 +690,8 @@ export class UserService {
 
         this.logger.info({
             message: 'Start transaction for creating a user with oauth2',
-            oauth2UserEmail
+            oauth2UserEmail,
+            createUserRequestDtoEmail: createUserRequestDto.email
         });
 
         const createdUserAndTeam = await this.datasource.transaction(async (manager) => {
