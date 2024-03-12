@@ -258,7 +258,11 @@ export class NotificationsService {
         return this._sendNotification(messageAttribute, notificationData);
     }
 
-    async _sendNotification(messageAttribute: MessageAttributeValue, notificationData: SyncdayAwsSnsRequest): Promise<boolean> {
+    async _sendNotification(
+        messageAttribute: MessageAttributeValue,
+        notificationData: SyncdayAwsSnsRequest
+    ): Promise<boolean> {
+
         const params: PublishCommandInput = {
             Message: JSON.stringify(notificationData),
             TopicArn: AppConfigService.getAwsSnsTopicARNSyncdayNotification(this.configService),
@@ -267,7 +271,9 @@ export class NotificationsService {
             }
         };
 
-        const response = await this.syncdayAwsSdkClientService.getSNSClient().send(new PublishCommand(params));
+        const response = await this.syncdayAwsSdkClientService
+            .getSNSClient()
+            .send(new PublishCommand(params));
 
         const isSuccess = response.$metadata.httpStatusCode === 200;
 

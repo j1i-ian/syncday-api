@@ -33,6 +33,7 @@ import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
+import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GlobalScheduledEventsService } from './global-scheduled-events.service';
@@ -284,142 +285,230 @@ describe('GlobalScheduledEventsService', () => {
             expect(scheduledEventRepositoryStub.findOneByOrFail.called).true;
         });
 
-        /**
-         * need to reorganize
-         */
-        describe
-        ('Test scheduled event creating', () => {
+        describe('Scheduled Event Creating Test', () => {
 
-            [
-                {
-                    description: 'should be ensured that a scheduled event event is created when both Google Calendar and Zoom are integrated, and a Google Meet link associated with Zoom exists',
-                    getEventStub: () => {
+            describe('Test Creating the scheduled event by booking wiht transaction', () => {
 
-                        const eventStub = stubOne(Event, {
-                            contacts: [
-                                { type: ContactType.ZOOM, value: 'https://zoomFakeLink' },
-                                { type: ContactType.GOOGLE_MEET, value: 'https://googleMeetFakeLink' }
-                            ]
+                let serviceSandbox: sinon.SinonSandbox;
+
+                beforeEach(() => {
+                    serviceSandbox = sinon.createSandbox();
+                });
+
+                afterEach(() => {
+                    notificationsServiceStub.sendBookingComplete.reset();
+
+                    scheduledEventRepositoryStub.update.reset();
+
+                    serviceSandbox.restore();
+                });
+
+
+                /**
+                 * Public Create Method Spec
+                 */
+                [
+                    {
+                        description: 'should be created scheduled event without notification',
+                        scheduledEventNotificationsStub: [],
+                        notificationRequestCall: false
+                    },
+                    {
+                        description: 'should be generated the email notifications for scheduled event',
+                        scheduledEventNotificationsStub: stub(ScheduledEventNotification, 1),
+                        notificationRequestCall: true
+                    }
+                ].forEach(function({
+                    description,
+                    scheduledEventNotificationsStub,
+                    notificationRequestCall
+                }) {
+
+                    it(description, async () => {
+
+                        const teamMock = stubOne(Team, {
+                            teamSetting: stubOne(TeamSetting)
+                        });
+                        const teamSettingMock = teamMock.teamSetting;
+                        const teamWorkspaceMock = teamSettingMock.workspace;
+
+                        const eventTypeMock = stubOne(Event);
+                        const newScheduledEventMock = stubOne(ScheduledEvent);
+                        const availability = stubOne(Availability);
+                        const hostMock = stubOne(User, {
+                            profiles: stub(Profile)
+                        });
+                        const profilesMock = hostMock.profiles;
+                        const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+
+                        const createdScheduledEventStub = stubOne(ScheduledEvent, {
+                            scheduledEventNotifications: scheduledEventNotificationsStub
                         });
 
-                        return eventStub;
-                    },
-                    getScheduleStub: () => {
+                        const _createStub = serviceSandbox
+                            .stub(service, '_create');
 
-                        const scheduledTimesetStub = testMockUtil.getScheduledTimesetMock();
-                        const scheduledEventStub = stubOne(ScheduledEvent, {
-                            scheduledTime: scheduledTimesetStub,
-                            contacts: [
-                                { type: ContactType.ZOOM, value: 'https://zoomFakeLink' },
-                                { type: ContactType.GOOGLE_MEET, value: 'https://googleMeetFakeLink' }
-                            ],
-                            conferenceLinks: []
+                        _createStub.returns(of(createdScheduledEventStub));
+
+                        notificationsServiceStub.sendBookingComplete.returns(of());
+                        scheduledEventRepositoryStub.update.resolves(updateResultMock);
+
+                        const actualScheduledEvent = await firstValueFrom(
+                            service.create(
+                                teamWorkspaceMock,
+                                eventTypeMock.uuid,
+                                newScheduledEventMock,
+                                teamMock,
+                                hostMock,
+                                profilesMock,
+                                availability
+                            )
+                        );
+
+                        expect(actualScheduledEvent).ok;
+
+                        expect(_createStub.called).true;
+                        expect(notificationsServiceStub.sendBookingComplete.called).equals(notificationRequestCall);
+                        expect(scheduledEventRepositoryStub.update.called).true;
+                    });
+                });
+            });
+
+            /**
+             * Private Create Method Spec
+             */
+            describe('Test Creating the scheduled event by booking wiht transaction', () => {
+                [
+                    {
+                        description: 'should be ensured that a scheduled event event is created when both Google Calendar and Zoom are integrated, and a Google Meet link associated with Zoom exists',
+                        getEventStub: () => {
+
+                            const eventStub = stubOne(Event, {
+                                contacts: [
+                                    { type: ContactType.ZOOM, value: 'https://zoomFakeLink' },
+                                    { type: ContactType.GOOGLE_MEET, value: 'https://googleMeetFakeLink' }
+                                ]
+                            });
+
+                            return eventStub;
+                        },
+                        getScheduleStub: () => {
+
+                            const scheduledTimesetStub = testMockUtil.getScheduledTimesetMock();
+                            const scheduledEventStub = stubOne(ScheduledEvent, {
+                                scheduledTime: scheduledTimesetStub,
+                                contacts: [
+                                    { type: ContactType.ZOOM, value: 'https://zoomFakeLink' },
+                                    { type: ContactType.GOOGLE_MEET, value: 'https://googleMeetFakeLink' }
+                                ],
+                                conferenceLinks: []
+                            });
+
+                            return scheduledEventStub;
+                        },
+                        outboundGoogleCalendarIntegrationStub: stubOne(GoogleCalendarIntegration),
+                        expectedGoogleMeetLinkGeneration: true
+                    }
+                    // test skipped: description: 'should be ensured that a scheduled event is created if Google Calendar is integrated and a Google Meet link is not set up on contacts',
+                    // test skipped: description: 'should be created scheduled event even if google calendar is not integrated',
+
+                ].forEach(function({
+                    description,
+                    getEventStub,
+                    getScheduleStub,
+                    outboundGoogleCalendarIntegrationStub,
+                    expectedGoogleMeetLinkGeneration
+                }) {
+
+                    it(description, async () => {
+
+                        const googleIntegrationServiceStub = serviceSandbox.createStubInstance(GoogleIntegrationsService);
+
+                        const hostAvailabilityMock = stubOne(Availability);
+                        const hostAvailabilityBodyMock = testMockUtil.getAvailabilityBodyMock(hostAvailabilityMock);
+                        hostAvailabilityMock.availableTimes = hostAvailabilityBodyMock.availableTimes;
+                        hostAvailabilityMock.overrides = hostAvailabilityBodyMock.overrides;
+
+                        const teamSettingMock = stubOne(TeamSetting);
+                        const userSettingStub = stubOne(UserSetting);
+                        const userMock = stubOne(User, {
+                            userSetting: userSettingStub
+                        });
+                        const profileMock = stubOne(Profile);
+                        const teamMock = stubOne(Team);
+                        const eventStub = getEventStub();
+                        const scheduleStub = getScheduleStub();
+
+                        const createdCalendarEventMock = testMockUtil.getCreatedCalendarEventMock();
+
+                        eventsServiceStub.findOneByTeamWorkspaceAndUUID.returns(of(eventStub));
+
+                        calendarIntegrationsServiceLocatorStub.getAllCalendarIntegrationServices.returns([
+                            googleCalendarIntegrationsServiceStub
+                        ]);
+                        googleCalendarIntegrationsServiceStub.findOne.returns(of(outboundGoogleCalendarIntegrationStub));
+
+                        // integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.returns([]);
+                        integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.returns([
+                            googleConferenceLinkIntegrationServiceStub
+                        ]);
+                        googleConferenceLinkIntegrationServiceStub.getIntegrationVendor.returns(IntegrationVendor.GOOGLE);
+
+                        utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+
+                        const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
+
+                        calendarIntegrationsServiceLocatorStub.getCalendarIntegrationService.returns(
+                            googleCalendarIntegrationsServiceStub
+                        );
+
+                        googleCalendarIntegrationsServiceStub.createCalendarEvent.resolves(createdCalendarEventMock);
+                        integrationsServiceLocatorStub.getIntegrationFactory.returns(googleIntegrationServiceStub);
+
+                        const googleIntegrationStub = stubOne(GoogleIntegration);
+                        googleIntegrationServiceStub.findOne.resolves(googleIntegrationStub);
+
+                        googleConferenceLinkIntegrationServiceStub.createMeeting.resolves({
+                            link: 'conferenceLink',
+                            serviceName: 'google-meet',
+                            type: IntegrationVendor.GOOGLE
                         });
 
-                        return scheduledEventStub;
-                    },
-                    outboundGoogleCalendarIntegrationStub: stubOne(GoogleCalendarIntegration),
-                    expectedGoogleMeetLinkGeneration: true
-                }
-                // test skipped: description: 'should be ensured that a scheduled event is created if Google Calendar is integrated and a Google Meet link is not set up on contacts',
-                // test skipped: description: 'should be created scheduled event even if google calendar is not integrated',
+                        googleCalendarIntegrationsServiceStub.patchCalendarEvent.resolves();
 
-            ].forEach(function({
-                description,
-                getEventStub,
-                getScheduleStub,
-                outboundGoogleCalendarIntegrationStub,
-                expectedGoogleMeetLinkGeneration
-            }) {
+                        scheduledEventRepositoryStub.save.resolves(scheduleStub);
+                        schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
 
-                it(description, async () => {
+                        const createdSchedule = await firstValueFrom(
+                            service._create(
+                                {
+                                    getRepository: () => scheduledEventRepositoryStub
+                                } as unknown as any,
+                                teamSettingMock.workspace,
+                                eventStub.uuid,
+                                scheduleStub,
+                                teamMock,
+                                userMock,
+                                [profileMock],
+                                hostAvailabilityMock
+                            )
+                        );
 
-                    const googleIntegrationServiceStub = serviceSandbox.createStubInstance(GoogleIntegrationsService);
+                        expect(createdSchedule).ok;
+                        expect(eventsServiceStub.findOneByTeamWorkspaceAndUUID.called).true;
+                        expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
+                        expect(integrationsServiceLocatorStub.getIntegrationFactory.called).true;
+                        expect(integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.called).true;
+                        expect(googleIntegrationServiceStub.findOne.called).true;
+                        expect(utilServiceStub.getPatchedScheduledEvent.called).true;
+                        expect(validateStub.called).true;
 
-                    const hostAvailabilityMock = stubOne(Availability);
-                    const hostAvailabilityBodyMock = testMockUtil.getAvailabilityBodyMock(hostAvailabilityMock);
-                    hostAvailabilityMock.availableTimes = hostAvailabilityBodyMock.availableTimes;
-                    hostAvailabilityMock.overrides = hostAvailabilityBodyMock.overrides;
+                        expect(googleCalendarIntegrationsServiceStub.createCalendarEvent.called).equals(expectedGoogleMeetLinkGeneration);
+                        expect(googleCalendarIntegrationsServiceStub.patchCalendarEvent.called).equals(expectedGoogleMeetLinkGeneration);
 
-                    const teamSettingMock = stubOne(TeamSetting);
-                    const userSettingStub = stubOne(UserSetting);
-                    const userMock = stubOne(User, {
-                        userSetting: userSettingStub
+                        expect(scheduledEventRepositoryStub.save.called).true;
+                        expect(schedulesRedisRepositoryStub.save.called).true;
                     });
-                    const profileMock = stubOne(Profile);
-                    const teamMock = stubOne(Team);
-                    const eventStub = getEventStub();
-                    const scheduleStub = getScheduleStub();
-
-                    const createdCalendarEventMock = testMockUtil.getCreatedCalendarEventMock();
-
-                    eventsServiceStub.findOneByTeamWorkspaceAndUUID.returns(of(eventStub));
-
-                    calendarIntegrationsServiceLocatorStub.getAllCalendarIntegrationServices.returns([
-                        googleCalendarIntegrationsServiceStub
-                    ]);
-                    googleCalendarIntegrationsServiceStub.findOne.returns(of(outboundGoogleCalendarIntegrationStub));
-
-                    // integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.returns([]);
-                    integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.returns([
-                        googleConferenceLinkIntegrationServiceStub
-                    ]);
-                    googleConferenceLinkIntegrationServiceStub.getIntegrationVendor.returns(IntegrationVendor.GOOGLE);
-
-                    utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
-
-                    const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
-
-                    calendarIntegrationsServiceLocatorStub.getCalendarIntegrationService.returns(
-                        googleCalendarIntegrationsServiceStub
-                    );
-
-                    googleCalendarIntegrationsServiceStub.createCalendarEvent.resolves(createdCalendarEventMock);
-                    integrationsServiceLocatorStub.getIntegrationFactory.returns(googleIntegrationServiceStub);
-
-                    const googleIntegrationStub = stubOne(GoogleIntegration);
-                    googleIntegrationServiceStub.findOne.resolves(googleIntegrationStub);
-
-                    googleConferenceLinkIntegrationServiceStub.createMeeting.resolves({
-                        link: 'conferenceLink',
-                        serviceName: 'google-meet',
-                        type: IntegrationVendor.GOOGLE
-                    });
-
-                    googleCalendarIntegrationsServiceStub.patchCalendarEvent.resolves();
-
-                    scheduledEventRepositoryStub.save.resolves(scheduleStub);
-                    schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
-
-                    const createdSchedule = await firstValueFrom(
-                        service._create(
-                            {
-                                getRepository: () => scheduledEventRepositoryStub
-                            } as unknown as any,
-                            teamSettingMock.workspace,
-                            eventStub.uuid,
-                            scheduleStub,
-                            teamMock,
-                            userMock,
-                            [profileMock],
-                            hostAvailabilityMock
-                        )
-                    );
-
-                    expect(createdSchedule).ok;
-                    expect(eventsServiceStub.findOneByTeamWorkspaceAndUUID.called).true;
-                    expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
-                    expect(integrationsServiceLocatorStub.getIntegrationFactory.called).true;
-                    expect(integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.called).true;
-                    expect(googleIntegrationServiceStub.findOne.called).true;
-                    expect(utilServiceStub.getPatchedScheduledEvent.called).true;
-                    expect(validateStub.called).true;
-
-                    expect(googleCalendarIntegrationsServiceStub.createCalendarEvent.called).equals(expectedGoogleMeetLinkGeneration);
-                    expect(googleCalendarIntegrationsServiceStub.patchCalendarEvent.called).equals(expectedGoogleMeetLinkGeneration);
-
-                    expect(scheduledEventRepositoryStub.save.called).true;
-                    expect(schedulesRedisRepositoryStub.save.called).true;
                 });
             });
         });
