@@ -7,12 +7,15 @@ import {
     Header,
     HttpCode,
     HttpStatus,
+    Inject,
     Patch,
     Post,
     Put
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Observable, map } from 'rxjs';
+import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { User } from '@core/entities/users/user.entity';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { Language } from '@interfaces/users/language.enum';
@@ -23,13 +26,17 @@ import { UpdateUserPasswordsVO } from '@dto/users/update-user-password.vo';
 import { UpdatePhoneWithVerificationDto } from '@dto/verifications/update-phone-with-verification.dto';
 import { CreateUserWithEmailVerificationDto } from '@dto/users/create-user-with-email-verification.dto';
 import { CreateUserWithPhoneVerificationDto } from '@dto/users/create-user-with-phone-verification.dto';
+import { NoRemainingSignInMethodException } from '@app/exceptions/users/no-remaining-sign-in-method.exception';
 import { AuthProfile } from '../../decorators/auth-profile.decorator';
 import { Public } from '../../auth/strategy/jwt/public.decorator';
 import { UserService } from './user.service';
 
 @Controller()
 export class UserController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        private readonly userService: UserService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
+    ) {}
 
     @Get(':userId(\\d+)')
     async fetchUser(@AuthProfile('userId') userId: number): Promise<User> {
@@ -99,8 +106,24 @@ export class UserController {
     @HttpCode(HttpStatus.NO_CONTENT)
     async patchUser(
         @AuthProfile('userId') userId: number,
+        @AuthProfile('email') email: string | null,
         @Body() patchUserBody: PatchUserRequestDto
     ): Promise<void> {
+
+        const isNoEmail = email === null || email === undefined;
+        const isPhoneNumberDeleteRequest = patchUserBody.phone === null;
+        const isNoRemainingSignInMethodRequest = isNoEmail && isPhoneNumberDeleteRequest;
+
+        this.logger.debug({
+            isNoEmail,
+            isPhoneNumberDeleteRequest,
+            isNoRemainingSignInMethodRequest
+        });
+
+        if (isNoRemainingSignInMethodRequest) {
+            throw new NoRemainingSignInMethodException();
+        }
+
         const result = await this.userService.patch(userId, patchUserBody);
 
         if (result === false) {

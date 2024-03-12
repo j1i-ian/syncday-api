@@ -43,7 +43,8 @@
         "src/main/decorators/*",
       ],
       "@interfaces/*": [
-        "src/@core/@share/src/interfaces/*"
+        "src/@core/@share/src/interfaces/*",
+        "src/main/interfaces/*",
       ],
       "@dto/*": [
         "src/@core/@share/src/dto/*"

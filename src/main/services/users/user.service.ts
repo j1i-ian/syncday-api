@@ -907,6 +907,7 @@ export class UserService {
         updatePhoneWithVerificationDto: UpdatePhoneWithVerificationDto
     ): Promise<boolean> {
 
+        // TODO: Extract as decorator when we have a time.
         const isValidPhoneVerification = await this.verificationService.isValidPhoneVerification(
             updatePhoneWithVerificationDto.phone,
             updatePhoneWithVerificationDto.verificationCode,
@@ -915,7 +916,9 @@ export class UserService {
 
         let isUpdated = false;
 
-        if (isValidPhoneVerification) {
+        const isValidRequest = isValidPhoneVerification;
+
+        if (isValidRequest) {
             await this.syncdayRedisService.setPhoneVerificationStatus(
                 updatePhoneWithVerificationDto.phone,
                 userUUID
