@@ -39,6 +39,7 @@ describe('EventsService', () => {
     let eventDetailRepositoryStub: sinon.SinonStubbedInstance<Repository<EventDetail>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
     let eventProfileRepositoryStub: sinon.SinonStubbedInstance<Repository<EventProfile>>;
+    let profileRepositoryStub: sinon.SinonStubbedInstance<Repository<Profile>>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
 
     before(async () => {
@@ -50,6 +51,7 @@ describe('EventsService', () => {
         eventDetailRepositoryStub = sinon.createStubInstance<Repository<EventDetail>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
         eventProfileRepositoryStub = sinon.createStubInstance<Repository<EventProfile>>(Repository);
+        profileRepositoryStub = sinon.createStubInstance<Repository<Profile>>(Repository);
         utilServiceStub = sinon.createStubInstance(UtilService);
 
         (eventRepositoryStub as any).manager = datasourceMock as unknown as EntityManager;
@@ -92,6 +94,10 @@ describe('EventsService', () => {
                 {
                     provide: getRepositoryToken(EventProfile),
                     useValue: eventProfileRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(Profile),
+                    useValue: profileRepositoryStub
                 },
                 {
                     provide: WINSTON_MODULE_PROVIDER,
@@ -910,6 +916,7 @@ describe('EventsService', () => {
         afterEach(() => {
             validatorStub.validate.reset();
 
+            profileRepositoryStub.find.reset();
             eventProfileRepositoryStub.delete.reset();
             eventProfileRepositoryStub.save.reset();
 
@@ -917,18 +924,36 @@ describe('EventsService', () => {
         });
 
         it('should be linked to availability for profiles with transaction', async () => {
-            const eventProfileMockStubs = stub(EventProfile, 2);
+            const availabilityStub = stubOne(Availability);
+            const memberProfileStubs = stub(Profile, 2, {
+                availabilities: [availabilityStub]
+            });
+
+            const eventProfileMock = stub(EventProfile, 2, {
+                availabilityId: undefined,
+                profileId: memberProfileStubs[0].id
+            });
+
+            const eventProfileStub = stub(EventProfile, 2, {
+                availabilityId: availabilityStub.id
+            });
 
             const deleteResultStub = TestMockUtil.getTypeormDeleteResultMock();
+
+            profileRepositoryStub.find.resolves(memberProfileStubs);
+            eventProfileRepositoryStub.findBy.resolves(eventProfileStub);
 
             eventProfileRepositoryStub.delete.resolves(deleteResultStub);
             eventProfileRepositoryStub.save.resolvesArg(0);
 
             const success = await service._linkToProfiles(
                 datasourceMock as unknown as EntityManager,
-                eventProfileMockStubs
+                eventProfileMock
             );
             expect(success).true;
+
+            expect(profileRepositoryStub.find.called).ok;
+            expect(eventProfileRepositoryStub.findBy.called).ok;
 
             expect(eventProfileRepositoryStub.delete.called).ok;
             expect(eventProfileRepositoryStub.save.called).ok;

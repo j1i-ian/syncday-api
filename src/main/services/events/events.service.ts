@@ -13,6 +13,7 @@ import { EventStatus } from '@entity/events/event-status.enum';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { EventProfile } from '@entity/events/event-profile.entity';
 import { User } from '@entity/users/user.entity';
+import { Profile } from '@entity/profiles/profile.entity';
 import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { AlreadyUsedInEventLinkException } from '@app/exceptions/events/already-used-in-event-link.exception';
@@ -565,19 +566,83 @@ export class EventsService {
 
     async _linkToProfiles(
         transactionManager: EntityManager,
-        eventProfiles: EventProfile[]
+        eventProfiles: Array<EventProfile & { id?: EventProfile['id'] | undefined }>
     ): Promise<boolean> {
 
         const eventIds = eventProfiles.map((_eventProfile) => _eventProfile.eventId);
 
+        const _profileRepository = transactionManager.getRepository(Profile);
         const _eventProfileRepository = transactionManager.getRepository(EventProfile);
+
+        this.logger.info({
+            message: 'Recreate Event-Profile Transaction: Start to recreate event profiles',
+            eventProfiles,
+            eventIds
+        });
+
+        const updateProfileIds = eventProfiles.map((_eventProfile) => _eventProfile.profileId);
+
+        const loadedMemberProfiles = await _profileRepository.find({
+            relations: {
+                availabilities: true
+            },
+            where: {
+                id: In(updateProfileIds),
+                availabilities: {
+                    default: true
+                }
+            }
+        });
+
+        const loadedEventProfiles = await _eventProfileRepository.findBy({
+            eventId: In(eventIds)
+        });
+
+        this.logger.debug({
+            message: 'Recreate Event-Profile Transaction: Configure created or updated event profile',
+            updateProfileIds,
+            loadedMemberProfiles,
+            loadedEventProfiles
+        });
+
+        // TODO: replace with entity equals, repository upsert after FE dto patch
+        const updatedEventProfiles = eventProfiles.map((_updateEventProfile) => {
+            const _loadedEventProfile = loadedEventProfiles.find(
+                (_loadedEventProfile) =>
+                    _loadedEventProfile.profileId === _loadedEventProfile.profileId
+                && _loadedEventProfile.eventId === _loadedEventProfile.eventId
+            );
+            const matchedMemberProfile = loadedMemberProfiles.find((_profile) => _profile.id === _updateEventProfile.profileId) as Profile;
+
+            // Default availabilty should exist. So this variable is not optional type.
+            const matchedDefaultAvailability = matchedMemberProfile.availabilities[0];
+
+            const ensuredAvailabilityId = _updateEventProfile.availabilityId || matchedDefaultAvailability.id;
+
+            return _eventProfileRepository.create({
+                ..._loadedEventProfile,
+                ..._updateEventProfile,
+                availabilityId: ensuredAvailabilityId
+            });
+        });
 
         const deleteResult = await _eventProfileRepository.delete({
             eventId: In(eventIds)
         });
         const deleteSuccess = !!(deleteResult && deleteResult.affected && deleteResult.affected > 0);
 
-        await _eventProfileRepository.save(eventProfiles);
+        this.logger.info({
+            message: 'Recreate Event-Profile Transaction: Delete previous event profiles recreate success',
+            deleteResult
+        });
+
+        await _eventProfileRepository.save(updatedEventProfiles);
+
+        this.logger.debug({
+            message: 'Recreated event profiles',
+            updatedEventProfiles
+        });
+
 
         return deleteSuccess;
     }
