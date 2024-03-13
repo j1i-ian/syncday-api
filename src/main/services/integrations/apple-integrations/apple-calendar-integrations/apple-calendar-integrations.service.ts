@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Repository, FindOptionsWhere, DataSource, In, EntityManager } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { Observable, defer, firstValueFrom, from } from 'rxjs';
+import { Observable, firstValueFrom, from } from 'rxjs';
 import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
 import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
 import { CalendarIntegrationSearchOption } from '@interfaces/integrations/calendar-integration-search-option.interface';
@@ -104,7 +104,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
 
         const options = this.__patchSearchOption(searchOptions);
 
-        return defer(() => from(
+        return from(
             this.appleCalDAVCalendarIntegrationRepository.findOne({
                 relations: {
                     appleCalDAVIntegration: {
@@ -117,7 +117,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
                 },
                 where: options
             })
-        ));
+        );
     }
 
     patch(

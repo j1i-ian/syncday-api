@@ -151,7 +151,7 @@ export class ProfilesService {
         of([teamUUID as string, withUnsigedUserInvitation])
             .pipe(
                 filter(([_teamUUID, _withUnsigedUserInvitation]) => !!(_teamUUID && _withUnsigedUserInvitation)),
-                concatMap(([_teamUUID]) => defer(() => from(this.profilesRedisRepository.getAllTeamInvitations(_teamUUID as string)))),
+                concatMap(([_teamUUID]) => from(this.profilesRedisRepository.getAllTeamInvitations(_teamUUID as string))),
                 mergeMap((_emailOrPhoneBulk) => from(_emailOrPhoneBulk)),
                 map((_emailOrPhone) => this.utilService.convertInvitationToProfile(_emailOrPhone)),
                 toArray(),
@@ -202,7 +202,7 @@ export class ProfilesService {
                 tap((searchQueryBuilder) => {
                     searchQueryBuilder.take(20);
                 }),
-                mergeMap((searchQueryBuilder) => defer(() => from(searchQueryBuilder.getMany()))),
+                mergeMap((searchQueryBuilder) => from(searchQueryBuilder.getMany())),
                 mergeMap(
                     (_profiles) => unsignedUserInvitationProfiles$
                         .pipe(
@@ -213,9 +213,9 @@ export class ProfilesService {
     }
 
     searchInvitations(teamUUID: string): Observable<InvitedNewTeamMember[]> {
-        return defer(() => from(this.profilesRedisRepository.getAllTeamInvitations(
+        return from(this.profilesRedisRepository.getAllTeamInvitations(
             teamUUID
-        ))).pipe(
+        )).pipe(
             mergeMap((_invitations) => from(_invitations)),
             map((_invitation) => this.utilService.convertToInvitedNewTeamMember(_invitation)),
             toArray()
@@ -260,7 +260,7 @@ export class ProfilesService {
             } as FindOptionsWhere<Profile>;
         }
 
-        return defer(() => from(this.profileRepository.findOneOrFail({
+        return from(this.profileRepository.findOneOrFail({
             relations: {
                 user: {
                     oauth2Accounts: true
@@ -271,7 +271,7 @@ export class ProfilesService {
                 zoomIntegrations: true
             },
             where: findWhereOption
-        })));
+        }));
     }
 
     _fetchTeamOwnerProfile(teamId: number): Observable<Profile> {
@@ -332,11 +332,11 @@ export class ProfilesService {
 
         return combineLatest([
             // product id 2 is 'invitation'
-            defer(() => from(this.productsService.findTeamPlanProduct(2))),
-            defer(() => from(this.userService.search({
+            from(this.productsService.findTeamPlanProduct(2)),
+            from(this.userService.search({
                 emails: emailBulk,
                 phones: phoneNumberBulk
-            }))),
+            })),
             ownerProfile$,
             buyerTeam$,
             teamPaymentMethod$
@@ -353,6 +353,9 @@ export class ProfilesService {
                 this.logger.info({
                     message: 'Invitation transaction is started',
                     productId: loadedProduct.id,
+                    productPrice: loadedProduct.price,
+                    teamCreationDate: team.createdAt,
+                    orderUnit,
                     newPaymentMethod,
                     buyer,
                     ensuredHostName
@@ -537,7 +540,7 @@ export class ProfilesService {
             phone: user.phone
         });
 
-        return defer(() => from(this.profilesRedisRepository.getTeamInvitations(emailOrPhone as string)))
+        return from(this.profilesRedisRepository.getTeamInvitations(emailOrPhone as string))
             .pipe(
                 tap((teamEntitiesAndOrderIds) => {
                     this.logger.info({
@@ -568,11 +571,7 @@ export class ProfilesService {
                         phone: user.phone
                     });
                 }),
-                mergeMap((_newProfiles) =>
-                    defer(() => from(
-                        _profileRepository.save(_newProfiles)
-                    ))
-                ),
+                mergeMap((_newProfiles) => _profileRepository.save(_newProfiles)),
                 tap((_savedProfiles) => {
                     this.logger.info({
                         message: 'creating the profiles is done. Trying to update the related order in transaction',
@@ -583,12 +582,12 @@ export class ProfilesService {
                 })
             ).pipe(
                 mergeMap((profiles) => from(profiles)),
-                mergeMap((savedProfile) => defer(() => from(this.availabilityService._create(
+                mergeMap((savedProfile) => from(this.availabilityService._create(
                     transactionManager,
                     savedProfile.teamUUID,
                     savedProfile.id,
                     defaultAvailability
-                ))).pipe(
+                )).pipe(
                     map(() => savedProfile)
                 )),
                 mergeMap((_createdProfile) =>
@@ -647,12 +646,12 @@ export class ProfilesService {
         invitedNewMembers: InvitedNewTeamMember[],
         orderId: number
     ): Observable<boolean> {
-        return defer(() => from(this.profilesRedisRepository.setTeamInvitations(
+        return from(this.profilesRedisRepository.setTeamInvitations(
             teamId,
             teamUUID,
             invitedNewMembers,
             orderId
-        )));
+        ));
     }
 
     patch(profileId: number, partialProfile: Partial<Profile>): Observable<boolean> {

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Observable, concatMap, defer, from, map, toArray } from 'rxjs';
+import { Observable, concatMap, from, map, toArray } from 'rxjs';
 import { FindOperator, FindOptionsOrder, FindOptionsWhere, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ScheduledEventsService } from '@core/interfaces/scheduled-events/scheduled-events.service.interface';
@@ -77,12 +77,12 @@ export class NativeScheduledEventsService implements ScheduledEventsService {
                 }
             } : undefined;
 
-        const syncNativeSchedule$ = defer(() => from(this.scheduledEventRepository.find({
+        const syncNativeSchedule$ = from(this.scheduledEventRepository.find({
             where: nativeScheduleConditionOptions,
             order: patchedOrderSearchOption,
             take: ensuredTake,
             skip
-        })));
+        }));
 
         return syncNativeSchedule$
             .pipe(

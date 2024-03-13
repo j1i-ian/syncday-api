@@ -443,7 +443,7 @@ export class UserService {
         const defaultAvailability = this.utilService.getDefaultAvailability(language, timezone);
 
         return isVerifiedPhoneNumber$.pipe(
-            mergeMap(() => defer(() => from(this.datasource.transaction((transactionManager) =>
+            mergeMap(() =>  from(this.datasource.transaction((transactionManager) =>
                 firstValueFrom(from(this._createUser(
                     transactionManager,
                     newUser,
@@ -478,7 +478,7 @@ export class UserService {
                     )
                 ))
             ))
-            )));
+            ));
     }
 
     async _createUser(

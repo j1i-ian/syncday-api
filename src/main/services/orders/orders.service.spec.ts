@@ -94,12 +94,13 @@ describe('OrdersService', () => {
             });
             const teamIdMock = stubOne(Team).id;
 
-            const prorationMock = 0;
-            const expectedTotalPrice = productMock.price * orderStub.unit;
-            const expectedMemo = `${productMock.name}, ${productMock.price} * ${orderStub.unit} - ${prorationMock} = ${expectedTotalPrice}`;
+            const prorationMock = productMock.price * orderStub.unit;
+            const discountPrice = 0;
+            const expectedMemo = `${productMock.name}, ${productMock.price} * ${orderStub.unit} - ${discountPrice} = ${prorationMock}`;
+
             const createOrderStub = stubOne(Order, {
                 unit,
-                amount: expectedTotalPrice,
+                amount: prorationMock,
                 memo: expectedMemo,
                 status: OrderStatus.CHECKOUT
             });

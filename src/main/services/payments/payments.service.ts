@@ -3,7 +3,7 @@ import { EntityManager } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { Observable, combineLatestWith, concatMap, defaultIfEmpty, defer, filter, from, map, mergeMap, of, zip } from 'rxjs';
+import { Observable, combineLatestWith, concatMap, defaultIfEmpty, filter, from, map, mergeMap, of, zip } from 'rxjs';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { PaymentStatus } from '@interfaces/payments/payment-status.enum';
@@ -112,12 +112,12 @@ export class PaymentsService {
         isPartialCancelation: boolean
     ): Observable<boolean> {
 
-        return defer(() => from(this.paymentRedisRepository.getPGPaymentResult(relatedOrder.uuid)))
+        return from(this.paymentRedisRepository.getPGPaymentResult(relatedOrder.uuid))
             .pipe(
                 filter((pgPaymentResult) => pgPaymentResult.status !== BootpayPGPaymentStatus.CANCELLED),
                 combineLatestWith(of(new BootpayService())),
                 mergeMap(([pgPaymentResult, bootpayService]) =>
-                    defer(() => from(bootpayService.init(this.bootpayConfiguration)))
+                    from(bootpayService.init(this.bootpayConfiguration))
                         .pipe(
                             concatMap(() => bootpayService.refund(
                                 relatedOrder.uuid,

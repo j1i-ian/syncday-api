@@ -1,4 +1,4 @@
-import { Observable, defer, forkJoin, from, map, mergeMap } from 'rxjs';
+import { Observable, forkJoin, from, map, mergeMap } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
@@ -40,9 +40,9 @@ export class EventsRedisRepository {
             readPipeline.get(_eventSettingKey);
         });
 
-        return defer(() => from(
+        return from(
             readPipeline.exec() as Promise<Array<[unknown, HostQuestion[] | NotificationInfo | EventSetting]>>
-        ))
+        )
             .pipe(
                 map((_results) => eventDetailUUIDs.reduce((eventDetailsRecord, _eventDetailUUID) => {
                     const [, _hostQuestions] = _results.shift() as [unknown, string];
@@ -67,7 +67,7 @@ export class EventsRedisRepository {
     getEventLinkStatus(workspace: string, link: string): Observable<boolean> {
         const eventLinkStatusKey = this.syncdayRedisService.getEventLinkStatusKey(workspace, link);
 
-        return defer(() => from(this.cluster.get(eventLinkStatusKey))).pipe(
+        return from(this.cluster.get(eventLinkStatusKey)).pipe(
             map((result) => {
                 const isValidString = !!result && result !== '';
                 const _ensuredResult = isValidString ? JSON.parse(result) as boolean: false;
@@ -79,9 +79,9 @@ export class EventsRedisRepository {
     getHostQuestions(eventDetailUUID: string): Observable<HostQuestion[]> {
         const hostQuestionsKey = this.syncdayRedisService.getHostQuestionsKey(eventDetailUUID);
 
-        return defer(() => from(
+        return from(
             this.cluster.get(hostQuestionsKey)
-        )).pipe(
+        ).pipe(
             map((result) => {
                 const isValidString = !!result && result !== '';
                 const _ensuredHostQuestions = isValidString ? JSON.parse(result) as HostQuestion[] : [];
@@ -93,9 +93,9 @@ export class EventsRedisRepository {
     getNotificationInfo(eventDetailUUID: string): Observable<NotificationInfo> {
         const notificationInfoKey = this.syncdayRedisService.getNotificationInfoKey(eventDetailUUID);
 
-        return defer(() => from(
+        return from(
             this.cluster.get(notificationInfoKey)
-        )).pipe(
+        ).pipe(
             map((result) => {
                 const isValidString = !!result && result !== '';
                 const _ensuredNotificationInfo = isValidString ? JSON.parse(result) as NotificationInfo : {};
@@ -107,9 +107,9 @@ export class EventsRedisRepository {
     getEventSetting(eventDetailUUID: string): Observable<EventSetting> {
         const eventSettingKey = this.syncdayRedisService.getEventSettingKey(eventDetailUUID);
 
-        return defer(() => from(
+        return from(
             this.cluster.get(eventSettingKey)
-        )).pipe(
+        ).pipe(
             map((result) => {
                 const isValidString = !!result && result !== '';
                 const _ensuredEventSetting = isValidString ? JSON.parse(result) : {};

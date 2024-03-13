@@ -86,9 +86,9 @@ export class TeamService {
 
         const patchedQueryBuilder = this.__getTeamOptionQuery(option, userId, teamQueryBuilder);
 
-        return defer(() => from(
+        return from(
             patchedQueryBuilder.getMany()
-        ));
+        );
     }
 
     get(
@@ -115,9 +115,9 @@ export class TeamService {
                 tap((_patchedQueryBuilder) => {
                     _patchedQueryBuilder.andWhere('team.id = :teamId', { teamId });
                 }),
-                mergeMap((_patchedQueryBuilder) => defer(() => from(
+                mergeMap((_patchedQueryBuilder) => from(
                     _patchedQueryBuilder.getOneOrFail())
-                )),
+                ),
                 zipWith(invitationCount$),
                 map(([team, invitationCount]) => {
                     team.memberCount += invitationCount;
@@ -141,7 +141,7 @@ export class TeamService {
             }
             : {};
 
-        return defer(() => from(
+        return from(
             this.teamRepository.findOneOrFail({
                 where: {
                     teamSetting: {
@@ -159,7 +159,7 @@ export class TeamService {
                     }
                 }
             })
-        ));
+        );
     }
 
     /**
@@ -471,7 +471,7 @@ export class TeamService {
         teamId: number,
         patchTeamRequestDto: Pick<Team, 'name' | 'logo'>
     ): Observable<boolean> {
-        return defer(() => from(
+        return from(
             this.teamRepository.update(
                 { id: teamId },
                 {
@@ -479,7 +479,7 @@ export class TeamService {
                     logo: patchTeamRequestDto.logo
                 }
             )
-        )).pipe(
+        ).pipe(
             map((updateResult) => !!(updateResult &&
                 updateResult.affected &&
                 updateResult.affected > 0))
@@ -587,7 +587,7 @@ export class TeamService {
                     );
             }),
             mergeMap((exception) =>
-                defer(() => from(this.datasource.transaction((transactionManager) =>
+                from(this.datasource.transaction((transactionManager) =>
                     firstValueFrom(
                         concat(
                             this.teamSettingService._delete(
@@ -613,7 +613,7 @@ export class TeamService {
                             defaultIfEmpty(true)
                         )
                     )
-                ))).pipe(
+                )).pipe(
                     tap(() => {
                         if (exception instanceof BootpayException) {
                             throw exception;

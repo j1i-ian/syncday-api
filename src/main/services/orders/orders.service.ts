@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, FindOptionsWhere, In, IsNull, Raw, Repository } from 'typeorm';
-import { Observable, defer, from, map, mergeMap, of } from 'rxjs';
+import { Observable, from, map, mergeMap, of } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { Orderer } from '@interfaces/orders/orderer.interface';
@@ -45,14 +45,14 @@ export class OrdersService {
 
         const skip = page * take;
 
-        return defer(() => from(this.orderRepository.find({
+        return from(this.orderRepository.find({
             where: findOptionsWhere,
             order: {
                 createdAt: 'DESC'
             },
             skip,
             take
-        })));
+        }));
     }
 
     fetch(searchOptions: {
@@ -106,10 +106,10 @@ export class OrdersService {
             } as FindOptionsWhere<Order>;
         }
 
-        return defer(() => from(this.orderRepository.findOne({
+        return from(this.orderRepository.findOne({
             relations: ['team'],
             where: findOptionsWhere
-        })));
+        }));
     }
 
     async _create(
@@ -118,18 +118,18 @@ export class OrdersService {
         unit: number,
         option: OrderOption,
         teamId: number,
-        proration = 0,
+        proration: number,
         orderer?: Orderer
     ): Promise<Order> {
         const orderRepository = transactionManager.getRepository(Order);
 
-        const discountedPrice = product.price * unit - proration;
-        const memo = `${product.name}, ${product.price} * ${unit} - ${proration} = ${discountedPrice}`;
+        const discountPrice = product.price * unit - proration;
+        const memo = `${product.name}, ${product.price} * ${unit} - ${discountPrice} = ${proration}`;
 
         const createdOrder = orderRepository.create({
             name: product.name,
             unit,
-            amount: discountedPrice,
+            amount: proration,
             option,
             productId: product.id,
             status: OrderStatus.CHECKOUT,
@@ -151,7 +151,7 @@ export class OrdersService {
 
         return of(transactionManager.getRepository(Order))
             .pipe(
-                mergeMap((orderRepository) => defer(() => from(orderRepository.update(orderId, partialOrder)))),
+                mergeMap((orderRepository) => from(orderRepository.update(orderId, partialOrder))),
                 map((updateResult) => !!(updateResult.affected && updateResult.affected > 0))
             );
     }

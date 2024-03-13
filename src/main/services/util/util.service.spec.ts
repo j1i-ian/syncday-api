@@ -299,6 +299,16 @@ describe('UtilService', () => {
     });
 
     describe('Proration Test', () => {
+        let serviceSandbox: sinon.SinonSandbox;
+
+        beforeEach(() => {
+            serviceSandbox = sinon.createSandbox();
+        });
+
+        afterEach(() => {
+            serviceSandbox.restore();
+        });
+
         it('should be calculated that the proration for an amount of 26,970, results in whole numbers of 870', () => {
             const amountMock = 26970;
 
@@ -332,6 +342,25 @@ describe('UtilService', () => {
             const expectedProrationDate = (31 - 15 - teamCreationDayIsService);
 
             const expectedProration = (amountMock / 31) * expectedProrationDate;
+
+            expect(actualProration).ok;
+            expect(actualProration).equals(expectedProration);
+        });
+
+        it('should be calculated that the proration for #799', () => {
+            const expectedProration = 650;
+
+            const amountMock = 5000;
+            const prorationDateStub = 4;
+
+            const teamCreationDate = new Date('2024-02-16T00:24:22.909Z');
+
+            const actualProration = service.getProration(
+                amountMock,
+                teamCreationDate
+            );
+
+            serviceSandbox.stub(service, 'getProration').returns(prorationDateStub);
 
             expect(actualProration).ok;
             expect(actualProration).equals(expectedProration);

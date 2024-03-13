@@ -3,7 +3,7 @@ import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { firstValueFrom } from 'rxjs';
+import { defer, firstValueFrom } from 'rxjs';
 import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 import { AppleIntegrationsSchedulesService } from '@services/integrations/apple-integrations/apple-integrations-schedules/apple-integrations-schedules.service';
 import { AppleIntegrationFacadeService } from '@services/integrations/apple-integrations/apple-integration-facade.service';
@@ -124,7 +124,7 @@ describe('AppleIntegrationsService', () => {
 
                 const appleIntegrationMock = stubOne(AppleCalDAVIntegration);
 
-                const validate$ = service.validate(appleIntegrationMock);
+                const validate$ = defer(() => service.validate(appleIntegrationMock));
 
                 if (shouldThrowException) {
                     await expect(firstValueFrom(validate$)).rejected;
