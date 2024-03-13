@@ -544,6 +544,7 @@ export class EventsService {
         return clonedEvent;
     }
 
+    // TODO: Remove or Connect to controller
     async linkToProfiles(
         teamId: number,
         eventProfiles: EventProfile[]
@@ -567,21 +568,18 @@ export class EventsService {
         eventProfiles: EventProfile[]
     ): Promise<boolean> {
 
+        const eventIds = eventProfiles.map((_eventProfile) => _eventProfile.eventId);
+
         const _eventProfileRepository = transactionManager.getRepository(EventProfile);
 
-        await Promise.all(
-            eventProfiles.map((_eventProfile) => {
-                _eventProfileRepository.update(
-                    {
-                        eventId: _eventProfile.eventId,
-                        profileId: _eventProfile.profileId
-                    },
-                    _eventProfile
-                );
-            })
-        );
+        const deleteResult = await _eventProfileRepository.delete({
+            eventId: In(eventIds)
+        });
+        const deleteSuccess = !!(deleteResult && deleteResult.affected && deleteResult.affected > 0);
 
-        return true;
+        await _eventProfileRepository.save(eventProfiles);
+
+        return deleteSuccess;
     }
 
     async linkToAvailability(
