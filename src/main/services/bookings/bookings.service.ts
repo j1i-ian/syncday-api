@@ -8,6 +8,7 @@ import { AvailabilityService } from '@services/availability/availability.service
 import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
 import { TeamService } from '@services/team/team.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { UtilService } from '@services/util/util.service';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
@@ -23,6 +24,7 @@ export class BookingsService {
         private readonly availabilityService: AvailabilityService,
         private readonly eventService: EventsService,
         private readonly scheduledEventsService: GlobalScheduledEventsService,
+        private readonly utilService: UtilService,
         private readonly timeUtilService: TimeUtilService
     ) {}
 
@@ -98,7 +100,17 @@ export class BookingsService {
                         newScheduledEvent,
                         loadedTeam,
                         loadedTeam.profiles[0].user,
-                        loadedTeam.profiles,
+                        loadedTeam.profiles.map((_profile) => {
+                            const { preferredTimezone, preferredLanguage } = _profile.user.userSetting;
+
+                            return this.utilService.convertToHostProfile(
+                                _profile.user,
+                                _profile,
+                                teamWorkspace,
+                                preferredTimezone,
+                                preferredLanguage
+                            );
+                        }),
                         hostAvailability
                     )
                 )

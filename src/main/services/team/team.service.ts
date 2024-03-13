@@ -137,6 +137,13 @@ export class TeamService {
                     events: {
                         uuid: eventUUID
                     }
+                },
+                profiles: {
+                    eventProfiles: {
+                        event: {
+                            uuid: eventUUID
+                        }
+                    }
                 }
             }
             : {};

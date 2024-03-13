@@ -10,19 +10,21 @@ import { Role } from '@interfaces/profiles/role.enum';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
+import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
+import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
-import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { NotificationTarget } from '@entity/scheduled-events/notification-target.enum';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
-import { UserSetting } from '@entity/users/user-setting.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { Team } from '@entity/teams/team.entity';
+import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.entity';
+import { UserSetting } from '@entity/users/user-setting.entity';
 import { Language } from '../../enums/language.enum';
 import { faker } from '@faker-js/faker';
 import { TestMockUtil } from '@test/test-mock-util';
@@ -732,15 +734,27 @@ describe('UtilService', () => {
         });
 
         it('should be got patched scheduled event with source event', () => {
-            const userSettingStub = stubOne(UserSetting);
-            const userMock = stubOne(User, {
-                userSetting: userSettingStub
-            });
+
             const profileMock = stubOne(Profile);
-            const eventDetailMock = stubOne(EventDetail);
+            const userMock = stubOne(User);
+            const userSettingMock = stubOne(UserSetting);
+
+            const hostProfileMock = {
+                profileId: profileMock.id,
+                profileUUID: profileMock.uuid,
+                name: profileMock.name,
+                email: userMock.email,
+                phone: userMock.phone,
+                timezone: userSettingMock.preferredTimezone,
+                language: userSettingMock.preferredLanguage,
+                workspace: ''
+            } as HostProfile;
+
+            const eventDetailMock = stubOne(EventDetail, {
+                notificationInfo: {}
+            });
             const teamMock = stubOne(Team);
             const teamSetting = stubOne(TeamSetting);
-            const availability = stubOne(Availability);
             const eventMock = stubOne(Event, {
                 name: faker.name.fullName(),
                 color: faker.color.rgb(),
@@ -756,18 +770,68 @@ describe('UtilService', () => {
 
             const patchedSchedule = service.getPatchedScheduledEvent(
                 teamMock,
-                userMock,
-                profileMock,
-                [profileMock],
+                hostProfileMock,
+                [hostProfileMock],
                 eventMock,
                 newScheduledEventMock,
-                teamSetting.workspace,
-                availability.timezone
+                teamSetting.workspace
             );
 
             expect(patchedSchedule).ok;
             expect(patchedSchedule.name).contains(eventMock.name);
             expect(patchedSchedule.color).equals(eventMock.color);
+        });
+
+        describe('Test scheduled event notification patch', () => {
+
+            // TODO:
+            [
+                {
+                    description: 'should be generaated the scheduled event notifications for host, invitee',
+                    sourceNotificationInfoMock: {
+                        host: [ { type: 'email', reminders: [ { 'remindBefore': '01:00:00' } ] } ],
+                        invitee: [ { type: 'email', reminders: [ { 'remindBefore': '01:00:00' } ] } ]
+                    } as NotificationInfo,
+                    notificationInfoMock: {
+                        host: [ { type: 'email', reminders: [ { 'remindBefore': '01:00:00' } ] } ],
+                        invitee: [ { type: 'email', reminders: [ { 'remindBefore': '01:00:00' } ] } ]
+                    } as NotificationInfo
+                },
+                {
+                    description: 'should be generaated the scheduled event notifications for host, invitee including other hosts of event types',
+                    sourceNotificationInfoMock: {
+                        host: [ { type: 'email', reminders: [ { 'remindBefore': '01:00:00' } ] } ],
+                        invitee: [ { type: 'email', reminders: [ { 'remindBefore': '01:00:00' } ] } ]
+                    } as NotificationInfo,
+                    notificationInfoMock: {
+                        host: [ { type: 'email', reminders: [ { 'remindBefore': '01:00:00' } ] } ],
+                        invitee: [ { type: 'email', reminders: [ { 'remindBefore': '01:00:00' } ] } ]
+                    } as NotificationInfo
+                }
+            ].forEach(function({
+                description,
+                sourceNotificationInfoMock,
+                notificationInfoMock
+            }) {
+                it(description, () => {
+
+                    const hostProfileMock = stubOne(Profile) as unknown as HostProfile;
+                    const scheduledEventMock = stubOne(ScheduledEvent, {
+                        scheduledTime: {
+                            startTimestamp: new Date()
+                        } as ScheduledTimeset
+                    });
+
+                    const actualNewScheduledEventNotifications = service.getPatchedScheduleNotification(
+                        hostProfileMock,
+                        scheduledEventMock,
+                        sourceNotificationInfoMock,
+                        notificationInfoMock
+                    );
+
+                    expect(actualNewScheduledEventNotifications.length).ok;
+                });
+            });
         });
     });
 

@@ -9,6 +9,7 @@ import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee
 import { PageOption } from '@core/interfaces/page-option.interface';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
 import { EventsService } from '@services/events/events.service';
 import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
 import { UtilService } from '@services/util/util.service';
@@ -22,7 +23,6 @@ import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/goo
 import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
 import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { Contact } from '@entity/events/contact.entity';
-import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { Availability } from '@entity/availability/availability.entity';
@@ -107,7 +107,7 @@ export class GlobalScheduledEventsService {
         newScheduledEvent: ScheduledEvent,
         team: Team,
         host: User,
-        hostProfiles: Profile[],
+        hostProfiles: HostProfile[],
         hostAvailability: Availability
     ): Observable<ScheduledEvent> {
         return this._create(
@@ -152,7 +152,7 @@ export class GlobalScheduledEventsService {
         newScheduledEvent: ScheduledEvent,
         team: Team,
         host: User,
-        hostProfiles: Profile[],
+        hostProfiles: HostProfile[],
         hostAvailability: Availability
     ): Observable<ScheduledEvent> {
 
@@ -175,7 +175,7 @@ export class GlobalScheduledEventsService {
                 concatMap(
                     (calendarIntegrationService) => calendarIntegrationService.findOne({
                         outboundWriteSync: true,
-                        profileId: hostProfiles[0].id
+                        profileId: hostProfiles[0].profileId
                     })
                 )
             );
@@ -189,13 +189,11 @@ export class GlobalScheduledEventsService {
                     } as AvailabilityBody),
                     of(this.utilService.getPatchedScheduledEvent(
                         team,
-                        host,
                         hostProfiles[0],
                         hostProfiles,
                         event,
                         newScheduledEvent,
-                        teamWorkspace,
-                        hostAvailability.timezone
+                        teamWorkspace
                     )),
                     loadedOutboundCalendarIntegration$,
                     of(hostAvailability.timezone),
@@ -278,7 +276,7 @@ export class GlobalScheduledEventsService {
                                             const integrationFactory = this.integrationsServiceLocator.getIntegrationFactory(integrationVendor);
 
                                             const loadedIntegration$ = from(integrationFactory.findOne({
-                                                profileId: hostProfiles[0].id
+                                                profileId: hostProfiles[0].profileId
                                             }));
 
                                             return loadedIntegration$.pipe(

@@ -643,13 +643,11 @@ export class UtilService {
 
     getPatchedScheduledEvent(
         team: Team,
-        hostUser: User,
-        mainProfile: Profile,
-        profiles: Profile[],
+        mainHostProfile: HostProfile,
+        hostProfiles: HostProfile[],
         sourceEvent: Event,
         newScheduledEvent: ScheduledEvent,
-        workspace: string,
-        timezone: string
+        workspace: string
     ): ScheduledEvent {
         newScheduledEvent.uuid = this.generateUUID();
         newScheduledEvent.name = sourceEvent.name;
@@ -663,30 +661,39 @@ export class UtilService {
         newScheduledEvent.scheduledNotificationInfo.host = sourceEvent.eventDetail.notificationInfo?.host;
         newScheduledEvent.conferenceLinks = [];
 
-        const language = hostUser.userSetting.preferredLanguage;
-
         newScheduledEvent.host = {
-            uuid: mainProfile.uuid,
-            name: mainProfile.name,
+            uuid: mainHostProfile.profileUUID,
+            name: mainHostProfile.name,
             workspace
         } as Host;
 
-        newScheduledEvent.hostProfiles = profiles.map((_profile) => ({
-            profileId: _profile.id,
-            profileUUID: _profile.uuid,
-            name: _profile.name,
-            workspace,
-            timezone,
-            language
-        } as HostProfile));
+        newScheduledEvent.hostProfiles = hostProfiles;
 
-        newScheduledEvent.scheduledEventNotifications = this.getPatchedScheduleNotification(
-            hostUser,
-            mainProfile,
-            newScheduledEvent,
-            sourceEvent.eventDetail.notificationInfo,
-            newScheduledEvent.scheduledNotificationInfo
-        );
+        let _allScheduledEventNotifications: ScheduledEventNotification[] = [];
+
+        const notificationInfo = sourceEvent.eventDetail.notificationInfo;
+        const host = notificationInfo.host;
+        let invitee = notificationInfo.invitee;
+
+        for (const hostProfile of newScheduledEvent.hostProfiles) {
+
+            const _generatedScheduledEventNotifications = this.getPatchedScheduleNotification(
+                hostProfile,
+                newScheduledEvent,
+                {
+                    host,
+                    invitee
+                },
+                newScheduledEvent.scheduledNotificationInfo
+            );
+
+            _allScheduledEventNotifications = _allScheduledEventNotifications.concat(_generatedScheduledEventNotifications);
+
+            // Invitee notifications should only be generated  once
+            invitee = undefined;
+        }
+
+        newScheduledEvent.scheduledEventNotifications = _allScheduledEventNotifications;
 
         // patch consumerable data
         newScheduledEvent.teamId = team.id;
@@ -697,10 +704,28 @@ export class UtilService {
         return newScheduledEvent;
     }
 
+    convertToHostProfile(
+        user: User,
+        profile: Profile,
+        workspace: string,
+        timezone: string,
+        language: Language
+    ): HostProfile {
+        return {
+            profileId: profile.id,
+            profileUUID: profile.uuid,
+            name: profile.name,
+            email: user.email,
+            phone: user.phone,
+            workspace,
+            timezone,
+            language
+        } as HostProfile;
+    }
+
     // FIXME: it should be replaced with scheduled event notification creating directly.
     getPatchedScheduleNotification(
-        hostUser: User,
-        mainProfile: Profile,
+        hostProfile: HostProfile,
         scheduledEvent: ScheduledEvent,
         sourceNotificationInfo: NotificationInfo,
         notificationInfo: NotificationInfo
@@ -714,11 +739,11 @@ export class UtilService {
 
                 const mergedNotifications: Notification[] = _notifications.map((_scheduleNotification) => {
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any
-                    const matchedHostNotification = (sourceNotificationInfo as any)[_hostOrInvitee]?.find(
+                    const matchedNotification = (sourceNotificationInfo as any)[_hostOrInvitee]?.find(
                         (_sourceNotification: { type: NotificationType }) => _sourceNotification.type === _scheduleNotification.type
                     ) as Notification;
 
-                    const sourceReminder = matchedHostNotification?.reminders[0];
+                    const sourceReminder = matchedNotification?.reminders[0];
 
                     _scheduleNotification.reminders = _scheduleNotification.reminders.map((_scheduleNotificationReminder) => ({
                         ..._scheduleNotificationReminder,
@@ -741,10 +766,10 @@ export class UtilService {
                     if (isHost) {
                         const noHostPhone =
                             _notification.type === NotificationType.TEXT
-                            && !hostUser.phone;
+                            && !hostProfile.phone;
                         const noHostEmail =
                             _notification.type === NotificationType.EMAIL
-                            && !hostUser.email;
+                            && !hostProfile.email;
                         isValid = !noHostPhone && !noHostEmail;
                     } else {
                         isValid = true;
@@ -764,14 +789,13 @@ export class UtilService {
                             const isValidInviteeReminder = isHost === false && found;
                             const isValidReminder = isHost ? true : isValidInviteeReminder;
 
-                            console.log(isValidReminder);
                             return isValidReminder;
                         })
                         .map((__reminder) => {
 
                             const hostOrInviteeReminderValue = isHost ?
                                 this.getHostValue(
-                                    hostUser,
+                                    hostProfile,
                                     _notification.type
                                 ) : (__reminder as ScheduledReminder).typeValue;
 
@@ -789,7 +813,7 @@ export class UtilService {
                                 reminderType: __reminder.type,
                                 reminderValue: hostOrInviteeReminderValue,
                                 remindAt,
-                                profileId: mainProfile.id
+                                profileId: hostProfile.profileId
                             } as ScheduledEventNotification;
                         })
                 );
@@ -801,16 +825,16 @@ export class UtilService {
     }
 
     getHostValue(
-        host: User,
+        hostOrHostProfile: User | HostProfile,
         notificationType: NotificationType
     ): string {
 
         let value: string;
 
-        if (notificationType === NotificationType.EMAIL && host.email) {
-            value = host.email;
-        } else if (notificationType === NotificationType.TEXT && host.phone) {
-            value = host.phone;
+        if (notificationType === NotificationType.EMAIL && hostOrHostProfile.email) {
+            value = hostOrHostProfile.email;
+        } else if (notificationType === NotificationType.TEXT && hostOrHostProfile.phone) {
+            value = hostOrHostProfile.phone;
         } else {
             throw new InternalServerErrorException('Invalid notification type and host setting');
         }

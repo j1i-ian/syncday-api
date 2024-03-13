@@ -5,6 +5,7 @@ import { AvailabilityService } from '@services/availability/availability.service
 import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
 import { TeamService } from '@services/team/team.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { UtilService } from '@services/util/util.service';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
@@ -19,6 +20,7 @@ describe('BookingsService', () => {
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
     let availabilityServiceStub: sinon.SinonStubbedInstance<AvailabilityService>;
     let schedulesServiceStub: sinon.SinonStubbedInstance<GlobalScheduledEventsService>;
+    let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let timeUtilServiceStub: sinon.SinonStubbedInstance<TimeUtilService>;
 
     before(async () => {
@@ -27,6 +29,7 @@ describe('BookingsService', () => {
         availabilityServiceStub = sinon.createStubInstance(AvailabilityService);
         eventsServiceStub = sinon.createStubInstance(EventsService);
         schedulesServiceStub = sinon.createStubInstance(GlobalScheduledEventsService);
+        utilServiceStub = sinon.createStubInstance(UtilService);
         timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
 
         const module: TestingModule = await Test.createTestingModule({
@@ -47,6 +50,10 @@ describe('BookingsService', () => {
                 {
                     provide: GlobalScheduledEventsService,
                     useValue: schedulesServiceStub
+                },
+                {
+                    provide: UtilService,
+                    useValue: utilServiceStub
                 },
                 {
                     provide: TimeUtilService,
