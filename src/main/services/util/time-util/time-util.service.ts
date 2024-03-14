@@ -1,5 +1,7 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Attendee, DateArray, createEvent } from 'ics';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { TimezoneOffset } from '@core/interfaces/integrations/timezone-offset.interface';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { TimeSlotCompare } from '@interfaces/scheduled-events/time-slot-compare.enum';
@@ -14,8 +16,12 @@ type LocalizedDate = {
     [key in keyof Intl.DateTimeFormatOptions]: string;
 };
 
+type TimeRangeArray = [TimeRange[], TimeRange[]];
+
 @Injectable()
 export class TimeUtilService {
+
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
 
     intersectAvailability(
         availabilityA: Availability,
@@ -41,10 +47,20 @@ export class TimeUtilService {
             availableTimesA,
             availableTimesB
         );
+
+        this.logger.info({
+            overridedAvailableTimesA,
+            overridedAvailableTimesB
+        });
+
         const intersectOverridedAvailableTimes = this.intersectOverridedAvailableTimes(
             overridedAvailableTimesA,
             overridedAvailableTimesB
         );
+
+        this.logger.info({
+            intersectOverridedAvailableTimes
+        });
 
         const intersectAvailability = new Availability({
             availableTimes: intersectAvailableTimes,
@@ -62,100 +78,94 @@ export class TimeUtilService {
 
         const intersectOverridedAvailableTimes: OverridedAvailabilityTime[] = [];
 
-        const unavailableDateTimeRangeSet = new Set<string>();
-        const availableTimeMapByTargetDate = new Map<string, {
-            a: TimeRange[];
-            b: TimeRange[];
-        }>();
+        // Map<ISODateString, [TimeRangeA[], TimeRangesB[]]>
+        const intersectOverrideMap = new Map<string, Partial<TimeRangeArray>>();
 
-        for (const overridedAvailableTimeA of overridedAvailableTimesA) {
-            for (const overridedAvailableTimeB of overridedAvailableTimesB) {
+        const allOverrides = overridedAvailableTimesA.concat(overridedAvailableTimesB);
 
-                const isSameDate = new Date(overridedAvailableTimeA.targetDate).toISOString() === new Date(overridedAvailableTimeB.targetDate).toISOString();
+        allOverrides.forEach(({
+            targetDate: _targetDate,
+            timeRanges
+        }) => {
 
-                const isAvailableOverrideTimeA = overridedAvailableTimeA.timeRanges.length > 0;
-                const isAvailableOverrideTimeB = overridedAvailableTimeB.timeRanges.length > 0;
-                const isAvailableSetting = isAvailableOverrideTimeA && isAvailableOverrideTimeB;
+            const ensuredTargetDate = new Date(_targetDate);
+            const _targetDateISOString = ensuredTargetDate.toISOString();
 
-                if (isSameDate && isAvailableSetting) {
+            let _timeRangesArray: Partial<TimeRangeArray> = [];
 
-                    const targetDate = new Date(overridedAvailableTimeA.targetDate);
-                    const targetDateString = targetDate.toISOString();
-
-                    availableTimeMapByTargetDate.set(targetDateString, {
-                        a: overridedAvailableTimeA.timeRanges,
-                        b: overridedAvailableTimeB.timeRanges
-                    });
-                } else {
-                    if (isAvailableOverrideTimeA === false) {
-                        const dateString = new Date(overridedAvailableTimeA.targetDate).toISOString();
-
-                        unavailableDateTimeRangeSet.add(dateString);
-                    }
-
-                    if (isAvailableOverrideTimeB === false) {
-                        const dateString = new Date(overridedAvailableTimeB.targetDate).toISOString();
-
-                        unavailableDateTimeRangeSet.add(dateString);
-                    }
-                }
+            if (intersectOverrideMap.has(_targetDateISOString)) {
+                _timeRangesArray = intersectOverrideMap.get(_targetDateISOString) as Partial<TimeRangeArray>;
+                _timeRangesArray.push(timeRanges);
+            } else {
+                _timeRangesArray = [timeRanges];
             }
-        }
 
-        const unavailableInterator = unavailableDateTimeRangeSet.entries();
+            intersectOverrideMap.set(_targetDateISOString, _timeRangesArray);
+        });
 
-        let unavailableInterationDone = true;
+        const iterator = intersectOverrideMap.entries();
+
+        let isIntersectionDone = false;
 
         do {
-            const { value, done } = unavailableInterator.next() as { value: [string, string]; done: boolean };
 
-            unavailableInterationDone = done ?? true;
+            const {
+                value,
+                done
+            } = iterator.next();
 
-            if (done === false) {
+            isIntersectionDone = done ?? true;
 
-                const [ dateString ] = value;
+            if (done === true) {
+                break;
+            }
+
+            const [ _targetDateISOString, _timeRangesArray ] = value;
+            const _targetDate = new Date(_targetDateISOString);
+            const [ _timeRangesA, _timeRangesB ] = _timeRangesArray as TimeRangeArray;
+
+            const _isUniqueOverride = _timeRangesA === undefined || _timeRangesB === undefined;
+            const _isUnavailableOverride = _timeRangesA
+                && _timeRangesB
+                && (_timeRangesA.length === 0 || _timeRangesB.length === 0);
+            const _isIntersect = _timeRangesA
+                && _timeRangesB
+                && _timeRangesA.length > 0
+                && _timeRangesB.length > 0;
+
+            if (_isUniqueOverride) {
+                const _ensturedTimeRange = _timeRangesA || _timeRangesB;
 
                 intersectOverridedAvailableTimes.push({
-                    targetDate: new Date(dateString ),
+                    targetDate: _targetDate,
+                    timeRanges: _ensturedTimeRange
+                });
+            } else if (_isUnavailableOverride) {
+                // Unavailable
+                intersectOverridedAvailableTimes.push({
+                    targetDate: _targetDate,
                     timeRanges: []
                 });
-            }
-        } while(unavailableInterationDone === false);
-
-        if (availableTimeMapByTargetDate.size !== 0) {
-            const interator = availableTimeMapByTargetDate.entries();
-
-            while (true) {
-                const { value, done } = interator.next();
-
-                if (done) {
-                    break;
-                }
-
-                const targetDateString = value[0] ;
-                const {
-                    a: timeRangesA,
-                    b: timeRangesB
-                } = value[1] as {
-                    a: TimeRange[];
-                    b: TimeRange[];
-                };
-
-                const intersectTimeRanges = this.intersectTimeRanges(
-                    timeRangesA,
-                    timeRangesB
+            } else if (_isIntersect) {
+                const __intersectTimeRanges = this.intersectTimeRanges(
+                    _timeRangesA,
+                    _timeRangesB
                 );
-
-                if (intersectTimeRanges.length > 0) {
-                    intersectOverridedAvailableTimes.push({
-                        targetDate: new Date(targetDateString),
-                        timeRanges: intersectTimeRanges
-                    } as OverridedAvailabilityTime);
-                }
+                intersectOverridedAvailableTimes.push({
+                    targetDate: _targetDate,
+                    timeRanges: __intersectTimeRanges
+                } as OverridedAvailabilityTime);
+            } else {
+                throw new BadRequestException('oh no');
             }
-        }
+        } while (isIntersectionDone === false);
 
-        return intersectOverridedAvailableTimes;
+        // Sort Descending
+        return intersectOverridedAvailableTimes
+            .sort(({ targetDate: targetDateA }, { targetDate: targetDateB }) =>
+                new Date(targetDateB).getTime() -
+                new Date(targetDateA).getTime()
+            );
     }
 
     intersectAvailableTimes(availableTimesA: AvailableTime[], availableTimesB: AvailableTime[]): AvailableTime[] {
