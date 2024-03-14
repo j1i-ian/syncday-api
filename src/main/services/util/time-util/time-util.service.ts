@@ -26,6 +26,7 @@ export class TimeUtilService {
             overrides: overridedAvailableTimesA,
             timezone: timezoneA
         } = availabilityA;
+
         const {
             availableTimes: availableTimesB,
             overrides: overridedAvailableTimesB,
@@ -61,6 +62,7 @@ export class TimeUtilService {
 
         const intersectOverridedAvailableTimes: OverridedAvailabilityTime[] = [];
 
+        const unavailableDateTimeRangeSet = new Set<string>();
         const availableTimeMapByTargetDate = new Map<string, {
             a: TimeRange[];
             b: TimeRange[];
@@ -70,9 +72,12 @@ export class TimeUtilService {
             for (const overridedAvailableTimeB of overridedAvailableTimesB) {
 
                 const isSameDate = new Date(overridedAvailableTimeA.targetDate).toISOString() === new Date(overridedAvailableTimeB.targetDate).toISOString();
-                const isNotUnavailableSetting = overridedAvailableTimeA.timeRanges.length > 0 && overridedAvailableTimeB.timeRanges.length > 0;
 
-                if (isSameDate && isNotUnavailableSetting) {
+                const isAvailableOverrideTimeA = overridedAvailableTimeA.timeRanges.length > 0;
+                const isAvailableOverrideTimeB = overridedAvailableTimeB.timeRanges.length > 0;
+                const isAvailableSetting = isAvailableOverrideTimeA && isAvailableOverrideTimeB;
+
+                if (isSameDate && isAvailableSetting) {
 
                     const targetDate = new Date(overridedAvailableTimeA.targetDate);
                     const targetDateString = targetDate.toISOString();
@@ -81,9 +86,41 @@ export class TimeUtilService {
                         a: overridedAvailableTimeA.timeRanges,
                         b: overridedAvailableTimeB.timeRanges
                     });
+                } else {
+                    if (isAvailableOverrideTimeA === false) {
+                        const dateString = new Date(overridedAvailableTimeA.targetDate).toISOString();
+
+                        unavailableDateTimeRangeSet.add(dateString);
+                    }
+
+                    if (isAvailableOverrideTimeB === false) {
+                        const dateString = new Date(overridedAvailableTimeB.targetDate).toISOString();
+
+                        unavailableDateTimeRangeSet.add(dateString);
+                    }
                 }
             }
         }
+
+        const unavailableInterator = unavailableDateTimeRangeSet.entries();
+
+        let unavailableInterationDone = true;
+
+        do {
+            const { value, done } = unavailableInterator.next() as { value: [string, string]; done: boolean };
+
+            unavailableInterationDone = done ?? true;
+
+            if (done === false) {
+
+                const [ dateString ] = value;
+
+                intersectOverridedAvailableTimes.push({
+                    targetDate: new Date(dateString ),
+                    timeRanges: []
+                });
+            }
+        } while(unavailableInterationDone === false);
 
         if (availableTimeMapByTargetDate.size !== 0) {
             const interator = availableTimeMapByTargetDate.entries();

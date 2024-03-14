@@ -357,12 +357,12 @@ describe('UtilService', () => {
 
             const teamCreationDate = new Date('2024-02-16T00:24:22.909Z');
 
+            serviceSandbox.stub(service, 'getProrationDate').returns(prorationDateStub);
+
             const actualProration = service.getProration(
                 amountMock,
                 teamCreationDate
             );
-
-            serviceSandbox.stub(service, 'getProration').returns(prorationDateStub);
 
             expect(actualProration).ok;
             expect(actualProration).equals(expectedProration);

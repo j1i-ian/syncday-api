@@ -81,39 +81,24 @@ describe('TimeUtilService', () => {
                 overridedAvailableTimesA: [
                     {
                         targetDate: new Date('2024-02-14T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '09:00',
-                                endTime: '17:00'
-                            }
-                        ]
+                        timeRanges: [{ startTime: '09:00', endTime: '17:00' }]
                     }
                 ] as OverridedAvailabilityTime[],
                 overridedAvailableTimesB: [
                     {
                         targetDate: new Date('2024-02-14T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '08:00',
-                                endTime: '19:00'
-                            }
-                        ]
+                        timeRanges: [{ startTime: '08:00', endTime: '19:00' }]
                     }
                 ] as OverridedAvailabilityTime[],
                 expected: [
                     {
                         targetDate: new Date('2024-02-14T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '09:00',
-                                endTime: '17:00'
-                            }
-                        ]
+                        timeRanges: [{ startTime: '09:00', endTime: '17:00' }]
                     }
                 ] as OverridedAvailabilityTime[]
             },
             {
-                description: 'should be calculated intersect overrided available times without unavailable overridings',
+                description: 'should be calculated intersect overrided available times with unavailable overridings',
                 overridedAvailableTimesA: [
                     {
                         targetDate: new Date('2024-02-14T00:00:00.000Z'),
@@ -121,119 +106,115 @@ describe('TimeUtilService', () => {
                     },
                     {
                         targetDate: new Date('2024-02-16T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '09:00',
-                                endTime: '17:00'
-                            }
-                        ]
+                        timeRanges: [{ startTime: '09:00', endTime: '17:00' }]
                     }
                 ] as OverridedAvailabilityTime[],
                 overridedAvailableTimesB: [
                     {
                         targetDate: new Date('2024-02-14T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '10:00',
-                                endTime: '19:00'
-                            }
-                        ]
+                        timeRanges: [{ startTime: '10:00', endTime: '19:00' }]
                     },
                     {
                         targetDate: new Date('2024-02-16T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '08:00',
-                                endTime: '19:00'
-                            }
-                        ]
+                        timeRanges: [{ startTime: '08:00', endTime: '19:00' }]
                     }
                 ] as OverridedAvailabilityTime[],
                 expected: [
                     {
+                        targetDate: new Date('2024-02-14T00:00:00.000Z'),
+                        timeRanges: []
+                    },
+                    {
                         targetDate: new Date('2024-02-16T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '09:00',
-                                endTime: '17:00'
-                            }
-                        ]
+                        timeRanges: [{ startTime: '09:00', endTime: '17:00' }]
                     }
                 ] as OverridedAvailabilityTime[]
             },
             {
-                description: 'should be calculated intersect overrided available times',
+                description: 'should be calculated intersect overrided available times including same date unavailable date',
                 overridedAvailableTimesA: [
-                    {
-                        targetDate: new Date('2024-02-15T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '09:00',
-                                endTime: '17:00'
-                            }
-                        ]
-                    },
-                    {
-                        targetDate: new Date('2024-02-16T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '09:00',
-                                endTime: '17:00'
-                            }
-                        ]
-                    }
-                ] as OverridedAvailabilityTime[],
-                overridedAvailableTimesB: [
-                    {
-                        targetDate: new Date('2024-02-15T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '08:00',
-                                endTime: '19:00'
-                            }
-                        ]
-                    },
-                    {
-                        targetDate: new Date('2024-02-16T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '00:00',
-                                endTime: '02:00'
-                            },
-                            {
-                                startTime: '13:00',
-                                endTime: '17:30'
-                            },
-                            {
-                                startTime: '18:00',
-                                endTime: '19:00'
-                            }
-                        ]
-                    },
                     {
                         targetDate: new Date('2024-02-18T00:00:00.000Z'),
                         timeRanges: []
-                    }
-                ] as OverridedAvailabilityTime[],
-                expected: [
+                    },
                     {
                         targetDate: new Date('2024-02-15T00:00:00.000Z'),
-                        timeRanges: [
-                            {
-                                startTime: '09:00',
-                                endTime: '17:00'
-                            }
-                        ]
+                        timeRanges: [{ startTime: '09:00', endTime: '17:00' }]
+                    },
+                    {
+                        targetDate: new Date('2024-02-16T00:00:00.000Z'),
+                        timeRanges: [{ startTime: '09:00', endTime: '17:00' }]
+                    }
+                ] as OverridedAvailabilityTime[],
+                overridedAvailableTimesB: [
+                    {
+                        targetDate: new Date('2024-02-18T00:00:00.000Z'),
+                        timeRanges: []
+                    },
+                    {
+                        targetDate: new Date('2024-02-15T00:00:00.000Z'),
+                        timeRanges: [{ startTime: '08:00', endTime: '19:00' }]
                     },
                     {
                         targetDate: new Date('2024-02-16T00:00:00.000Z'),
                         timeRanges: [
-                            {
-                                startTime: '13:00',
-                                endTime: '17:00'
-                            }
+                            { startTime: '00:00', endTime: '02:00' },
+                            { startTime: '13:00', endTime: '17:30' },
+                            { startTime: '18:00', endTime: '19:00' }
                         ]
                     }
+                ] as OverridedAvailabilityTime[],
+                expected: [
+                    {
+                        targetDate: new Date('2024-02-18T00:00:00.000Z'),
+                        timeRanges: []
+                    },
+                    {
+                        targetDate: new Date('2024-02-15T00:00:00.000Z'),
+                        timeRanges: [{ startTime: '09:00', endTime: '17:00' }]
+                    },
+                    {
+                        targetDate: new Date('2024-02-16T00:00:00.000Z'),
+                        timeRanges: [{ startTime: '13:00', endTime: '17:00' }]
+                    }
+                ] as OverridedAvailabilityTime[]
+            },
+            {
+                description: 'should be calculated intersect overrided available times for unavailable date with no same target date (#822)',
+                overridedAvailableTimesA: [
+                    { targetDate: new Date('2024-03-29T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-18T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-16T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-15T00:00:00.000Z'), timeRanges: [] }
+                ] as OverridedAvailabilityTime[],
+                overridedAvailableTimesB: [
+                    { targetDate: new Date('2024-03-27T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-26T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-25T00:00:00.000Z'), timeRanges: [] }
+                ] as OverridedAvailabilityTime[],
+                expected: [
+                    { targetDate: new Date('2024-03-29T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-27T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-26T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-25T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-18T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-16T00:00:00.000Z'), timeRanges: [] },
+                    { targetDate: new Date('2024-03-15T00:00:00.000Z'), timeRanges: [] }
+                ] as OverridedAvailabilityTime[]
+            },
+            {
+                description: 'should be ignored available date with unavailable date (#822)',
+                overridedAvailableTimesA: [
+                    {
+                        targetDate: new Date('2024-03-29T00:00:00.000Z'),
+                        timeRanges: [{ startTime: '13:00', endTime: '17:00' }]
+                    }
+                ] as OverridedAvailabilityTime[],
+                overridedAvailableTimesB: [
+                    { targetDate: new Date('2024-03-29T00:00:00.000Z'), timeRanges: [] }
+                ] as OverridedAvailabilityTime[],
+                expected: [
+                    { targetDate: new Date('2024-03-29T00:00:00.000Z'), timeRanges: [] }
                 ] as OverridedAvailabilityTime[]
             }
         ].forEach(function({
