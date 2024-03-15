@@ -448,7 +448,8 @@ export class UtilService {
          */
         const isSignIn = loadedUserOrNull &&
             loadedOAuth2AccountOrNull &&
-            integrationContext !== IntegrationContext.INTEGRATE;
+            integrationContext !== IntegrationContext.INTEGRATE &&
+            integrationContext !== IntegrationContext.CONTINUOUS_INTEGRATE;
 
         let ensureIntegrationContext = IntegrationContext.SIGN_IN;
 

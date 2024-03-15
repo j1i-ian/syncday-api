@@ -559,6 +559,13 @@ describe('UtilService', () => {
                 userStub: new User(),
                 oauth2AccountStub: null,
                 expectedIntegrationContext: IntegrationContext.INTEGRATE
+            },
+            {
+                description: 'should be ensured that the continuous integration context will be passed',
+                integrationContext: IntegrationContext.CONTINUOUS_INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                expectedIntegrationContext: IntegrationContext.CONTINUOUS_INTEGRATE
             }
         ].forEach(function({
             description,

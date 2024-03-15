@@ -212,13 +212,15 @@ export class TokenService {
                 });
                 break;
             case IntegrationContext.INTEGRATE:
+            case IntegrationContext.CONTINUOUS_INTEGRATE:
                 await oauth2TokenService.integrate(
                     oauth2UserProfile,
                     user as User,
                     profile as Profile,
                     (team as Team).teamSetting
                 );
-                isNewbie = false;
+
+                isNewbie = integrationContext === IntegrationContext.CONTINUOUS_INTEGRATE;
                 break;
             case IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN:
 
