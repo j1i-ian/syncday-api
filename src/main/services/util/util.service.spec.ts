@@ -734,6 +734,18 @@ describe('UtilService', () => {
             expect(patchedEvent).ok;
             expect(patchedEvent.link).equals(expectedEventLink);
         });
+
+        it('should be patched to ensure a event name to new event', () => {
+
+            const { defaultEvent } = service.getInitialEventGroupSetting({
+                hasPhoneNotification: true
+            });
+
+            const patchedEvent = service.patchDefaultEvent(defaultEvent, {});
+
+            expect(patchedEvent).ok;
+            expect(patchedEvent.name).ok;
+        });
     });
 
 

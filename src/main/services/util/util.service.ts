@@ -597,6 +597,7 @@ export class UtilService {
         const lowercasedLinkWithDashes = patchBody?.link?.toLowerCase().replaceAll(' ', '-') || userDefaultEvent.link;
 
         const initialEvent = new Event({
+            ...userDefaultEvent,
             ...patchBody,
             link: lowercasedLinkWithDashes
         });

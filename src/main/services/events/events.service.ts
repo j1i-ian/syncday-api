@@ -309,6 +309,13 @@ export class EventsService {
         // patch a default event to new event
         const patchedNewEvent = this.utilService.patchDefaultEvent(defaultEvent, newEvent);
 
+        this.logger.info({
+            message: 'Loaded & patched event',
+            defaultEvent,
+            newEvent,
+            patchedNewEvent
+        });
+
         const _eventRepository = manager.getRepository(Event);
 
         const initialEventProfile = {

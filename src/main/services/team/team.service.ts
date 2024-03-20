@@ -244,7 +244,7 @@ export class TeamService {
                         phone: owner.phone
                     } as Buyer;
 
-                    const proration = 0;
+                    const proration = loadedProduct.price;
 
                     this.logger.info({
                         message: 'New team is created. Trying to create an order',
