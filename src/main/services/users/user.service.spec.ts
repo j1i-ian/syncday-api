@@ -416,9 +416,8 @@ describe('Test User Service', () => {
             utilServiceStub.getDefaultAvailability.reset();
             availabilityServiceStub._create.reset();
 
-            utilServiceStub.getDefaultEvent.reset();
-
             eventGroupRepositoryStub.save.reset();
+            eventsRedisRepositoryStub.setEventGroupSetting.reset();
             eventsServiceStub._create.reset();
 
             serviceSandbox.reset();
@@ -464,9 +463,9 @@ describe('Test User Service', () => {
             utilServiceStub.getDefaultAvailability.returns(availabilityStub);
             availabilityServiceStub._create.resolves(availabilityStub);
 
-            utilServiceStub.getDefaultEvent.returns(defaultEventStub);
             eventsServiceStub._create.resolves(defaultEventStub);
             eventGroupRepositoryStub.save.resolves(eventGroupStub);
+            eventsRedisRepositoryStub.setEventGroupSetting.returns(of(true));
 
             const {
                 createdUser,
@@ -495,11 +494,11 @@ describe('Test User Service', () => {
             expect(profilesServiceStub._create.called).true;
 
             expect(userRepositoryStub.save.called).true;
-            expect(utilServiceStub.getDefaultEvent.called).true;
             expect(utilServiceStub.getDefaultAvailability.called).true;
             expect(availabilityServiceStub._create.called).true;
             expect(eventsServiceStub._create.called).true;
             expect(eventGroupRepositoryStub.save.called).true;
+            expect(eventsRedisRepositoryStub.setEventGroupSetting.called).true;
 
             expect(createdUser).ok;
             expect(createdProfile).ok;
@@ -617,9 +616,9 @@ describe('Test User Service', () => {
             utilServiceStub.getDefaultAvailability.returns(availabilityStub);
             availabilityServiceStub._create.resolves(availabilityStub);
 
-            utilServiceStub.getDefaultEvent.returns(defaultEventStub);
             eventsServiceStub._create.resolves(defaultEventStub);
             eventGroupRepositoryStub.save.resolves(eventGroupStub);
+            eventsRedisRepositoryStub.setEventGroupSetting.returns(of(true));
 
             const {
                 createdUser,
@@ -649,11 +648,11 @@ describe('Test User Service', () => {
             expect(profilesServiceStub._create.called).true;
 
             expect(userRepositoryStub.save.called).true;
-            expect(utilServiceStub.getDefaultEvent.called).true;
             expect(utilServiceStub.getDefaultAvailability.called).true;
             expect(availabilityServiceStub._create.called).true;
             expect(eventsServiceStub._create.called).true;
             expect(eventGroupRepositoryStub.save.called).true;
+            expect(eventsRedisRepositoryStub.setEventGroupSetting.called).true;
 
             expect(createdUser).ok;
             expect(createdProfile).ok;

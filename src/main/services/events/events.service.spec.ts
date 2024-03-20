@@ -7,6 +7,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Event } from '@core/entities/events/event.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventGroup } from '@core/entities/events/event-group.entity';
+import { EventGroupSetting } from '@core/interfaces/event-groups/event-group-setting.interface';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { UtilService } from '@services/util/util.service';
@@ -14,7 +15,6 @@ import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { EventProfile } from '@entity/events/event-profile.entity';
-import { User } from '@entity/users/user.entity';
 import { EventsDetailBody } from '@app/interfaces/events/events-detail-body.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
 import { NoDefaultAvailabilityException } from '@app/exceptions/availability/no-default-availability.exception';
@@ -379,7 +379,7 @@ describe('EventsService', () => {
     describe('Test Event Creating with transaction', () => {
 
         afterEach(() => {
-            utilServiceStub.getDefaultEvent.reset();
+            utilServiceStub.patchDefaultEvent.reset();
 
             eventRepositoryStub.save.reset();
             eventRedisRepositoryStub.save.reset();
@@ -389,7 +389,8 @@ describe('EventsService', () => {
         it('should be created an event with transaction' , async () => {
             const hostQuestionStubs = [testMockUtil.getHostQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
-            const userMock = stubOne(User);
+            const eventGroupMock = stubOne(EventGroup);
+            const eventGroupSettingStub: EventGroupSetting = testMockUtil.getEventGroupSettingMock();
 
             const eventDetailBodyStub = {
                 hostQuestions: hostQuestionStubs,
@@ -406,7 +407,8 @@ describe('EventsService', () => {
             const profileMock = stubOne(Profile);
             const availabilityMock = stubOne(Availability);
 
-            utilServiceStub.getDefaultEvent.returns(eventMockStub);
+            eventRedisRepositoryStub.getEventGroupSetting.returns(of(eventGroupSettingStub));
+            utilServiceStub.patchDefaultEvent.returns(eventMockStub);
             eventRepositoryStub.save.resolves(eventMockStub);
             eventRedisRepositoryStub.save.resolves(eventDetailBodyStub);
 
@@ -418,7 +420,7 @@ describe('EventsService', () => {
                 profileMock.id,
                 availabilityMock.id,
                 eventMockStub,
-                userMock
+                eventGroupMock.uuid
             );
 
             expect(createdEvent.eventDetail).ok;

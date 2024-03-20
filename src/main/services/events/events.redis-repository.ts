@@ -1,6 +1,7 @@
 import { Observable, forkJoin, from, map, mergeMap } from 'rxjs';
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
+import { EventGroupSetting } from '@core/interfaces/event-groups/event-group-setting.interface';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 import { EventSetting } from '@interfaces/events/event-setting';
 import { HostQuestion } from '@interfaces/events/event-details/host-question.interface';
@@ -102,6 +103,33 @@ export class EventsRedisRepository {
                 return _ensuredNotificationInfo;
             })
         );
+    }
+
+    getEventGroupSetting(eventGroupUUID: string): Observable<EventGroupSetting> {
+        const eventGroupSettingKey = this.syncdayRedisService.getEventSettingKey(eventGroupUUID);
+
+        return from(this.cluster.get(eventGroupSettingKey))
+            .pipe(
+                map((result) => {
+                    const isValidString = !!result && result !== '';
+                    const _ensuredEventSetting = isValidString ? JSON.parse(result) : {};
+                    return _ensuredEventSetting as EventGroupSetting;
+                })
+            );
+    }
+
+    setEventGroupSetting(
+        eventGroupUUID: string,
+        eventGroupSetting: EventGroupSetting
+    ): Observable<boolean> {
+        const eventGroupSettingKey = this.syncdayRedisService.getEventSettingKey(eventGroupUUID);
+
+        const eventGroupSettingBody = JSON.stringify(eventGroupSetting);
+
+        return from(this.cluster.set(eventGroupSettingKey, eventGroupSettingBody))
+            .pipe(
+                map((result) => result === 'OK')
+            );
     }
 
     getEventSetting(eventDetailUUID: string): Observable<EventSetting> {

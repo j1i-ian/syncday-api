@@ -155,6 +155,13 @@ export class SyncdayRedisService {
         return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.NOTIFICATION_INFO]);
     }
 
+    getEventGroupSettingKey(eventGroupUUID: string): RedisKey {
+        return this.getRedisKey(
+            RedisStores.EVENT_TYPE_GROUP_SETTING,
+            [eventGroupUUID]
+        );
+    }
+
     getEventSettingKey(eventDetailUUID: string): RedisKey {
         return this.getRedisKey(RedisStores.EVENT_DETAIL, [eventDetailUUID, RedisStores.EVENT_SETTING]);
     }

@@ -21,6 +21,7 @@ import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/goog
 import { GoogleCalendarScheduledEventBody } from '@core/interfaces/integrations/google/google-calendar-scheduled-event-body.interface';
 import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
 import { GoogleOAuth2UserWithToken } from '@core/interfaces/integrations/google/google-oauth2-user-with-token.interface';
+import { EventGroupSetting } from '@core/interfaces/event-groups/event-group-setting.interface';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
@@ -118,6 +119,15 @@ export class TestMockUtil {
     }
 
     sandbox: SinonSandbox;
+
+    getEventGroupSettingMock(): EventGroupSetting {
+        return {
+            defaultEvent: {},
+            defaultEventOptions: {
+                hasPhoneNotification: true
+            }
+        } as EventGroupSetting;
+    }
 
     getInvitedNewTeamMemberMocks(teamIdMock: number): InvitedNewTeamMember[] {
         return stub(User, 10, {

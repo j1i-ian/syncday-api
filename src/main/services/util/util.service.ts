@@ -9,6 +9,8 @@ import { SyncdayAwsSnsRequest } from '@core/interfaces/notifications/syncday-aws
 import { SyncdayNotificationPublishKey } from '@core/interfaces/notifications/syncday-notification-publish-key.enum';
 import { EmailTemplate } from '@core/interfaces/notifications/email-template.enum';
 import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
+import { EventGroupSetting } from '@core/interfaces/event-groups/event-group-setting.interface';
+import { DefaultEventOption } from '@core/interfaces/event-groups/default-event-option.interface';
 import { EventType } from '@interfaces/events/event-type.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
@@ -31,8 +33,6 @@ import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { DateTimeOrderFormat } from '@entity/users/date-time-format-order.enum';
 import { DateTimeFormatOption } from '@entity/users/date-time-format-option.type';
-import { BufferTime } from '@entity/events/buffer-time.entity';
-import { DateRange } from '@entity/events/date-range.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
 import { ScheduledStatus } from '@entity/scheduled-events/scheduled-status.enum';
@@ -59,19 +59,6 @@ interface DefaultDateTimeFormat {
     dateTimeFormatOption: DateTimeFormatOption;
     dateTimeOrderFormat: DateTimeOrderFormat[];
 }
-
-type EventDetailInit = Omit<EventDetail,
-'id'
-| 'uuid'
-| 'createdAt'
-| 'updatedAt'
-| 'deletedAt'
-| 'eventId'
-| 'event'
-| 'interval'
-| 'minimumNotice'
-| 'scheduledEvents'
->;
 
 type SearchOption = KeySearchOption & KeySearchOption<'team'> & KeySearchOption<'profile'> & KeySearchOption<'user'>;
 
@@ -536,89 +523,86 @@ export class UtilService {
             });
     }
 
-    getDefaultEvent(patchBody?: Partial<Event>, options?: { hasNoEmailUser?: boolean }): Event {
+    getInitialEventGroupSetting(
+        options: Partial<DefaultEventOption> = {
+            isPhoneNumberUser: false,
+            hasPhoneNotification: false
+        }
+    ): EventGroupSetting {
 
-        const _0min = '00:00:00';
+        const {
+            isPhoneNumberUser,
+            hasPhoneNotification
+        } = options;
 
-        const initialBufferTime = new BufferTime();
-        initialBufferTime.before = _0min;
-        initialBufferTime.after = _0min;
+        const emailNotification = {
+            uuid: this.generateUUID(),
+            type: NotificationType.EMAIL,
+            reminders: [{ remindBefore: '01:00:00', uuid: this.generateUUID() }]
+        } as Notification;
 
-        const initialDateRange = new DateRange();
-        initialDateRange.until = 60;
+        const phoneNotification = {
+            uuid: this.generateUUID(),
+            type: NotificationType.TEXT,
+            reminders: [
+                {
+                    uuid: this.generateUUID(),
+                    type: ReminderType.KAKAOTALK,
+                    remindBefore: '01:00:00'
+                }
+            ]
+        } as Notification;
 
-        const hostNotificationUUID = this.generateUUID();
-        const emailReminderUUID = this.generateUUID();
+        const defaultHostNotification = isPhoneNumberUser ? [] : [emailNotification];
 
-        const isPhoneNumberUser = options?.hasNoEmailUser;
+        const defaultNotification = {
+            host: defaultHostNotification,
+            invitee: [emailNotification]
+        } as NotificationInfo;
 
-        const defaultNotification = isPhoneNumberUser ?
-            {
-                host: [],
-                invitee: [
-                    {
-                        uuid: hostNotificationUUID,
-                        type: NotificationType.EMAIL,
-                        reminders: [
-                            {
-                                remindBefore: '01:00:00',
-                                uuid: emailReminderUUID
-                            }
-                        ]
-                    }
-                ]
-            } as NotificationInfo :
-            {
-                host: [
-                    {
-                        uuid: hostNotificationUUID,
-                        type: NotificationType.EMAIL,
-                        reminders: [
-                            {
-                                remindBefore: '01:00:00',
-                                uuid: emailReminderUUID
-                            }
-                        ]
-                    }
-                ],
-                invitee: [
-                    {
-                        uuid: hostNotificationUUID,
-                        type: NotificationType.EMAIL,
-                        reminders: [
-                            {
-                                remindBefore: '01:00:00',
-                                uuid: emailReminderUUID
-                            }
-                        ]
-                    }
-                ]
-            } as NotificationInfo;
+        if (hasPhoneNotification) {
+            defaultNotification.host?.push(phoneNotification);
+            defaultNotification.invitee?.push(phoneNotification);
+        }
 
-        const initialEventDetail = new EventDetail({
-            description: null,
-            hostQuestions: [],
-            eventSetting: {
-                enforceInviteePhoneInput: false
-            },
-            notificationInfo: defaultNotification
-        } as EventDetailInit);
+        return {
+            defaultEvent: {
+                name: '30 Minute Meeting',
+                type: EventType.ONE_ON_ONE,
+                contacts: [],
+                bufferTime: {
+                    before: '00:00:00',
+                    after: '00:00:00'
+                },
+                dateRange: { until: 60 },
+                link: '30-minute-meeting',
+                eventDetail: {
+                    description: null,
+                    hostQuestions: [],
+                    eventSetting: {
+                        enforceInviteePhoneInput: hasPhoneNotification
+                    },
+                    notificationInfo: defaultNotification
+                } as Partial<EventDetail>
+            } as Partial<Event>,
+            defaultEventOptions: options
+        } as EventGroupSetting;
+    }
 
-        const defaultLink = '30-minute-meeting';
-        const lowercasedLinkWithDashes = patchBody?.link?.toLowerCase().replaceAll(' ', '-') || defaultLink;
-        const eventTypesType = patchBody?.type || EventType.ONE_ON_ONE;
+    patchDefaultEvent(
+        userDefaultEvent: Partial<Event>,
+        patchBody?: Partial<Event>
+    ): Event {
+
+        const lowercasedLinkWithDashes = patchBody?.link?.toLowerCase().replaceAll(' ', '-') || userDefaultEvent.link;
 
         const initialEvent = new Event({
-            name: '30 Minute Meeting',
-            type: eventTypesType,
-            bufferTime: initialBufferTime,
-            dateRange: initialDateRange,
-            contacts: [],
             ...patchBody,
             link: lowercasedLinkWithDashes
         });
+
         initialEvent.eventDetail = plainToInstance(EventDetail, {
-            ...initialEventDetail,
+            ...userDefaultEvent.eventDetail,
             ...patchBody?.eventDetail
         });
 

@@ -644,21 +644,26 @@ export class UserService {
 
         const savedEventGroup = await eventGroupRepository.save(initialEventGroup);
 
-        const initialEvent = this.utilService.getDefaultEvent({
-            name: '30 Minute Meeting',
-            link: '30-minute-meeting',
-            eventGroupId: savedEventGroup.id
-        }, {
-            hasNoEmailUser: !savedUser.email
+        // set event group setting
+        const initialEventGroupSetting = this.utilService.getInitialEventGroupSetting({
+            isPhoneNumberUser: !!savedUser.phone,
+            hasPhoneNotification: false
         });
+
+        await firstValueFrom(
+            this.eventRedisRepository.setEventGroupSetting(
+                savedEventGroup.uuid,
+                initialEventGroupSetting
+            )
+        );
 
         await this.eventsService._create(
             manager,
             savedTeam.uuid,
             savedProfile.id,
             savedAvailability.id,
-            initialEvent,
-            savedUser
+            { eventGroupId: savedEventGroup.id } as Event,
+            savedEventGroup.uuid
         );
 
         this.logger.info({

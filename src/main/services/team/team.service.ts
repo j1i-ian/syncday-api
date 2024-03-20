@@ -44,6 +44,7 @@ import { UtilService } from '@services/util/util.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
+import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Product } from '@entity/products/product.entity';
@@ -52,6 +53,7 @@ import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { Order } from '@entity/orders/order.entity';
+import { Event } from '@entity/events/event.entity';
 import { AlreadyUsedInWorkspace } from '@app/exceptions/users/already-used-in-workspace.exception';
 import { CannotDeleteTeamException } from '@app/exceptions/teams/cannot-delete-team.exception';
 import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
@@ -68,6 +70,7 @@ export class TeamService {
         private readonly paymentMethodService: PaymentMethodService,
         private readonly paymentsService: PaymentsService,
         private readonly eventsService: EventsService,
+        private readonly eventRedisRepository: EventsRedisRepository,
         private readonly availabilityService: AvailabilityService,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @Inject(forwardRef(() => ProfilesService))
@@ -190,11 +193,11 @@ export class TeamService {
         ownerUserId: number
     ): Observable<Team> {
 
-        const checkAlreadyUsedWorkspaceIn$ = defer(() => from(
+        const checkAlreadyUsedWorkspaceIn$ = from(
             this.teamSettingService.fetchTeamWorkspaceStatus(
                 newTeamSetting.workspace
             )
-        )).pipe(
+        ).pipe(
             tap((isAlreadyUsedIn) => {
                 if (isAlreadyUsedIn) {
                     throw new AlreadyUsedInWorkspace();
@@ -359,21 +362,27 @@ export class TeamService {
                         ownerDefaultAvailabilityId: ownerDefaultAvailability.id
                     });
 
-                    // create a default event
-                    const initialEvent = this.utilService.getDefaultEvent({
-                        name: '30 Minute Meeting',
-                        link: '30-minute-meeting',
-                        eventGroupId: savedEventGroup.id
+                    // set event group setting
+                    const initialEventGroupSetting = this.utilService.getInitialEventGroupSetting({
+                        hasPhoneNotification: true
                     });
+
+                    await firstValueFrom(
+                        this.eventRedisRepository.setEventGroupSetting(
+                            savedEventGroup.uuid,
+                            initialEventGroupSetting
+                        )
+                    );
 
                     await this.eventsService._create(
                         transactionManager,
                         _createdTeam.uuid,
                         _createdRootProfile.id,
                         ownerDefaultAvailability.id,
-                        initialEvent,
-                        owner
+                        { eventGroupId: savedEventGroup.id } as Event,
+                        savedEventGroup.uuid
                     );
+
                     this.logger.info({
                         message: 'Creating an event is success. Close transaction.',
                         createdTeamId: _createdTeam.id,

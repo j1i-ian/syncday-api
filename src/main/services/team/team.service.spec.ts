@@ -21,6 +21,7 @@ import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
+import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
@@ -46,6 +47,7 @@ describe('TeamService', () => {
     let module: TestingModule;
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
+    let eventRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
     let teamSettingServiceStub: sinon.SinonStubbedInstance<TeamSettingService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
     let profilesServiceStub: sinon.SinonStubbedInstance<ProfilesService>;
@@ -64,6 +66,7 @@ describe('TeamService', () => {
 
     before(async () => {
 
+        eventRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
         teamSettingServiceStub = sinon.createStubInstance(TeamSettingService);
         userServiceStub = sinon.createStubInstance(UserService);
         profilesServiceStub = sinon.createStubInstance(ProfilesService);
@@ -130,6 +133,10 @@ describe('TeamService', () => {
                 {
                     provide: AvailabilityService,
                     useValue: availabilityServiceStub
+                },
+                {
+                    provide: EventsRedisRepository,
+                    useValue: eventRedisRepositoryStub
                 },
                 {
                     provide: getDataSourceToken(),
@@ -308,7 +315,7 @@ describe('TeamService', () => {
             utilServiceStub.getDefaultAvailability.reset();
             availabilityServiceStub._create.reset();
             eventGroupRepositoryStub.save.reset();
-            utilServiceStub.getDefaultEvent.reset();
+            eventRedisRepositoryStub.setEventGroupSetting.reset();
             eventsServiceStub._create.reset();
 
             utilServiceStub.filterInvitedNewUsers.reset();
@@ -365,12 +372,12 @@ describe('TeamService', () => {
                 .returns(profileStubs[0])
                 .callsFake(() => profileStubs[1]);
 
+            eventRedisRepositoryStub.setEventGroupSetting.returns(of(true));
             profilesServiceStub._create.resolvesArg(1);
 
             utilServiceStub.getDefaultAvailability.returns(availabilityStub);
             availabilityServiceStub._create.resolvesArg(3);
             eventGroupRepositoryStub.save.resolves(eventGroupStub);
-            utilServiceStub.getDefaultEvent.returns(eventStub);
             eventsServiceStub._create.resolves(eventStub);
 
             utilServiceStub.filterInvitedNewUsers.returns([]);
@@ -404,7 +411,7 @@ describe('TeamService', () => {
             expect(utilServiceStub.getDefaultAvailability.called).true;
             expect(availabilityServiceStub._create.called).true;
             expect(eventGroupRepositoryStub.save.called).true;
-            expect(utilServiceStub.getDefaultEvent.called).true;
+            expect(eventRedisRepositoryStub.setEventGroupSetting.called).true;
             expect(eventsServiceStub._create.called).true;
 
             expect(utilServiceStub.filterInvitedNewUsers.called).true;

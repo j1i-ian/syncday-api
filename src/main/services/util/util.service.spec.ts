@@ -665,66 +665,74 @@ describe('UtilService', () => {
         });
     });
 
-    describe('Test getDefaultEvent', () => {
+    describe('Test patchDefaultEvent', () => {
 
-        it('should be generated a default event', () => {
-            const defaultEvent = service.getDefaultEvent();
+        it('should be initialized a default event', () => {
+            const defaultEventGroupSetting = service.getInitialEventGroupSetting();
 
-            expect(defaultEvent).ok;
-            expect(defaultEvent.bufferTime).ok;
+            expect(defaultEventGroupSetting).ok;
+            expect(defaultEventGroupSetting.defaultEvent.bufferTime).ok;
         });
 
-        it('should be generated a default event with a default link', () => {
-            const defaultEvent = service.getDefaultEvent();
+        it('should be initialized a default event with a default link', () => {
+            const defaultEventGroupSetting = service.getInitialEventGroupSetting();
             const expectedDefaultEventLink = '30-minute-meeting';
 
-            expect(defaultEvent).ok;
-            expect(defaultEvent.bufferTime).ok;
-            expect(defaultEvent.link).ok;
-            expect(defaultEvent.link).equals(expectedDefaultEventLink);
+            expect(defaultEventGroupSetting.defaultEvent).ok;
+            expect(defaultEventGroupSetting.defaultEvent.bufferTime).ok;
+            expect(defaultEventGroupSetting.defaultEvent.link).ok;
+            expect(defaultEventGroupSetting.defaultEvent.link).equals(expectedDefaultEventLink);
         });
 
-        it('should be generated a default event with a link where changed lowercase from uppercased link', () => {
-
-            const uppercaseEventLink = '30-Minute-Meeting';
-            const expectedEventLink = '30-minute-meeting';
-
-            const defaultEvent = service.getDefaultEvent({
-                link: uppercaseEventLink
-            });
-
-            expect(defaultEvent).ok;
-            expect(defaultEvent.link).equals(expectedEventLink);
-        });
-
-        it('should be generated a default event with a link where spaces are replaced with dashes', () => {
-
-            const eventLinkWithSpacings = '30 minute meeting';
-            const expectedEventLink = '30-minute-meeting';
-
-            const defaultEvent = service.getDefaultEvent({
-                link: eventLinkWithSpacings
-            });
-
-            expect(defaultEvent).ok;
-            expect(defaultEvent.link).equals(expectedEventLink);
-        });
-
-        it('should be generated a default event with overrided event detail', () => {
+        it('should be initialized a default event with overrided event detail', () => {
 
             const customEventDetail = stubOne(EventDetail, {
                 notificationInfo: {}
             });
 
-            const defaultEvent = service.getDefaultEvent({
+            const patchedEvent = service.patchDefaultEvent({}, {
                 eventDetail: customEventDetail
             });
 
+            expect(patchedEvent).ok;
+            expect(patchedEvent.eventDetail).ok;
+            expect(patchedEvent.eventDetail.description).ok;
+            expect(patchedEvent.eventDetail.notificationInfo).ok;
+            expect(patchedEvent.eventDetail.notificationInfo.host).not.ok;
+        });
+
+        it('should be initialized a default event with phone notification setting', () => {
+
+            const { defaultEvent } = service.getInitialEventGroupSetting({
+                hasPhoneNotification: true
+            });
+
             expect(defaultEvent).ok;
-            expect(defaultEvent.eventDetail).ok;
-            expect(defaultEvent.eventDetail.description).ok;
-            expect(defaultEvent.eventDetail.notificationInfo).ok;
-            expect(defaultEvent.eventDetail.notificationInfo.host).not.ok;
+
+            const { eventDetail } = defaultEvent;
+            const { notificationInfo } = eventDetail;
+            const { host, invitee } = notificationInfo as Required<NotificationInfo>;
+
+            expect(host).ok;
+            expect(host.length).greaterThan(1);
+
+            expect(invitee).ok;
+            expect(invitee.length).greaterThan(1);
+        });
+
+        it('should be patched a default event with a link where spaces are replaced with dashes', () => {
+
+            const eventLinkWithSpacings = '30 minute meeting';
+            const expectedEventLink = '30-minute-meeting';
+
+            const { defaultEvent } = service.getInitialEventGroupSetting();
+
+            const patchedEvent = service.patchDefaultEvent(defaultEvent, {
+                link: eventLinkWithSpacings
+            });
+
+            expect(patchedEvent).ok;
+            expect(patchedEvent.link).equals(expectedEventLink);
         });
     });
 

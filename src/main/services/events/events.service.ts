@@ -12,7 +12,6 @@ import { UtilService } from '@services/util/util.service';
 import { EventStatus } from '@entity/events/event-status.enum';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { EventProfile } from '@entity/events/event-profile.entity';
-import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { EventsSearchOption } from '@app/interfaces/events/events-search-option.interface';
 import { NotAnOwnerException } from '@app/exceptions/not-an-owner.exception';
@@ -244,7 +243,6 @@ export class EventsService {
 
         const profile = defaultEventGroup.team.profiles[0];
         const defaultAvailability = profile.availabilities[0];
-        const user = profile.user;
         const noDefaultAvailability = !defaultAvailability;
 
         if (noDefaultAvailability) {
@@ -291,7 +289,7 @@ export class EventsService {
             profileId,
             defaultAvailabilityId,
             newEvent,
-            user
+            defaultEventGroup.uuid
         );
     }
 
@@ -301,16 +299,17 @@ export class EventsService {
         profileId: number,
         defaultAvailabilityId: number,
         newEvent: Event,
-        user: User
+        eventGroupUUID: string
     ): Promise<Event> {
 
+        const { defaultEvent } = await firstValueFrom(
+            this.eventRedisRepository.getEventGroupSetting(eventGroupUUID)
+        );
+
+        // patch a default event to new event
+        const patchedNewEvent = this.utilService.patchDefaultEvent(defaultEvent, newEvent);
+
         const _eventRepository = manager.getRepository(Event);
-
-        const isEmailUser = !!user.email;
-
-        const ensuredNewEvent = this.utilService.getDefaultEvent(newEvent, {
-            hasNoEmailUser: !isEmailUser
-        });
 
         const initialEventProfile = {
             profileId,
@@ -323,17 +322,17 @@ export class EventsService {
             initialEventProfile
         });
 
-        ensuredNewEvent.eventProfiles = [initialEventProfile] as EventProfile[];
+        patchedNewEvent.eventProfiles = [initialEventProfile] as EventProfile[];
 
         // save relation data
         // event detail is saved by orm cascading.
-        const savedEvent = await _eventRepository.save(ensuredNewEvent);
+        const savedEvent = await _eventRepository.save(patchedNewEvent);
 
         const savedEventDetail = savedEvent.eventDetail;
 
         // save consumption data
-        const newEventDetail = ensuredNewEvent.eventDetail;
-        const { hostQuestions, notificationInfo, eventSetting } = newEventDetail;
+        const patchedEventDetail = patchedNewEvent.eventDetail;
+        const { hostQuestions, notificationInfo, eventSetting } = patchedEventDetail;
 
         this.logger.info({
             message: 'Creating event with event detail, eventProfiles is completed. Set event link status then saving notification info, invitee questions',
