@@ -28,6 +28,7 @@ import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { PageOption } from '@interfaces/page-option.interface';
 import { TimestampSearchOption } from '@interfaces/timestamp-search-option.interface';
 import { KeySearchOption } from '@interfaces/key-search-option.type';
+import { ScheduledStatus } from '@interfaces/scheduled-events/scheduled-status.enum';
 import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
@@ -35,7 +36,6 @@ import { DateTimeOrderFormat } from '@entity/users/date-time-format-order.enum';
 import { DateTimeFormatOption } from '@entity/users/date-time-format-option.type';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { Event } from '@entity/events/event.entity';
-import { ScheduledStatus } from '@entity/scheduled-events/scheduled-status.enum';
 import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
 import { NotificationTarget } from '@entity/scheduled-events/notification-target.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
@@ -352,8 +352,7 @@ export class UtilService {
 
         const isNotificationTargetHost = scheduleNotification.notificationTarget === NotificationTarget.HOST;
 
-        let template: EmailTemplate | TextTemplate = isNotificationTargetHost ?
-            TextTemplate.EVENT_CANCELLED_HOST : TextTemplate.EVENT_CANCELLED_INVITEE;
+        let template: EmailTemplate | TextTemplate;
 
         const syncdayNotificationPublishKey = this.getSyncdayNotificationPublishKey(scheduleNotification);
 
@@ -361,6 +360,9 @@ export class UtilService {
             case ReminderType.SMS:
             case ReminderType.WAHTSAPP:
             case ReminderType.KAKAOTALK:
+                template = isNotificationTargetHost
+                    ? TextTemplate.EVENT_CANCELLED_HOST
+                    : TextTemplate.EVENT_CANCELLED_INVITEE;
                 break;
             default:
                 template = EmailTemplate.CANCELLED;

@@ -14,11 +14,13 @@ import { AppConfigService } from '@config/app-config.service';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { ReminderType } from '@interfaces/reminders/reminder-type.enum';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
+import { ScheduledStatus } from '@interfaces/scheduled-events/scheduled-status.enum';
 import { SyncdayAwsSdkClientService } from '@services/util/syncday-aws-sdk-client/syncday-aws-sdk-client.service';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { Language } from '@app/enums/language.enum';
 
 @Injectable()
@@ -33,26 +35,34 @@ export class NotificationsService {
     ) {}
 
     sendBookingComplete(
-        scheduledEventNotification: ScheduledEventNotification
+        scheduledEvent: ScheduledEvent
     ): Observable<boolean> {
 
-        const publishKey = this.utilService.getSyncdayNotificationPublishKey(scheduledEventNotification);
-        const notificationData = this.utilService.getNotificationData(scheduledEventNotification);
+        const publishKeySet = new Set<SyncdayNotificationPublishKey>();
+        scheduledEvent.scheduledEventNotifications.forEach((_scheduledEventNotification) => {
+            const syncdayNotificationPublishKey = this.utilService.getSyncdayNotificationPublishKey(_scheduledEventNotification);
+            publishKeySet.add(syncdayNotificationPublishKey);
+        });
 
         this.logger.info({
             message: 'Booking confirm notification is sending..',
-            scheduledEventNotification,
-            publishKey,
-            notificationData
+            scheduledEventId: scheduledEvent.id
         });
 
-        return from(
-            this.sendMessage(
-                publishKey,
-                notificationData
-            )
-        );
+        const publishKeyArray = [...publishKeySet.values()];
 
+        const messageAttribute: MessageAttributeValue = {
+            DataType: 'String.Array',
+            StringValue: JSON.stringify(publishKeyArray)
+        };
+
+        return from(this._sendNotification(
+            messageAttribute,
+            {
+                scheduledEventStatus: ScheduledStatus.CONFIRMED,
+                scheduledEventId: scheduledEvent.id
+            } as SyncdayAwsSnsRequest
+        ));
     }
 
     sendTeamInvitation(
@@ -124,7 +134,7 @@ export class NotificationsService {
                             data: JSON.stringify(invitationNotificationRequest),
                             phoneNumber,
                             email
-                        }
+                        } as SyncdayAwsSnsRequest
                     );
                 }),
                 reduce((acc, curr) => acc && curr),
@@ -182,7 +192,7 @@ export class NotificationsService {
                             template: TextTemplate.BOOKING_REQUEST,
                             data: JSON.stringify(bookingRequest),
                             phoneNumber
-                        }
+                        } as SyncdayAwsSnsRequest
                     )
                 )
             );

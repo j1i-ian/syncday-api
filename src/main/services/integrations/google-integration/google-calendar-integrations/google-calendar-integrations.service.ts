@@ -15,6 +15,7 @@ import { AppConfigService } from '@config/app-config.service';
 import { GoogleCalendarAccessRole } from '@interfaces/integrations/google/google-calendar-access-role.enum';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
+import { ScheduledStatus } from '@interfaces/scheduled-events/scheduled-status.enum';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleCalendarEventWatchService } from '@services/integrations/google-integration/facades/google-calendar-event-watch.service';
 import { GoogleCalendarEventListService } from '@services/integrations/google-integration/facades/google-calendar-event-list.service';
@@ -27,7 +28,6 @@ import { GoogleCalendarIntegration } from '@entity/integrations/google/google-ca
 import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
-import { ScheduledStatus } from '@entity/scheduled-events/scheduled-status.enum';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';

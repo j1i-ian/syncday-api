@@ -6,6 +6,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
+import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
@@ -338,7 +339,7 @@ describe('GlobalScheduledEventsService', () => {
                         const hostMock = stubOne(User, {
                             profiles: stub(Profile)
                         });
-                        const profilesMock = hostMock.profiles;
+                        const profilesMock = hostMock.profiles as unknown as HostProfile[];
                         const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
 
                         const createdScheduledEventStub = stubOne(ScheduledEvent, {
@@ -350,7 +351,7 @@ describe('GlobalScheduledEventsService', () => {
 
                         _createStub.returns(of(createdScheduledEventStub));
 
-                        notificationsServiceStub.sendBookingComplete.returns(of());
+                        notificationsServiceStub.sendBookingComplete.returns(of(true));
                         scheduledEventRepositoryStub.update.resolves(updateResultMock);
 
                         const actualScheduledEvent = await firstValueFrom(
@@ -434,7 +435,7 @@ describe('GlobalScheduledEventsService', () => {
                         const userMock = stubOne(User, {
                             userSetting: userSettingStub
                         });
-                        const profileMock = stubOne(Profile);
+                        const profileMock = stubOne(Profile) as unknown as HostProfile;
                         const teamMock = stubOne(Team);
                         const eventStub = getEventStub();
                         const scheduleStub = getScheduleStub();

@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, combineLatest, concat, concatMap, defaultIfEmpty, filter, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
+import { Observable, combineLatest, concat, concatMap, defaultIfEmpty, filter, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, zip } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -12,6 +12,7 @@ import { CalendarIntegrationService } from '@core/interfaces/integrations/calend
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
+import { ScheduledStatus } from '@interfaces/scheduled-events/scheduled-status.enum';
 import { EventsService } from '@services/events/events.service';
 import { ScheduledEventsRedisRepository } from '@services/scheduled-events/scheduled-events.redis-repository';
 import { UtilService } from '@services/util/util.service';
@@ -28,7 +29,6 @@ import { Contact } from '@entity/events/contact.entity';
 import { Team } from '@entity/teams/team.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { Availability } from '@entity/availability/availability.entity';
-import { ScheduledStatus } from '@entity/scheduled-events/scheduled-status.enum';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
@@ -122,18 +122,14 @@ export class GlobalScheduledEventsService {
             hostProfiles,
             hostAvailability
         ).pipe(
-            mergeMap((_createdSchedule) =>
-                from(_createdSchedule.scheduledEventNotifications)
-                    .pipe(
-                        mergeMap((_scheduledEventNotification) =>
-                            this.notificationsService.sendBookingComplete(
-                                _scheduledEventNotification
-                            )
-                        ),
-                        toArray(),
-                        map(() => _createdSchedule)
-                    )
-            ),
+            tap((_createdSchedule) => {
+
+                if (_createdSchedule.scheduledEventNotifications.length > 0) {
+                    this.notificationsService.sendBookingComplete(
+                        _createdSchedule
+                    );
+                }
+            }),
             mergeMap((_createdSchedule) =>
                 from(this.scheduledEventRepository.update(
                     _createdSchedule.id,
