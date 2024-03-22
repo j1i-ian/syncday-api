@@ -69,6 +69,7 @@ describe('TimeUtilService', () => {
 
             serviceSandbox.stub(service, 'intersectAvailableTimes').returns(availableTimesStub);
             serviceSandbox.stub(service, 'intersectOverridedAvailableTimes').returns([]);
+            serviceSandbox.stub(service, 'intersectOverrideWithAvailableTimes').returns([]);
 
             const actual = service.intersectAvailability(availabilityA, availabilityB);
 
@@ -489,6 +490,70 @@ describe('TimeUtilService', () => {
                 const actualIntersectTimeRanges = service.intersectTimeRanges(timeRangesA, timeRangesB);
 
                 expect(actualIntersectTimeRanges).to.deep.equal(expectedIntersectTimeRanges);
+            });
+        });
+    });
+
+    describe('Intersect available times and available overrides', () => {
+
+        [
+            {
+                description: 'should be prioritized the unavailable time than override',
+                availabilityMock: {
+                    availableTimes : [ { day: Weekday.WEDNESDAY } ],
+                    overrides: [
+                        {
+                            // Thursday
+                            targetDate: new Date('2024-03-21T00:00:00.000Z'),
+                            timeRanges: []
+                        },
+                        {
+                            // Friday
+                            targetDate: new Date('2024-03-22T00:00:00.000Z'),
+                            timeRanges: [ { startTime: '09:00:00', endTime: '12:00:00' } ]
+                        }
+                    ] as Availability['overrides']
+                } as unknown as Availability,
+                expectedOverrides: []
+            },
+            {
+                description: 'should be prioritized the unavailable time than override',
+                availabilityMock: {
+                    availableTimes : [
+                        {
+                            day: Weekday.THURSDAY,
+                            timeRanges: [ { startTime: '08:00:00', endTime: '11:00:00' } ]
+                        }
+                    ] as Availability['availableTimes'],
+                    overrides: [
+                        {
+                            // Thursday
+                            targetDate: new Date('2024-03-21T00:00:00.000Z'),
+                            timeRanges: [ { startTime: '09:00:00', endTime: '12:00:00' } ]
+                        }
+                    ] as Availability['overrides']
+                } as unknown as Availability,
+                expectedOverrides: [
+                    {
+                        // Thursday
+                        targetDate: new Date('2024-03-21T00:00:00.000Z'),
+                        timeRanges: [ { startTime: '09:00:00', endTime: '11:00:00' } ]
+                    }
+                ]
+            }
+        ].forEach(function({
+            description,
+            availabilityMock,
+            expectedOverrides
+        }) {
+            it(description, () => {
+                const intersectOverrides = service.intersectOverrideWithAvailableTimes(
+                    availabilityMock.overrides,
+                    availabilityMock.availableTimes
+                );
+
+                expect(intersectOverrides).ok;
+                expect(intersectOverrides).deep.equals(expectedOverrides);
             });
         });
     });

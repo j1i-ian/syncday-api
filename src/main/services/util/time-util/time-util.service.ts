@@ -68,7 +68,76 @@ export class TimeUtilService {
             timezone: timezoneA
         });
 
+        intersectAvailability.overrides = this.intersectOverrideWithAvailableTimes(
+            intersectAvailability.overrides,
+            intersectAvailability.availableTimes
+        );
+
         return intersectAvailability;
+    }
+
+    intersectOverrideWithAvailableTimes(
+        overrides: OverridedAvailabilityTime[],
+        availableTimes: AvailableTime[]
+    ): OverridedAvailabilityTime[] {
+
+        const intersectedOverrides = overrides
+            .filter((_override) => {
+
+                const overridateDate = new Date(_override.targetDate);
+
+                const overrideDay = overridateDate.getDay();
+                const isUnavailableTime = availableTimes.findIndex((_availableTime) => _availableTime.day === overrideDay) > -1;
+
+                return isUnavailableTime;
+            }).map((_override) => {
+
+                if (_override.timeRanges.length === 0) {
+                    return _override;
+                }
+
+                const overridateDate = new Date(_override.targetDate);
+
+                const overrideDay = overridateDate.getDay();
+                const { timeRanges: availableTimeRanges } = availableTimes.find((_availableTime) => _availableTime.day === overrideDay) as AvailableTime;
+
+                _override.timeRanges = _override.timeRanges
+                    .map((_overrideTimeRange) => {
+                        availableTimeRanges.forEach((_availableTimeRange) => {
+
+                            const maximizedStartTime = this.compareTimeSlot(
+                                _overrideTimeRange.startTime,
+                                _availableTimeRange.startTime,
+                                TimeSlotCompare.MAX
+                            );
+                            _overrideTimeRange.startTime = maximizedStartTime;
+
+                            const minimizedEndTime = this.compareTimeSlot(
+                                _overrideTimeRange.endTime,
+                                _availableTimeRange.endTime,
+                                TimeSlotCompare.MIN
+                            );
+                            _overrideTimeRange.endTime = minimizedEndTime;
+                        });
+
+                        return _overrideTimeRange;
+                    }).filter((_overrideTimeRange) => {
+                        const { startTime, endTime } = _overrideTimeRange;
+
+                        const isValidEndTime = this.compareTimeSlot(
+                            startTime,
+                            endTime,
+                            TimeSlotCompare.MAX
+                        );
+
+                        return isValidEndTime === endTime;
+                    });
+
+                return _override;
+            });
+
+        return intersectedOverrides;
+
     }
 
     intersectOverridedAvailableTimes(
