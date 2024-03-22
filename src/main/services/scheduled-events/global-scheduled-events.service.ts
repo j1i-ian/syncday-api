@@ -1,12 +1,14 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, combineLatest, concat, concatMap, filter, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
+import { Observable, combineLatest, concat, concatMap, defaultIfEmpty, filter, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
 import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee-scheduled-events.interface';
 import { PageOption } from '@core/interfaces/page-option.interface';
+import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
+import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
@@ -163,9 +165,32 @@ export class GlobalScheduledEventsService {
             hostProfiles: hostProfiles.length
         });
 
+        const availabilityTimezone = hostAvailability.timezone;
         const _scheduledEventRepository = entityManager.getRepository(ScheduledEvent);
 
-        const loadedEventByTeamWorkspace$ = this.eventsService.findOneByTeamWorkspaceAndUUID(teamWorkspace, eventUUID);
+        const eventType$ = this.eventsService.findOneByTeamWorkspaceAndUUID(teamWorkspace, eventUUID);
+        const contacts$ = eventType$.pipe(map((eventType) => eventType.contacts));
+        const availabilityBody = {
+            availableTimes: hostAvailability.availableTimes,
+            overrides: hostAvailability.overrides
+        } as AvailabilityBody;
+
+        this.logger.info({
+            message: 'Scheduled Event Initializing is completed. Trying to validate request times and integrated calendars',
+            availabilityBody
+        });
+
+        const scheduledEvent$ = from(eventType$)
+            .pipe(
+                map((eventType) => this.utilService.getPatchedScheduledEvent(
+                    team,
+                    hostProfiles[0],
+                    hostProfiles,
+                    eventType,
+                    newScheduledEvent,
+                    teamWorkspace
+                ))
+            );
 
         const calendarIntegrationServices = this.calendarIntegrationsServiceLocator.getAllCalendarIntegrationServices();
         const conferenceLinkIntegrationServices = this.integrationsServiceLocator.getAllConferenceLinkIntegrationService();
@@ -180,40 +205,18 @@ export class GlobalScheduledEventsService {
                 )
             );
 
-        return loadedEventByTeamWorkspace$.pipe(
-            concatMap(
-                (event) => combineLatest([
-                    of({
-                        availableTimes: hostAvailability.availableTimes,
-                        overrides: hostAvailability.overrides
-                    } as AvailabilityBody),
-                    of(this.utilService.getPatchedScheduledEvent(
-                        team,
-                        hostProfiles[0],
-                        hostProfiles,
-                        event,
-                        newScheduledEvent,
-                        teamWorkspace
-                    )),
-                    loadedOutboundCalendarIntegration$,
-                    of(hostAvailability.timezone),
-                    of(event.contacts)
-                ])
-            ),
-            tap(([ availabilityBody ]) => {
-
-                this.logger.info({
-                    message: 'Scheduled Event Initializing is completed. Trying to validate request times and integrated calendars',
-                    availabilityBody
-                });
-            }),
+        return zip([
+            of(availabilityBody),
+            scheduledEvent$,
+            loadedOutboundCalendarIntegration$,
+            contacts$
+        ]).pipe(
             // TODO: Maybe we can replace tap operator after proving that it can stop data stream and throw to exception flow
             concatMap(
                 ([
                     availabilityBody,
                     patchedScheduledEvent,
                     loadedOutboundCalendarIntegrationOrNull,
-                    availabilityTimezone,
                     contacts
                 ]) =>
                     this.validate(
@@ -225,35 +228,39 @@ export class GlobalScheduledEventsService {
                         map(() => [
                             patchedScheduledEvent,
                             loadedOutboundCalendarIntegrationOrNull,
-                            availabilityTimezone,
                             contacts
-                        ] as [ScheduledEvent, CalendarIntegration | null, string, Contact[]])
+                        ] as [ScheduledEvent, CalendarIntegration | null, Contact[]])
                     )
             ),
+            tap(([
+                patchedSchedule,
+                loadedOutboundCalendarIntegrationOrNull
+            ]) => {
+                this.logger.info({
+                    message: 'is loaded outbound calendar integration null ?',
+                    patchedScheduleId: patchedSchedule.id,
+                    loadedOutboundCalendarIntegrationOrNull: !!loadedOutboundCalendarIntegrationOrNull,
+                    integrationVendor: loadedOutboundCalendarIntegrationOrNull?.getIntegrationVendor()
+                });
+            }),
             mergeMap(
                 ([
                     patchedSchedule,
                     loadedOutboundCalendarIntegrationOrNull,
-                    availabilityTimezone,
                     contacts
                 ]) => {
 
-                    this.logger.info({
-                        message: 'is loaded outbound calendar integration null ?',
-                        loadedOutboundCalendarIntegrationOrNull: !!loadedOutboundCalendarIntegrationOrNull,
-                        integrationVendor: loadedOutboundCalendarIntegrationOrNull?.getIntegrationVendor()
-                    });
+                    let createdCalendarEventOrNull$: Observable<CreatedCalendarEvent | null> = of(null);
+                    let calendarIntegrationServiceOrNull: CalendarIntegrationService | null = null;
 
-                    if (!loadedOutboundCalendarIntegrationOrNull) {
-                        return of(patchedSchedule);
-                    } else {
+                    if (loadedOutboundCalendarIntegrationOrNull) {
 
                         const outboundCalendarIntegrationVendor = loadedOutboundCalendarIntegrationOrNull.getIntegrationVendor();
 
-                        const calendarIntegrationService = this.calendarIntegrationsServiceLocator.getCalendarIntegrationService(outboundCalendarIntegrationVendor);
+                        calendarIntegrationServiceOrNull = this.calendarIntegrationsServiceLocator.getCalendarIntegrationService(outboundCalendarIntegrationVendor);
 
-                        return from(
-                            calendarIntegrationService.createCalendarEvent(
+                        createdCalendarEventOrNull$ = from(
+                            calendarIntegrationServiceOrNull.createCalendarEvent(
                                 (loadedOutboundCalendarIntegrationOrNull).getIntegration(),
                                 (loadedOutboundCalendarIntegrationOrNull),
                                 availabilityTimezone,
@@ -261,60 +268,72 @@ export class GlobalScheduledEventsService {
                             )
                         ).pipe(
                             map((createdCalendarEvent) => {
-
                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 patchedSchedule.iCalUID = (createdCalendarEvent as any).iCalUID as string;
 
                                 return createdCalendarEvent;
-                            }),
-                            mergeMap((createdCalendarEvent) => from(conferenceLinkIntegrationServices)
-                                .pipe(
-                                    mergeMap(
-                                        (conferenceLinkIntegrationService) => {
-                                            const integrationVendor = conferenceLinkIntegrationService.getIntegrationVendor();
-
-                                            const integrationFactory = this.integrationsServiceLocator.getIntegrationFactory(integrationVendor);
-
-                                            const loadedIntegration$ = from(integrationFactory.findOne({
-                                                profileId: hostProfiles[0].profileId
-                                            }));
-
-                                            return loadedIntegration$.pipe(
-                                                mergeMap((loadedIntegration) => {
-
-                                                    const createMeeting$ = loadedIntegration ?
-                                                        from(conferenceLinkIntegrationService.createMeeting(
-                                                            loadedIntegration,
-                                                            contacts,
-                                                            patchedSchedule,
-                                                            availabilityTimezone,
-                                                            createdCalendarEvent
-                                                        )) : of(null);
-
-                                                    return createMeeting$;
-                                                }),
-                                                mergeMap((createdConferenceLink) => {
-
-                                                    if (createdConferenceLink) {
-                                                        patchedSchedule.conferenceLinks.push(createdConferenceLink);
-                                                    }
-
-                                                    return of(createdCalendarEvent);
-                                                })
-                                            );
-                                        }
-                                    )
-                                )),
-                            mergeMap((createdCalendarEvent) => from(calendarIntegrationService.patchCalendarEvent(
-                                loadedOutboundCalendarIntegrationOrNull.getIntegration(),
-                                loadedOutboundCalendarIntegrationOrNull,
-                                patchedSchedule,
-                                createdCalendarEvent
-                            )).pipe(
-                                map(() => patchedSchedule)
-                            ))
+                            })
                         );
                     }
+
+                    return combineLatest([
+                        createdCalendarEventOrNull$,
+                        from(conferenceLinkIntegrationServices)
+                    ]).pipe(
+                        mergeMap(([createdCalendarEvent, conferenceLinkIntegrationService]) => {
+                            const integrationVendor = conferenceLinkIntegrationService.getIntegrationVendor();
+
+                            const integrationFactory = this.integrationsServiceLocator.getIntegrationFactory(integrationVendor);
+
+                            const loadedIntegration$ = from(integrationFactory.findOne({
+                                profileId: hostProfiles[0].profileId
+                            }));
+
+                            return loadedIntegration$.pipe(
+                                mergeMap((loadedIntegration) => {
+
+                                    const createMeeting$ = loadedIntegration ?
+                                        from(conferenceLinkIntegrationService.createMeeting(
+                                            loadedIntegration,
+                                            contacts,
+                                            patchedSchedule,
+                                            availabilityTimezone,
+                                            createdCalendarEvent
+                                        )) : of(null);
+
+                                    return createMeeting$;
+                                }),
+                                mergeMap((createdConferenceLink) => {
+
+                                    if (createdConferenceLink) {
+                                        patchedSchedule.conferenceLinks.push(createdConferenceLink);
+                                    }
+
+                                    return of(createdCalendarEvent);
+                                }),
+                                defaultIfEmpty(null)
+                            );
+                        }),
+                        mergeMap((createdCalendarEventOrNull) => {
+                            this.logger.info({
+                                message: 'calendarIntegrationServiceOrNull && loadedOutboundCalendarIntegrationOrNull && createdCalendarEventOrNull',
+                                calendarIntegrationServiceOrNull,
+                                loadedOutboundCalendarIntegrationOrNull,
+                                createdCalendarEventOrNull
+                            });
+                            if (calendarIntegrationServiceOrNull && loadedOutboundCalendarIntegrationOrNull && createdCalendarEventOrNull) {
+                                return from(calendarIntegrationServiceOrNull.patchCalendarEvent(
+                                    loadedOutboundCalendarIntegrationOrNull.getIntegration(),
+                                    loadedOutboundCalendarIntegrationOrNull,
+                                    patchedSchedule,
+                                    createdCalendarEventOrNull
+                                ));
+                            } else {
+                                return of(null);
+                            }
+                        }),
+                        map(() => patchedSchedule)
+                    );
                 }
             ),
             last()

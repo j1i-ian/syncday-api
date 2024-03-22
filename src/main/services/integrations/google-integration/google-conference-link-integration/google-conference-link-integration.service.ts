@@ -24,8 +24,12 @@ export class GoogleConferenceLinkIntegrationService implements ConferenceLinkInt
         contacts: Contact[],
         _scheduledEvent: ScheduledEvent,
         _timezone: string,
-        createdCalendarEvent: CreatedCalendarEvent & { raw: calendar_v3.Schema$Event }
+        createdCalendarEvent: (CreatedCalendarEvent & { raw: calendar_v3.Schema$Event }) | null
     ): Promise<ConferenceLink | null> {
+
+        if (!createdCalendarEvent) {
+            return Promise.resolve(null);
+        }
 
         const { raw } = createdCalendarEvent;
 
