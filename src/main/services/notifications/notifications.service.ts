@@ -20,7 +20,6 @@ import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
-import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { Language } from '@app/enums/language.enum';
 
 @Injectable()
@@ -34,19 +33,21 @@ export class NotificationsService {
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
-    sendBookingComplete(
-        scheduledEvent: ScheduledEvent
+    sendScheduledEventNotifications(
+        scheduledEventId: number,
+        scheduledEventNotifications: ScheduledEventNotification[]
     ): Observable<boolean> {
 
         const publishKeySet = new Set<SyncdayNotificationPublishKey>();
-        scheduledEvent.scheduledEventNotifications.forEach((_scheduledEventNotification) => {
+
+        scheduledEventNotifications.forEach((_scheduledEventNotification) => {
             const syncdayNotificationPublishKey = this.utilService.getSyncdayNotificationPublishKey(_scheduledEventNotification);
             publishKeySet.add(syncdayNotificationPublishKey);
         });
 
         this.logger.info({
             message: 'Booking confirm notification is sending..',
-            scheduledEventId: scheduledEvent.id
+            scheduledEventId
         });
 
         const publishKeyArray = [...publishKeySet.values()];
@@ -60,7 +61,7 @@ export class NotificationsService {
             messageAttribute,
             {
                 scheduledEventStatus: ScheduledStatus.CONFIRMED,
-                scheduledEventId: scheduledEvent.id
+                scheduledEventId
             } as SyncdayAwsSnsRequest
         ));
     }

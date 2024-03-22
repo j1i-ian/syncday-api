@@ -125,8 +125,9 @@ export class GlobalScheduledEventsService {
             tap((_createdSchedule) => {
 
                 if (_createdSchedule.scheduledEventNotifications.length > 0) {
-                    this.notificationsService.sendBookingComplete(
-                        _createdSchedule
+                    this.notificationsService.sendScheduledEventNotifications(
+                        _createdSchedule.id,
+                        _createdSchedule.scheduledEventNotifications
                     );
                 }
             }),

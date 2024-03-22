@@ -297,7 +297,7 @@ describe('GlobalScheduledEventsService', () => {
                 });
 
                 afterEach(() => {
-                    notificationsServiceStub.sendBookingComplete.reset();
+                    notificationsServiceStub.sendScheduledEventNotifications.reset();
 
                     scheduledEventRepositoryStub.update.reset();
 
@@ -351,7 +351,7 @@ describe('GlobalScheduledEventsService', () => {
 
                         _createStub.returns(of(createdScheduledEventStub));
 
-                        notificationsServiceStub.sendBookingComplete.returns(of(true));
+                        notificationsServiceStub.sendScheduledEventNotifications.returns(of(true));
                         scheduledEventRepositoryStub.update.resolves(updateResultMock);
 
                         const actualScheduledEvent = await firstValueFrom(
@@ -369,7 +369,7 @@ describe('GlobalScheduledEventsService', () => {
                         expect(actualScheduledEvent).ok;
 
                         expect(_createStub.called).true;
-                        expect(notificationsServiceStub.sendBookingComplete.called).equals(notificationRequestCall);
+                        expect(notificationsServiceStub.sendScheduledEventNotifications.called).equals(notificationRequestCall);
                         expect(scheduledEventRepositoryStub.update.called).true;
                     });
                 });
