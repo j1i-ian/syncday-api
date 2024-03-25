@@ -313,10 +313,10 @@ export class GlobalScheduledEventsService {
                         }),
                         mergeMap((createdCalendarEventOrNull) => {
                             this.logger.info({
-                                message: 'calendarIntegrationServiceOrNull && loadedOutboundCalendarIntegrationOrNull && createdCalendarEventOrNull',
-                                calendarIntegrationServiceOrNull,
-                                loadedOutboundCalendarIntegrationOrNull,
-                                createdCalendarEventOrNull
+                                message: 'Calendar condition check',
+                                calendarIntegrationServiceOrNullExist: !!calendarIntegrationServiceOrNull,
+                                loadedOutboundCalendarIntegrationOrNull: !!loadedOutboundCalendarIntegrationOrNull,
+                                createdCalendarEventOrNull: !!createdCalendarEventOrNull
                             });
                             if (calendarIntegrationServiceOrNull && loadedOutboundCalendarIntegrationOrNull && createdCalendarEventOrNull) {
                                 return from(calendarIntegrationServiceOrNull.patchCalendarEvent(
