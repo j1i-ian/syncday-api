@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, combineLatest, concat, concatMap, defaultIfEmpty, filter, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, zip } from 'rxjs';
+import { Observable, combineLatestWith, concat, concatMap, defaultIfEmpty, filter, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -9,6 +9,7 @@ import { InviteeScheduledEvent } from '@core/interfaces/scheduled-events/invitee
 import { PageOption } from '@core/interfaces/page-option.interface';
 import { CreatedCalendarEvent } from '@core/interfaces/integrations/created-calendar-event.interface';
 import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
+import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/conference-link-integration.abstract-service';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
@@ -29,6 +30,8 @@ import { Contact } from '@entity/events/contact.entity';
 import { Team } from '@entity/teams/team.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { Availability } from '@entity/availability/availability.entity';
+import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity';
+import { Integration } from '@entity/integrations/integration.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 
@@ -202,6 +205,9 @@ export class GlobalScheduledEventsService {
                 )
             );
 
+        let createdCalendarEventOrNull$: Observable<CreatedCalendarEvent | null> = of(null);
+        let calendarIntegrationServiceOrNull: CalendarIntegrationService | null = null;
+
         return zip([
             of(availabilityBody),
             scheduledEvent$,
@@ -247,9 +253,6 @@ export class GlobalScheduledEventsService {
                     contacts
                 ]) => {
 
-                    let createdCalendarEventOrNull$: Observable<CreatedCalendarEvent | null> = of(null);
-                    let calendarIntegrationServiceOrNull: CalendarIntegrationService | null = null;
-
                     if (loadedOutboundCalendarIntegrationOrNull) {
 
                         const outboundCalendarIntegrationVendor = loadedOutboundCalendarIntegrationOrNull.getIntegrationVendor();
@@ -273,68 +276,70 @@ export class GlobalScheduledEventsService {
                         );
                     }
 
-                    return combineLatest([
-                        createdCalendarEventOrNull$,
-                        from(conferenceLinkIntegrationServices)
-                    ]).pipe(
-                        mergeMap(([createdCalendarEvent, conferenceLinkIntegrationService]) => {
-                            const integrationVendor = conferenceLinkIntegrationService.getIntegrationVendor();
+                    // create conference links
+                    return createdCalendarEventOrNull$
+                        .pipe(
+                            combineLatestWith(from(conferenceLinkIntegrationServices)),
+                            mergeMap(([
+                                createdCalendarEventOrNull,
+                                conferenceLinkIntegrationService
+                            ]) => this.__createConferenceLinkByProfileId(
+                                createdCalendarEventOrNull,
+                                conferenceLinkIntegrationService,
+                                contacts,
+                                patchedSchedule,
+                                availabilityTimezone,
+                                hostProfiles[0].profileId
+                            )),
+                            tap((createdConferenceLink) => {
+                                if (createdConferenceLink) {
+                                    patchedSchedule.conferenceLinks.push(createdConferenceLink);
+                                }
+                            }),
+                            toArray(),
+                            mergeMap((generatedConferenceLinks) => {
 
-                            const integrationFactory = this.integrationsServiceLocator.getIntegrationFactory(integrationVendor);
+                                patchedSchedule.conferenceLinks = generatedConferenceLinks.filter(
+                                    (_generatedConferenceLink) => _generatedConferenceLink !== null
+                                ) as ConferenceLink[];
 
-                            const loadedIntegration$ = from(integrationFactory.findOne({
-                                profileId: hostProfiles[0].profileId
-                            }));
+                                return createdCalendarEventOrNull$;
+                            }),
+                            mergeMap((createdCalendarEventOrNull) => {
 
-                            return loadedIntegration$.pipe(
-                                mergeMap((loadedIntegration) => {
+                                this.logger.info({
+                                    message: 'Calendar condition check',
+                                    calendarIntegrationServiceOrNullExist: !!calendarIntegrationServiceOrNull,
+                                    loadedOutboundCalendarIntegrationOrNull: !!loadedOutboundCalendarIntegrationOrNull,
+                                    createdCalendarEventOrNull: !!createdCalendarEventOrNull
+                                });
 
-                                    const createMeeting$ = loadedIntegration ?
-                                        from(conferenceLinkIntegrationService.createMeeting(
-                                            loadedIntegration,
-                                            contacts,
-                                            patchedSchedule,
-                                            availabilityTimezone,
-                                            createdCalendarEvent
-                                        )) : of(null);
+                                const hasPatchingTargetOutboundedCalendarEvent =
+                                    !!calendarIntegrationServiceOrNull
+                                && loadedOutboundCalendarIntegrationOrNull
+                                && createdCalendarEventOrNull;
 
-                                    return createMeeting$;
-                                }),
-                                mergeMap((createdConferenceLink) => {
+                                if (hasPatchingTargetOutboundedCalendarEvent) {
+                                    const outboundIntegration = loadedOutboundCalendarIntegrationOrNull.getIntegration();
 
-                                    if (createdConferenceLink) {
-                                        patchedSchedule.conferenceLinks.push(createdConferenceLink);
-                                    }
-
-                                    return of(createdCalendarEvent);
-                                }),
-                                defaultIfEmpty(null)
-                            );
-                        }),
-                        mergeMap((createdCalendarEventOrNull) => {
-                            this.logger.info({
-                                message: 'Calendar condition check',
-                                calendarIntegrationServiceOrNullExist: !!calendarIntegrationServiceOrNull,
-                                loadedOutboundCalendarIntegrationOrNull: !!loadedOutboundCalendarIntegrationOrNull,
-                                createdCalendarEventOrNull: !!createdCalendarEventOrNull
-                            });
-                            if (calendarIntegrationServiceOrNull && loadedOutboundCalendarIntegrationOrNull && createdCalendarEventOrNull) {
-                                return from(calendarIntegrationServiceOrNull.patchCalendarEvent(
-                                    loadedOutboundCalendarIntegrationOrNull.getIntegration(),
-                                    loadedOutboundCalendarIntegrationOrNull,
-                                    patchedSchedule,
-                                    createdCalendarEventOrNull
-                                ));
-                            } else {
-                                return of(null);
-                            }
-                        }),
-                        map(() => patchedSchedule)
-                    );
+                                    return from((calendarIntegrationServiceOrNull as CalendarIntegrationService).patchCalendarEvent(
+                                        outboundIntegration,
+                                        loadedOutboundCalendarIntegrationOrNull,
+                                        patchedSchedule,
+                                        createdCalendarEventOrNull
+                                    ));
+                                } else {
+                                    return of(null);
+                                }
+                            }),
+                            defaultIfEmpty(null),
+                            map(() => patchedSchedule)
+                        );
                 }
             ),
             last()
         ).pipe(
+            // save scheduled event entity
             tap((patchedSchedule) => {
                 this.logger.info({
                     message: 'Trying to create the scheduled event..',
@@ -361,9 +366,38 @@ export class GlobalScheduledEventsService {
             ),
             tap(() => {
                 this.logger.info({
-                    message: 'Booking is completed successfully'
+                    message: 'Booking creating is completed successfully'
                 });
             })
+        );
+    }
+
+    __createConferenceLinkByProfileId(
+        createdCalendarEvent: CreatedCalendarEvent | null,
+        conferenceLinkIntegrationService: ConferenceLinkIntegrationService,
+        contacts: Contact[],
+        patchedScheduledEvent: ScheduledEvent,
+        timezone: string,
+        profileId: number
+    ): Observable<ConferenceLink | null> {
+
+        const integrationVendor = conferenceLinkIntegrationService.getIntegrationVendor();
+
+        const integrationFactory = this.integrationsServiceLocator.getIntegrationFactory(integrationVendor);
+
+        return from(integrationFactory.findOne({
+            profileId
+        })).pipe(
+            mergeMap((loadedIntegration) =>
+                from(conferenceLinkIntegrationService.createConferenceLink(
+                    loadedIntegration as unknown as Integration,
+                    contacts,
+                    patchedScheduledEvent,
+                    timezone,
+                    createdCalendarEvent
+                ))
+            ),
+            defaultIfEmpty(null)
         );
     }
 

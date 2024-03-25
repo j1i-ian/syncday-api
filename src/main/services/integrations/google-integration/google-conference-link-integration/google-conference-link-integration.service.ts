@@ -19,7 +19,7 @@ export class GoogleConferenceLinkIntegrationService implements ConferenceLinkInt
      * @param contacts
      * @returns
      */
-    createMeeting(
+    createConferenceLink(
         _integration: Integration,
         contacts: Contact[],
         _scheduledEvent: ScheduledEvent,

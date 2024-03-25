@@ -7,7 +7,7 @@ import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity'
 import { Contact } from '@entity/events/contact.entity';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
-import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
+import { ZoomCreateConferenceLinkResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
 import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class ZoomConferenceLinkIntegrationsService implements ConferenceLinkInte
 
     constructor(private readonly zoomIntegrationFacade: ZoomIntegrationFacade) {}
 
-    async createMeeting(
+    async createConferenceLink(
         integration: ZoomIntegration,
         contacts: Contact[],
         scheduledEvent: ScheduledEvent,
@@ -32,7 +32,7 @@ export class ZoomConferenceLinkIntegrationsService implements ConferenceLinkInte
 
             const oauth2UserToken = await this.zoomIntegrationFacade.issueTokenByRefreshToken(refreshToken);
 
-            const createdZoomMeeting = await this.zoomIntegrationFacade.createMeeting(oauth2UserToken.accessToken, {
+            const createdZoomMeeting = await this.zoomIntegrationFacade.createConferenceLink(oauth2UserToken.accessToken, {
                 agenda: scheduledEvent.name,
                 default_password: false,
                 duration: '2',
@@ -48,7 +48,7 @@ export class ZoomConferenceLinkIntegrationsService implements ConferenceLinkInte
         return generatedConferenceLink;
     }
 
-    getConferenceLinkFromVendorCalendarEvent(createdZoomMeeting: ZoomCreateMeetingResponseDTO): ConferenceLink {
+    getConferenceLinkFromVendorCalendarEvent(createdZoomMeeting: ZoomCreateConferenceLinkResponseDTO): ConferenceLink {
 
         const convertedConferenceLink: ConferenceLink = {
             type: IntegrationVendor.ZOOM,

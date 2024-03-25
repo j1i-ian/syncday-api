@@ -6,9 +6,9 @@ import { AppConfigService } from '@config/app-config.service';
 import { ZoomOauthTokenService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-token.service';
 import { ZoomOauthUserService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-user.service';
 import { IntegrationsFacade } from '@services/integrations/integrations.facade.interface';
-import { ZoomCreateMeetingService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
-import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
-import { ZoomCreateMeetingRequestDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-request.interface';
+import { ZoomCreateConferenceLinkService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
+import { ZoomCreateConferenceLinkResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
+import { ZoomCreateConferenceLinkRequestDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-request.interface';
 
 @Injectable()
 export class ZoomIntegrationFacade implements IntegrationsFacade {
@@ -17,7 +17,7 @@ export class ZoomIntegrationFacade implements IntegrationsFacade {
         private readonly configService: ConfigService,
         private readonly zoomOauthTokenService: ZoomOauthTokenService,
         private readonly zoomOauthUserService: ZoomOauthUserService,
-        private readonly zoomCreateMeetingService: ZoomCreateMeetingService
+        private readonly zoomCreateConferenceLinkService: ZoomCreateConferenceLinkService
     ) {
         const zoomCredentials = AppConfigService.getZoomCredentials(configService);
         this.basicAuth = AppConfigService.getBase64Encoded(zoomCredentials.clientId, zoomCredentials.clientSecret);
@@ -60,7 +60,7 @@ export class ZoomIntegrationFacade implements IntegrationsFacade {
         return this.zoomOauthUserService.getZoomUser(oauth2Token.accessToken);
     }
 
-    createMeeting(accessToken: string, zoomCreateMeetingRequestDTO: Partial<ZoomCreateMeetingRequestDTO>): Promise<ZoomCreateMeetingResponseDTO> {
-        return this.zoomCreateMeetingService.createZoomMeeting(accessToken, zoomCreateMeetingRequestDTO);
+    createConferenceLink(accessToken: string, zoomCreateMeetingRequestDTO: Partial<ZoomCreateConferenceLinkRequestDTO>): Promise<ZoomCreateConferenceLinkResponseDTO> {
+        return this.zoomCreateConferenceLinkService.createZoomMeeting(accessToken, zoomCreateMeetingRequestDTO);
     }
 }

@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ZoomCreateMeetingService } from './zoom-create-meeting.service';
+import { ZoomCreateConferenceLinkService } from './zoom-create-meeting.service';
 
-describe('ZoomCreateMeetingService', () => {
-    let service: ZoomCreateMeetingService;
+describe('ZoomCreateConferenceLinkService', () => {
+    let service: ZoomCreateConferenceLinkService;
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
-            providers: [ZoomCreateMeetingService]
+            providers: [ZoomCreateConferenceLinkService]
         }).compile();
 
-        service = module.get<ZoomCreateMeetingService>(ZoomCreateMeetingService);
+        service = module.get<ZoomCreateConferenceLinkService>(ZoomCreateConferenceLinkService);
     });
 
     it('should be defined', () => {

@@ -6,7 +6,7 @@ import { TrackingField } from './interface/tracking-field.interface';
 /**
  * [Docs]{@link https://developers.zoom.us/docs/api/rest/reference/zoom-api/methods/#operation/meetingCreate}
  */
-export interface ZoomCreateMeetingRequestDTO {
+export interface ZoomCreateConferenceLinkRequestDTO {
     agenda: string;
     default_password: boolean;
     duration: number | '2';

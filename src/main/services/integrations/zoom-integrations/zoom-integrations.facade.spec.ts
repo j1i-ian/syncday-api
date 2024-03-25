@@ -4,7 +4,7 @@ import { AppConfigService } from '@config/app-config.service';
 import { ZoomOauthTokenService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-token.service';
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
 import { ZoomOauthUserService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-user.service';
-import { ZoomCreateMeetingService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
+import { ZoomCreateConferenceLinkService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
 import { TestMockUtil } from '@test/test-mock-util';
 
 const testMockUtil = new TestMockUtil();
@@ -15,7 +15,7 @@ describe('ZoomIntegrationFacade Spec', () => {
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let zoomOauthTokenServiceStub: sinon.SinonStubbedInstance<ZoomOauthTokenService>;
     let zoomOauthUserServiceStub: sinon.SinonStubbedInstance<ZoomOauthUserService>;
-    let zoomCreateMeetingServiceStub: sinon.SinonStubbedInstance<ZoomCreateMeetingService>;
+    let zoomCreateConferenceLinkServiceStub: sinon.SinonStubbedInstance<ZoomCreateConferenceLinkService>;
 
     before(async () => {
 
@@ -24,7 +24,7 @@ describe('ZoomIntegrationFacade Spec', () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
         zoomOauthTokenServiceStub = sinon.createStubInstance(ZoomOauthTokenService);
         zoomOauthUserServiceStub = sinon.createStubInstance(ZoomOauthUserService);
-        zoomCreateMeetingServiceStub = sinon.createStubInstance(ZoomCreateMeetingService);
+        zoomCreateConferenceLinkServiceStub = sinon.createStubInstance(ZoomCreateConferenceLinkService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -42,8 +42,8 @@ describe('ZoomIntegrationFacade Spec', () => {
                     useValue: zoomOauthUserServiceStub
                 },
                 {
-                    provide: ZoomCreateMeetingService,
-                    useValue: zoomCreateMeetingServiceStub
+                    provide: ZoomCreateConferenceLinkService,
+                    useValue: zoomCreateConferenceLinkServiceStub
                 }
             ]
         }).compile();

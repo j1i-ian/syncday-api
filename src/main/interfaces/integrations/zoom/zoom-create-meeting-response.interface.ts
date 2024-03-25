@@ -6,7 +6,7 @@ import { TrackingField } from './interface/tracking-field.interface';
 /**
  * [Docs]{@link https://developers.zoom.us/docs/api/rest/reference/zoom-api/methods/#operation/meetingCreate}
  */
-export interface ZoomCreateMeetingResponseDTO {
+export interface ZoomCreateConferenceLinkResponseDTO {
     assistant_id: string;
     host_email: string;
     id: number;

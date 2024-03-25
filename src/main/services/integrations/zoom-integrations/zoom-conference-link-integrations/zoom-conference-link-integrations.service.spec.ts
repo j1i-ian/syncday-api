@@ -37,7 +37,7 @@ describe('ZoomConferenceLinkIntegrationsService', () => {
         expect(service).ok;
     });
 
-    describe('Test createMeeting', () => {
+    describe('Test createConferenceLink', () => {
 
         let serviceSandbox: sinon.SinonSandbox;
 
@@ -54,16 +54,16 @@ describe('ZoomConferenceLinkIntegrationsService', () => {
 
             const oauthTokenStub = testMockUtil.getOAuthTokenMock();
 
-            const zoomCreateMeetingResponseDTOStub = testMockUtil.getZoomCreateMeetingResponseDTOMock();
+            const zoomConferenceLinkResponseDTOStub = testMockUtil.getZoomCreateConferenceLinkResponseDTOMock();
 
             zoomIntegrationFacadeStub.issueTokenByRefreshToken.resolves(oauthTokenStub);
 
-            zoomIntegrationFacadeStub.createMeeting.resolves(zoomCreateMeetingResponseDTOStub);
+            zoomIntegrationFacadeStub.createConferenceLink.resolves(zoomConferenceLinkResponseDTOStub);
         });
 
         afterEach(() => {
             zoomIntegrationFacadeStub.issueTokenByRefreshToken.reset();
-            zoomIntegrationFacadeStub.createMeeting.reset();
+            zoomIntegrationFacadeStub.createConferenceLink.reset();
             serviceSandbox.restore();
         });
 
@@ -106,7 +106,7 @@ describe('ZoomConferenceLinkIntegrationsService', () => {
                 });
                 const timezoneMock = 'Asia/Seoul';
 
-                const confereceLink = await service.createMeeting(
+                const confereceLink = await service.createConferenceLink(
                     zoomIntegrationMock,
                     contactMocks,
                     scheduledEventMock,

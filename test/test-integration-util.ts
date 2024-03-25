@@ -44,7 +44,7 @@ import { VendorIntegrationsController } from '@services/integrations/vendor-inte
 import { ZoomOauthTokenService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-token.service';
 import { ZoomOauthUserService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-user.service';
 import { CalendarIntegrationsController } from '@services/integrations/calendar-integrations/calendar-integrations.controller';
-import { ZoomCreateMeetingService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
+import { ZoomCreateConferenceLinkService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
 import { AppleCaldavClientService } from '@services/integrations/apple-integrations/facades/apple-caldav-client.service';
 import { AppleCalendarListService } from '@services/integrations/apple-integrations/facades/apple-calendar-list.service';
 import { AppleCalendarEventListService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-list.service';
@@ -58,6 +58,7 @@ import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/goo
 import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
+import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { CreateTemporaryUserRequestDto } from '@dto/users/create-temporary-user-request.dto';
 import { CreateScheduledRequestDto } from '@dto/scheduled-events/create-scheduled-request.dto';
 import { ScheduledEventResponseDto } from '@dto/scheduled-events/scheduled-event-response.dto';
@@ -115,7 +116,7 @@ export class TestIntegrationUtil {
     // for schedule with Zoom outbound test
     zoomOauthTokenServiceStub: sinon.SinonStubbedInstance<ZoomOauthTokenService>;
     zoomOauthUserServiceStub: sinon.SinonStubbedInstance<ZoomOauthUserService>;
-    zoomCreateMeetingServiceStub: sinon.SinonStubbedInstance<ZoomCreateMeetingService>;
+    zoomCreateConferenceLinkServiceStub: sinon.SinonStubbedInstance<ZoomCreateConferenceLinkService>;
 
     // Prevent to send a email to fake account email address.
     notificationServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
@@ -127,7 +128,7 @@ export class TestIntegrationUtil {
     appleCalendarEventCreateServiceStub: sinon.SinonStubbedInstance<AppleCalendarEventCreateService>;
     appleCalendarEventPatchServiceStub: sinon.SinonStubbedInstance<AppleCalendarEventPatchService>;
 
-    scheduleRepository: Repository<Schedule>;
+    scheduleRepository: Repository<ScheduledEvent>;
     googleScheduleRepository: Repository<GoogleIntegrationScheduledEvent>;
     appleScheduleRepository: Repository<AppleCalDAVIntegrationScheduledEvent>;
 
@@ -156,7 +157,7 @@ export class TestIntegrationUtil {
             this.syncdayRedisService = this.app.get<SyncdayRedisService>(SyncdayRedisService);
             this.googleCalendarIntegrationsService = this.app.get<GoogleCalendarIntegrationsService>(GoogleCalendarIntegrationsService);
 
-            this.scheduleRepository = this.app.get(getRepositoryToken(Schedule));
+            this.scheduleRepository = this.app.get(getRepositoryToken(ScheduledEvent));
             this.googleScheduleRepository = this.app.get(getRepositoryToken(GoogleIntegrationScheduledEvent));
             this.appleScheduleRepository = this.app.get(getRepositoryToken(AppleCalDAVIntegrationScheduledEvent));
         }
@@ -223,13 +224,13 @@ export class TestIntegrationUtil {
             verificationCode: _generatedEmailVerificationCode.verificationCode
         };
 
-        const createdUser = await firstValueFrom(this.userController.createUserWithEmailOrPhoneVerification(createUserWithEmailVerificationDto));
+        const createdUser = await firstValueFrom(this.userController.createUserWithEmailOrPhoneVerification(Language.KOREAN, createUserWithEmailVerificationDto));
 
         this.logger.info(createdUser);
         expect(createdUser).ok;
         expect(createdUser.email).equals(fakeUser.email);
 
-        return createdUser;
+        return createdUser as unknown as Pick<User, 'email'>;
     }
 
     async integrateGoogleOAuthUser(
@@ -624,7 +625,7 @@ export class TestIntegrationUtil {
 
         const zoomMeetingStub = testMockUtil.getZoomMeetingMock();
 
-        this.zoomCreateMeetingServiceStub.createZoomMeeting.resolves(zoomMeetingStub);
+        this.zoomCreateConferenceLinkServiceStub.createZoomMeeting.resolves(zoomMeetingStub);
     }
 
     setGoogleCalendarEventStubs(
@@ -659,7 +660,7 @@ export class TestIntegrationUtil {
 
         this.zoomOauthTokenServiceStub = sinon.createStubInstance(ZoomOauthTokenService);
         this.zoomOauthUserServiceStub = sinon.createStubInstance(ZoomOauthUserService);
-        this.zoomCreateMeetingServiceStub = sinon.createStubInstance(ZoomCreateMeetingService);
+        this.zoomCreateConferenceLinkServiceStub = sinon.createStubInstance(ZoomCreateConferenceLinkService);
 
         this.notificationServiceStub = sinon.createStubInstance(NotificationsService);
         this.notificationServiceStub._sendNotification.resolves(true);
@@ -757,8 +758,8 @@ export class TestIntegrationUtil {
             .useValue(this.zoomOauthTokenServiceStub)
             .overrideProvider(ZoomOauthUserService)
             .useValue(this.zoomOauthUserServiceStub)
-            .overrideProvider(ZoomCreateMeetingService)
-            .useValue(this.zoomCreateMeetingServiceStub)
+            .overrideProvider(ZoomCreateConferenceLinkService)
+            .useValue(this.zoomCreateConferenceLinkServiceStub)
             .overrideProvider(NotificationsService)
             .useValue(this.notificationServiceStub)
             .overrideProvider(AppleCaldavClientService)

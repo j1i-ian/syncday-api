@@ -35,6 +35,7 @@ import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
+import { ConferenceLink } from '@entity/scheduled-events/conference-link.entity';
 import { CannotCreateByInvalidTimeRange } from '@app/exceptions/scheduled-events/cannot-create-by-invalid-time-range.exception';
 import { TestMockUtil } from '@test/test-mock-util';
 import { GlobalScheduledEventsService } from './global-scheduled-events.service';
@@ -288,7 +289,7 @@ describe('GlobalScheduledEventsService', () => {
 
         describe('Scheduled Event Creating Test', () => {
 
-            describe('Test Creating the scheduled event by booking wiht transaction', () => {
+            describe('Test Creating the scheduled event by booking with transaction', () => {
 
                 let serviceSandbox: sinon.SinonSandbox;
 
@@ -378,10 +379,24 @@ describe('GlobalScheduledEventsService', () => {
             /**
              * Private Create Method Spec
              */
-            describe('Test Creating the scheduled event by booking wiht transaction', () => {
+            describe('Test Creating the scheduled event by booking with transaction', () => {
+
+                afterEach(() => {
+                    eventsServiceStub.findOneByTeamWorkspaceAndUUID.reset();
+                    googleCalendarIntegrationsServiceStub.findOne.reset();
+                    integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.reset();
+                    utilServiceStub.getPatchedScheduledEvent.reset();
+                    googleCalendarIntegrationsServiceStub.createCalendarEvent.reset();
+                    googleCalendarIntegrationsServiceStub.patchCalendarEvent.reset();
+                    scheduledEventRepositoryStub.save.reset();
+                    schedulesRedisRepositoryStub.save.reset();
+
+                    serviceSandbox.restore();
+                });
+
                 [
                     {
-                        description: 'should be ensured that a scheduled event event is created when both Google Calendar and Zoom are integrated, and a Google Meet link associated with Zoom exists',
+                        description: 'should be ensured that a scheduled event is created when both Google Calendar and Zoom are integrated, and a Google Meet link associated with Zoom exists',
                         getEventStub: () => {
 
                             const eventStub = stubOne(Event, {
@@ -407,8 +422,7 @@ describe('GlobalScheduledEventsService', () => {
 
                             return scheduledEventStub;
                         },
-                        outboundGoogleCalendarIntegrationStub: stubOne(GoogleCalendarIntegration),
-                        expectedGoogleMeetLinkGeneration: true
+                        outboundGoogleCalendarIntegrationStub: stubOne(GoogleCalendarIntegration)
                     }
                     // test skipped: description: 'should be ensured that a scheduled event is created if Google Calendar is integrated and a Google Meet link is not set up on contacts',
                     // test skipped: description: 'should be created scheduled event even if google calendar is not integrated',
@@ -417,13 +431,10 @@ describe('GlobalScheduledEventsService', () => {
                     description,
                     getEventStub,
                     getScheduleStub,
-                    outboundGoogleCalendarIntegrationStub,
-                    expectedGoogleMeetLinkGeneration
+                    outboundGoogleCalendarIntegrationStub
                 }) {
 
                     it(description, async () => {
-
-                        const googleIntegrationServiceStub = serviceSandbox.createStubInstance(GoogleIntegrationsService);
 
                         const hostAvailabilityMock = stubOne(Availability);
                         const hostAvailabilityBodyMock = testMockUtil.getAvailabilityBodyMock(hostAvailabilityMock);
@@ -442,38 +453,39 @@ describe('GlobalScheduledEventsService', () => {
 
                         const createdCalendarEventMock = testMockUtil.getCreatedCalendarEventMock();
 
+                        const conferenceLinkStub = {
+                            link: 'conferenceLink',
+                            serviceName: 'google-meet',
+                            type: IntegrationVendor.GOOGLE
+                        } as ConferenceLink;
+
                         eventsServiceStub.findOneByTeamWorkspaceAndUUID.returns(of(eventStub));
+
+                        utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
 
                         calendarIntegrationsServiceLocatorStub.getAllCalendarIntegrationServices.returns([
                             googleCalendarIntegrationsServiceStub
                         ]);
-                        googleCalendarIntegrationsServiceStub.findOne.returns(of(outboundGoogleCalendarIntegrationStub));
 
                         // integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.returns([]);
                         integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.returns([
                             googleConferenceLinkIntegrationServiceStub
                         ]);
-                        googleConferenceLinkIntegrationServiceStub.getIntegrationVendor.returns(IntegrationVendor.GOOGLE);
 
-                        utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
+                        googleCalendarIntegrationsServiceStub.findOne.returns(of(outboundGoogleCalendarIntegrationStub));
 
                         const validateStub = serviceSandbox.stub(service, 'validate').returns(of(scheduleStub));
+
+                        googleConferenceLinkIntegrationServiceStub.getIntegrationVendor.returns(IntegrationVendor.GOOGLE);
 
                         calendarIntegrationsServiceLocatorStub.getCalendarIntegrationService.returns(
                             googleCalendarIntegrationsServiceStub
                         );
 
                         googleCalendarIntegrationsServiceStub.createCalendarEvent.resolves(createdCalendarEventMock);
-                        integrationsServiceLocatorStub.getIntegrationFactory.returns(googleIntegrationServiceStub);
 
-                        const googleIntegrationStub = stubOne(GoogleIntegration);
-                        googleIntegrationServiceStub.findOne.resolves(googleIntegrationStub);
-
-                        googleConferenceLinkIntegrationServiceStub.createMeeting.resolves({
-                            link: 'conferenceLink',
-                            serviceName: 'google-meet',
-                            type: IntegrationVendor.GOOGLE
-                        });
+                        serviceSandbox.stub(service, '__createConferenceLinkByProfileId')
+                            .resolves(conferenceLinkStub);
 
                         googleCalendarIntegrationsServiceStub.patchCalendarEvent.resolves();
 
@@ -497,19 +509,81 @@ describe('GlobalScheduledEventsService', () => {
 
                         expect(createdSchedule).ok;
                         expect(eventsServiceStub.findOneByTeamWorkspaceAndUUID.called).true;
-                        expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
-                        expect(integrationsServiceLocatorStub.getIntegrationFactory.called).true;
-                        expect(integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.called).true;
-                        expect(googleIntegrationServiceStub.findOne.called).true;
-                        expect(utilServiceStub.getPatchedScheduledEvent.called).true;
                         expect(validateStub.called).true;
+                        expect(utilServiceStub.getPatchedScheduledEvent.called).true;
 
-                        expect(googleCalendarIntegrationsServiceStub.createCalendarEvent.called).equals(expectedGoogleMeetLinkGeneration);
-                        expect(googleCalendarIntegrationsServiceStub.patchCalendarEvent.called).equals(expectedGoogleMeetLinkGeneration);
+                        calendarIntegrationsServiceLocatorStub.getAllCalendarIntegrationServices.returns([
+                            googleCalendarIntegrationsServiceStub
+                        ]);
 
-                        expect(scheduledEventRepositoryStub.save.called).true;
+                        // integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.returns([]);
+                        integrationsServiceLocatorStub.getAllConferenceLinkIntegrationService.returns([
+                            googleConferenceLinkIntegrationServiceStub
+                        ]);
+
+                        expect(googleCalendarIntegrationsServiceStub.findOne.called).true;
+                        expect(googleConferenceLinkIntegrationServiceStub.getIntegrationVendor.returns(IntegrationVendor.GOOGLE));
+                        expect(calendarIntegrationsServiceLocatorStub.getCalendarIntegrationService.returns(
+                            googleCalendarIntegrationsServiceStub
+                        ));
+
+                        expect(googleCalendarIntegrationsServiceStub.createCalendarEvent.called);
+                        expect(googleCalendarIntegrationsServiceStub.patchCalendarEvent.called);
+
+                        expect(scheduledEventRepositoryStub.save.called);
                         expect(schedulesRedisRepositoryStub.save.called).true;
                     });
+                });
+            });
+
+            describe('Test Call the method to create conference link', () => {
+
+                afterEach(() => {
+                    googleConferenceLinkIntegrationServiceStub.getIntegrationVendor.reset();
+                    integrationsServiceLocatorStub.getIntegrationFactory.reset();
+                    googleConferenceLinkIntegrationServiceStub.createConferenceLink.reset();
+                });
+
+                it('should be called the method: integrationService.createConferenceLink', async () => {
+
+                    const createdCalendarEventMock = testMockUtil.getCreatedCalendarEventMock();
+                    const contacts = [
+                        { type: ContactType.ZOOM, value: 'https://zoomFakeLink' },
+                        { type: ContactType.GOOGLE_MEET, value: 'https://googleMeetFakeLink' }
+                    ];
+
+                    const conferenceLinkStub = {
+                        link: 'conferenceLink',
+                        serviceName: 'google-meet',
+                        type: IntegrationVendor.GOOGLE
+                    } as ConferenceLink;
+                    const patchedScheduledEventDummy = {} as ScheduledEvent;
+                    const timezoneDummy = stubOne(Availability).timezone;
+                    const profileIdMock = 1;
+
+                    const googleIntegrationStub = stubOne(GoogleIntegration);
+                    const googleIntegrationServiceStub = serviceSandbox.createStubInstance(GoogleIntegrationsService);
+
+                    googleConferenceLinkIntegrationServiceStub.getIntegrationVendor.returns(IntegrationVendor.GOOGLE);
+
+                    googleIntegrationServiceStub.findOne.resolves(googleIntegrationStub);
+
+                    integrationsServiceLocatorStub.getIntegrationFactory.returns(googleIntegrationServiceStub);
+
+                    googleConferenceLinkIntegrationServiceStub.createConferenceLink.resolves(conferenceLinkStub);
+
+                    await firstValueFrom(service.__createConferenceLinkByProfileId(
+                        createdCalendarEventMock,
+                        googleConferenceLinkIntegrationServiceStub,
+                        contacts,
+                        patchedScheduledEventDummy,
+                        timezoneDummy,
+                        profileIdMock
+                    ));
+
+                    expect(googleIntegrationServiceStub.findOne.called).true;
+                    expect(integrationsServiceLocatorStub.getIntegrationFactory.called).true;
+                    expect(googleConferenceLinkIntegrationServiceStub.createConferenceLink.called).true;
                 });
             });
         });

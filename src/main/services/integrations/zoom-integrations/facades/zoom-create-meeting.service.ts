@@ -1,22 +1,22 @@
 import fetch from 'node-fetch';
-import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
-import { ZoomCreateMeetingRequestDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-request.interface';
+import { ZoomCreateConferenceLinkResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
+import { ZoomCreateConferenceLinkRequestDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-request.interface';
 
-export class ZoomCreateMeetingService {
+export class ZoomCreateConferenceLinkService {
     async createZoomMeeting(
         zoomAccessToken: string,
-        zoomCreateMeetingRequestDTO: Partial<ZoomCreateMeetingRequestDTO>
-    ): Promise<ZoomCreateMeetingResponseDTO> {
+        zoomCreateConferenceLinkRequestDTO: Partial<ZoomCreateConferenceLinkRequestDTO>
+    ): Promise<ZoomCreateConferenceLinkResponseDTO> {
 
         const headers = this.getHeaders(zoomAccessToken);
 
         const createZoomMeetingResponse = await fetch(this.url, {
             method: 'POST',
-            body: JSON.stringify(zoomCreateMeetingRequestDTO),
+            body: JSON.stringify(zoomCreateConferenceLinkRequestDTO),
             headers
         });
 
-        const createdZoomMeeting: ZoomCreateMeetingResponseDTO = await createZoomMeetingResponse.json();
+        const createdZoomMeeting: ZoomCreateConferenceLinkResponseDTO = await createZoomMeetingResponse.json();
 
         return createdZoomMeeting;
     }

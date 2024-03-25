@@ -46,7 +46,7 @@ import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity'
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
 import { ScheduledEventBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
-import { ZoomCreateMeetingResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
+import { ZoomCreateConferenceLinkResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
 import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
 import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
 import { Audio } from '@app/interfaces/integrations/zoom/enum/audio.enum';
@@ -731,9 +731,9 @@ export class TestMockUtil {
         };
     }
 
-    getZoomCreateMeetingResponseDTOMock(
-        partialZoomCreateMeetingResponseDTO?: Partial<ZoomCreateMeetingResponseDTO>
-    ): ZoomCreateMeetingResponseDTO {
+    getZoomCreateConferenceLinkResponseDTOMock(
+        partialZoomCreateConferenceLinkResponseDTO?: Partial<ZoomCreateConferenceLinkResponseDTO>
+    ): ZoomCreateConferenceLinkResponseDTO {
         return {
             agenda: 'fake schedule name',
             default_password: false,
@@ -742,8 +742,8 @@ export class TestMockUtil {
             type: MeetingType.Scheduled,
             topic: 'fake schedule name',
             start_time: '2023-07-27 07:30:00',
-            ...partialZoomCreateMeetingResponseDTO
-        } as ZoomCreateMeetingResponseDTO;
+            ...partialZoomCreateConferenceLinkResponseDTO
+        } as ZoomCreateConferenceLinkResponseDTO;
     }
 
     getConferenceLinkMock(partialConferenceLink?: Partial<ConferenceLink>): ConferenceLink {
@@ -1013,7 +1013,7 @@ export class TestMockUtil {
         } as Request & { req: any };
     }
 
-    getZoomMeetingMock(): ZoomCreateMeetingResponseDTO {
+    getZoomMeetingMock(): ZoomCreateConferenceLinkResponseDTO {
         return {
             uuid: '1CiOzIVfQLq91BQXzMFUpw==',
             id: 84153303437,
@@ -1080,6 +1080,6 @@ export class TestMockUtil {
                 email_in_attendee_report: false
             },
             pre_schedule: false
-        } as unknown as ZoomCreateMeetingResponseDTO;
+        } as unknown as ZoomCreateConferenceLinkResponseDTO;
     }
 }

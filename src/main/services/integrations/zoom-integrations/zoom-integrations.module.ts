@@ -6,7 +6,7 @@ import { ZoomIntegrationsService } from '@services/integrations/zoom-integration
 import { ZoomOauthTokenService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-token.service';
 import { ZoomOauthUserService } from '@services/integrations/zoom-integrations/facades/zoom-oauth-user.service';
 import { ZoomIntegrationFacade } from '@services/integrations/zoom-integrations/zoom-integrations.facade';
-import { ZoomCreateMeetingService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
+import { ZoomCreateConferenceLinkService } from '@services/integrations/zoom-integrations/facades/zoom-create-meeting.service';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { ZoomIntegrationsController } from './zoom-integrations.controller';
 import { ZoomConferenceLinkIntegrationsService } from './zoom-conference-link-integrations/zoom-conference-link-integrations.service';
@@ -22,7 +22,7 @@ import { ZoomConferenceLinkIntegrationsService } from './zoom-conference-link-in
         ZoomIntegrationFacade,
         ZoomOauthTokenService,
         ZoomOauthUserService,
-        ZoomCreateMeetingService,
+        ZoomCreateConferenceLinkService,
         ZoomConferenceLinkIntegrationsService
     ],
     exports: [ZoomIntegrationsService, ZoomIntegrationFacade],
