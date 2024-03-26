@@ -14,7 +14,8 @@ import {
     Req,
     Res,
     NotImplementedException,
-    ForbiddenException
+    ForbiddenException,
+    Query
 } from '@nestjs/common';
 import { Observable, from, map } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
@@ -37,17 +38,25 @@ export class AvailabilityController {
 
     @Get()
     searchAvailabilities(
+        @Query('profileId') profileIdQuery: string,
         @AuthProfile('id') profileId: number,
-        @AuthProfile('uuid') profileUUID: string,
         @AuthProfile('teamId') teamId: number,
-        @AuthProfile('teamUUID') teamUUID: string
+        @AuthProfile('teamUUID') teamUUID: string,
+        @AuthProfile('roles') roles: Role[]
     ): Observable<GetAvailabilityResponseDto[]> {
+
+        const hasPermission = roles.includes(Role.OWNER) || roles.includes(Role.MANAGER);
+        let ensuredProfileId = profileId;
+
+        if (hasPermission) {
+            ensuredProfileId = profileIdQuery ? +profileIdQuery : profileId;
+        }
+
         return this.availabilityService
             .search({
                 teamId,
                 teamUUID,
-                profileId,
-                profileUUID
+                profileId: ensuredProfileId
             })
             .pipe(
                 map((loadedAvailabilities) =>
