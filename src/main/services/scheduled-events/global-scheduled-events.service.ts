@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, combineLatestWith, concat, concatMap, defaultIfEmpty, filter, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
+import { Observable, concat, concatMap, defaultIfEmpty, filter, forkJoin, from, last, map, mergeAll, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -157,7 +157,7 @@ export class GlobalScheduledEventsService {
         this.logger.info({
             message: 'Scheduled Event Creating is started',
             teamWorkspace,
-            hostProfiles: hostProfiles.length
+            hostProfileIds: hostProfiles.map((_hostProfie) => _hostProfie.profileId)
         });
 
         const availabilityTimezone = hostAvailability.timezone;
@@ -272,13 +272,22 @@ export class GlobalScheduledEventsService {
                     }
 
                     // create conference links
-                    return createdCalendarEventOrNull$
+                    return from(conferenceLinkIntegrationServices)
                         .pipe(
-                            combineLatestWith(from(conferenceLinkIntegrationServices)),
+                            map((conferenceLinkIntegrationService) => createdCalendarEventOrNull$.pipe(
+                                map((createdCalendarEventOrNull) => [
+                                    createdCalendarEventOrNull,
+                                    conferenceLinkIntegrationService
+                                ] as [
+                                    CreatedCalendarEvent | null,
+                                    ConferenceLinkIntegrationService
+                                ])
+                            )),
+                            mergeAll(),
                             mergeMap(([
                                 createdCalendarEventOrNull,
                                 conferenceLinkIntegrationService
-                            ]) => this.__createConferenceLinkByProfileId(
+                            ]: [CreatedCalendarEvent | null, ConferenceLinkIntegrationService]) => this.__createConferenceLinkByProfileId(
                                 createdCalendarEventOrNull,
                                 conferenceLinkIntegrationService,
                                 contacts,
@@ -291,7 +300,8 @@ export class GlobalScheduledEventsService {
                                     patchedSchedule.conferenceLinks.push(createdConferenceLink);
                                 }
                             }),
-                            toArray(),
+                            toArray()
+                        ).pipe(
                             mergeMap((generatedConferenceLinks) => {
 
                                 patchedSchedule.conferenceLinks = generatedConferenceLinks.filter(
