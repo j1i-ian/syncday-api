@@ -227,9 +227,48 @@ export class GlobalScheduledEventsService {
                             patchedScheduledEvent,
                             loadedOutboundCalendarIntegrationOrNull,
                             contacts
-                        ] as [ScheduledEvent, CalendarIntegration | null, Contact[]])
+                        ] as unknown as [ScheduledEvent, CalendarIntegration | null, Contact[]])
                     )
-            ),
+            )
+        ).pipe(
+            // save scheduled event entity
+            tap(([patchedSchedule]) => {
+                this.logger.info({
+                    message: 'Trying to create the scheduled event..',
+                    patchedSchedule
+                });
+            }),
+            concatMap(([
+                patchedSchedule,
+                loadedOutboundCalendarIntegrationOrNull,
+                contacts
+            ]) => of(this.scheduledEventRepository.create(patchedSchedule ))
+                .pipe(
+                    mergeMap((patchedSchedule) => from(_scheduledEventRepository.save(patchedSchedule))),
+                    tap(() => {
+                        this.logger.info({
+                            message: 'Saving the Scheduled event relation data. Trying to save the redis data..'
+                        });
+                    }),
+                    mergeMap((createdSchedule) =>
+                        this.scheduledEventsRedisRepository.save(createdSchedule.uuid, {
+                            inviteeAnswers: newScheduledEvent.inviteeAnswers,
+                            scheduledNotificationInfo: newScheduledEvent.scheduledNotificationInfo
+                        }).pipe(map((_createdScheduledEventBody) => {
+                            createdSchedule.inviteeAnswers = _createdScheduledEventBody.inviteeAnswers;
+                            createdSchedule.scheduledNotificationInfo = _createdScheduledEventBody.scheduledNotificationInfo;
+
+                            return createdSchedule;
+                        }))
+                    ),
+                    tap(() => {
+                        this.logger.info({
+                            message: 'Booking creating is completed successfully'
+                        });
+                    }),
+                    map((savedSchedule) => [savedSchedule, loadedOutboundCalendarIntegrationOrNull, contacts] as [ScheduledEvent, CalendarIntegration | null, Contact[]])
+                ))
+        ).pipe(
             tap(([
                 patchedSchedule,
                 loadedOutboundCalendarIntegrationOrNull
@@ -344,36 +383,11 @@ export class GlobalScheduledEventsService {
             ),
             last()
         ).pipe(
-            // save scheduled event entity
-            tap((patchedSchedule) => {
-                this.logger.info({
-                    message: 'Trying to create the scheduled event..',
-                    patchedSchedule
-                });
-            }),
-            map((patchedSchedule) => this.scheduledEventRepository.create(patchedSchedule)),
-            mergeMap((patchedSchedule) => from(_scheduledEventRepository.save(patchedSchedule))),
-            tap(() => {
-                this.logger.info({
-                    message: 'Saving the Scheduled event relation data. Trying to save the redis data..'
-                });
-            }),
-            mergeMap((createdSchedule) =>
-                this.scheduledEventsRedisRepository.save(createdSchedule.uuid, {
-                    inviteeAnswers: newScheduledEvent.inviteeAnswers,
-                    scheduledNotificationInfo: newScheduledEvent.scheduledNotificationInfo
-                }).pipe(map((_createdScheduledEventBody) => {
-                    createdSchedule.inviteeAnswers = _createdScheduledEventBody.inviteeAnswers ;
-                    createdSchedule.scheduledNotificationInfo = _createdScheduledEventBody.scheduledNotificationInfo;
-
-                    return createdSchedule;
-                }))
-            ),
-            tap(() => {
-                this.logger.info({
-                    message: 'Booking creating is completed successfully'
-                });
-            })
+            mergeMap((patchedSchedule) =>
+                from(_scheduledEventRepository.update(patchedSchedule.id, {
+                    conferenceLinks: patchedSchedule.conferenceLinks
+                })).pipe(map(() => patchedSchedule))
+            )
         );
     }
 

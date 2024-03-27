@@ -451,6 +451,8 @@ describe('GlobalScheduledEventsService', () => {
                             type: IntegrationVendor.GOOGLE
                         } as ConferenceLink;
 
+                        const updateStub = TestMockUtil.getTypeormUpdateResultMock();
+
                         eventsServiceStub.findOneByTeamWorkspaceAndUUID.returns(of(eventStub));
 
                         utilServiceStub.getPatchedScheduledEvent.returns(scheduleStub);
@@ -482,6 +484,7 @@ describe('GlobalScheduledEventsService', () => {
                         googleCalendarIntegrationsServiceStub.patchCalendarEvent.resolves();
 
                         scheduledEventRepositoryStub.save.resolves(scheduleStub);
+                        scheduledEventRepositoryStub.update.resolves(updateStub);
                         schedulesRedisRepositoryStub.save.returns(of(scheduleStub));
 
                         const createdSchedule = await firstValueFrom(
