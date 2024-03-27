@@ -99,7 +99,6 @@ export class BookingsService {
                         eventUUID,
                         newScheduledEvent,
                         loadedTeam,
-                        loadedTeam.profiles[0].user,
                         loadedTeam.profiles.map((_profile) => {
                             const { preferredTimezone, preferredLanguage } = _profile.user.userSetting;
 

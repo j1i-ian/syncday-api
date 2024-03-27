@@ -22,7 +22,6 @@ import { NativeScheduledEventsService } from '@services/scheduled-events/native-
 import { CalendarIntegrationsServiceLocator } from '@services/integrations/calendar-integrations/calendar-integrations.service-locator.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
-import { User } from '@entity/users/user.entity';
 import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { CalendarIntegration } from '@entity/calendars/calendar-integration.entity';
 import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
@@ -111,7 +110,6 @@ export class GlobalScheduledEventsService {
         eventUUID: string,
         newScheduledEvent: ScheduledEvent,
         team: Team,
-        host: User,
         hostProfiles: HostProfile[],
         hostAvailability: Availability
     ): Observable<ScheduledEvent> {
@@ -121,7 +119,6 @@ export class GlobalScheduledEventsService {
             eventUUID,
             newScheduledEvent,
             team,
-            host,
             hostProfiles,
             hostAvailability
         ).pipe(
@@ -153,7 +150,6 @@ export class GlobalScheduledEventsService {
         eventUUID: string,
         newScheduledEvent: ScheduledEvent,
         team: Team,
-        host: User,
         hostProfiles: HostProfile[],
         hostAvailability: Availability
     ): Observable<ScheduledEvent> {
@@ -161,7 +157,6 @@ export class GlobalScheduledEventsService {
         this.logger.info({
             message: 'Scheduled Event Creating is started',
             teamWorkspace,
-            hostUser: host,
             hostProfiles: hostProfiles.length
         });
 

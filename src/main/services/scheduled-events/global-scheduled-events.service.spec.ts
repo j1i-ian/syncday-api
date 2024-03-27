@@ -22,7 +22,6 @@ import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
-import { UserSetting } from '@entity/users/user-setting.entity';
 import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { Availability } from '@entity/availability/availability.entity';
@@ -337,10 +336,8 @@ describe('GlobalScheduledEventsService', () => {
                         const eventTypeMock = stubOne(Event);
                         const newScheduledEventMock = stubOne(ScheduledEvent);
                         const availability = stubOne(Availability);
-                        const hostMock = stubOne(User, {
-                            profiles: stub(Profile)
-                        });
-                        const profilesMock = hostMock.profiles as unknown as HostProfile[];
+
+                        const profilesMock = stub(Profile) as unknown as HostProfile[];
                         const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
 
                         const createdScheduledEventStub = stubOne(ScheduledEvent, {
@@ -361,7 +358,6 @@ describe('GlobalScheduledEventsService', () => {
                                 eventTypeMock.uuid,
                                 newScheduledEventMock,
                                 teamMock,
-                                hostMock,
                                 profilesMock,
                                 availability
                             )
@@ -442,10 +438,6 @@ describe('GlobalScheduledEventsService', () => {
                         hostAvailabilityMock.overrides = hostAvailabilityBodyMock.overrides;
 
                         const teamSettingMock = stubOne(TeamSetting);
-                        const userSettingStub = stubOne(UserSetting);
-                        const userMock = stubOne(User, {
-                            userSetting: userSettingStub
-                        });
                         const profileMock = stubOne(Profile) as unknown as HostProfile;
                         const teamMock = stubOne(Team);
                         const eventStub = getEventStub();
@@ -501,7 +493,6 @@ describe('GlobalScheduledEventsService', () => {
                                 eventStub.uuid,
                                 scheduleStub,
                                 teamMock,
-                                userMock,
                                 [profileMock],
                                 hostAvailabilityMock
                             )
