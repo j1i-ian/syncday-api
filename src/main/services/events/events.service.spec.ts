@@ -386,6 +386,54 @@ describe('EventsService', () => {
             eventRedisRepositoryStub.setEventLinkSetStatus.reset();
         });
 
+        it('should be created an event with default member assignment' , async () => {
+            const hostQuestionStubs = [testMockUtil.getHostQuestionMock()];
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
+            const eventGroupMock = stubOne(EventGroup);
+            const eventGroupSettingStub: EventGroupSetting = testMockUtil.getEventGroupSettingMock();
+
+            const eventDetailBodyStub = {
+                hostQuestions: hostQuestionStubs,
+                notificationInfo: notificationInfoStub
+            } as EventsDetailBody;
+
+            const eventDetailStub = stubOne(EventDetail, {
+                hostQuestions: eventDetailBodyStub.hostQuestions,
+                notificationInfo: eventDetailBodyStub.notificationInfo
+            });
+            const eventMockStub = stubOne(Event, {
+                eventDetail: eventDetailStub
+            });
+            const profileMock = stubOne(Profile);
+            const availabilityMock = stubOne(Availability);
+
+            eventRedisRepositoryStub.getEventGroupSetting.returns(of(eventGroupSettingStub));
+            utilServiceStub.patchDefaultEvent.returns(eventMockStub);
+            eventRepositoryStub.save.resolves(eventMockStub);
+            eventRedisRepositoryStub.save.resolves(eventDetailBodyStub);
+
+            const teamUUIDDummy = stubOne(Team).uuid;
+
+            const createdEvent = await service._create(
+                datasourceMock as unknown as EntityManager,
+                teamUUIDDummy,
+                profileMock.id,
+                availabilityMock.id,
+                eventMockStub,
+                eventGroupMock.uuid
+            );
+
+            expect(createdEvent.eventDetail).ok;
+            expect(createdEvent.eventDetail.hostQuestions).ok;
+            expect(createdEvent.eventDetail.hostQuestions.length).greaterThan(0);
+            expect(createdEvent.eventDetail.notificationInfo).ok;
+            expect(createdEvent.eventProfiles.length).greaterThan(0);
+
+            expect(eventRepositoryStub.save.called).true;
+            expect(eventRedisRepositoryStub.save.called).true;
+            expect(eventRedisRepositoryStub.setEventLinkSetStatus.called).true;
+        });
+
         it('should be created an event with transaction' , async () => {
             const hostQuestionStubs = [testMockUtil.getHostQuestionMock()];
             const notificationInfoStub = testMockUtil.getNotificationInfoMock();
@@ -853,6 +901,9 @@ describe('EventsService', () => {
             validatorStub.validate.reset();
             utilServiceStub.generateUniqueNumber.reset();
 
+            eventRepositoryStub.findOneOrFail.reset();
+            eventRepositoryStub.save.reset();
+
             eventRedisRepositoryStub.clone.reset();
             eventRedisRepositoryStub.setEventLinkSetStatus.reset();
         });
@@ -872,20 +923,62 @@ describe('EventsService', () => {
                 hostQuestions: eventDetailBodyStub.hostQuestions,
                 notificationInfo: eventDetailBodyStub.notificationInfo
             });
-            const [sourceEventStub, clonedEventStub] = stub(Event, 2);
+            const [sourceEventStub, clonedEventStub] = stub(Event, 2, {
+                eventProfiles: []
+            });
             sourceEventStub.eventDetail = sourceEventDetailStub;
             clonedEventStub.eventDetail = clonedEventDetailStub;
 
             validatorStub.validate.resolves(sourceEventStub);
-            eventRepositoryStub.save.resolves(clonedEventStub);
+            eventRepositoryStub.findOneOrFail.resolves(sourceEventStub);
+            eventRepositoryStub.save.resolvesArg(0);
             eventRedisRepositoryStub.clone.returns(of(eventDetailBodyStub));
 
             const clonedEvent = await service.clone(sourceEventDetailStub.id, teamMock.id, teamMock.uuid);
             expect(clonedEvent).ok;
 
             expect(validatorStub.validate.called).true;
+            expect(eventRepositoryStub.findOneOrFail.called).true;
             expect(eventRepositoryStub.save.called).true;
             expect(eventRedisRepositoryStub.clone.called).true;
+        });
+
+        it('should be cloned event with default member assignment', async () => {
+            const teamMock = stubOne(Team);
+
+            const hostQuestionStubs = [testMockUtil.getHostQuestionMock()];
+            const notificationInfoStub = testMockUtil.getNotificationInfoMock();
+
+            const eventDetailBodyStub = {
+                hostQuestions: hostQuestionStubs,
+                notificationInfo: notificationInfoStub
+            } as EventsDetailBody;
+
+            const [sourceEventDetailStub, clonedEventDetailStub] = stub(EventDetail, 2, {
+                hostQuestions: eventDetailBodyStub.hostQuestions,
+                notificationInfo: eventDetailBodyStub.notificationInfo
+            });
+            const [sourceEventStub, clonedEventStub] = stub(Event, 2);
+            const eventProfileStubs = stub(EventProfile, 5);
+            sourceEventStub.eventDetail = sourceEventDetailStub;
+            sourceEventStub.eventProfiles = eventProfileStubs;
+
+            clonedEventStub.eventDetail = clonedEventDetailStub;
+
+            validatorStub.validate.resolves(sourceEventStub);
+            eventRepositoryStub.findOneOrFail.resolves(sourceEventStub);
+            eventRepositoryStub.save.resolvesArg(0);
+            eventRedisRepositoryStub.clone.returns(of(eventDetailBodyStub));
+
+            const clonedEvent = await service.clone(sourceEventDetailStub.id, teamMock.id, teamMock.uuid);
+            expect(clonedEvent).ok;
+
+            expect(validatorStub.validate.called).true;
+            expect(eventRepositoryStub.findOneOrFail.called).true;
+            expect(eventRepositoryStub.save.called).true;
+            expect(eventRedisRepositoryStub.clone.called).true;
+
+            expect(clonedEvent.eventProfiles.length).greaterThan(0);
         });
     });
 

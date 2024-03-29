@@ -532,6 +532,16 @@ export class EventsService {
         } = newEventBody.eventDetail;
         /* eslint-enable @typescript-eslint/no-unused-vars */
 
+        const loadedEvent = await this.eventRepository.findOneOrFail({
+            relations: {
+                eventProfiles: true
+            },
+            where: {
+                id: eventId
+            }
+        });
+        newEventBody.eventProfiles = loadedEvent.eventProfiles;
+
         const generatedEventSuffix = this.utilService.generateUniqueNumber();
         newEventBody.eventDetail = newEventDetailBody as EventDetail;
         newEventBody.link = `${validatedEvent.link}-${generatedEventSuffix}`;
