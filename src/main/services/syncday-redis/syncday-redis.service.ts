@@ -185,6 +185,12 @@ export class SyncdayRedisService {
         ]);
     }
 
+    getMemberCountKey(teamUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.MEMBER_COUNT, [
+            teamUUID
+        ]);
+    }
+
     _getAvailabilityHashMapKey(teamUUID: string): RedisKey {
         return this.getRedisKey(RedisStores.TEAMS, [teamUUID, RedisStores.AVAILABILITY]);
     }

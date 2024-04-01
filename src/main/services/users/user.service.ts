@@ -26,6 +26,7 @@ import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service
 import { OAuth2UserProfile } from '@services/users/oauth2-user-profile.interface';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { EventsService } from '@services/events/events.service';
+import { TeamRedisRepository } from '@services/team/team.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
@@ -69,6 +70,7 @@ export class UserService {
         private readonly notificationsService: NotificationsService,
         private readonly googleIntegrationService: GoogleIntegrationsService,
         private readonly eventsService: EventsService,
+        private readonly teamRedisRepository: TeamRedisRepository,
         private readonly eventRedisRepository: EventsRedisRepository,
         private readonly availabilityRedisRepository: AvailabilityRedisRepository,
         @Inject(forwardRef(() => ProfilesService))
@@ -672,6 +674,7 @@ export class UserService {
             savedProfileId: savedProfile.id
         });
 
+        await this.teamRedisRepository.initializeMemberCount(savedTeam.uuid);
 
         return {
             createdProfile: savedProfile,

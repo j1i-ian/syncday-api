@@ -19,5 +19,6 @@ export enum RedisStores {
     PG_PAYMENTS = 'pg-payments',
     INVITED_NEW_MEMBER = 'invited-new-member',
     TEAM_INVITATIONS = 'team-invitations',
-    EVENT_TYPE_GROUP_SETTING = 'event-type-group-setting'
+    EVENT_TYPE_GROUP_SETTING = 'event-type-group-setting',
+    MEMBER_COUNT = 'member-count'
 }

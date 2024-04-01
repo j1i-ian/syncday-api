@@ -18,6 +18,7 @@ import { PaymentMethodService } from '@services/payments/payment-method/payment-
 import { PaymentsService } from '@services/payments/payments.service';
 import { TeamService } from '@services/team/team.service';
 import { AvailabilityService } from '@services/availability/availability.service';
+import { TeamRedisRepository } from '@services/team/team.redis-repository';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { User } from '@entity/users/user.entity';
@@ -47,6 +48,7 @@ describe('ProfilesService', () => {
     let teamServiceStub: sinon.SinonStubbedInstance<TeamService>;
     let availabilityServiceStub: sinon.SinonStubbedInstance<AvailabilityService>;
 
+    let teamRedisRepositoryStub: sinon.SinonStubbedInstance<TeamRedisRepository>;
     let profilesRedisRepositoryStub: sinon.SinonStubbedInstance<ProfilesRedisRepository>;
 
     let profileRepositoryStub: sinon.SinonStubbedInstance<Repository<Profile>>;
@@ -67,6 +69,7 @@ describe('ProfilesService', () => {
         teamServiceStub = sinon.createStubInstance(TeamService);
         availabilityServiceStub = sinon.createStubInstance(AvailabilityService);
 
+        teamRedisRepositoryStub = sinon.createStubInstance(TeamRedisRepository);
         profilesRedisRepositoryStub = sinon.createStubInstance<ProfilesRedisRepository>(ProfilesRedisRepository);
 
         profileRepositoryStub = sinon.createStubInstance<Repository<Profile>>(Repository);
@@ -115,6 +118,10 @@ describe('ProfilesService', () => {
                 {
                     provide: AvailabilityService,
                     useValue: availabilityServiceStub
+                },
+                {
+                    provide: TeamRedisRepository,
+                    useValue: teamRedisRepositoryStub
                 },
                 {
                     provide: ProfilesRedisRepository,
@@ -511,6 +518,8 @@ describe('ProfilesService', () => {
 
             notificationServiceStub.sendTeamInvitation.reset();
 
+            teamRedisRepositoryStub.incrementMemberCount.reset();
+
             serviceSandbox.restore();
         });
 
@@ -606,6 +615,8 @@ describe('ProfilesService', () => {
                 saveInvitedNewTeamMemberStub.returns(of(true));
                 notificationServiceStub.sendTeamInvitation.returns(of(true));
 
+                teamRedisRepositoryStub.incrementMemberCount.resolves();
+
                 const createdProfile = await firstValueFrom(
                     service.createBulk(
                         teamIdMock,
@@ -634,6 +645,8 @@ describe('ProfilesService', () => {
 
                 expect(utilServiceStub.filterInvitedNewUsers.called).true;
                 expect(saveInvitedNewTeamMemberStub.called).equals(saveInvitedNewTeamMemberCall);
+
+                expect(teamRedisRepositoryStub.incrementMemberCount.called).true;
                 expect(notificationServiceStub.sendTeamInvitation.called).true;
             });
         });
@@ -927,6 +940,8 @@ describe('ProfilesService', () => {
             profileRepositoryStub.findOneByOrFail.reset();
             profileRepositoryStub.delete.reset();
 
+            teamRedisRepositoryStub.decrementMemberCount.reset();
+
             serviceSandbox.restore();
         });
 
@@ -962,6 +977,7 @@ describe('ProfilesService', () => {
             scheduledEventNotificationRepositoryStub.delete.resolves(deleteResultStub);
             profileRepositoryStub.delete.resolves(deleteResultStub);
             paymentsServiceStub._save.returns(of(paymentStub));
+            teamRedisRepositoryStub.decrementMemberCount.resolves();
 
             await service.remove(
                 teamStub.id,
@@ -980,6 +996,7 @@ describe('ProfilesService', () => {
             expect(scheduledEventNotificationRepositoryStub.delete.called).true;
             expect(profileRepositoryStub.delete.called).true;
             expect(paymentsServiceStub._save.called).true;
+            expect(teamRedisRepositoryStub.decrementMemberCount.called).true;
         });
     });
 

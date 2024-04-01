@@ -39,6 +39,7 @@ import { PaymentMethodService } from '@services/payments/payment-method/payment-
 import { PaymentsService } from '@services/payments/payments.service';
 import { TeamService } from '@services/team/team.service';
 import { AvailabilityService } from '@services/availability/availability.service';
+import { TeamRedisRepository } from '@services/team/team.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
@@ -59,6 +60,7 @@ export class ProfilesService {
         private readonly notificationsService: NotificationsService,
         private readonly teamService: TeamService,
         private readonly availabilityService: AvailabilityService,
+        private readonly teamRedisRepository: TeamRedisRepository,
         private readonly profilesRedisRepository: ProfilesRedisRepository,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
@@ -455,6 +457,8 @@ export class ProfilesService {
                     OrderStatus.PLACED
                 );
 
+                await this.teamRedisRepository.incrementMemberCount(team.uuid, newInvitedNewMembers.length);
+
                 return {
                     searchedUsers,
                     createdOrderId: _createdOrder.id,
@@ -809,7 +813,7 @@ export class ProfilesService {
             }
         })) as Order;
 
-        const team = await firstValueFrom(this.teamService.get(teamId, authProfile.userId, {}));
+        const team = await firstValueFrom(this.teamService.get(teamId, authProfile.userId));
 
         const profileName = deleteProfile.name || deleteProfile.id;
         const unitPrice = Math.floor(relatedOrder.amount / relatedOrder.unit);
@@ -919,6 +923,8 @@ export class ProfilesService {
             return scheduledEventNotificationDeleteSuccess;
         });
 
+        await this.teamRedisRepository.decrementMemberCount(team.uuid);
+
         return success;
     }
 
@@ -928,11 +934,14 @@ export class ProfilesService {
         emailOrPhoneNumber: string
     ): Observable<boolean> {
 
-        return defer(() => this.profilesRedisRepository.deleteTeamInvitations(
+        return from(this.profilesRedisRepository.deleteTeamInvitations(
             teamId,
             teamUUID,
             emailOrPhoneNumber
-        ));
+        )).pipe(
+            mergeMap(() => from(this.teamRedisRepository.decrementMemberCount(teamUUID))),
+            map(() => true)
+        );
     }
 
     async validateRoleUpdateRequest(

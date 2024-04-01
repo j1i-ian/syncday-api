@@ -5,6 +5,7 @@ import {
     combineLatest,
     combineLatestWith,
     concat,
+    concatMap,
     defaultIfEmpty,
     defer,
     filter,
@@ -18,8 +19,7 @@ import {
     tap,
     throwIfEmpty,
     toArray,
-    zip,
-    zipWith
+    zip
 } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsWhere, Repository } from 'typeorm';
@@ -29,7 +29,6 @@ import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { Role } from '@interfaces/profiles/role.enum';
-import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
@@ -45,6 +44,7 @@ import { NotificationsService } from '@services/notifications/notifications.serv
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
+import { TeamRedisRepository } from '@services/team/team.redis-repository';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Team } from '@entity/teams/team.entity';
 import { Product } from '@entity/products/product.entity';
@@ -70,8 +70,9 @@ export class TeamService {
         private readonly paymentMethodService: PaymentMethodService,
         private readonly paymentsService: PaymentsService,
         private readonly eventsService: EventsService,
-        private readonly eventRedisRepository: EventsRedisRepository,
         private readonly availabilityService: AvailabilityService,
+        private readonly teamRedisRepository: TeamRedisRepository,
+        private readonly eventRedisRepository: EventsRedisRepository,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
         @Inject(forwardRef(() => ProfilesService))
         private readonly profilesService: ProfilesService,
@@ -83,49 +84,55 @@ export class TeamService {
         @InjectRepository(Team) private readonly teamRepository: Repository<Team>
     ) {}
 
-    search(userId: number, option: Partial<TeamSearchOption>): Observable<Team[]> {
+    search(userId: number): Observable<Team[]> {
 
         const teamQueryBuilder = this.teamRepository.createQueryBuilder('team');
 
-        const patchedQueryBuilder = this.__getTeamOptionQuery(option, userId, teamQueryBuilder);
+        const patchedQueryBuilder = this.__getTeamOptionQuery(userId, teamQueryBuilder);
 
         return from(
             patchedQueryBuilder.getMany()
+        ).pipe(
+            mergeMap((teams) =>
+                of(teams.map((_team) => _team.uuid))
+                    .pipe(
+                        concatMap((teamUUIDs) => this.teamRedisRepository.searchMemberCount(teamUUIDs)),
+                        tap((memberCountArray) => {
+                            memberCountArray.forEach((_memberCount, index) => {
+                                teams[index].memberCount = _memberCount ?? 0;
+                            });
+
+                            return teams;
+                        }),
+                        map(() => teams)
+                    ))
         );
     }
 
     get(
         teamId: number,
-        userId: number,
-        option: Partial<TeamSearchOption>
+        userId: number
     ): Observable<Team> {
-
-        const {
-            withMemberCounts,
-            teamUUID
-        } = option;
-
-        const invitationCount$ = of([ withMemberCounts, teamUUID ])
-            .pipe(
-                filter(([_withMemberCounts, teamUUID]) => !!(teamUUID && _withMemberCounts === true)),
-                mergeMap(() => this.profilesService.countTeamInvitations(teamUUID as string)),
-                defaultIfEmpty(0)
-            );
 
         return of(this.teamRepository.createQueryBuilder('team'))
             .pipe(
-                map((_teamQueryBuilder) => this.__getTeamOptionQuery(option, userId, _teamQueryBuilder)),
+                map((_teamQueryBuilder) => this.__getTeamOptionQuery(userId, _teamQueryBuilder)),
                 tap((_patchedQueryBuilder) => {
                     _patchedQueryBuilder.andWhere('team.id = :teamId', { teamId });
                 }),
                 mergeMap((_patchedQueryBuilder) => from(
                     _patchedQueryBuilder.getOneOrFail())
                 ),
-                zipWith(invitationCount$),
-                map(([team, invitationCount]) => {
-                    team.memberCount += invitationCount;
-                    return team;
-                })
+                mergeMap((team) =>
+                    from(this.teamRedisRepository.getMemberCount(team.uuid))
+                        .pipe(
+                            map((memberCount) => {
+                                team.memberCount = memberCount;
+                                return team;
+                            }),
+                            map(() => team)
+                        )
+                )
             );
     }
 
@@ -390,6 +397,8 @@ export class TeamService {
                         createdRootProfileId: _createdRootProfile.id,
                         ownerDefaultAvailabilityId: ownerDefaultAvailability.id
                     });
+
+                    await this.teamRedisRepository.initializeMemberCount(_createdTeam.uuid, teamMembers.length);
 
                     return {
                         createdTeam: _createdTeam,
@@ -660,7 +669,6 @@ export class TeamService {
     }
 
     __getTeamOptionQuery(
-        option: Partial<TeamSearchOption>,
         userId: number,
         teamQueryBuilder: SelectQueryBuilder<Team>
     ): SelectQueryBuilder<Team> {
@@ -672,11 +680,6 @@ export class TeamService {
                 .where('profile.userId = :userId', {
                     userId
                 });
-        }
-
-        if (option.withMemberCounts) {
-            teamQueryBuilder
-                .loadRelationCountAndMap('team.memberCount', 'team.profiles');
         }
 
         return teamQueryBuilder;

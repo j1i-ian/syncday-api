@@ -21,6 +21,7 @@ import { GoogleOAuth2TokenService } from '@services/oauth2/google-oauth2-token/g
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { EventsService } from '@services/events/events.service';
+import { TeamRedisRepository } from '@services/team/team.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { Event } from '@entity/events/event.entity';
@@ -66,6 +67,8 @@ describe('Test User Service', () => {
     let eventsRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
     let availabilityRedisRepositoryStub: sinon.SinonStubbedInstance<AvailabilityRedisRepository>;
 
+    let teamRedisRepositoryStub: sinon.SinonStubbedInstance<TeamRedisRepository>;
+
     let userRepositoryStub: sinon.SinonStubbedInstance<Repository<User>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
 
@@ -99,6 +102,8 @@ describe('Test User Service', () => {
         eventsServiceStub = sinon.createStubInstance(EventsService);
         eventsRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
         availabilityRedisRepositoryStub = sinon.createStubInstance(AvailabilityRedisRepository);
+
+        teamRedisRepositoryStub = sinon.createStubInstance(TeamRedisRepository);
 
         userRepositoryStub = sinon.createStubInstance<Repository<User>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
@@ -157,6 +162,10 @@ describe('Test User Service', () => {
                 {
                     provide: EventsService,
                     useValue: eventsServiceStub
+                },
+                {
+                    provide: TeamRedisRepository,
+                    useValue: teamRedisRepositoryStub
                 },
                 {
                     provide: EventsRedisRepository,
@@ -420,6 +429,8 @@ describe('Test User Service', () => {
             eventsRedisRepositoryStub.setEventGroupSetting.reset();
             eventsServiceStub._create.reset();
 
+            teamRedisRepositoryStub.initializeMemberCount.reset();
+
             serviceSandbox.reset();
             serviceSandbox.restore();
         });
@@ -467,6 +478,8 @@ describe('Test User Service', () => {
             eventGroupRepositoryStub.save.resolves(eventGroupStub);
             eventsRedisRepositoryStub.setEventGroupSetting.returns(of(true));
 
+            teamRedisRepositoryStub.initializeMemberCount.resolves();
+
             const {
                 createdUser,
                 createdProfile,
@@ -499,6 +512,8 @@ describe('Test User Service', () => {
             expect(eventsServiceStub._create.called).true;
             expect(eventGroupRepositoryStub.save.called).true;
             expect(eventsRedisRepositoryStub.setEventGroupSetting.called).true;
+
+            expect(teamRedisRepositoryStub.initializeMemberCount.called).true;
 
             expect(createdUser).ok;
             expect(createdProfile).ok;
@@ -620,6 +635,8 @@ describe('Test User Service', () => {
             eventGroupRepositoryStub.save.resolves(eventGroupStub);
             eventsRedisRepositoryStub.setEventGroupSetting.returns(of(true));
 
+            teamRedisRepositoryStub.initializeMemberCount.resolves();
+
             const {
                 createdUser,
                 createdProfile,
@@ -653,6 +670,7 @@ describe('Test User Service', () => {
             expect(eventsServiceStub._create.called).true;
             expect(eventGroupRepositoryStub.save.called).true;
             expect(eventsRedisRepositoryStub.setEventGroupSetting.called).true;
+            expect(teamRedisRepositoryStub.initializeMemberCount.called).true;
 
             expect(createdUser).ok;
             expect(createdProfile).ok;

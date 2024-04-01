@@ -8,7 +8,6 @@ import {
     HttpStatus,
     Patch,
     Post,
-    Query,
     Res
 } from '@nestjs/common';
 import { Observable, catchError, filter, of, tap, throwIfEmpty } from 'rxjs';
@@ -33,31 +32,17 @@ export class TeamController {
 
     @Get()
     search(
-        @AuthProfile('userId') userId: number,
-        @Query('withMemberCounts') withMemberCounts: string | boolean
+        @AuthProfile('userId') userId: number
     ): Observable<Team[]> {
-
-        withMemberCounts = withMemberCounts === 'true';
-
-        return this.teamService.search(userId, {
-            withMemberCounts
-        });
+        return this.teamService.search(userId);
     }
 
     @Get(':teamId(\\d+)')
     get(
         @AuthProfile('teamId') teamId: number,
-        @AuthProfile('teamUUID') teamUUID: string,
-        @AuthProfile('userId') userId: number,
-        @Query('withMemberCounts') withMemberCounts: string | boolean
+        @AuthProfile('userId') userId: number
     ): Observable<Team> {
-
-        withMemberCounts = withMemberCounts === 'true';
-
-        return this.teamService.get(teamId, userId, {
-            withMemberCounts,
-            teamUUID
-        });
+        return this.teamService.get(teamId, userId);
     }
 
     @Post()

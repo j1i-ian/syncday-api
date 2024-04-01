@@ -5,7 +5,6 @@ import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { stubQueryBuilder } from 'typeorm-faker';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Role } from '@interfaces/profiles/role.enum';
-import { TeamSearchOption } from '@interfaces/teams/team-search-option.interface';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
@@ -22,6 +21,7 @@ import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
+import { TeamRedisRepository } from '@services/team/team.redis-repository';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { Profile } from '@entity/profiles/profile.entity';
@@ -47,7 +47,6 @@ describe('TeamService', () => {
     let module: TestingModule;
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
-    let eventRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
     let teamSettingServiceStub: sinon.SinonStubbedInstance<TeamSettingService>;
     let userServiceStub: sinon.SinonStubbedInstance<UserService>;
     let profilesServiceStub: sinon.SinonStubbedInstance<ProfilesService>;
@@ -61,12 +60,14 @@ describe('TeamService', () => {
     let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
     let availabilityServiceStub: sinon.SinonStubbedInstance<AvailabilityService>;
 
+    let teamRedisRepositoryStub: sinon.SinonStubbedInstance<TeamRedisRepository>;
+    let eventRedisRepositoryStub: sinon.SinonStubbedInstance<EventsRedisRepository>;
+
     let teamRepositoryStub: sinon.SinonStubbedInstance<Repository<Team>>;
     let eventGroupRepositoryStub: sinon.SinonStubbedInstance<Repository<EventGroup>>;
 
     before(async () => {
 
-        eventRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
         teamSettingServiceStub = sinon.createStubInstance(TeamSettingService);
         userServiceStub = sinon.createStubInstance(UserService);
         profilesServiceStub = sinon.createStubInstance(ProfilesService);
@@ -82,6 +83,9 @@ describe('TeamService', () => {
 
         teamRepositoryStub = sinon.createStubInstance<Repository<Team>>(Repository);
         eventGroupRepositoryStub = sinon.createStubInstance<Repository<EventGroup>>(Repository);
+
+        teamRedisRepositoryStub = sinon.createStubInstance(TeamRedisRepository);
+        eventRedisRepositoryStub = sinon.createStubInstance(EventsRedisRepository);
 
         module = await Test.createTestingModule({
             providers: [
@@ -133,6 +137,10 @@ describe('TeamService', () => {
                 {
                     provide: AvailabilityService,
                     useValue: availabilityServiceStub
+                },
+                {
+                    provide: TeamRedisRepository,
+                    useValue: teamRedisRepositoryStub
                 },
                 {
                     provide: EventsRedisRepository,
@@ -191,16 +199,20 @@ describe('TeamService', () => {
 
         it('should be searched teams by profile id', async () => {
             const userIdMock = stubOne(User).id;
-            const optionMock = {} as TeamSearchOption;
 
             serviceSandbox.stub(service, '__getTeamOptionQuery')
                 .returns(teamQueryBuilderStub);
+            const teamMemberCountStubs = [5];
 
-            const loadedTeams = await firstValueFrom(service.search(userIdMock, optionMock));
+            teamRedisRepositoryStub.searchMemberCount.resolves(teamMemberCountStubs);
+
+            const loadedTeams = await firstValueFrom(service.search(userIdMock));
             expect(loadedTeams).ok;
             expect(loadedTeams.length).greaterThan(0);
+            expect(loadedTeams[0].memberCount).greaterThan(0);
 
             expect(teamQueryBuilderStub.getMany.called).true;
+            expect(teamRedisRepositoryStub.searchMemberCount.called).true;
         });
 
         it('should be got a team by team workspace', async () => {
@@ -244,12 +256,15 @@ describe('TeamService', () => {
             teamQueryBuilderStub.andWhere.reset();
             teamQueryBuilderStub.getOneOrFail.reset();
 
+            teamRedisRepositoryStub.getMemberCount.reset();
+
             serviceSandbox.restore();
         });
 
         it('should be fetched a team with option', async () => {
+            const memberCountStub = 12121;
             const teamStub = stubOne(Team, {
-                memberCount: 12121
+                memberCount: memberCountStub
             });
             const invitationCountStub = 8282;
 
@@ -257,34 +272,32 @@ describe('TeamService', () => {
 
             const userIdMock = stubOne(User).id;
 
-            profilesServiceStub.countTeamInvitations.resolves(invitationCountStub);
-
             serviceSandbox.stub(service, '__getTeamOptionQuery')
                 .returns(teamQueryBuilderStub);
 
             teamQueryBuilderStub.getOneOrFail.resolves(teamStub);
 
             const teamIdMock = teamStub.id;
-            const teamUUIDMock = teamStub.uuid;
+
+            const teamMemberCountStub = memberCountStub + invitationCountStub;
+
+            teamRedisRepositoryStub.getMemberCount.resolves(teamMemberCountStub);
 
             const fetchedTeam = await firstValueFrom(
                 service.get(
                     teamIdMock,
-                    userIdMock,
-                    {
-                        withMemberCounts: true,
-                        teamUUID: teamUUIDMock
-                    }
+                    userIdMock
                 )
             );
 
             expect(fetchedTeam).ok;
             expect(fetchedTeam.memberCount).equals(expectedMemberCount);
 
-            expect(profilesServiceStub.countTeamInvitations.called).true;
             expect(teamRepositoryStub.createQueryBuilder.called).true;
             expect(teamQueryBuilderStub.andWhere.called).true;
             expect(teamQueryBuilderStub.getOneOrFail.called).true;
+
+            expect(teamRedisRepositoryStub.getMemberCount.called).true;
         });
     });
 
@@ -323,6 +336,8 @@ describe('TeamService', () => {
 
             teamRepositoryStub.create.reset();
             teamRepositoryStub.save.reset();
+
+            teamRedisRepositoryStub.initializeMemberCount.reset();
 
             serviceSandbox.restore();
         });
@@ -384,6 +399,8 @@ describe('TeamService', () => {
             profilesServiceStub.saveInvitedNewTeamMember.returns(of(true));
             notificationsStub.sendTeamInvitation.returns(of(true));
 
+            teamRedisRepositoryStub.initializeMemberCount.resolves();
+
             const result = await firstValueFrom(service.create(
                 orderMockStub.unit,
                 paymentMethodMockStub,
@@ -416,6 +433,8 @@ describe('TeamService', () => {
 
             expect(utilServiceStub.filterInvitedNewUsers.called).true;
             expect(notificationsStub.sendTeamInvitation.called).true;
+
+            expect(teamRedisRepositoryStub.initializeMemberCount.called).true;
 
             const passedNewProfiles = profilesServiceStub._create.getCall(0).args[1] as Profile[];
             const ownerProfile = passedNewProfiles.find((_profile) => _profile.userId === ownerUserMockStub.id);
@@ -672,32 +691,19 @@ describe('TeamService', () => {
             teamQueryBuilderStub.leftJoin.reset();
             teamQueryBuilderStub.leftJoinAndSelect.reset();
             teamQueryBuilderStub.where.reset();
-            teamQueryBuilderStub.loadRelationCountAndMap.reset();
 
             serviceSandbox.restore();
         });
 
         [
             {
-                optionsMock: {
-                    userId: 1
-                } as Partial<TeamSearchOption>,
                 expectation: (_teamQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Team>>) => {
                     expect(_teamQueryBuilderStub.leftJoin.called).true;
                     expect(_teamQueryBuilderStub.leftJoinAndSelect.called).true;
                     expect(_teamQueryBuilderStub.where.called).true;
                 }
-            },
-            {
-                optionsMock: {
-                    withMemberCounts: true
-                } as Partial<TeamSearchOption>,
-                expectation: (_teamQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Team>>) => {
-                    expect(_teamQueryBuilderStub.loadRelationCountAndMap.called).true;
-                }
             }
         ].forEach(function ({
-            optionsMock,
             expectation
         }) {
             it('should be patched for user id option', () => {
@@ -705,7 +711,6 @@ describe('TeamService', () => {
                 const userIdMock = stubOne(User).id;
 
                 const composedTeamQueryBuilder = service.__getTeamOptionQuery(
-                    optionsMock,
                     userIdMock,
                     teamQueryBuilderStub
                 );

@@ -9,6 +9,8 @@ import { NotificationsModule } from '@services/notifications/notifications.modul
 import { EventsModule } from '@services/events/events.module';
 import { AvailabilityModule } from '@services/availability/availability.module';
 import { PaymentMethodModule } from '@services/payments/payment-method/payment-method.module';
+import { TeamRedisRepository } from '@services/team/team.redis-repository';
+import { SyncdayRedisModule } from '@services/syncday-redis/syncday-redis.module';
 import { Team } from '@entity/teams/team.entity';
 import { EventGroup } from '@entity/events/event-group.entity';
 import { TeamSettingModule } from './team-setting/team-setting.module';
@@ -27,10 +29,11 @@ import { TeamController } from './team.controller';
         PaymentsModule,
         PaymentMethodModule,
         EventsModule,
-        AvailabilityModule
+        AvailabilityModule,
+        SyncdayRedisModule
     ],
     controllers: [TeamController],
-    providers: [TeamService],
-    exports: [TeamService]
+    providers: [TeamService, TeamRedisRepository],
+    exports: [TeamService, TeamRedisRepository]
 })
 export class TeamModule {}
