@@ -206,6 +206,7 @@ describe('TeamService', () => {
             const teamMemberCountStubs = [5];
 
             teamRedisRepositoryStub.searchMemberCount.resolves(teamMemberCountStubs);
+            teamRedisRepositoryStub.searchTeamPlanStatus.resolves([]);
 
             const loadedTeams = await firstValueFrom(service.search(userIdMock));
             expect(loadedTeams).ok;
@@ -214,6 +215,7 @@ describe('TeamService', () => {
 
             expect(teamQueryBuilderStub.getMany.called).true;
             expect(teamRedisRepositoryStub.searchMemberCount.called).true;
+            expect(teamRedisRepositoryStub.searchTeamPlanStatus.called).true;
         });
 
         it('should be got a team by team workspace', async () => {

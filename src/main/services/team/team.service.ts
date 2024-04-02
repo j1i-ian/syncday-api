@@ -97,9 +97,16 @@ export class TeamService {
             mergeMap((teams) =>
                 of(teams.map((_team) => _team.uuid))
                     .pipe(
-                        concatMap((teamUUIDs) => this.teamRedisRepository.searchMemberCount(teamUUIDs)),
-                        tap((memberCountArray) => {
+                        concatMap((teamUUIDs) => zip([
+                            from(this.teamRedisRepository.searchMemberCount(teamUUIDs)),
+                            from(this.teamRedisRepository.searchTeamPlanStatus(teamUUIDs))
+                        ])),
+                        tap(([memberCountArray, teamPlanStatusArray]) => {
                             memberCountArray.forEach((_memberCount, index) => {
+
+                                const teamPlanStatus = teamPlanStatusArray[index];
+
+                                teams[index].plan = teamPlanStatus ?? TeamPlanStatus.FREE;
                                 teams[index].memberCount = _memberCount ?? 0;
                             });
 

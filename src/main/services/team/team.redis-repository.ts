@@ -12,6 +12,25 @@ export class TeamRedisRepository {
         @AppInjectCluster() private readonly cluster: Cluster
     ) {}
 
+    async searchTeamPlanStatus(teamUUIDs: string[]): Promise<TeamPlanStatus[]> {
+        const readPipeline = this.cluster.pipeline();
+
+        teamUUIDs.forEach((teamUUID) => {
+            const teamPlanStatusKey = this.syncdayRedisService.getTeamPlanStatusKey(teamUUID);
+            readPipeline.get(teamPlanStatusKey);
+        });
+
+        const results = await readPipeline.exec() ?? [];
+
+        return results
+            .map(([err, teamPlanStatusString ]) =>
+                err
+                    ? TeamPlanStatus.FREE
+                    : TeamPlanStatus[teamPlanStatusString as keyof typeof TeamPlanStatus]
+            );
+
+    }
+
     async setTeamPlanStatus(
         teamUUID: string,
         teamPlanStatus: TeamPlanStatus
