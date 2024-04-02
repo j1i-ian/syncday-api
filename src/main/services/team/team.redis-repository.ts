@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Cluster } from 'ioredis';
+import { ChainableCommander, Cluster } from 'ioredis';
+import { TeamPlanStatus } from '@interfaces/teams/team-plan-status.enum';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
 
@@ -10,6 +11,41 @@ export class TeamRedisRepository {
         private readonly syncdayRedisService: SyncdayRedisService,
         @AppInjectCluster() private readonly cluster: Cluster
     ) {}
+
+    async setTeamPlanStatus(
+        teamUUID: string,
+        teamPlanStatus: TeamPlanStatus
+    ): Promise<void> {
+
+        const pipeline = this.cluster.pipeline();
+
+        this._setTeamPlanStatus(pipeline, teamUUID, teamPlanStatus);
+
+        await pipeline.exec();
+    }
+
+    _setTeamPlanStatus(
+        pipeline: ChainableCommander,
+        teamUUID: string,
+        teamPlanStatus: TeamPlanStatus
+    ): void {
+
+        const teamPlanStatusKey = this.syncdayRedisService.getTeamPlanStatusKey(teamUUID);
+
+        pipeline.set(teamPlanStatusKey, teamPlanStatus.toString());
+    }
+
+    async getTeamPlanStatus(teamUUID: string): Promise<TeamPlanStatus> {
+
+        const teamPlanStatusKey = this.syncdayRedisService.getTeamPlanStatusKey(teamUUID);
+
+        const teamPlanStatusString = await this.cluster.get(teamPlanStatusKey);
+        const teamPlanStatus = teamPlanStatusString
+            ? TeamPlanStatus[teamPlanStatusString as keyof typeof TeamPlanStatus]
+            : TeamPlanStatus.FREE;
+
+        return teamPlanStatus;
+    }
 
     async initializeMemberCount(
         teamUUID: string,

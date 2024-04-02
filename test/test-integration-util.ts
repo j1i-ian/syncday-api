@@ -20,6 +20,7 @@ import { HostEvent } from '@interfaces/bookings/host-event';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { CalendarIntegration } from '@interfaces/integrations/calendar-integration.interface';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
+import { QuestionType } from '@interfaces/events/event-details/question-type.enum';
 import { UserModule } from '@services/users/user.module';
 import { UtilModule } from '@services/util/util.module';
 import { IntegrationsModule } from '@services/integrations/integrations.module';
@@ -53,7 +54,6 @@ import { AppleCalendarEventPatchService } from '@services/integrations/apple-int
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { User } from '@entity/users/user.entity';
 import { Verification } from '@entity/verifications/verification.interface';
-import { QuestionInputType } from '@entity/invitee-questions/question-input-type.enum';
 import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { Profile } from '@entity/profiles/profile.entity';
@@ -288,13 +288,13 @@ export class TestIntegrationUtil {
         expect(generatedRedirectURL).ok;
     }
 
-    getAccessToken(
+    async getAccessToken(
         profile: Profile,
         user: User,
         team: Team
-    ): string {
+    ): Promise<string> {
         const userSettingIdMock = 1;
-        const issuedToken = this.tokenService.issueToken(
+        const issuedToken = await this.tokenService.issueToken(
             profile,
             user,
             team,
@@ -311,7 +311,7 @@ export class TestIntegrationUtil {
     ): Promise<void> {
 
         const userSettingIdMock = 1;
-        const issuedToken = this.tokenService.issueToken(
+        const issuedToken = await this.tokenService.issueToken(
             profile,
             user,
             team,
@@ -462,7 +462,7 @@ export class TestIntegrationUtil {
             },
             inviteeAnswers: [
                 {
-                    inputType: QuestionInputType.TEXT,
+                    inputType: QuestionType.TEXT,
                     name: 'testname',
                     required: true
                 }

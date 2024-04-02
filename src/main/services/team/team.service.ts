@@ -32,6 +32,7 @@ import { Role } from '@interfaces/profiles/role.enum';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
+import { TeamPlanStatus } from '@interfaces/teams/team-plan-status.enum';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { ProductsService } from '@services/products/products.service';
 import { OrdersService } from '@services/orders/orders.service';
@@ -124,10 +125,14 @@ export class TeamService {
                     _patchedQueryBuilder.getOneOrFail())
                 ),
                 mergeMap((team) =>
-                    from(this.teamRedisRepository.getMemberCount(team.uuid))
+                    zip([
+                        this.teamRedisRepository.getMemberCount(team.uuid),
+                        this.teamRedisRepository.getTeamPlanStatus(team.uuid)
+                    ])
                         .pipe(
-                            map((memberCount) => {
+                            map(([memberCount, plan]) => {
                                 team.memberCount = memberCount;
+                                team.plan = plan;
                                 return team;
                             }),
                             map(() => team)
@@ -399,6 +404,8 @@ export class TeamService {
                     });
 
                     await this.teamRedisRepository.initializeMemberCount(_createdTeam.uuid, teamMembers.length);
+
+                    await this.teamRedisRepository.setTeamPlanStatus(_createdTeam.uuid, TeamPlanStatus.PRO);
 
                     return {
                         createdTeam: _createdTeam,

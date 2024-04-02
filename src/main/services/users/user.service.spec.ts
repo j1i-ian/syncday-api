@@ -430,6 +430,7 @@ describe('Test User Service', () => {
             eventsServiceStub._create.reset();
 
             teamRedisRepositoryStub.initializeMemberCount.reset();
+            teamRedisRepositoryStub.setTeamPlanStatus.reset();
 
             serviceSandbox.reset();
             serviceSandbox.restore();
@@ -479,6 +480,7 @@ describe('Test User Service', () => {
             eventsRedisRepositoryStub.setEventGroupSetting.returns(of(true));
 
             teamRedisRepositoryStub.initializeMemberCount.resolves();
+            teamRedisRepositoryStub.setTeamPlanStatus.resolves();
 
             const {
                 createdUser,
@@ -514,6 +516,7 @@ describe('Test User Service', () => {
             expect(eventsRedisRepositoryStub.setEventGroupSetting.called).true;
 
             expect(teamRedisRepositoryStub.initializeMemberCount.called).true;
+            expect(teamRedisRepositoryStub.setTeamPlanStatus.called).true;
 
             expect(createdUser).ok;
             expect(createdProfile).ok;
@@ -636,6 +639,7 @@ describe('Test User Service', () => {
             eventsRedisRepositoryStub.setEventGroupSetting.returns(of(true));
 
             teamRedisRepositoryStub.initializeMemberCount.resolves();
+            teamRedisRepositoryStub.setTeamPlanStatus.resolves();
 
             const {
                 createdUser,
@@ -671,6 +675,7 @@ describe('Test User Service', () => {
             expect(eventGroupRepositoryStub.save.called).true;
             expect(eventsRedisRepositoryStub.setEventGroupSetting.called).true;
             expect(teamRedisRepositoryStub.initializeMemberCount.called).true;
+            expect(teamRedisRepositoryStub.setTeamPlanStatus.called).true;
 
             expect(createdUser).ok;
             expect(createdProfile).ok;

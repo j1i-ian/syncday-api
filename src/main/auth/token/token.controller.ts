@@ -63,13 +63,13 @@ export class TokenController {
     @Post()
     @Public()
     @UseGuards(LocalAuthGuard)
-    issueTokenByEmail(
+    async issueTokenByEmail(
         @AuthUser() authUser: User & { userSettingId: number }
-    ): CreateTokenResponseDto {
+    ): Promise<CreateTokenResponseDto> {
         const profile = authUser.profiles[0];
         const team = profile.team;
 
-        return this.tokenService.issueToken(
+        const issuedToken = await this.tokenService.issueToken(
             profile,
             {
                 id: authUser.id,
@@ -82,6 +82,8 @@ export class TokenController {
             },
             authUser.userSettingId
         );
+
+        return issuedToken;
     }
 
     @Put()

@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
+import { RedisStores } from '@core/interfaces/syncday-redis/redis-stores.enum';
 import { TemporaryUser } from '@entity/users/temporary-user.entity';
 import { Verification } from '@entity/verifications/verification.interface';
 import { AppInjectCluster } from './app-inject-cluster.decorator';
-import { RedisStores } from './redis-stores.enum';
 
 @Injectable()
 export class SyncdayRedisService {
@@ -188,6 +188,13 @@ export class SyncdayRedisService {
     getMemberCountKey(teamUUID: string): RedisKey {
         return this.getRedisKey(RedisStores.MEMBER_COUNT, [
             teamUUID
+        ]);
+    }
+
+    getTeamPlanStatusKey(teamUUID: string): RedisKey {
+        return this.getRedisKey(RedisStores.TEAMS, [
+            teamUUID,
+            RedisStores.TEAM_PLAN_STATUS
         ]);
     }
 

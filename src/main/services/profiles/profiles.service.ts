@@ -29,6 +29,7 @@ import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.
 import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
+import { TeamPlanStatus } from '@interfaces/teams/team-plan-status.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
@@ -489,6 +490,8 @@ export class ProfilesService {
                     false
                 )));
 
+                const setTeamPlanStatus$ = from(this.teamRedisRepository.setTeamPlanStatus(team.uuid, TeamPlanStatus.PRO));
+
                 const saveInvitedNewTeamMember$ = of(invitedNewUsers.length > 0)
                     .pipe(
                         filter(Boolean),
@@ -505,7 +508,8 @@ export class ProfilesService {
                     .pipe(
                         mergeMap(() => merge(
                             signedUpUserInvitationNotifications$,
-                            unsignedUserInvitationNotifications$
+                            unsignedUserInvitationNotifications$,
+                            setTeamPlanStatus$
                         )),
                         toArray(),
                         map(() => true)

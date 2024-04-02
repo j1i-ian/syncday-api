@@ -8,6 +8,7 @@ import { Role } from '@interfaces/profiles/role.enum';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
+import { TeamPlanStatus } from '@interfaces/teams/team-plan-status.enum';
 import { TeamSettingService } from '@services/team/team-setting/team-setting.service';
 import { UserService } from '@services/users/user.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
@@ -257,6 +258,7 @@ describe('TeamService', () => {
             teamQueryBuilderStub.getOneOrFail.reset();
 
             teamRedisRepositoryStub.getMemberCount.reset();
+            teamRedisRepositoryStub.getTeamPlanStatus.reset();
 
             serviceSandbox.restore();
         });
@@ -282,6 +284,7 @@ describe('TeamService', () => {
             const teamMemberCountStub = memberCountStub + invitationCountStub;
 
             teamRedisRepositoryStub.getMemberCount.resolves(teamMemberCountStub);
+            teamRedisRepositoryStub.getTeamPlanStatus.resolves(TeamPlanStatus.FREE);
 
             const fetchedTeam = await firstValueFrom(
                 service.get(
@@ -298,6 +301,7 @@ describe('TeamService', () => {
             expect(teamQueryBuilderStub.getOneOrFail.called).true;
 
             expect(teamRedisRepositoryStub.getMemberCount.called).true;
+            expect(teamRedisRepositoryStub.getTeamPlanStatus.called).true;
         });
     });
 
@@ -338,6 +342,7 @@ describe('TeamService', () => {
             teamRepositoryStub.save.reset();
 
             teamRedisRepositoryStub.initializeMemberCount.reset();
+            teamRedisRepositoryStub.setTeamPlanStatus.reset();
 
             serviceSandbox.restore();
         });
@@ -400,6 +405,7 @@ describe('TeamService', () => {
             notificationsStub.sendTeamInvitation.returns(of(true));
 
             teamRedisRepositoryStub.initializeMemberCount.resolves();
+            teamRedisRepositoryStub.setTeamPlanStatus.resolves();
 
             const result = await firstValueFrom(service.create(
                 orderMockStub.unit,
@@ -435,6 +441,7 @@ describe('TeamService', () => {
             expect(notificationsStub.sendTeamInvitation.called).true;
 
             expect(teamRedisRepositoryStub.initializeMemberCount.called).true;
+            expect(teamRedisRepositoryStub.setTeamPlanStatus.called).true;
 
             const passedNewProfiles = profilesServiceStub._create.getCall(0).args[1] as Profile[];
             const ownerProfile = passedNewProfiles.find((_profile) => _profile.userId === ownerUserMockStub.id);

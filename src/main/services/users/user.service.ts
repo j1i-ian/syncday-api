@@ -12,6 +12,7 @@ import { Role } from '@interfaces/profiles/role.enum';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { UserSearchOption } from '@interfaces/users/user-search-option.interface';
+import { TeamPlanStatus } from '@interfaces/teams/team-plan-status.enum';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -675,6 +676,7 @@ export class UserService {
         });
 
         await this.teamRedisRepository.initializeMemberCount(savedTeam.uuid);
+        await this.teamRedisRepository.setTeamPlanStatus(savedTeam.uuid, TeamPlanStatus.FREE);
 
         return {
             createdProfile: savedProfile,

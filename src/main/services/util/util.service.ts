@@ -11,6 +11,7 @@ import { EmailTemplate } from '@core/interfaces/notifications/email-template.enu
 import { TextTemplate } from '@core/interfaces/notifications/text-template.enum';
 import { EventGroupSetting } from '@core/interfaces/event-groups/event-group-setting.interface';
 import { DefaultEventOption } from '@core/interfaces/event-groups/default-event-option.interface';
+import { RedisStores } from '@core/interfaces/syncday-redis/redis-stores.enum';
 import { EventType } from '@interfaces/events/event-type.enum';
 import { NotificationType } from '@interfaces/notifications/notification-type.enum';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
@@ -29,7 +30,6 @@ import { PageOption } from '@interfaces/page-option.interface';
 import { TimestampSearchOption } from '@interfaces/timestamp-search-option.interface';
 import { KeySearchOption } from '@interfaces/key-search-option.type';
 import { ScheduledStatus } from '@interfaces/scheduled-events/scheduled-status.enum';
-import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { DateTimeOrderFormat } from '@entity/users/date-time-format-order.enum';

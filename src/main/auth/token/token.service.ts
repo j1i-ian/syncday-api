@@ -4,7 +4,7 @@ import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
 import { oauth2_v2 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { Observable, concatMap, firstValueFrom, map, of, tap } from 'rxjs';
+import { Observable, concatMap, firstValueFrom, from, mergeMap, of, tap } from 'rxjs';
 import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { SyncdayOAuth2StateParams } from '@core/interfaces/integrations/syncday-oauth2-state-params.interface';
 import { IntegrationContext } from '@interfaces/integrations/integration-context.enum';
@@ -15,6 +15,7 @@ import { OAuth2TokenServiceLocator } from '@services/oauth2/oauth2-token.service
 import { UtilService } from '@services/util/util.service';
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
+import { TeamRedisRepository } from '@services/team/team.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
@@ -47,6 +48,7 @@ export class TokenService {
         private readonly profileService: ProfilesService,
         private readonly oauth2TokenServiceLocator: OAuth2TokenServiceLocator,
         private readonly notificationsService: NotificationsService,
+        private readonly teamRedisRepository: TeamRedisRepository,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
         this.jwtOption = AppConfigService.getJwtOptions(this.configService);
@@ -245,7 +247,7 @@ export class TokenService {
         }
 
         const ensuredUserSettingId = user?.userSetting.id as number;
-        const issuedToken = this.issueToken(
+        const issuedToken = await this.issueToken(
             profile as Profile,
             user as User,
             team as Team,
@@ -294,50 +296,51 @@ export class TokenService {
             this.profileService.fetch({
                 teamId,
                 userId
-            })
-            :  of(decoedProfileByRefreshToken as Partial<Profile>);
+            }) : of(decoedProfileByRefreshToken as Partial<Profile>);
 
         return decoedProfileByRefreshToken$.pipe(
-            map((_decoedProfileByRefreshToken) => {
+            tap((_decoedProfileByRefreshToken) =>{
+                this.logger.debug({
+                    _decoedProfileByRefreshToken
+                });
+            }),
+            mergeMap((_decoedProfileByRefreshToken) => {
 
                 const switchedTeam = _decoedProfileByRefreshToken.team as Team;
-
-                this.logger.debug({
-                    _decoedProfileByRefreshToken,
-                    switchedTeam
-                });
 
                 const extractedProfile = _decoedProfileByRefreshToken;
                 const extractedUser = {
                     id: decoedProfileByRefreshToken.userId,
                     uuid: decoedProfileByRefreshToken.userUUID,
                     email: decoedProfileByRefreshToken.email
-                } as Pick<User, 'id' | 'uuid' | 'email'>;
+                };
                 const extractedTeam = {
                     id: switchedTeam.id,
                     uuid: switchedTeam.uuid
-                } as Pick<Team, 'id' | 'uuid'>;
+                };
                 const extractedUserSettingId = decoedProfileByRefreshToken.userSettingId;
 
-                const tokenResponse = this.issueToken(
+                const tokenResponsePromise = this.issueToken(
                     extractedProfile as Profile,
-                    extractedUser as User,
-                    extractedTeam as Team,
+                    extractedUser,
+                    extractedTeam,
                     extractedUserSettingId
                 );
 
-                return tokenResponse;
+                return from(tokenResponsePromise);
             })
         );
 
     }
 
-    issueToken(
+    async issueToken(
         profile: Profile,
         user: Pick<User, 'id' | 'uuid' | 'email'>,
         team: Pick<Team, 'id' | 'uuid'>,
         userSettingId: number
-    ): CreateTokenResponseDto {
+    ): Promise<CreateTokenResponseDto> {
+
+        const planStatus = await this.teamRedisRepository.getTeamPlanStatus(team.uuid);
 
         const appJwtPayload: AppJwtPayload = {
             id: profile.id,
@@ -350,7 +353,8 @@ export class TokenService {
             image: profile.image,
             roles: profile.roles,
             teamId: team.id,
-            teamUUID: team.uuid
+            teamUUID: team.uuid,
+            plan: planStatus
         } as AppJwtPayload & Partial<Profile>;
 
         const signedAccessToken = this.jwtService.sign(

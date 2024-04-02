@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Cluster, RedisKey } from 'ioredis';
 import { GoogleCalendarDetail } from '@core/interfaces/integrations/google/google-calendar-detail.interface';
+import { RedisStores } from '@core/interfaces/syncday-redis/redis-stores.enum';
 import { AppInjectCluster } from '@services/syncday-redis/app-inject-cluster.decorator';
-import { RedisStores } from '@services/syncday-redis/redis-stores.enum';
 import { UtilService } from '@services/util/util.service';
 
 @Injectable()

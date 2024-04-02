@@ -19,6 +19,7 @@ import { GoogleOAuth2TokenService } from '@services/oauth2/google-oauth2-token/g
 import { ProfilesService } from '@services/profiles/profiles.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
 import { OAuth2TokenService } from '@services/integrations/oauth2-token-service.interface';
+import { TeamRedisRepository } from '@services/team/team.redis-repository';
 import { User } from '@entity/users/user.entity';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
@@ -47,6 +48,8 @@ describe('TokenService', () => {
     let oauth2TokenServiceStub: sinon.SinonStubbedInstance<GoogleOAuth2TokenService>;
     let notificationsServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
 
+    let teamRedisRepositoryStub: sinon.SinonStubbedInstance<TeamRedisRepository>;
+
     let loggerStub: sinon.SinonStub;
 
     before(async () => {
@@ -59,8 +62,9 @@ describe('TokenService', () => {
 
         oauth2TokenServiceStub = sinon.createStubInstance(GoogleOAuth2TokenService);
         notificationsServiceStub = sinon.createStubInstance(NotificationsService);
-
         oauth2TokenServiceLocatorStub.get.returns(oauth2TokenServiceStub as OAuth2TokenService);
+
+        teamRedisRepositoryStub = sinon.createStubInstance(TeamRedisRepository);
 
         loggerStub = sinon.stub({
             debug: () => {},
@@ -98,6 +102,10 @@ describe('TokenService', () => {
                 {
                     provide: NotificationsService,
                     useValue: notificationsServiceStub
+                },
+                {
+                    provide: TeamRedisRepository,
+                    useValue: teamRedisRepositoryStub
                 },
                 {
                     provide: WINSTON_MODULE_PROVIDER,
@@ -148,7 +156,7 @@ describe('TokenService', () => {
         expect(oauth2TokenServiceStub.generateOAuth2RedirectURI.called).true;
     });
 
-    it('should be issued token', () => {
+    it('should be issued token', async () => {
         const userMock = stubOne(User);
         const profileMock = stubOne(Profile);
         const teamMock = stubOne(Team);
@@ -157,7 +165,7 @@ describe('TokenService', () => {
 
         jwtServiceStub.sign.returns(fakeTokenStub);
 
-        const signed = service.issueToken(
+        const signed = await service.issueToken(
             profileMock,
             userMock,
             teamMock,
@@ -198,7 +206,7 @@ describe('TokenService', () => {
 
             jwtServiceStub.verify.returns(profileStub);
 
-            const issueTokenStub = serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
+            const issueTokenStub = serviceSandbox.stub(service, 'issueToken').resolves(issuedTokenStub);
 
             const signed = await firstValueFrom(service.issueTokenByRefreshToken(fakeRefreshTokenMock));
 
@@ -225,7 +233,7 @@ describe('TokenService', () => {
 
             jwtServiceStub.verify.returns(profileStub);
 
-            const issueTokenStub = serviceSandbox.stub(service, 'issueToken').returns(issuedTokenStub);
+            const issueTokenStub = serviceSandbox.stub(service, 'issueToken').resolves(issuedTokenStub);
 
             profileServiceStub.fetch.returns(of(profileStub));
 
@@ -631,7 +639,6 @@ describe('TokenService', () => {
 
         let userStub: User;
         let _oauth2TokenServiceStub: sinon.SinonStubbedInstance<GoogleOAuth2TokenService>;
-
 
         beforeEach(() => {
 

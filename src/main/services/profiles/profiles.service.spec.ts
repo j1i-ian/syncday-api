@@ -519,6 +519,7 @@ describe('ProfilesService', () => {
             notificationServiceStub.sendTeamInvitation.reset();
 
             teamRedisRepositoryStub.incrementMemberCount.reset();
+            teamRedisRepositoryStub.setTeamPlanStatus.reset();
 
             serviceSandbox.restore();
         });
@@ -616,6 +617,7 @@ describe('ProfilesService', () => {
                 notificationServiceStub.sendTeamInvitation.returns(of(true));
 
                 teamRedisRepositoryStub.incrementMemberCount.resolves();
+                teamRedisRepositoryStub.setTeamPlanStatus.resolves();
 
                 const createdProfile = await firstValueFrom(
                     service.createBulk(
@@ -647,6 +649,7 @@ describe('ProfilesService', () => {
                 expect(saveInvitedNewTeamMemberStub.called).equals(saveInvitedNewTeamMemberCall);
 
                 expect(teamRedisRepositoryStub.incrementMemberCount.called).true;
+                expect(teamRedisRepositoryStub.setTeamPlanStatus.called).true;
                 expect(notificationServiceStub.sendTeamInvitation.called).true;
             });
         });
