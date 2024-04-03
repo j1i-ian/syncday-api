@@ -88,11 +88,23 @@ export class VendorIntegrationsController {
             email: decodedAppJwtPayload.email
         });
 
+        this.logger.info({
+            message: 'Integration is requested',
+            vendor,
+            decodedAppJwtPayload
+        });
+
         if (!loadedAppUserByEmail) {
             throw new BadRequestException(`Invalid user request - email: ${ decodedAppJwtPayload.email }`);
         }
 
-        const profile = loadedAppUserByEmail.profiles[0];
+        const profile = loadedAppUserByEmail.profiles.find((_profile) =>
+            _profile.id === decodedAppJwtPayload.id
+        );
+
+        if (profile === undefined) {
+            throw new BadRequestException('No detected profile');
+        }
 
         await integrationService.create(
             profile,
@@ -159,7 +171,7 @@ export class VendorIntegrationsController {
             authProfile.id
         );
 
-        const profile = loadedAppUser.profiles[0];
+        const profile = loadedAppUser.profiles.find((_profile) => _profile.id === authProfile.id) as Profile;
 
         const createdIntegration = await integrationService.create(
             profile,

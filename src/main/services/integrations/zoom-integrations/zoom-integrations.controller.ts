@@ -23,6 +23,7 @@ export class ZoomIntegrationsController {
 
         let webhookResponse: boolean | ValidateZoomEventSubscriptionUrlResponseDto = true;
 
+        // Request to Disconnect Integration due to User Activity on Zoom Page
         if (zoomWebhookNotificationRequestDto.event === 'app_deauthorized') {
 
             const zoomAccountId = zoomWebhookNotificationRequestDto.payload.account_id;
