@@ -165,6 +165,7 @@ export class ProfilesService {
             .pipe(
                 tap((searchQueryBuilder) => {
                     searchQueryBuilder.leftJoinAndSelect('profile.googleIntergrations', 'googleIntergrations');
+                    searchQueryBuilder.leftJoinAndSelect('profile.zoomIntegrations', 'zoomIntegrations');
                 }),
                 tap((searchQueryBuilder) => {
                     if (userId) {
