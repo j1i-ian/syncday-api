@@ -4,6 +4,7 @@ import { GoogleIntegrationBody } from '@core/interfaces/integrations/google/goog
 import { OAuth2AccountUserProfileMetaInfo } from '@core/interfaces/integrations/oauth2-account-user-profile-meta-info.interface';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
+import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
 import { Integration } from '@entity/integrations/integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
@@ -37,6 +38,13 @@ export interface IntegrationsFactory {
     validate(loadedIntegration: Integration): Observable<boolean>;
 
     count(integrationSearchOption: IntegrationSearchOption): Promise<number>;
+
+    /**
+     * Search for the integration owned by the integration owners in the host profiles
+     *
+     * @param hostProfiles
+     */
+    findIn(hostProfiles: HostProfile[]): Promise<(Integration) | null>;
 
     findOne(integrationSearchOption: IntegrationSearchOption): Promise<(Integration) | null>;
 

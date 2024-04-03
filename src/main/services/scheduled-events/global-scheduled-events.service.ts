@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, concat, concatMap, defaultIfEmpty, filter, forkJoin, from, last, map, mergeAll, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
+import { Observable, concat, concatMap, defaultIfEmpty, filter, firstValueFrom, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -145,7 +145,7 @@ export class GlobalScheduledEventsService {
     }
 
     _create(
-        entityManager: EntityManager,
+        transactionManager: EntityManager,
         teamWorkspace: string,
         eventUUID: string,
         newScheduledEvent: ScheduledEvent,
@@ -161,7 +161,7 @@ export class GlobalScheduledEventsService {
         });
 
         const availabilityTimezone = hostAvailability.timezone;
-        const _scheduledEventRepository = entityManager.getRepository(ScheduledEvent);
+        const _scheduledEventRepository = transactionManager.getRepository(ScheduledEvent);
 
         const eventType$ = this.eventsService.findOneByTeamWorkspaceAndUUID(teamWorkspace, eventUUID);
         const contacts$ = eventType$.pipe(map((eventType) => eventType.contacts));
@@ -175,11 +175,13 @@ export class GlobalScheduledEventsService {
             availabilityBody
         });
 
+        const mainHostProfile = hostProfiles[0];
+
         const scheduledEvent$ = from(eventType$)
             .pipe(
                 map((eventType) => this.utilService.getPatchedScheduledEvent(
                     team,
-                    hostProfiles[0],
+                    mainHostProfile,
                     hostProfiles,
                     eventType,
                     newScheduledEvent,
@@ -195,144 +197,78 @@ export class GlobalScheduledEventsService {
                 concatMap(
                     (calendarIntegrationService) => calendarIntegrationService.findOne({
                         outboundWriteSync: true,
-                        profileId: hostProfiles[0].profileId
+                        profileId: mainHostProfile.profileId
                     })
                 )
             );
 
-        let createdCalendarEventOrNull$: Observable<CreatedCalendarEvent | null> = of(null);
-        let calendarIntegrationServiceOrNull: CalendarIntegrationService | null = null;
+        const calendarIntegrationServiceOrNull: CalendarIntegrationService | null = null;
 
-        return zip([
+        const validate$ = zip([
             of(availabilityBody),
             scheduledEvent$,
-            loadedOutboundCalendarIntegration$,
-            contacts$
+            loadedOutboundCalendarIntegration$
         ]).pipe(
-            // TODO: Maybe we can replace tap operator after proving that it can stop data stream and throw to exception flow
-            concatMap(
-                ([
-                    availabilityBody,
-                    patchedScheduledEvent,
-                    loadedOutboundCalendarIntegrationOrNull,
-                    contacts
-                ]) =>
-                    this.validate(
-                        patchedScheduledEvent,
-                        availabilityTimezone,
-                        availabilityBody,
-                        loadedOutboundCalendarIntegrationOrNull
-                    ).pipe(
-                        map(() => [
-                            patchedScheduledEvent,
-                            loadedOutboundCalendarIntegrationOrNull,
-                            contacts
-                        ] as unknown as [ScheduledEvent, CalendarIntegration | null, Contact[]])
-                    )
-            )
-        ).pipe(
-            // save scheduled event entity
-            tap(([patchedSchedule]) => {
-                this.logger.info({
-                    message: 'Trying to create the scheduled event..',
-                    patchedSchedule
-                });
-            }),
             concatMap(([
-                patchedSchedule,
-                loadedOutboundCalendarIntegrationOrNull,
-                contacts
-            ]) => of(this.scheduledEventRepository.create(patchedSchedule ))
-                .pipe(
-                    mergeMap((patchedSchedule) => from(_scheduledEventRepository.save(patchedSchedule))),
-                    tap(() => {
-                        this.logger.info({
-                            message: 'Saving the Scheduled event relation data. Trying to save the redis data..'
-                        });
-                    }),
-                    mergeMap((createdSchedule) =>
-                        this.scheduledEventsRedisRepository.save(createdSchedule.uuid, {
-                            inviteeAnswers: newScheduledEvent.inviteeAnswers,
-                            scheduledNotificationInfo: newScheduledEvent.scheduledNotificationInfo
-                        }).pipe(map((_createdScheduledEventBody) => {
-                            createdSchedule.inviteeAnswers = _createdScheduledEventBody.inviteeAnswers;
-                            createdSchedule.scheduledNotificationInfo = _createdScheduledEventBody.scheduledNotificationInfo;
-
-                            return createdSchedule;
-                        }))
-                    ),
-                    tap(() => {
-                        this.logger.info({
-                            message: 'Booking creating is completed successfully'
-                        });
-                    }),
-                    map((savedSchedule) => [savedSchedule, loadedOutboundCalendarIntegrationOrNull, contacts] as [ScheduledEvent, CalendarIntegration | null, Contact[]])
-                ))
-        ).pipe(
-            tap(([
-                patchedSchedule,
+                availabilityBody,
+                scheduledEvent,
                 loadedOutboundCalendarIntegrationOrNull
-            ]) => {
-                this.logger.info({
-                    message: 'is loaded outbound calendar integration null ?',
-                    patchedScheduleId: patchedSchedule.id,
-                    loadedOutboundCalendarIntegrationOrNull: !!loadedOutboundCalendarIntegrationOrNull,
-                    integrationVendor: loadedOutboundCalendarIntegrationOrNull?.getIntegrationVendor()
-                });
-            }),
-            mergeMap(
-                ([
+            ]) => this.validate(
+                scheduledEvent,
+                availabilityTimezone,
+                availabilityBody,
+                loadedOutboundCalendarIntegrationOrNull
+            ))
+        );
+
+        return validate$
+            .pipe(
+                // save scheduled event entity with consumable data (NoSQL Data)
+                concatMap(() => scheduledEvent$),
+                concatMap((_scheduledEvent) => from(this.__save(
+                    transactionManager,
+                    _scheduledEvent
+                ))),
+                concatMap((savedScheduledEvent) => zip([
+                    of(savedScheduledEvent),
+                    loadedOutboundCalendarIntegration$
+                ]))
+            ).pipe(
+                // make outbound calendar event with conference link generation.
+                mergeMap(([
                     patchedSchedule,
-                    loadedOutboundCalendarIntegrationOrNull,
-                    contacts
-                ]) => {
-
-                    if (loadedOutboundCalendarIntegrationOrNull) {
-
-                        const outboundCalendarIntegrationVendor = loadedOutboundCalendarIntegrationOrNull.getIntegrationVendor();
-
-                        calendarIntegrationServiceOrNull = this.calendarIntegrationsServiceLocator.getCalendarIntegrationService(outboundCalendarIntegrationVendor);
-
-                        createdCalendarEventOrNull$ = from(
-                            calendarIntegrationServiceOrNull.createCalendarEvent(
-                                (loadedOutboundCalendarIntegrationOrNull).getIntegration(),
-                                (loadedOutboundCalendarIntegrationOrNull),
-                                availabilityTimezone,
-                                patchedSchedule
-                            )
-                        ).pipe(
-                            map((createdCalendarEvent) => {
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                patchedSchedule.iCalUID = (createdCalendarEvent as any).iCalUID as string;
-
-                                return createdCalendarEvent;
-                            })
-                        );
-                    }
-
-                    // create conference links
-                    return from(conferenceLinkIntegrationServices)
+                    loadedOutboundCalendarIntegrationOrNull
+                ]) =>
+                    this.__createOutboundCalendarEvent(
+                        patchedSchedule,
+                        loadedOutboundCalendarIntegrationOrNull,
+                        availabilityTimezone
+                    ).pipe(
+                        mergeMap((createdCalendarEventOrNull) => zip([
+                            of(patchedSchedule),
+                            of(createdCalendarEventOrNull),
+                            contacts$,
+                            loadedOutboundCalendarIntegration$
+                        ]))
+                    )
+                )
+            ).pipe(
+                mergeMap(([
+                    patchedSchedule,
+                    createdCalendarEventOrNull,
+                    contacts,
+                    loadedOutboundCalendarIntegrationOrNull
+                ]) =>
+                // create conference links
+                    from(conferenceLinkIntegrationServices)
                         .pipe(
-                            map((conferenceLinkIntegrationService) => createdCalendarEventOrNull$.pipe(
-                                map((createdCalendarEventOrNull) => [
-                                    createdCalendarEventOrNull,
-                                    conferenceLinkIntegrationService
-                                ] as [
-                                    CreatedCalendarEvent | null,
-                                    ConferenceLinkIntegrationService
-                                ])
-                            )),
-                            mergeAll(),
-                            mergeMap(([
-                                createdCalendarEventOrNull,
-                                conferenceLinkIntegrationService
-                            ]: [CreatedCalendarEvent | null, ConferenceLinkIntegrationService]) => this.__createConferenceLinkByProfileId(
+                            mergeMap((conferenceLinkIntegrationService) => this.__createConferenceLinkByProfileId(
                                 createdCalendarEventOrNull,
                                 conferenceLinkIntegrationService,
                                 contacts,
                                 patchedSchedule,
                                 availabilityTimezone,
-                                hostProfiles[0].profileId
+                                hostProfiles
                             )),
                             tap((createdConferenceLink) => {
                                 if (createdConferenceLink) {
@@ -341,15 +277,14 @@ export class GlobalScheduledEventsService {
                             }),
                             toArray()
                         ).pipe(
-                            mergeMap((generatedConferenceLinks) => {
+                            tap((generatedConferenceLinks) => {
 
                                 patchedSchedule.conferenceLinks = generatedConferenceLinks.filter(
                                     (_generatedConferenceLink) => _generatedConferenceLink !== null
                                 ) as ConferenceLink[];
 
-                                return createdCalendarEventOrNull$;
                             }),
-                            mergeMap((createdCalendarEventOrNull) => {
+                            mergeMap(() => {
 
                                 this.logger.info({
                                     message: 'Calendar condition check',
@@ -378,17 +313,94 @@ export class GlobalScheduledEventsService {
                             }),
                             defaultIfEmpty(null),
                             map(() => patchedSchedule)
-                        );
-                }
-            ),
-            last()
-        ).pipe(
-            mergeMap((patchedSchedule) =>
-                from(_scheduledEventRepository.update(patchedSchedule.id, {
-                    conferenceLinks: patchedSchedule.conferenceLinks
-                })).pipe(map(() => patchedSchedule))
-            )
-        );
+                        )
+
+                ),
+                last()
+            ).pipe(
+                // save conference links
+                mergeMap((patchedSchedule) =>
+                    from(_scheduledEventRepository.update(patchedSchedule.id, {
+                        conferenceLinks: patchedSchedule.conferenceLinks
+                    })).pipe(map(() => patchedSchedule))
+                )
+            );
+    }
+
+    __createOutboundCalendarEvent(
+        patchedSchedule: ScheduledEvent,
+        loadedOutboundCalendarIntegrationOrNull: CalendarIntegration | null,
+        availabilityTimezone: string
+    ): Observable<CreatedCalendarEvent | null> {
+
+        this.logger.info({
+            message: 'is loaded outbound calendar integration null ?',
+            patchedScheduleId: patchedSchedule.id,
+            loadedOutboundCalendarIntegrationOrNull: !!loadedOutboundCalendarIntegrationOrNull,
+            integrationVendor: loadedOutboundCalendarIntegrationOrNull?.getIntegrationVendor()
+        });
+
+        let createdCalendarEventOrNull$: Observable<CreatedCalendarEvent | null> = of(null);
+
+        if (loadedOutboundCalendarIntegrationOrNull) {
+
+            const outboundCalendarIntegrationVendor = loadedOutboundCalendarIntegrationOrNull.getIntegrationVendor();
+
+            const calendarIntegrationServiceOrNull = this.calendarIntegrationsServiceLocator.getCalendarIntegrationService(outboundCalendarIntegrationVendor);
+
+            createdCalendarEventOrNull$ = from(
+                calendarIntegrationServiceOrNull.createCalendarEvent(
+                    (loadedOutboundCalendarIntegrationOrNull).getIntegration(),
+                    (loadedOutboundCalendarIntegrationOrNull),
+                    availabilityTimezone,
+                    patchedSchedule
+                )
+            ).pipe(
+                map((createdCalendarEvent) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    patchedSchedule.iCalUID = (createdCalendarEvent as any).iCalUID as string;
+
+                    return createdCalendarEvent;
+                })
+            );
+        }
+
+        return createdCalendarEventOrNull$;
+    }
+
+    async __save(
+        transactionManager: EntityManager,
+        newScheduledEvent: ScheduledEvent
+    ): Promise<ScheduledEvent> {
+
+        this.logger.info({
+            message: 'Trying to create the scheduled event..',
+            newScheduledEvent
+        });
+
+        const _scheduledEventRepository = transactionManager.getRepository(ScheduledEvent);
+
+        const createdScheduledEvent = this.scheduledEventRepository.create(newScheduledEvent);
+
+        const savedScheduledEvent = await _scheduledEventRepository.save(createdScheduledEvent);
+
+        this.logger.info({
+            message: 'Saving the Scheduled event relation data. Trying to save the redis data..'
+        });
+
+        const _createdScheduledEventBody = await firstValueFrom(this.scheduledEventsRedisRepository.save(createdScheduledEvent.uuid, {
+            inviteeAnswers: newScheduledEvent.inviteeAnswers,
+            scheduledNotificationInfo: newScheduledEvent.scheduledNotificationInfo
+        }));
+
+        savedScheduledEvent.inviteeAnswers = _createdScheduledEventBody.inviteeAnswers;
+        savedScheduledEvent.scheduledNotificationInfo = _createdScheduledEventBody.scheduledNotificationInfo;
+
+        this.logger.info({
+            message: 'Booking creating is completed successfully'
+        });
+
+        return savedScheduledEvent;
     }
 
     __createConferenceLinkByProfileId(
@@ -397,16 +409,14 @@ export class GlobalScheduledEventsService {
         contacts: Contact[],
         patchedScheduledEvent: ScheduledEvent,
         timezone: string,
-        profileId: number
+        hostProfiles: HostProfile[]
     ): Observable<ConferenceLink | null> {
 
         const integrationVendor = conferenceLinkIntegrationService.getIntegrationVendor();
 
         const integrationFactory = this.integrationsServiceLocator.getIntegrationFactory(integrationVendor);
 
-        return from(integrationFactory.findOne({
-            profileId
-        })).pipe(
+        return from(integrationFactory.findIn(hostProfiles)).pipe(
             mergeMap((loadedIntegration) =>
                 from(conferenceLinkIntegrationService.createConferenceLink(
                     loadedIntegration as unknown as Integration,
@@ -434,6 +444,24 @@ export class GlobalScheduledEventsService {
             );
     }
 
+    /**
+     * Validates the requested booking time against various constraints.
+     *
+     * This method performs the following checks:
+     * 1. Verifies that the requested booking time is valid. It ensures the time is not in the past
+     * and does not conflict with any date overrides (e.g., holidays, maintenance windows).
+     *
+     * 2. Checks if the requested time conflicts with already scheduled events.
+     *
+     * 3. Optionally, if a calendar integration is provided (via `calendarIntegrationOrNull`),
+     * checks for conflicts with events from the integrated calendars.
+     *
+     * @param scheduledEvent
+     * @param availabilityTimezone
+     * @param availabilityBody
+     * @param calendarIntegrationOrNull
+     * @returns
+     */
     validate(
         scheduledEvent: ScheduledEvent,
         availabilityTimezone: string,

@@ -9,6 +9,7 @@ import { CalendarIntegrationService } from '@core/interfaces/integrations/calend
 import { IntegrationScheduledEventsService } from '@core/interfaces/integrations/integration-scheduled-events.abstract-service';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { AppleCalDAVCredential } from '@interfaces/integrations/apple/apple-cal-dav-credentials.interface';
+import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { AppleConverterService } from '@services/integrations/apple-integrations/apple-converter/apple-converter.service';
 import { AppleIntegrationsSchedulesService } from '@services/integrations/apple-integrations/apple-integrations-schedules/apple-integrations-schedules.service';
@@ -41,6 +42,10 @@ export class AppleIntegrationsService implements
         @InjectRepository(AppleCalDAVIntegration)
         private readonly appleCalDAVIntegrationRepository: Repository<AppleCalDAVIntegration>
     ) {}
+
+    findIn(hostProfiles: HostProfile[]): Promise<Integration | null> {
+        throw new Error('Method not implemented.');
+    }
 
     generateOAuth2RedirectURI(_syncdayGoogleOAuthTokenResponseOrSyncdayAccessToken?: string | SyncdayOAuth2TokenResponse | undefined): string {
         throw new Error('Method not implemented.');

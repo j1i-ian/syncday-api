@@ -1,7 +1,7 @@
 import { URL } from 'url';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Raw, Repository } from 'typeorm';
+import { DataSource, In, Raw, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { Observable } from 'rxjs';
@@ -10,6 +10,7 @@ import { ConferenceLinkIntegrationService } from '@core/interfaces/integrations/
 import { AppConfigService } from '@config/app-config.service';
 import { ContactType } from '@interfaces/events/contact-type.enum';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
+import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/conference-link-integration-wrapper-service.interface';
 import { ZoomConferenceLinkIntegrationsService } from '@services/integrations/zoom-integrations/zoom-conference-link-integrations/zoom-conference-link-integrations.service';
@@ -42,6 +43,19 @@ export class ZoomIntegrationsService implements
     oauthClientId: string;
     redirectURI: string;
     zoomOAuth2SuccessRedirectURI: string;
+
+    findIn(hostProfiles: HostProfile[]): Promise<Integration | null> {
+
+        const hostProfileIds = hostProfiles.map((_hostProfile) => _hostProfile.profileId);
+
+        return this.zoomIntegrationRepository.findOne({
+            where: {
+                profiles: {
+                    id: In(hostProfileIds)
+                }
+            }
+        });
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     validate(loadedIntegration: Integration): Observable<boolean> {

@@ -1,7 +1,7 @@
 import { URL } from 'url';
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { plainToInstance } from 'class-transformer';
@@ -56,6 +56,19 @@ export class GoogleIntegrationsService implements
         private readonly googleIntegrationRepository: Repository<GoogleIntegration>,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
+
+    findIn(hostProfiles: HostProfile[]): Promise<Integration | null> {
+
+        const hostProfileIds = hostProfiles.map((_hostProfile) => _hostProfile.profileId);
+
+        return this.googleIntegrationRepository.findOne({
+            where: {
+                profiles: {
+                    id: In(hostProfileIds)
+                }
+            }
+        });
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     callback(_request: Request, _response: Response): void {
