@@ -154,7 +154,13 @@ export class EventsService {
         );
     }
 
-    findOneByTeamWorkspaceAndLink(teamWorkspace: string, eventLink: string): Observable<Event> {
+    findOneByTeamWorkspaceAndLink(teamWorkspace: string, eventLink: string, {
+        defaultAvailability
+    } = {
+        defaultAvailability: true
+    }): Observable<Event> {
+
+        const availabilitiesCondition = defaultAvailability ? { default: true } : undefined;
 
         return from(this.eventRepository.findOneOrFail({
             relations: {
@@ -178,9 +184,7 @@ export class EventsService {
                                 workspace: teamWorkspace
                             }
                         },
-                        availabilities: {
-                            default: true
-                        }
+                        availabilities: availabilitiesCondition
                     }
                 }
             }

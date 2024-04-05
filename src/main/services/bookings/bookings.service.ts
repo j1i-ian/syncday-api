@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Observable, from, map, mergeMap, reduce, zip } from 'rxjs';
+import { Observable, from, map, mergeMap, of, reduce, zip } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { HostEvent } from '@interfaces/bookings/host-event';
 import { Host } from '@interfaces/bookings/host';
-import { EventType } from '@interfaces/events/event-type.enum';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
@@ -31,19 +30,27 @@ export class BookingsService {
 
     fetchHost(
         teamWorkspace: string,
-        eventType: EventType | null
+        eventLink?: string | null
     ): Observable<Host> {
-        return this.teamService.findByWorkspace(teamWorkspace)
+
+        return zip([
+            this.teamService.findByWorkspace(teamWorkspace),
+            eventLink
+                ? this.eventService.findOneByTeamWorkspaceAndLink(teamWorkspace, eventLink, {
+                    defaultAvailability: false
+                })
+                : of(null)
+        ])
             .pipe(
-                map((team) => {
+                map(([team, eventOrNull]) => {
                     const teamSetting = team.teamSetting;
-                    const mainProfile = team.profiles[0];
+                    const mainProfile = eventOrNull?.eventProfiles[0].profile;
 
                     return this.utilService.patchHost(
                         team,
                         teamSetting,
                         mainProfile,
-                        eventType
+                        eventOrNull?.type
                     );
                 })
             );

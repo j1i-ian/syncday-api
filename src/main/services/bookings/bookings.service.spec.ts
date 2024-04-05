@@ -77,6 +77,7 @@ describe('BookingsService', () => {
             teamSetting: stubOne(TeamSetting),
             profiles: [stubOne(Profile)]
         });
+        const eventStub = stubOne(Event);
         const hostMock = {
             ...teamStub,
             logo: teamStub.logo,
@@ -84,9 +85,10 @@ describe('BookingsService', () => {
         } as Host;
 
         teamServiceStub.findByWorkspace.returns(of(teamStub));
+        eventsServiceStub.findOneByTeamWorkspaceAndLink.resolves(eventStub);
         utilServiceStub.patchHost.returns(hostMock);
 
-        await firstValueFrom(service.fetchHost(teamStub.workspace as string, null));
+        await firstValueFrom(service.fetchHost(teamStub.workspace as string, eventStub.type));
 
         expect(teamServiceStub.findByWorkspace.called).true;
         expect(utilServiceStub.patchHost.called).true;

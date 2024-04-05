@@ -4,7 +4,6 @@ import { plainToInstance } from 'class-transformer';
 import { BCP47AcceptLanguage } from '@decorators/accept-language.decorator';
 import { Language } from '@interfaces/users/language.enum';
 import { Invitee } from '@interfaces/scheduled-events/invitee';
-import { EventType } from '@interfaces/events/event-type.enum';
 import { BookingsService } from '@services/bookings/bookings.service';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { FetchHostResponseDto } from '@dto/bookings/fetch-host-response.dto';
@@ -28,14 +27,10 @@ export class BookingsController {
     @Get('host')
     fetchHost(
         @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string,
-        @Query('eventType') eventTypeOrNullString: string | null
+        @Query('eventLink') eventLink: string | null = null
     ): Observable<FetchHostResponseDto> {
 
-        const eventTypeOption = eventTypeOrNullString
-            ? eventTypeOrNullString as EventType
-            : null;
-
-        return this.bookingsService.fetchHost(teamWorkspace, eventTypeOption)
+        return this.bookingsService.fetchHost(teamWorkspace, eventLink)
             .pipe(map((host) => plainToInstance(
                 FetchHostResponseDto,
                 host as FetchHostResponseDto,
