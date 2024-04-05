@@ -421,7 +421,7 @@ export class TeamService {
                         ownerDefaultAvailabilityId: ownerDefaultAvailability.id
                     });
 
-                    await this.teamRedisRepository.initializeMemberCount(_createdTeam.uuid, teamMembers.length);
+                    await this.teamRedisRepository.initializeMemberCount(_createdTeam.uuid, teamMembers.length + 1);
 
                     await this.teamRedisRepository.setTeamPlanStatus(_createdTeam.uuid, TeamPlanStatus.PRO);
 
