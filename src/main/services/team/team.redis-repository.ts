@@ -20,14 +20,17 @@ export class TeamRedisRepository {
             readPipeline.get(teamPlanStatusKey);
         });
 
-        const results = await readPipeline.exec() ?? [];
+        const results = (await readPipeline.exec() ?? []) as unknown as [Array<[Error | null, unknown]>];
 
-        return results
-            .map(([err, teamPlanStatusString ]) =>
+        const teamPlanStatusArray = results
+            .map(([err, teamPlanStatusString]) =>
                 err
                     ? TeamPlanStatus.FREE
-                    : TeamPlanStatus[teamPlanStatusString as keyof typeof TeamPlanStatus]
-            );
+                    : teamPlanStatusString as unknown as TeamPlanStatus
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ) as unknown as any;
+
+        return teamPlanStatusArray;
 
     }
 
