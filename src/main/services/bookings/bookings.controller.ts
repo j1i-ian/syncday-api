@@ -34,7 +34,7 @@ export class BookingsController {
                 ...team,
                 logo: team.teamSetting.brandImagePath,
                 greetings: team.teamSetting.greetings,
-                brandImageExpose: team.teamSetting.brandImageExpose
+                badgeExpose: team.teamSetting.badgeExpose
             } as unknown as FetchHostResponseDto, {
                 excludeExtraneousValues: true
             })));
