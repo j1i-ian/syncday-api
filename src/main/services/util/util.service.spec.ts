@@ -79,7 +79,27 @@ describe('UtilService', () => {
                 evaluateExpectations: (
                     teamMock: Team,
                     teamSettingMock: TeamSetting,
-                    _mainProfileMock: Profile,
+                    _mainProfileMock: Profile | null,
+                    actualHost: Host
+                ) => {
+
+                    expect(actualHost.brandImagePath).equals(teamSettingMock.brandImagePath);
+                    expect(actualHost.name).equals(teamMock.name);
+                    expect(actualHost.logo).equals(teamMock.logo);
+                }
+            },
+            {
+                description: 'should be patched the team brand image, logo, name as host if main profile is not given',
+                teamMock: stubOne(Team, {
+                    memberCount: 1
+                }),
+                teamSettingMock: stubOne(TeamSetting),
+                mainProfileMock: null,
+                eventTypeMock: null,
+                evaluateExpectations: (
+                    teamMock: Team,
+                    teamSettingMock: TeamSetting,
+                    _mainProfileMock: Profile | null,
                     actualHost: Host
                 ) => {
 
@@ -99,7 +119,7 @@ describe('UtilService', () => {
                 evaluateExpectations: (
                     teamMock: Team,
                     teamSettingMock: TeamSetting,
-                    _mainProfileMock: Profile,
+                    _mainProfileMock: Profile | null,
                     actualHost: Host
                 ) => {
 
@@ -120,7 +140,7 @@ describe('UtilService', () => {
                 evaluateExpectations: (
                     teamMock: Team,
                     teamSettingMock: TeamSetting,
-                    _mainProfileMock: Profile,
+                    _mainProfileMock: Profile | null,
                     actualHost: Host
                 ) => {
 
@@ -141,7 +161,7 @@ describe('UtilService', () => {
                 evaluateExpectations: (
                     teamMock: Team,
                     teamSettingMock: TeamSetting,
-                    _mainProfileMock: Profile,
+                    _mainProfileMock: Profile | null,
                     actualHost: Host
                 ) => {
 
@@ -183,7 +203,7 @@ describe('UtilService', () => {
                 evaluateExpectations: (
                     teamMock: Team,
                     teamSettingMock: TeamSetting,
-                    _mainProfileMock: Profile,
+                    _mainProfileMock: Profile | null,
                     actualHost: Host
                 ) => {
 
@@ -213,7 +233,7 @@ describe('UtilService', () => {
                 evaluateExpectations(
                     teamMock,
                     teamSettingMock,
-                    mainProfileMock,
+                    mainProfileMock as Profile,
                     actualHost
                 );
             });

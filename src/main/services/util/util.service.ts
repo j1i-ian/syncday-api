@@ -71,7 +71,7 @@ export class UtilService {
     patchHost(
         team: Team,
         teamSetting: TeamSetting,
-        mainProfile: Profile,
+        mainProfile?: Profile | null,
         eventType?: EventType | null
     ): Host {
 
@@ -81,7 +81,7 @@ export class UtilService {
         let name = team.name;
         let logo = team.logo as string;
 
-        if (isNotAloneTeam && isOneOnOne) {
+        if (isNotAloneTeam && isOneOnOne && mainProfile) {
             name = mainProfile.name as string;
             logo = mainProfile.image as string;
         }
