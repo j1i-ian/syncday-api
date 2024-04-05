@@ -99,14 +99,14 @@ describe('UtilService', () => {
                 evaluateExpectations: (
                     teamMock: Team,
                     teamSettingMock: TeamSetting,
-                    mainProfileMock: Profile,
+                    _mainProfileMock: Profile,
                     actualHost: Host
                 ) => {
 
                     expect(actualHost.uuid).equals(teamMock.uuid);
                     expect(actualHost.brandImagePath).equals(teamSettingMock.brandImagePath);
-                    expect(actualHost.name).equals(mainProfileMock.name);
-                    expect(actualHost.logo).equals(mainProfileMock.image);
+                    expect(actualHost.name).equals(teamMock.name);
+                    expect(actualHost.logo).equals(teamMock.logo);
                 }
             },
             {

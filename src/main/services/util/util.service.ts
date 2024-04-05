@@ -75,18 +75,13 @@ export class UtilService {
         eventType?: EventType | null
     ): Host {
 
-        const isAloneTeam = team.memberCount === 1;
-        const isCollectiveEventType = eventType
-            ? eventType === EventType.COLLECTIVE
-            : false;
+        const isNotAloneTeam = team.memberCount > 1;
+        const isOneOnOne = eventType === EventType.ONE_ON_ONE;
 
-        let name: string;
-        let logo: string;
+        let name = team.name;
+        let logo = team.logo as string;
 
-        if (isAloneTeam || isCollectiveEventType) {
-            name = team.name;
-            logo = team.logo as string;
-        } else {
+        if (isNotAloneTeam && isOneOnOne) {
             name = mainProfile.name as string;
             logo = mainProfile.image as string;
         }
