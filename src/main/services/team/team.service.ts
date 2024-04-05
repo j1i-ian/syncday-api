@@ -188,6 +188,17 @@ export class TeamService {
                     }
                 }
             })
+        ).pipe(
+            mergeMap((team) =>
+                from(this.teamRedisRepository.getMemberCount(team.uuid))
+                    .pipe(
+                        map((memberCount) => {
+                            team.memberCount = memberCount;
+                            return team;
+                        }),
+                        map(() => team)
+                    )
+            )
         );
     }
 

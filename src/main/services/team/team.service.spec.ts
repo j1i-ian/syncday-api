@@ -222,6 +222,7 @@ describe('TeamService', () => {
             const teamStub = stubOne(Team);
 
             teamRepositoryStub.findOneOrFail.resolves(teamStub);
+            teamRedisRepositoryStub.getMemberCount.resolves(1);
 
             const loadedTeam = await firstValueFrom(service.findByWorkspace(teamStub.workspace as string));
 
@@ -234,6 +235,7 @@ describe('TeamService', () => {
             ).equals(teamStub.workspace);
 
             expect(loadedTeam).equal(teamStub);
+            expect(loadedTeam.memberCount).equal(1);
         });
     });
 

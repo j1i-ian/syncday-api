@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
+import { Host } from '@interfaces/bookings/host';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
@@ -12,6 +13,7 @@ import { Team } from '@entity/teams/team.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { EventProfile } from '@entity/events/event-profile.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { BookingsService } from './bookings.service';
 
 describe('BookingsService', () => {
@@ -71,15 +73,26 @@ describe('BookingsService', () => {
 
     it('should be fetched user', async () => {
 
-        const teamStub = stubOne(Team);
+        const teamStub = stubOne(Team, {
+            teamSetting: stubOne(TeamSetting),
+            profiles: [stubOne(Profile)]
+        });
+        const hostMock = {
+            ...teamStub,
+            logo: teamStub.logo,
+            name: teamStub.name
+        } as Host;
 
         teamServiceStub.findByWorkspace.returns(of(teamStub));
+        utilServiceStub.patchHost.returns(hostMock);
 
-        await firstValueFrom(service.fetchHost(teamStub.workspace as string));
+        await firstValueFrom(service.fetchHost(teamStub.workspace as string, null));
 
         expect(teamServiceStub.findByWorkspace.called).true;
+        expect(utilServiceStub.patchHost.called).true;
 
         teamServiceStub.findByWorkspace.reset();
+        utilServiceStub.patchHost.reset();
     });
 
     it('should be fetched host events', async () => {

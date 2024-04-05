@@ -30,6 +30,7 @@ import { PageOption } from '@interfaces/page-option.interface';
 import { TimestampSearchOption } from '@interfaces/timestamp-search-option.interface';
 import { KeySearchOption } from '@interfaces/key-search-option.type';
 import { ScheduledStatus } from '@interfaces/scheduled-events/scheduled-status.enum';
+import { Host } from '@interfaces/bookings/host';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { User } from '@entity/users/user.entity';
 import { DateTimeOrderFormat } from '@entity/users/date-time-format-order.enum';
@@ -39,13 +40,14 @@ import { Event } from '@entity/events/event.entity';
 import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
 import { NotificationTarget } from '@entity/scheduled-events/notification-target.enum';
 import { OAuth2Account } from '@entity/users/oauth2-account.entity';
-import { Host } from '@entity/scheduled-events/host.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { AvailableTime } from '@entity/availability/availability-time.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
+import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { Host as ScheduledEventEntityHost } from '@entity/scheduled-events/host.entity';
 import { Language } from '@app/enums/language.enum';
 import { DateOrder } from '../../interfaces/datetimes/date-order.type';
 import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
@@ -65,6 +67,38 @@ type SearchOption = KeySearchOption & KeySearchOption<'team'> & KeySearchOption<
 @Injectable()
 export class UtilService {
     constructor(private readonly configService: ConfigService) {}
+
+    patchHost(
+        team: Team,
+        teamSetting: TeamSetting,
+        mainProfile: Profile,
+        eventType?: EventType | null
+    ): Host {
+
+        const isAloneTeam = team.memberCount === 1;
+        const isCollectiveEventType = eventType
+            ? eventType === EventType.COLLECTIVE
+            : false;
+
+        let name: string;
+        let logo: string;
+
+        if (isAloneTeam || isCollectiveEventType) {
+            name = team.name;
+            logo = team.logo as string;
+        } else {
+            name = mainProfile.name as string;
+            logo = mainProfile.image as string;
+        }
+
+        return {
+            ...team,
+            ...teamSetting,
+            uuid: team.uuid,
+            name,
+            logo
+        } as unknown as Host;
+    }
 
     convertInvitationToProfile(emailOrPhone: string): Profile {
 
@@ -653,7 +687,7 @@ export class UtilService {
             uuid: mainHostProfile.profileUUID,
             name: mainHostProfile.name,
             workspace
-        } as Host;
+        } as ScheduledEventEntityHost;
 
         newScheduledEvent.hostProfiles = hostProfiles;
 

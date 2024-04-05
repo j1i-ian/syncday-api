@@ -12,6 +12,8 @@ import { AppJwtPayload } from '@interfaces/profiles/app-jwt-payload';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { NotificationInfo } from '@interfaces/notifications/notification-info.interface';
 import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
+import { Host } from '@interfaces/bookings/host';
+import { EventType } from '@interfaces/events/event-type.enum';
 import { User } from '@entity/users/user.entity';
 import { Event } from '@entity/events/event.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
@@ -61,6 +63,161 @@ describe('UtilService', () => {
 
     it('should be defined', () => {
         expect(service).ok;
+    });
+
+    describe('Host brand image, logo, name patch test', () => {
+
+        [
+            {
+                description: 'should be patched the team brand image, logo, name as host for the alone team without event type',
+                teamMock: stubOne(Team, {
+                    memberCount: 1
+                }),
+                teamSettingMock: stubOne(TeamSetting),
+                mainProfileMock: stubOne(Profile),
+                eventTypeMock: null,
+                evaluateExpectations: (
+                    teamMock: Team,
+                    teamSettingMock: TeamSetting,
+                    _mainProfileMock: Profile,
+                    actualHost: Host
+                ) => {
+
+                    expect(actualHost.brandImagePath).equals(teamSettingMock.brandImagePath);
+                    expect(actualHost.name).equals(teamMock.name);
+                    expect(actualHost.logo).equals(teamMock.logo);
+                }
+            },
+            {
+                description: 'should be patched the team brand image, logo, name as host without event type',
+                teamMock: stubOne(Team, {
+                    memberCount: 2
+                }),
+                teamSettingMock: stubOne(TeamSetting),
+                mainProfileMock: stubOne(Profile),
+                eventTypeMock: null,
+                evaluateExpectations: (
+                    teamMock: Team,
+                    teamSettingMock: TeamSetting,
+                    mainProfileMock: Profile,
+                    actualHost: Host
+                ) => {
+
+                    expect(actualHost.uuid).equals(teamMock.uuid);
+                    expect(actualHost.brandImagePath).equals(teamSettingMock.brandImagePath);
+                    expect(actualHost.name).equals(mainProfileMock.name);
+                    expect(actualHost.logo).equals(mainProfileMock.image);
+                }
+            },
+            {
+                description: 'should be patched the team brand image, logo, name as host for alone team',
+                teamMock: stubOne(Team, {
+                    memberCount: 1
+                }),
+                teamSettingMock: stubOne(TeamSetting),
+                mainProfileMock: stubOne(Profile),
+                eventTypeMock: EventType.ONE_ON_ONE,
+                evaluateExpectations: (
+                    teamMock: Team,
+                    teamSettingMock: TeamSetting,
+                    _mainProfileMock: Profile,
+                    actualHost: Host
+                ) => {
+
+                    expect(actualHost.uuid).equals(teamMock.uuid);
+                    expect(actualHost.brandImagePath).equals(teamSettingMock.brandImagePath);
+                    expect(actualHost.name).equals(teamMock.name);
+                    expect(actualHost.logo).equals(teamMock.logo);
+                }
+            },
+            {
+                description: 'should be patched the team brand image, logo, name as host for alone team although event type is collective',
+                teamMock: stubOne(Team, {
+                    memberCount: 1
+                }),
+                teamSettingMock: stubOne(TeamSetting),
+                mainProfileMock: stubOne(Profile),
+                eventTypeMock: EventType.COLLECTIVE,
+                evaluateExpectations: (
+                    teamMock: Team,
+                    teamSettingMock: TeamSetting,
+                    _mainProfileMock: Profile,
+                    actualHost: Host
+                ) => {
+
+                    expect(actualHost.uuid).equals(teamMock.uuid);
+                    expect(actualHost.brandImagePath).equals(teamSettingMock.brandImagePath);
+                    expect(actualHost.name).equals(teamMock.name);
+                    expect(actualHost.logo).equals(teamMock.logo);
+                }
+            },
+            {
+                description: 'The it should be patched the team brand image, profile image, and name, to reflect the host for teams with two or more members and event type is one on one',
+                teamMock: stubOne(Team, {
+                    memberCount: 2
+                }),
+                teamSettingMock: stubOne(TeamSetting),
+                mainProfileMock: stubOne(Profile),
+                eventTypeMock: EventType.ONE_ON_ONE,
+                evaluateExpectations: (
+                    teamMock: Team,
+                    teamSettingMock: TeamSetting,
+                    mainProfileMock: Profile,
+                    actualHost: Host
+                ) => {
+
+                    expect(actualHost.uuid).equals(teamMock.uuid);
+                    expect(actualHost.brandImagePath).equals(teamSettingMock.brandImagePath);
+                    expect(actualHost.name).equals(mainProfileMock.name);
+                    expect(actualHost.logo).equals(mainProfileMock.image);
+                }
+            },
+            {
+                description: 'The it should be patched the team brand image, team logo and team name, to reflect the host for teams with two or more members and event type is collective',
+                teamMock: stubOne(Team, {
+                    memberCount: 2
+                }),
+                teamSettingMock: stubOne(TeamSetting),
+                mainProfileMock: stubOne(Profile),
+                eventTypeMock: EventType.COLLECTIVE,
+                evaluateExpectations: (
+                    teamMock: Team,
+                    teamSettingMock: TeamSetting,
+                    _mainProfileMock: Profile,
+                    actualHost: Host
+                ) => {
+
+                    expect(actualHost.uuid).equals(teamMock.uuid);
+                    expect(actualHost.brandImagePath).equals(teamSettingMock.brandImagePath);
+                    expect(actualHost.name).equals(teamMock.name);
+                    expect(actualHost.logo).equals(teamMock.logo);
+                }
+            }
+        ].forEach(function({
+            description,
+            teamMock,
+            teamSettingMock,
+            mainProfileMock,
+            eventTypeMock,
+            evaluateExpectations
+        }) {
+            it(description, () => {
+
+                const actualHost = service.patchHost(
+                    teamMock,
+                    teamSettingMock,
+                    mainProfileMock,
+                    eventTypeMock
+                );
+
+                evaluateExpectations(
+                    teamMock,
+                    teamSettingMock,
+                    mainProfileMock,
+                    actualHost
+                );
+            });
+        });
     });
 
     describe('Converting to the profile Test', () => {

@@ -3,6 +3,8 @@ import { Observable, from, map, mergeMap, reduce, zip } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { HostEvent } from '@interfaces/bookings/host-event';
+import { Host } from '@interfaces/bookings/host';
+import { EventType } from '@interfaces/events/event-type.enum';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
@@ -13,7 +15,6 @@ import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { EventStatus } from '@entity/events/event-status.enum';
-import { Team } from '@entity/teams/team.entity';
 import { ScheduledEventResponseDto } from '@dto/scheduled-events/scheduled-event-response.dto';
 
 @Injectable()
@@ -28,8 +29,24 @@ export class BookingsService {
         private readonly timeUtilService: TimeUtilService
     ) {}
 
-    fetchHost(teamWorkspace: string): Observable<Team> {
-        return this.teamService.findByWorkspace(teamWorkspace);
+    fetchHost(
+        teamWorkspace: string,
+        eventType: EventType | null
+    ): Observable<Host> {
+        return this.teamService.findByWorkspace(teamWorkspace)
+            .pipe(
+                map((team) => {
+                    const teamSetting = team.teamSetting;
+                    const mainProfile = team.profiles[0];
+
+                    return this.utilService.patchHost(
+                        team,
+                        teamSetting,
+                        mainProfile,
+                        eventType
+                    );
+                })
+            );
     }
 
     searchHostEvents(teamWorkspace: string): Observable<Event[]> {
