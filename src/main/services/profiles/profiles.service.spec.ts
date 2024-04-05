@@ -28,6 +28,7 @@ import { Order } from '@entity/orders/order.entity';
 import { Payment } from '@entity/payments/payment.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
+import { Event } from '@entity/events/event.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 import { ProfilesService } from './profiles.service';
 
@@ -54,6 +55,7 @@ describe('ProfilesService', () => {
     let profileRepositoryStub: sinon.SinonStubbedInstance<Repository<Profile>>;
     let availabilityRepositoryStub: sinon.SinonStubbedInstance<Repository<Availability>>;
     let scheduledEventNotificationRepositoryStub: sinon.SinonStubbedInstance<Repository<ScheduledEventNotification>>;
+    let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
 
     const datasourceMock = TestMockUtil.getDataSourceMock(() => module);
 
@@ -75,6 +77,7 @@ describe('ProfilesService', () => {
         profileRepositoryStub = sinon.createStubInstance<Repository<Profile>>(Repository);
         availabilityRepositoryStub = sinon.createStubInstance<Repository<Availability>>(Repository);
         scheduledEventNotificationRepositoryStub = sinon.createStubInstance<Repository<ScheduledEventNotification>>(Repository);
+        eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
 
         module = await Test.createTestingModule({
             providers: [
@@ -142,6 +145,10 @@ describe('ProfilesService', () => {
                 {
                     provide: getRepositoryToken(ScheduledEventNotification),
                     useValue: scheduledEventNotificationRepositoryStub
+                },
+                {
+                    provide: getRepositoryToken(Event),
+                    useValue: eventRepositoryStub
                 },
                 {
                     provide: WINSTON_MODULE_PROVIDER,
@@ -934,9 +941,21 @@ describe('ProfilesService', () => {
 
     describe('Test Profile Delete', () => {
         let serviceSandbox: sinon.SinonSandbox;
+        let eventQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Event>>;
 
         beforeEach(() => {
             serviceSandbox = sinon.createSandbox();
+
+            eventQueryBuilderStub = stubQueryBuilder(
+                serviceSandbox,
+                Event,
+                stub(Event)
+            );
+
+            eventQueryBuilderStub.groupBy.returns(eventQueryBuilderStub);
+            eventQueryBuilderStub.having.returns(eventQueryBuilderStub);
+
+            eventRepositoryStub.createQueryBuilder.returns(eventQueryBuilderStub);
         });
 
         afterEach(() => {
@@ -944,6 +963,9 @@ describe('ProfilesService', () => {
             profileRepositoryStub.delete.reset();
 
             teamRedisRepositoryStub.decrementMemberCount.reset();
+
+            eventQueryBuilderStub.getMany.reset();
+            eventRepositoryStub.update.reset();
 
             serviceSandbox.restore();
         });
@@ -982,6 +1004,9 @@ describe('ProfilesService', () => {
             paymentsServiceStub._save.returns(of(paymentStub));
             teamRedisRepositoryStub.decrementMemberCount.resolves();
 
+            const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+            eventQueryBuilderStub.update.resolves(updateResultMock);
+
             await service.remove(
                 teamStub.id,
                 authProfile,
@@ -1000,6 +1025,9 @@ describe('ProfilesService', () => {
             expect(profileRepositoryStub.delete.called).true;
             expect(paymentsServiceStub._save.called).true;
             expect(teamRedisRepositoryStub.decrementMemberCount.called).true;
+
+            expect(eventQueryBuilderStub.getMany.called).true;
+            expect(eventRepositoryStub.update.called).true;
         });
     });
 

@@ -1,6 +1,6 @@
 import { ForbiddenException, Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, EntityManager, FindOptionsWhere, Like, MoreThan, Raw, Repository, UpdateResult } from 'typeorm';
+import { Brackets, DataSource, EntityManager, FindOptionsWhere, In, Like, MoreThan, Raw, Repository, UpdateResult } from 'typeorm';
 import {
     Observable,
     combineLatest,
@@ -30,6 +30,8 @@ import { OrderStatus } from '@interfaces/orders/order-status.enum';
 import { Orderer } from '@interfaces/orders/orderer.interface';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { TeamPlanStatus } from '@interfaces/teams/team-plan-status.enum';
+import { ContactType } from '@interfaces/events/contact-type.enum';
+import { EventType } from '@interfaces/events/event-type.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
@@ -47,6 +49,7 @@ import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { Order } from '@entity/orders/order.entity';
 import { ScheduledEventNotification } from '@entity/scheduled-events/scheduled-event-notification.entity';
+import { Event } from '@entity/events/event.entity';
 import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
 
 @Injectable()
@@ -870,7 +873,33 @@ export class ProfilesService {
         const success = await this.datasource.transaction(async (transactionManager) => {
             const _availabilityRepository = transactionManager.getRepository(Availability);
             const _profileRepository = transactionManager.getRepository(Profile);
-            const _scheduledEventNotification = transactionManager.getRepository(ScheduledEventNotification);
+            const _scheduledEventNotificationRepository = transactionManager.getRepository(ScheduledEventNotification);
+            const _eventRepository = transactionManager.getRepository(Event);
+
+            const noLocationEventTargets = await _eventRepository.createQueryBuilder('event')
+                .leftJoin('event.eventProfiles', 'eventProfile')
+                .leftJoin('eventProfile.profile', 'profile')
+                .leftJoin('profile.googleIntergrations', 'googleIntergration')
+                .leftJoin('profile.zoomIntegrations', 'zoomIntegration')
+                .where(`(
+                    JSON_CONTAINS(event.contacts, '"${ContactType.GOOGLE_MEET}"', '$[0].type') OR
+                    JSON_CONTAINS(event.contacts, '"${ContactType.ZOOM}"', '$[0].type')
+                )`).andWhere('event.type = :eventType', {
+                    eventType: EventType.COLLECTIVE
+                }).andWhere('eventProfile.profileId = :eventProfileId', {
+                    eventProfileId: profileId
+                })
+                .groupBy('event.id')
+                .having('COUNT(googleIntergration.id) = 1 OR COUNT(zoomIntegration.id) = 1')
+                .getMany();
+
+            const eventIds = noLocationEventTargets.map((_event) => _event.id);
+
+            await _eventRepository.update({
+                id: In(eventIds)
+            }, {
+                contacts: [{ type: ContactType.NO_LOCATION, value: '' }]
+            });
 
             _availabilityRepository.softDelete({
                 profileId
@@ -896,13 +925,14 @@ export class ProfilesService {
                 id: profileId,
                 teamId
             });
+
             this.logger.info({
                 message: 'Transaction: Profile is deleted',
                 profileId,
                 teamId
             });
 
-            const scheduledEventNotificationDeleteResult = await _scheduledEventNotification.delete({
+            const scheduledEventNotificationDeleteResult = await _scheduledEventNotificationRepository.delete({
                 profileId,
                 remindAt: MoreThan(new Date())
             });
