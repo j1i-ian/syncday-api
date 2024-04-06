@@ -108,6 +108,16 @@ export class SyncdayRedisService {
         return result === 'OK';
     }
 
+    async deletePhoneVerificationStatus(
+        phoneNumber: string,
+        uuid: string
+    ): Promise<boolean> {
+        const phoneVerificationStatusKey = this.getPhoneVerificationStatusKey(phoneNumber, uuid);
+        const result = await this.cluster.del(phoneVerificationStatusKey);
+
+        return result > 0;
+    }
+
     getPGPaymentKey(orderUUID: string): RedisKey {
         return this.getRedisKey(RedisStores.PG_PAYMENTS, [orderUUID]);
     }

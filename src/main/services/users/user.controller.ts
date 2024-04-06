@@ -165,4 +165,12 @@ export class UserController {
     ): Promise<void> {
         await this.userService.deleteUser(userId);
     }
+
+    @Delete(':userId(\\d+)/phone')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async deleteUserPhone(
+        @AuthProfile('userId') userId: number
+    ): Promise<void> {
+        await this.userService.deleteUserPhone(userId);
+    }
 }

@@ -13,6 +13,8 @@ import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.e
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { UserSearchOption } from '@interfaces/users/user-search-option.interface';
 import { TeamPlanStatus } from '@interfaces/teams/team-plan-status.enum';
+import { NotificationType } from '@interfaces/notifications/notification-type.enum';
+import { Notification } from '@interfaces/notifications/notification';
 import { AvailabilityRedisRepository } from '@services/availability/availability.redis-repository';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { GoogleIntegrationsService } from '@services/integrations/google-integration/google-integrations.service';
@@ -917,10 +919,12 @@ export class UserService {
         updatePhoneWithVerificationDto: UpdatePhoneWithVerificationDto
     ): Promise<boolean> {
 
+        const { phone, verificationCode } = updatePhoneWithVerificationDto;
+
         // TODO: Extract as decorator when we have a time.
         const isValidPhoneVerification = await this.verificationService.isValidPhoneVerification(
-            updatePhoneWithVerificationDto.phone,
-            updatePhoneWithVerificationDto.verificationCode,
+            phone,
+            verificationCode,
             userUUID
         );
 
@@ -928,22 +932,70 @@ export class UserService {
 
         const isValidRequest = isValidPhoneVerification;
 
-        if (isValidRequest) {
-            await this.syncdayRedisService.setPhoneVerificationStatus(
-                updatePhoneWithVerificationDto.phone,
-                userUUID
-            );
-
-            const updateResult =  await this.userRepository.update(userId, {
-                phone: updatePhoneWithVerificationDto.phone
-            });
-
-            isUpdated = updateResult.affected ? updateResult.affected > 0 : false;
-        } else {
+        if (!isValidRequest) {
             throw new PhoneVertificationFailException();
         }
 
+        const updateResult = await this.userRepository.update(userId, {
+            phone
+        });
+
+        await this.syncdayRedisService.setPhoneVerificationStatus(
+            phone,
+            userUUID
+        );
+
+        isUpdated = updateResult.affected ? updateResult.affected > 0 : false;
+
         return isUpdated;
+    }
+
+    async deleteUserPhone(
+        userId: number
+    ): Promise<boolean> {
+
+        this.logger.info({
+            message: 'delete user phone number is started. Fetching unique host event'
+        });
+
+        const events = await firstValueFrom(this.eventsService.search({
+            onlySatisfiedHost: true,
+            userId
+        }));
+
+        await this.datasource.transaction(async (transactionManager) => {
+            const _userRepository = transactionManager.getRepository(User);
+
+            const userPhoneUpdate = await _userRepository.update(userId, {
+                phone: null
+            });
+
+            return userPhoneUpdate.affected && userPhoneUpdate.affected > 0;
+        });
+
+        const allSettledResults = await Promise.allSettled(events.map((_event) => {
+
+            const { eventDetail: _eventDetail } = _event;
+            const hostNotifications = (_eventDetail.notificationInfo.host as Notification[]);
+
+            _eventDetail.notificationInfo.host = (hostNotifications && hostNotifications.length > 0)
+                ? hostNotifications.filter((_hostNotification) => _hostNotification.type !== NotificationType.TEXT)
+                : hostNotifications;
+
+            return this.eventRedisRepository.updateEventDetailBody(_eventDetail.uuid, {
+                notificationInfo: _eventDetail.notificationInfo
+            });
+        }));
+
+        const hasRejection = allSettledResults.filter((_result) => _result.status === 'rejected').length > 0;
+
+        this.logger.info({
+            message: 'user phone is deleted',
+            hasRejection,
+            allSettledResults: hasRejection ? allSettledResults : []
+        });
+
+        return hasRejection;
     }
 
     async deleteUser(userId: number): Promise<boolean> {

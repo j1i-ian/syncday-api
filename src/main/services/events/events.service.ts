@@ -1,7 +1,7 @@
 import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Observable, firstValueFrom, forkJoin, from, map, mergeMap } from 'rxjs';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Raw, Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -33,6 +33,9 @@ export class EventsService {
     ) {}
 
     search(searchOption: EventsSearchOption): Observable<Event[]> {
+        const userIdCondition = searchOption.userId ? { userId: searchOption.userId } : undefined;
+        const onlySatisfiedHostCondition = searchOption.onlySatisfiedHost ? Raw((alias) => `COUNT(${alias}) = 1`) : undefined;
+
         return from(
             this.eventRepository.find({
                 relations: {
@@ -49,6 +52,9 @@ export class EventsService {
                 where: {
                     status: searchOption.status,
                     public: searchOption.public,
+                    eventProfiles: {
+                        profile: userIdCondition
+                    },
                     eventGroup: {
                         team: {
                             id: searchOption.teamId,
@@ -63,6 +69,10 @@ export class EventsService {
                 }
             })
         ).pipe(
+            map((_events) => onlySatisfiedHostCondition
+                ? _events.filter((_event) => _event.eventProfiles.length === 1)
+                : _events
+            ),
             // TODO: should be refactored
             mergeMap((_events) => {
                 const eventDetailUUIDs = _events.map((_event) => _event.eventDetail.uuid);
