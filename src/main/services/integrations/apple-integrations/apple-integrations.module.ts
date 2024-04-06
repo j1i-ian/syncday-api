@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppleIntegrationFacadeModule } from '@services/integrations/apple-integrations/facades/apple-integration-facade.module';
+import { EventsModule } from '@services/events/events.module';
 import { AppleCalDAVIntegration } from '@entity/integrations/apple/apple-caldav-integration.entity';
 import { AppleCalDAVIntegrationScheduledEvent } from '@entity/integrations/apple/apple-caldav-integration-scheduled-event.entity';
 import { AppleIntegrationsService } from './apple-integrations.service';
@@ -12,7 +13,8 @@ import { AppleCalendarIntegrationsModule } from './apple-calendar-integrations/a
     imports: [
         TypeOrmModule.forFeature([AppleCalDAVIntegration, AppleCalDAVIntegrationScheduledEvent]),
         AppleCalendarIntegrationsModule,
-        AppleIntegrationFacadeModule
+        AppleIntegrationFacadeModule,
+        EventsModule
     ],
     providers: [
         AppleIntegrationsService,

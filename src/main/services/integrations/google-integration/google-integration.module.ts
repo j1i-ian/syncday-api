@@ -11,6 +11,7 @@ import { GoogleCalendarEventWatchService } from '@services/integrations/google-i
 import { GoogleCalendarEventWatchStopService } from '@services/integrations/google-integration/facades/google-calendar-event-watch-stop.service';
 import { GoogleCalendarEventCreateService } from '@services/integrations/google-integration/facades/google-calendar-event-create.service';
 import { GoogleCalendarEventPatchService } from '@services/integrations/google-integration/facades/google-calendar-event-patch.service';
+import { EventsModule } from '@services/events/events.module';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
 import { GoogleOAuthTokenService } from './facades/google-oauth-token.service';
@@ -24,7 +25,8 @@ import { GoogleConferenceLinkIntegrationService } from './google-conference-link
     imports: [
         ConfigModule,
         TypeOrmModule.forFeature([GoogleIntegration, GoogleIntegrationScheduledEvent]),
-        GoogleCalendarIntegrationsModule
+        GoogleCalendarIntegrationsModule,
+        EventsModule
     ],
     providers: [
         GoogleIntegrationFacade,

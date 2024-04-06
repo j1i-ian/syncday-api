@@ -7,6 +7,8 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Event } from '@core/entities/events/event.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
+import { EventType } from '@interfaces/events/event-type.enum';
+import { ContactType } from '@interfaces/events/contact-type.enum';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { UtilService } from '@services/util/util.service';
 import { EventStatus } from '@entity/events/event-status.enum';
@@ -94,6 +96,30 @@ export class EventsService {
                     );
             })
         );
+    }
+
+    async searchUniqueLinkProviderEvents(profileId: number, contactTypes: ContactType[]): Promise<Event[]> {
+
+        const noLocationEventTargets = await this.eventRepository.createQueryBuilder('event')
+            .leftJoin('event.eventProfiles', 'eventProfile')
+            .leftJoin('eventProfile.profile', 'profile')
+            .leftJoin('profile.googleIntergrations', 'googleIntergration')
+            .leftJoin('profile.zoomIntegrations', 'zoomIntegration')
+            .where('(' +
+                contactTypes.map(
+                    (_contactType) => `JSON_CONTAINS(event.contacts, "'${_contactType}'", '$[0].type')`
+                ).join(' OR ')
+            + ')')
+            .andWhere('event.type = :eventType', {
+                eventType: EventType.COLLECTIVE
+            }).andWhere('eventProfile.profileId = :eventProfileId', {
+                eventProfileId: profileId
+            })
+            .groupBy('event.id')
+            .having('COUNT(googleIntergration.id) = 1 OR COUNT(zoomIntegration.id) = 1')
+            .getMany();
+
+        return noLocationEventTargets;
     }
 
     findOne(eventId: number, teamId: number): Observable<Event> {

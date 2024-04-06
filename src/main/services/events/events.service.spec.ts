@@ -8,6 +8,7 @@ import { Event } from '@core/entities/events/event.entity';
 import { EventDetail } from '@core/entities/events/event-detail.entity';
 import { EventGroup } from '@core/entities/events/event-group.entity';
 import { EventGroupSetting } from '@core/interfaces/event-groups/event-group-setting.interface';
+import { ContactType } from '@interfaces/events/contact-type.enum';
 import { SyncdayRedisService } from '@services/syncday-redis/syncday-redis.service';
 import { EventsRedisRepository } from '@services/events/events.redis-repository';
 import { UtilService } from '@services/util/util.service';
@@ -114,10 +115,26 @@ describe('EventsService', () => {
     });
 
     describe('Test Event Searching', () => {
+
+        let serviceSandbox: sinon.SinonSandbox;
+        let eventQueryBuilderStub: SinonStubbedInstance<SelectQueryBuilder<Event>>;
+
         afterEach(() => {
             eventRepositoryStub.find.reset();
 
             eventRedisRepositoryStub.getEventDetailRecords.reset();
+
+            serviceSandbox = sinon.createSandbox();
+
+            eventQueryBuilderStub = stubQueryBuilder(
+                serviceSandbox,
+                Event,
+                stub(Event)
+            );
+
+            eventQueryBuilderStub.groupBy.returns(eventQueryBuilderStub);
+            eventQueryBuilderStub.having.returns(eventQueryBuilderStub);
+            eventRepositoryStub.createQueryBuilder.returns(eventQueryBuilderStub);
         });
 
         it('should be searched event list', async () => {
@@ -138,6 +155,19 @@ describe('EventsService', () => {
 
             expect(eventRepositoryStub.find.called).true;
             expect(eventRedisRepositoryStub.getEventDetailRecords.called).true;
+        });
+
+        it('should be searhed the event list that event host is one and he is a unique link provider', async () => {
+
+            const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
+            eventQueryBuilderStub.update.resolves(updateResultMock);
+
+            const profileStub = stubOne(Profile);
+
+            const eventList = await service.searchUniqueLinkProviderEvents(profileStub.id, [ContactType.GOOGLE_MEET]);
+
+            expect(eventList.length).greaterThan(0);
+            expect(eventQueryBuilderStub.getMany.called).true;
         });
     });
 

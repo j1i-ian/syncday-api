@@ -11,6 +11,7 @@ import { GoogleConverterService } from '@services/integrations/google-integratio
 import { GoogleCalendarIntegrationsService } from '@services/integrations/google-integration/google-calendar-integrations/google-calendar-integrations.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
 import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
+import { EventsService } from '@services/events/events.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
@@ -28,6 +29,8 @@ describe('GoogleIntegrationsService', () => {
     let service: GoogleIntegrationsService;
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
+
+    let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
 
     let googleConverterServiceStub: sinon.SinonStubbedInstance<GoogleConverterService>;
     let googleCalendarIntegrationsServiceStub: sinon.SinonStubbedInstance<GoogleCalendarIntegrationsService>;
@@ -57,6 +60,8 @@ describe('GoogleIntegrationsService', () => {
 
         integrationsRedisRepositoryStub = sinon.createStubInstance<IntegrationsRedisRepository>(IntegrationsRedisRepository);
 
+        eventsServiceStub = sinon.createStubInstance<EventsService>(EventsService);
+
         module = await Test.createTestingModule({
             providers: [
                 GoogleIntegrationsService,
@@ -83,6 +88,10 @@ describe('GoogleIntegrationsService', () => {
                 {
                     provide: GoogleIntegrationSchedulesService,
                     useValue: googleIntegrationSchedulesServiceStub
+                },
+                {
+                    provide: EventsService,
+                    useValue: eventsServiceStub
                 },
                 {
                     provide: getDataSourceToken(),

@@ -17,6 +17,7 @@ import { AppConfigService } from '@config/app-config.service';
 import { IntegrationSearchOption } from '@interfaces/integrations/integration-search-option.interface';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface';
+import { ContactType } from '@interfaces/events/contact-type.enum';
 import { IntegrationsRedisRepository } from '@services/integrations/integrations-redis.repository';
 import { GoogleConverterService } from '@services/integrations/google-integration/google-converter/google-converter.service';
 import { GoogleIntegrationSchedulesService } from '@services/integrations/google-integration/google-integration-schedules/google-integration-schedules.service';
@@ -26,6 +27,7 @@ import { IntegrationScheduledEventsWrapperService } from '@services/integrations
 import { CalendarIntegrationWrapperService } from '@services/integrations/calendar-integration-wrapper-service.interface';
 import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/conference-link-integration-wrapper-service.interface';
 import { GoogleConferenceLinkIntegrationService } from '@services/integrations/google-integration/google-conference-link-integration/google-conference-link-integration.service';
+import { EventsService } from '@services/events/events.service';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { GoogleCalendarIntegration } from '@entity/integrations/google/google-calendar-integration.entity';
 import { UserSetting } from '@entity/users/user-setting.entity';
@@ -34,6 +36,7 @@ import { Host } from '@entity/scheduled-events/host.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
 import { User } from '@entity/users/user.entity';
+import { Event } from '@entity/events/event.entity';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { CalendarCreateOption } from '@app/interfaces/integrations/calendar-create-option.interface';
 
@@ -46,6 +49,7 @@ export class GoogleIntegrationsService implements
 {
     constructor(
         private readonly configService: ConfigService,
+        private readonly eventsService: EventsService,
         private readonly googleConverterService: GoogleConverterService,
         private readonly googleCalendarIntegrationsService: GoogleCalendarIntegrationsService,
         private readonly googleConferenceLinkIntegrationService: GoogleConferenceLinkIntegrationService,
@@ -324,10 +328,12 @@ export class GoogleIntegrationsService implements
         googleIntegrationId: number,
         profileId: number
     ): Promise<boolean> {
-        return this._remove(
-            this.googleIntegrationRepository.manager,
-            googleIntegrationId,
-            profileId
+        return this.datasource.transaction((tranactionManager) =>
+            this._remove(
+                tranactionManager,
+                googleIntegrationId,
+                profileId
+            )
         );
     }
 
@@ -338,6 +344,7 @@ export class GoogleIntegrationsService implements
     ): Promise<boolean> {
 
         const _googleIntegrationRepository = manager.getRepository(GoogleIntegration);
+        const _eventRepository = manager.getRepository(Event);
 
         const googleIntegration = await _googleIntegrationRepository.findOneOrFail({
             relations: {
@@ -351,12 +358,21 @@ export class GoogleIntegrationsService implements
             }
         });
 
-        await _googleIntegrationRepository.delete(googleIntegrationId);
-
-        await this.integrationsRedisRepository.deleteGoogleCalendarDetails(googleIntegration.uuid);
-
         const googleChannelIds = googleIntegration.googleCalendarIntegrations.map((_cal) => _cal.name);
 
+        await _googleIntegrationRepository.delete(googleIntegrationId);
+
+        const noLocationEventTargets = await this.eventsService.searchUniqueLinkProviderEvents(profileId, [ContactType.GOOGLE_MEET]);
+
+        const eventIds = noLocationEventTargets.map((_event) => _event.id);
+
+        await _eventRepository.update({
+            id: In(eventIds)
+        }, {
+            contacts: [{ type: ContactType.NO_LOCATION, value: '' }]
+        });
+
+        await this.integrationsRedisRepository.deleteGoogleCalendarDetails(googleIntegration.uuid);
         await this.integrationsRedisRepository.deleteGoogleCalendarSubscriptionsStatus(googleChannelIds);
 
         // The user can have a only one Google Integration

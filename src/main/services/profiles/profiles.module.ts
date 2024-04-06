@@ -11,6 +11,7 @@ import { PaymentsModule } from '@services/payments/payments.module';
 import { PaymentMethodModule } from '@services/payments/payment-method/payment-method.module';
 import { TeamModule } from '@services/team/team.module';
 import { AvailabilityModule } from '@services/availability/availability.module';
+import { EventsModule } from '@services/events/events.module';
 import { Profile } from '@entity/profiles/profile.entity';
 import { ProfilesService } from './profiles.service';
 
@@ -21,6 +22,7 @@ import { ProfilesService } from './profiles.service';
         ProductsModule,
         OrdersModule,
         AvailabilityModule,
+        EventsModule,
         forwardRef(() => TeamModule),
         forwardRef(() => PaymentsModule),
         forwardRef(() => PaymentMethodModule),

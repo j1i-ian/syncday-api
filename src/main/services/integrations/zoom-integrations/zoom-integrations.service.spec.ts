@@ -5,10 +5,10 @@ import { JwtService } from '@nestjs/jwt';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ZoomIntegrationsService } from '@services/integrations/zoom-integrations/zoom-integrations.service';
 import { ZoomConferenceLinkIntegrationsService } from '@services/integrations/zoom-integrations/zoom-conference-link-integrations/zoom-conference-link-integrations.service';
+import { EventsService } from '@services/events/events.service';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Event } from '@entity/events/event.entity';
 import { Profile } from '@entity/profiles/profile.entity';
-import { Team } from '@entity/teams/team.entity';
 import { TestMockUtil } from '@test/test-mock-util';
 
 describe('ZoomIntegrationsService', () => {
@@ -19,6 +19,8 @@ describe('ZoomIntegrationsService', () => {
 
     let configServiceStub: sinon.SinonStubbedInstance<ConfigService>;
     let jwtServiceStub: sinon.SinonStubbedInstance<JwtService>;
+
+    let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
     let zoomConferenceLinkIntegrationsServiceStub: sinon.SinonStubbedInstance<ZoomConferenceLinkIntegrationsService>;
 
     let eventRepositoryStub: sinon.SinonStubbedInstance<Repository<Event>>;
@@ -26,6 +28,8 @@ describe('ZoomIntegrationsService', () => {
 
     before(async () => {
         configServiceStub = sinon.createStubInstance(ConfigService);
+
+        eventsServiceStub = sinon.createStubInstance(EventsService);
         jwtServiceStub = sinon.createStubInstance(JwtService);
 
         eventRepositoryStub = sinon.createStubInstance<Repository<Event>>(Repository);
@@ -41,6 +45,10 @@ describe('ZoomIntegrationsService', () => {
                 {
                     provide: JwtService,
                     useValue: jwtServiceStub
+                },
+                {
+                    provide: EventsService,
+                    useValue: eventsServiceStub
                 },
                 {
                     provide: ZoomConferenceLinkIntegrationsService,
@@ -142,27 +150,27 @@ describe('ZoomIntegrationsService', () => {
     it('should be removed zoom integration with disabling related events', async () => {
 
         const profileMock = stubOne(Profile);
-        const teamMock = stubOne(Team);
         const zoomIntegrationStub = stubOne(ZoomIntegration);
         const zoomIntegrationDeleteResultStub = TestMockUtil.getTypeormDeleteResultMock();
         const eventUpdateResultStub = TestMockUtil.getTypeormUpdateResultMock();
 
+        const eventStubs = stub(Event);
+        eventsServiceStub.searchUniqueLinkProviderEvents.resolves(eventStubs);
+
         zoomIntegrationRepositoryStub.findOneOrFail.resolves(zoomIntegrationStub);
-        eventRepositoryStub.find.resolves([]);
 
         zoomIntegrationRepositoryStub.delete.resolves(zoomIntegrationDeleteResultStub);
         eventRepositoryStub.update.resolves(eventUpdateResultStub);
 
         const deleteSuccess: boolean = await service.remove(
             zoomIntegrationStub.id,
-            profileMock.id,
-            teamMock.id
+            profileMock.id
         );
 
+        expect(eventsServiceStub.searchUniqueLinkProviderEvents.called).true;
         expect(zoomIntegrationRepositoryStub.findOneOrFail.called).true;
         expect(zoomIntegrationRepositoryStub.delete.called).true;
-        expect(eventRepositoryStub.find.called).true;
-        expect(eventRepositoryStub.update.called).false;
+        expect(eventRepositoryStub.update.called).true;
 
         expect(deleteSuccess).true;
     });

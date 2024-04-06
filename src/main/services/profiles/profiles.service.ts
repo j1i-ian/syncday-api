@@ -31,7 +31,6 @@ import { Orderer } from '@interfaces/orders/orderer.interface';
 import { ProfileStatus } from '@interfaces/profiles/profile-status.enum';
 import { TeamPlanStatus } from '@interfaces/teams/team-plan-status.enum';
 import { ContactType } from '@interfaces/events/contact-type.enum';
-import { EventType } from '@interfaces/events/event-type.enum';
 import { ProfilesRedisRepository } from '@services/profiles/profiles.redis-repository';
 import { UserService } from '@services/users/user.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
@@ -43,6 +42,7 @@ import { PaymentsService } from '@services/payments/payments.service';
 import { TeamService } from '@services/team/team.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { TeamRedisRepository } from '@services/team/team.redis-repository';
+import { EventsService } from '@services/events/events.service';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
@@ -65,6 +65,7 @@ export class ProfilesService {
         private readonly teamService: TeamService,
         private readonly availabilityService: AvailabilityService,
         private readonly teamRedisRepository: TeamRedisRepository,
+        private readonly eventService: EventsService,
         private readonly profilesRedisRepository: ProfilesRedisRepository,
         @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
@@ -870,28 +871,14 @@ export class ProfilesService {
             refundParams
         });
 
+        const noLocationEventTargets = await this.eventService.searchUniqueLinkProviderEvents(profileId, [ContactType.GOOGLE_MEET, ContactType.ZOOM]);
+
         const success = await this.datasource.transaction(async (transactionManager) => {
             const _availabilityRepository = transactionManager.getRepository(Availability);
             const _profileRepository = transactionManager.getRepository(Profile);
             const _scheduledEventNotificationRepository = transactionManager.getRepository(ScheduledEventNotification);
             const _eventRepository = transactionManager.getRepository(Event);
 
-            const noLocationEventTargets = await _eventRepository.createQueryBuilder('event')
-                .leftJoin('event.eventProfiles', 'eventProfile')
-                .leftJoin('eventProfile.profile', 'profile')
-                .leftJoin('profile.googleIntergrations', 'googleIntergration')
-                .leftJoin('profile.zoomIntegrations', 'zoomIntegration')
-                .where(`(
-                    JSON_CONTAINS(event.contacts, '"${ContactType.GOOGLE_MEET}"', '$[0].type') OR
-                    JSON_CONTAINS(event.contacts, '"${ContactType.ZOOM}"', '$[0].type')
-                )`).andWhere('event.type = :eventType', {
-                    eventType: EventType.COLLECTIVE
-                }).andWhere('eventProfile.profileId = :eventProfileId', {
-                    eventProfileId: profileId
-                })
-                .groupBy('event.id')
-                .having('COUNT(googleIntergration.id) = 1 OR COUNT(zoomIntegration.id) = 1')
-                .getMany();
 
             const eventIds = noLocationEventTargets.map((_event) => _event.id);
 

@@ -1,7 +1,7 @@
 import { URL } from 'url';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Raw, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { Observable } from 'rxjs';
@@ -14,10 +14,10 @@ import { HostProfile } from '@interfaces/scheduled-events/host-profile.interface
 import { IntegrationsFactory } from '@services/integrations/integrations.factory.interface';
 import { ConferenceLinkIntegrationWrapperService } from '@services/integrations/conference-link-integration-wrapper-service.interface';
 import { ZoomConferenceLinkIntegrationsService } from '@services/integrations/zoom-integrations/zoom-conference-link-integrations/zoom-conference-link-integrations.service';
+import { EventsService } from '@services/events/events.service';
 import { ZoomIntegration } from '@entity/integrations/zoom/zoom-integration.entity';
 import { Integration } from '@entity/integrations/integration.entity';
 import { Event } from '@entity/events/event.entity';
-import { EventStatus } from '@entity/events/event-status.enum';
 import { Profile } from '@entity/profiles/profile.entity';
 import { IntegrationResponseDto } from '@dto/integrations/integration-response.dto';
 import { ZoomUserResponseDTO } from '@app/interfaces/integrations/zoom/zoom-user-response.interface';
@@ -30,6 +30,7 @@ export class ZoomIntegrationsService implements
 {
     constructor(
         private readonly configService: ConfigService,
+        private readonly eventsService: EventsService,
         private readonly zoomConferenceLinkIntegrationService: ZoomConferenceLinkIntegrationsService,
         @InjectDataSource() private readonly datasource: DataSource,
         @InjectRepository(ZoomIntegration)
@@ -175,9 +176,12 @@ export class ZoomIntegrationsService implements
 
     async remove(
         zoomIntegrationId: number,
-        profileId: number,
-        teamId: number
+        profileId: number
     ): Promise<boolean> {
+
+        const noLocationEventTargets = await this.eventsService.searchUniqueLinkProviderEvents(profileId, [ContactType.GOOGLE_MEET]);
+
+        const eventIds = noLocationEventTargets.map((_event) => _event.id);
 
         // load events that linked with zoom integration
         // then update events to off
@@ -195,38 +199,19 @@ export class ZoomIntegrationsService implements
                 }
             });
 
-            const disableEventTargets = await eventRepository.find({
-                where: {
-                    eventGroup: {
-                        team: {
-                            id: teamId,
-                            profiles: {
-                                id: profileId,
-                                zoomIntegrations: {
-                                    id: zoomIntegrationId
-                                }
-                            }
-                        }
-                    },
-                    contacts: Raw((alias) => `JSON_CONTAINS(${alias}, '"${ContactType.ZOOM}"', '$[0].type')`)
-                }
-            });
-
-            const disableEventTargetIds = disableEventTargets.map((_event) => _event.id);
-
             let isEventsUpdateSuccess = true;
 
-            if (disableEventTargetIds.length > 0) {
-                const eventUpdateResult = await eventRepository.update(disableEventTargetIds, {
-                    contacts: [],
-                    status: EventStatus.CLOSED
+            if (eventIds.length > 0) {
+                const eventUpdateResult = await eventRepository.update({
+                    id: In(eventIds)
+                }, {
+                    contacts: [{ type: ContactType.NO_LOCATION, value: '' }]
                 });
 
                 isEventsUpdateSuccess = (eventUpdateResult &&
                     eventUpdateResult.affected &&
                     eventUpdateResult.affected > 0) || false;
             }
-
 
             const zoomDeleteResult = await zoomIntegrationRepository.delete(zoomIntegration.id);
 

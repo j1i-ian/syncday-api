@@ -19,6 +19,7 @@ import { PaymentsService } from '@services/payments/payments.service';
 import { TeamService } from '@services/team/team.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { TeamRedisRepository } from '@services/team/team.redis-repository';
+import { EventsService } from '@services/events/events.service';
 import { Profile } from '@entity/profiles/profile.entity';
 import { Team } from '@entity/teams/team.entity';
 import { User } from '@entity/users/user.entity';
@@ -48,6 +49,7 @@ describe('ProfilesService', () => {
     let notificationServiceStub: sinon.SinonStubbedInstance<NotificationsService>;
     let teamServiceStub: sinon.SinonStubbedInstance<TeamService>;
     let availabilityServiceStub: sinon.SinonStubbedInstance<AvailabilityService>;
+    let eventsServiceStub: sinon.SinonStubbedInstance<EventsService>;
 
     let teamRedisRepositoryStub: sinon.SinonStubbedInstance<TeamRedisRepository>;
     let profilesRedisRepositoryStub: sinon.SinonStubbedInstance<ProfilesRedisRepository>;
@@ -70,6 +72,7 @@ describe('ProfilesService', () => {
         notificationServiceStub = sinon.createStubInstance(NotificationsService);
         teamServiceStub = sinon.createStubInstance(TeamService);
         availabilityServiceStub = sinon.createStubInstance(AvailabilityService);
+        eventsServiceStub = sinon.createStubInstance(EventsService);
 
         teamRedisRepositoryStub = sinon.createStubInstance(TeamRedisRepository);
         profilesRedisRepositoryStub = sinon.createStubInstance<ProfilesRedisRepository>(ProfilesRedisRepository);
@@ -129,6 +132,10 @@ describe('ProfilesService', () => {
                 {
                     provide: ProfilesRedisRepository,
                     useValue: profilesRedisRepositoryStub
+                },
+                {
+                    provide: EventsService,
+                    useValue: eventsServiceStub
                 },
                 {
                     provide: getDataSourceToken(),
@@ -959,6 +966,9 @@ describe('ProfilesService', () => {
         });
 
         afterEach(() => {
+
+            eventsServiceStub.searchUniqueLinkProviderEvents.reset();
+
             profileRepositoryStub.findOneByOrFail.reset();
             profileRepositoryStub.delete.reset();
 
@@ -984,6 +994,7 @@ describe('ProfilesService', () => {
             });
             const updateResultStub = TestMockUtil.getTypeormUpdateResultMock();
             const deleteResultStub = TestMockUtil.getTypeormDeleteResultMock();
+            const eventStubs = stub(Event);
 
             profileRepositoryStub.findOneByOrFail.resolves(deleteTargetProfileStub);
 
@@ -992,6 +1003,9 @@ describe('ProfilesService', () => {
             paymentsServiceStub._refund.returns(of(true));
 
             serviceSandbox.stub(service, '_fetchTeamOwnerProfile').returns(of(authProfile));
+
+            eventsServiceStub.searchUniqueLinkProviderEvents.resolves(eventStubs);
+
             teamServiceStub.get.returns(of(teamStub));
             ordersServiceStub.fetch.returns(of(relatedOrderStub));
 
@@ -1003,9 +1017,6 @@ describe('ProfilesService', () => {
             profileRepositoryStub.delete.resolves(deleteResultStub);
             paymentsServiceStub._save.returns(of(paymentStub));
             teamRedisRepositoryStub.decrementMemberCount.resolves();
-
-            const updateResultMock = TestMockUtil.getTypeormUpdateResultMock();
-            eventQueryBuilderStub.update.resolves(updateResultMock);
 
             await service.remove(
                 teamStub.id,
@@ -1026,7 +1037,8 @@ describe('ProfilesService', () => {
             expect(paymentsServiceStub._save.called).true;
             expect(teamRedisRepositoryStub.decrementMemberCount.called).true;
 
-            expect(eventQueryBuilderStub.getMany.called).true;
+            expect(eventsServiceStub.searchUniqueLinkProviderEvents.called).true;
+
             expect(eventRepositoryStub.update.called).true;
         });
     });
