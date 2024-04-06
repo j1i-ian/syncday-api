@@ -2,7 +2,7 @@ import { EventStatus } from '@entity/events/event-status.enum';
 
 export interface EventsSearchOption {
     onlySatisfiedHost?: boolean;
-    userId?: number;
+    hasUserPhone?: boolean;
     teamId?: number;
     teamUUID?: string;
     teamWorkspace?: string;

@@ -960,7 +960,7 @@ export class UserService {
 
         const events = await firstValueFrom(this.eventsService.search({
             onlySatisfiedHost: true,
-            userId
+            hasUserPhone: true
         }));
 
         await this.datasource.transaction(async (transactionManager) => {
