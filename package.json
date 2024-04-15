@@ -29,6 +29,7 @@
     "prestart:local:prod:pm2": "npm run build",
     "start:local:prod:pm2": "ENV=local_production pm2 start ecosystem.json",
     "start:debug": "nest start --debug --watch",
+    "start:dev": "ENV=development pm2 start ecosystem.dev.json",
     "start:prod": "ENV=production pm2-runtime start ecosystem.json",
     "start:staging": "ENV=staging pm2-runtime start ecosystem.stg.json",
     "start:docker:nginx": "docker compose up nginx",
