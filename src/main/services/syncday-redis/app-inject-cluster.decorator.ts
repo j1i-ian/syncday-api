@@ -1,4 +1,3 @@
-/* eslint-disable import/no-internal-modules */
 import { Inject } from '@nestjs/common';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
 import { namespaces } from '@liaoliaots/nestjs-redis/dist/cluster/common';

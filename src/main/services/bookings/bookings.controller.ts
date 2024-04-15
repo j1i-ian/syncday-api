@@ -15,6 +15,7 @@ import { SearchScheduledEventResponseDto } from '@dto/bookings/search-scheduled-
 import { Public } from '@app/auth/strategy/jwt/public.decorator';
 import { ValidateQueryParamPipe } from '@app/pipes/validate-query-param/validate-query-param.pipe';
 import { ParseEncodedUrl } from '@app/pipes/parse-url-decoded/parse-encoded-url.pipe';
+import { FilterDuplicatedQueryParamsPipe } from '@app/pipes/filter-duplicated-query-params/filter-duplicated-query-params.pipe';
 
 @Controller()
 @Public({ ignoreInvalidJwtToken: true })
@@ -26,8 +27,8 @@ export class BookingsController {
 
     @Get('host')
     fetchHost(
-        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string,
-        @Query('eventLink') eventLink: string | null = null
+        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl, FilterDuplicatedQueryParamsPipe) teamWorkspace: string,
+        @Query('eventLink', FilterDuplicatedQueryParamsPipe) eventLink: string | null = null
     ): Observable<FetchHostResponseDto> {
 
         return this.bookingsService.fetchHost(teamWorkspace, eventLink)
@@ -42,7 +43,7 @@ export class BookingsController {
 
     @Get('events')
     fetchHostEvents(
-        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string
+        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl, FilterDuplicatedQueryParamsPipe) teamWorkspace: string
     ): Observable<HostEventDto[]> {
         return this.bookingsService.searchHostEvents(teamWorkspace)
             .pipe(
@@ -56,8 +57,8 @@ export class BookingsController {
 
     @Get('events/:eventLink')
     fetchHostEventDetail(
-        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string,
-        @Param('eventLink', ParseEncodedUrl) eventLink: string
+        @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl, FilterDuplicatedQueryParamsPipe) teamWorkspace: string,
+        @Param('eventLink', ParseEncodedUrl, FilterDuplicatedQueryParamsPipe) eventLink: string
     ): Observable<HostEventDto> {
         return this.bookingsService.fetchHostEventDetail(teamWorkspace, eventLink)
             .pipe(
@@ -70,7 +71,7 @@ export class BookingsController {
     @Get('availabilities')
     searchHostAvailabilities(
         @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string,
-        @Query('eventLink', ParseEncodedUrl) eventLink: string
+        @Query('eventLink', ParseEncodedUrl, FilterDuplicatedQueryParamsPipe) eventLink: string
     ): Observable<HostAvailabilityDto> {
         return this.bookingsService.getHostAvailability(teamWorkspace, eventLink)
             .pipe(

@@ -5,7 +5,9 @@ import { BootpayConfiguration } from '@services/payments/bootpay/bootpay-configu
 import { CreditCard } from '@entity/payments/credit-card.entity';
 import { Order } from '@entity/orders/order.entity';
 import { BootpayBackendNodejs, ReceiptResponseParameters } from '@typings/bootpay';
-// eslint-disable-next-line import/no-internal-modules
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import { CancelPaymentParameters } from '@bootpay/backend-js/lib/response';
 
 @Injectable({

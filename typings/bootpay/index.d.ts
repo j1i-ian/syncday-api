@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable max-len */
-/* eslint-disable import/no-internal-modules */
 import { AccessTokenResponseParameters, CancelPaymentParameters, CertificateResponseParameters, DestroySubscribeResponseParameters, ReceiptResponseParameters, SubscriptionBillingRequestParameters, SubscriptionBillingResponseParameters, SubscriptionCardPaymentRequestParameters, UserTokenRequestParameters, UserTokenResponseParameters, SubscribePaymentReserveParameters, SubscribePaymentReserveResponse, CancelSubscribeReserveResponse, ShippingRequestParameters, CashReceiptPublishOnReceiptParameters, CashReceiptCancelOnReceiptParameters, RequestCashReceiptParameters, CancelCashReceiptParameters, RequestAuthenticateParameters, SubscribePaymentLookupResponse } from '@bootpay/backend-js/lib/response';
 import { BootpayBackendNodejsResource } from '@bootpay/backend-js/lib/resource';
 

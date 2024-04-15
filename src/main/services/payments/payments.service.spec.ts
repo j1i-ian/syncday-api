@@ -14,9 +14,10 @@ import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { User } from '@entity/users/user.entity';
 import { Profile } from '@entity/profiles/profile.entity';
 import { TestMockUtil } from '@test/test-mock-util';
-// eslint-disable-next-line import/no-internal-modules
-import { ReceiptResponseParameters } from '@bootpay/backend-js/lib/response';
 import { PaymentsService } from './payments.service';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { ReceiptResponseParameters } from '@bootpay/backend-js/lib/response';
 
 describe('PaymentsService', () => {
     let service: PaymentsService;

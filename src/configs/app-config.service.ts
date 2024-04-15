@@ -18,7 +18,6 @@ import * as ormConfig from '@config/ormconfig.json';
 import { IntegrationVendor } from '@interfaces/integrations/integration-vendor.enum';
 import { ClusterModuleAsyncOptions } from '@liaoliaots/nestjs-redis';
 
-// eslint-disable-next-line import/no-internal-modules
 import { NodeEnv } from './node-env.enum';
 import { ZoomBasicAuth } from '../main/interfaces/zoom-basic-auth.interface';
 
