@@ -32,10 +32,10 @@ export class ProfilesController {
     ) {}
 
     /**
-     * this api method should be custom http method 'FILTER'.
-     * But Nest.js is not support custom http method.
-     *
-     * @returns
+     * This API method should be a custom HTTP method defined AS 'FILTER'.
+     * However Nest.js does not support it.
+     * Or we can consider the question this api can be integrate with the create api
+     * by the idempotency principle in RESTful API.
      */
     @Post('filters')
     @Roles(Role.OWNER, Role.MANAGER)

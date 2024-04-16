@@ -62,7 +62,8 @@ export class TeamController {
         } as Pick<TeamSetting, 'workspace' | 'greetings'>;
 
         const newPaymentMethod = createTeamRequestDto.paymentMethod;
-        const newTeamMembers = createTeamRequestDto.invitedMembers;
+        const newTeamMembers = createTeamRequestDto.invitedMembers
+            .filter((_member) => _member.email !== authProfile.email);
 
         if (orderUnit !== newTeamMembers.length + 1) {
             throw new BadRequestException('Order unit is invalid. Plase check your order option');
