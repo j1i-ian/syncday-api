@@ -354,9 +354,12 @@ export class EventsService {
 
         this.logger.info({
             message: 'Loaded & patched event',
-            defaultEvent,
-            newEvent,
-            patchedNewEvent
+            defaultEvent: {
+                name: defaultEvent.name,
+                type: defaultEvent.type
+            },
+            newEventEventGroupId: newEvent.eventGroupId,
+            patchedNewEventGroupId: patchedNewEvent.eventGroupId
         });
 
         const _eventRepository = manager.getRepository(Event);
