@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, FindOptionsWhere, In, MoreThan, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsRelations, FindOptionsWhere, In, MoreThan, Not, Repository } from 'typeorm';
 import { Observable, firstValueFrom, from } from 'rxjs';
 import { Auth, calendar_v3 } from 'googleapis';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -702,8 +702,12 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         return options;
     }
 
-    getIntegrationProfileRelationPath(integrationAlias = 'integration'): string {
-        return `${integrationAlias}.users`;
+    getIntegrationProfileRelations(): FindOptionsRelations<GoogleCalendarIntegration> {
+        return {
+            googleIntegration: {
+                profiles: true
+            }
+        } as FindOptionsRelations<GoogleCalendarIntegration>;
     }
 
     getIntegrationIdAlias(): string {
@@ -722,7 +726,7 @@ export class GoogleCalendarIntegrationsService extends CalendarIntegrationServic
         return this.googleCalendarIntegrationRepository;
     }
 
-    getProfileRelationConditions(profileId: number, options: FindOptionsWhere<CalendarIntegration>): FindOptionsWhere<CalendarIntegration> {
+    getProfileConditions(profileId: number, options: FindOptionsWhere<CalendarIntegration>): FindOptionsWhere<CalendarIntegration> {
         return {
             ...options,
             googleIntegration: {

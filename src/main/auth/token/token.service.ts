@@ -117,10 +117,9 @@ export class TokenService {
         const oauth2TokenService = this.oauth2TokenServiceLocator.get(integrationVendor);
 
         this.logger.info({
-            message: 'Attempt to retrieve the OAuth2 user profile',
-            requestUserEmail,
-            integrationContext
+            message: 'Attempt to retrieve the OAuth2 user profile'
         });
+
         const oauth2UserProfile = await oauth2TokenService.getOAuth2UserProfile(authorizationCode);
 
         this.logger.debug({
@@ -133,11 +132,6 @@ export class TokenService {
 
         const ensuredRequesterEmail = requestUserEmail || oauth2UserEmail;
 
-        this.logger.info({
-            message: 'Evaluate integration context',
-            requestUserEmail,
-            integrationContext
-        });
         const ensuredIntegrationContext = await this.evaluateIntegrationContext(
             integrationVendor,
             oauth2UserProfile,
@@ -150,7 +144,6 @@ export class TokenService {
 
         this.logger.info({
             message: 'integration context evaluation is done',
-            requestUserEmail,
             integrationContext,
             ensuredIntegrationContext
         });
@@ -215,12 +208,15 @@ export class TokenService {
                 break;
             case IntegrationContext.INTEGRATE:
             case IntegrationContext.CONTINUOUS_INTEGRATE:
-                await oauth2TokenService.integrate(
-                    oauth2UserProfile,
-                    user as User,
-                    profile as Profile,
-                    (team as Team).teamSetting
-                );
+
+                if (insufficientPermission === false) {
+                    await oauth2TokenService.integrate(
+                        oauth2UserProfile,
+                        user as User,
+                        profile as Profile,
+                        (team as Team).teamSetting
+                    );
+                }
 
                 isNewbie = integrationContext === IntegrationContext.CONTINUOUS_INTEGRATE;
                 break;
@@ -407,10 +403,21 @@ export class TokenService {
                 _oauthAccount.oauth2Type === oauth2Type
         ) ?? null;
 
+        const isSufficientPermission = oauth2UserProfile.insufficientPermission === false;
+
+        this.logger.info({
+            message: 'Evalidate integration context',
+            requestIntegrationContext,
+            loadedUserOrNull: !!loadedUserOrNull,
+            loadedOAuth2AccountOrNull: !!loadedOAuth2AccountOrNull,
+            isSufficientPermission
+        });
+
         const ensuredIntegrationContext = this.utilService.ensureIntegrationContext(
             requestIntegrationContext,
             loadedUserOrNull,
-            loadedOAuth2AccountOrNull
+            loadedOAuth2AccountOrNull,
+            isSufficientPermission
         );
 
         return ensuredIntegrationContext;

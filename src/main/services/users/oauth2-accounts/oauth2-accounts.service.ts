@@ -39,15 +39,26 @@ export class OAuth2AccountsService {
         return this._create(this.oauth2accountsRepository.manager, user, oauth2account);
     }
 
-    _create(
+    async _create(
         manager: EntityManager,
         user: User,
         oauth2account: OAuth2Account
     ): Promise<OAuth2Account> {
         const _oauth2accountsRepository = manager.getRepository(OAuth2Account);
 
+        const loadedOAuthAccountOrNull = await _oauth2accountsRepository.findOneBy({
+            email: user.email as string,
+            userId: user.id
+        });
+
         oauth2account.user = user;
 
-        return _oauth2accountsRepository.save(oauth2account);
+        const ensuredOAuth2Account = loadedOAuthAccountOrNull === null
+            ? await _oauth2accountsRepository.save(oauth2account)
+            : loadedOAuthAccountOrNull;
+
+        ensuredOAuth2Account.user = user;
+
+        return ensuredOAuth2Account;
     }
 }

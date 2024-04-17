@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Repository, FindOptionsWhere, DataSource, In, EntityManager } from 'typeorm';
+import { Repository, FindOptionsWhere, DataSource, In, EntityManager, FindOptionsRelations } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Observable, firstValueFrom, from } from 'rxjs';
 import { CalendarIntegrationService } from '@core/interfaces/integrations/calendar-integration.abstract-service';
@@ -36,7 +36,7 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         return this.appleCalDAVCalendarIntegrationRepository;
     }
 
-    getProfileRelationConditions(
+    getProfileConditions(
         profileId: number,
         options: FindOptionsWhere<CalendarIntegration>
     ): FindOptionsWhere<CalendarIntegration> {
@@ -324,8 +324,8 @@ export class AppleCalendarIntegrationsService extends CalendarIntegrationService
         return options;
     }
 
-    getIntegrationProfileRelationPath(integrationAlias = 'integration'): string {
-        return `${integrationAlias}.user`;
+    getIntegrationProfileRelations(): FindOptionsRelations<AppleCalDAVIntegration> {
+        return {};
     }
 
     getIntegrationIdAlias(): string {

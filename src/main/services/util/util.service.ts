@@ -448,13 +448,14 @@ export class UtilService {
     ensureIntegrationContext(
         integrationContext: IntegrationContext,
         loadedUserOrNull: User | null,
-        loadedOAuth2AccountOrNull: OAuth2Account | null
+        loadedOAuth2AccountOrNull: OAuth2Account | null,
+        isSufficientPermission: boolean
     ): IntegrationContext {
 
         const isNewbie = loadedUserOrNull === null;
-        const isMultipleSocialSignIn = loadedUserOrNull !== null &&
-            loadedOAuth2AccountOrNull === null &&
-            integrationContext !== IntegrationContext.INTEGRATE;
+        const isMultipleSocialSignIn = loadedOAuth2AccountOrNull === null
+            && integrationContext !== IntegrationContext.INTEGRATE
+            && integrationContext !== IntegrationContext.CONTINUOUS_INTEGRATE;
 
         /**
          * When the integration entity is null,
@@ -471,14 +472,29 @@ export class UtilService {
 
         let ensureIntegrationContext = IntegrationContext.SIGN_IN;
 
-        if (isNewbie) {
-            ensureIntegrationContext = IntegrationContext.SIGN_UP;
-        } else if (isMultipleSocialSignIn) {
-            ensureIntegrationContext = IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN;
-        } else if (isSignIn) {
-            ensureIntegrationContext = IntegrationContext.SIGN_IN;
+        if (isSufficientPermission) {
+            if (isNewbie) {
+                ensureIntegrationContext = IntegrationContext.SIGN_UP;
+            } else if (isMultipleSocialSignIn) {
+                ensureIntegrationContext = IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN;
+            } else if (isSignIn) {
+                ensureIntegrationContext = IntegrationContext.SIGN_IN;
+            } else {
+                ensureIntegrationContext = integrationContext;
+            }
         } else {
-            ensureIntegrationContext = integrationContext;
+            if (isNewbie) {
+                ensureIntegrationContext = IntegrationContext.SIGN_UP;
+            } else if (
+                isMultipleSocialSignIn
+                && loadedUserOrNull !== null
+            ) {
+                ensureIntegrationContext = IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN;
+            } else if (isSignIn) {
+                ensureIntegrationContext = IntegrationContext.SIGN_IN;
+            } else {
+                ensureIntegrationContext = integrationContext;
+            }
         }
 
         return ensureIntegrationContext;

@@ -632,116 +632,307 @@ describe('UtilService', () => {
 
     describe('Test ensure integration context', () => {
         [
+            /**
+             * Insufficient Calendar Permission Test
+             */
             {
-                description: 'should be ensured that the integration context combines sign-in with sign-in requests when a user is already signed up and has OAuth integrated',
+                description: 'should be ensured that the integration context is not handled with sign-in requests when a user is already signed up and has OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines sign-up with sign-in requests when a user is not signed up and has no OAuth integrated',
+                description: 'should be ensured that the integration context is handled to sign-up with sign-in requests when a user is not signed up and has no OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.SIGN_IN,
                 userStub: null,
                 oauth2AccountStub: null,
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.SIGN_UP
             },
             {
-                description: 'should be ensured that the integration context combines multiple social sign in with sign-in requests when a user is already signed up and has no OAuth integrated',
+                description: 'should be ensured that the integration context is handled to multiple social sign in with sign-in requests when a user is already signed up and has no OAuth integrated (hasCalendarPermission) (permission: false)',
                 integrationContext: IntegrationContext.SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: null,
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines sign-in with sign-up requests when a user is already signed up and has OAuth integrated',
+                description: 'should be ensured that the integration context is handled to sign-in with sign-up requests when a user is already signed up and has OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.SIGN_UP,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines multiple social sign in with sign-up requests when a user is already signed up and has no OAuth integrated: Multi channel login',
+                description: 'should be ensured that the integration context is handled to multiple social sign in with sign-up requests when a user is already signed up and has no OAuth integrated: Multi channel login (permission: false)',
                 integrationContext: IntegrationContext.SIGN_UP,
                 userStub: new User(),
                 oauth2AccountStub: null,
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines sign-up with sign-up requests when a user is not signed up and has no OAuth integrated',
+                description: 'should be ensured that the integration context is not handled with sign-up requests when a user is not signed up and has no OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.SIGN_UP,
                 userStub: null,
                 oauth2AccountStub: null,
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.SIGN_UP
             },
             {
-                description: 'should be ensured that the integration context combines sign-up with sign-up requests when a user is not signed up and has OAuth integrated',
+                description: 'should be ensured that the integration context is not handled with sign-up requests when a user is not signed up and has OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.SIGN_UP,
                 userStub: null,
                 oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.SIGN_UP
             },
             {
-                description: 'should be ensured that the integration context combines multiple social sign in with sign-up requests when a user is signed up and has no OAuth integrated',
+                description: 'should be ensured that the integration context is handled to multiple social sign in with sign-up requests when a user is signed up and has no OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.SIGN_UP,
                 userStub: new User(),
                 oauth2AccountStub: null,
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines multiple social sign with multiple social sign in requests when a user is signed up and has no OAuth integrated',
+                description: 'should be ensured that the integration context is not handled with multiple social sign in requests when a user is signed up and has no OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: null,
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines multiple social sign with multiple social sign in requests when a user is signed up and has no OAuth integrated',
+                description: 'should be ensured that the integration context is handled to multiple social sign with multiple social sign in requests when a user is signed up and has no OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines sign in with multiple social sign in requests when a user is signed up and has OAuth integrated',
+                description: 'should be ensured that the integration context is handled to sign in with multiple social sign in requests when a user is signed up and has OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.SIGN_IN
             },
             {
-                description: 'should be ensured that the integration context combines sign up with multiple social sign in requests when a user is not signed up and has no OAuth integrated',
+                description: 'should be ensured that the integration context is handled to sign up with multiple social sign in requests when a user is not signed up and has no OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
                 userStub: null,
                 oauth2AccountStub: null,
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.SIGN_UP
             },
             {
-                description: 'should be ensured that the integration context combines sign up with integrate requests when a user is not signed up and has no OAuth integrated',
+                description: 'should be ensured that the integration context is handled to sign up with integrate requests when a user is not signed up and has no OAuth integrated (permission: false)',
                 integrationContext: IntegrationContext.INTEGRATE,
                 userStub: null,
                 oauth2AccountStub: null,
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.SIGN_UP
             },
             {
-                description: 'should be ensured that the integration context combines sign in process with integrate requests when a user is already signed up and has OAuth integrated',
+                description: 'should be ensured that the integration context is handled to integrate process when a user is already signed up and has OAuth integrated but no calendar permission (permission: false)',
                 integrationContext: IntegrationContext.INTEGRATE,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.INTEGRATE
             },
             {
-                description: 'should be ensured that the integration context combines integrate process with integrate requests when a user is already signed up and has no OAuth integrated, no google integration',
+                description: 'should be ensured that the integration context is not handled with integrate requests when a user is already signed up and has no OAuth integrated, no google integration (permission: false)',
                 integrationContext: IntegrationContext.INTEGRATE,
                 userStub: new User(),
                 oauth2AccountStub: null,
+                hasCalendarPermission: false,
                 expectedIntegrationContext: IntegrationContext.INTEGRATE
             },
             {
-                description: 'should be ensured that the continuous integration context will be passed',
+                description: 'should be ensured that the integration context is not handled process when a user is already signed up, has OAuth integrated, gives the calendar permission  (permission: false)',
+                integrationContext: IntegrationContext.INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: false,
+                expectedIntegrationContext: IntegrationContext.INTEGRATE
+            },
+            {
+                description: 'should be ensured that the continuous integration context is handled to multiple social sign in process when user rejects to give the calendar permission with no oauth2 signed user (permission: false)',
+                integrationContext: IntegrationContext.CONTINUOUS_INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                hasCalendarPermission: false,
+                expectedIntegrationContext: IntegrationContext.CONTINUOUS_INTEGRATE
+            },
+            {
+                description: 'should be ensured that the continuous integration context is not handled to repeat the obtaining process of calendar permission (permission: false)',
                 integrationContext: IntegrationContext.CONTINUOUS_INTEGRATE,
                 userStub: new User(),
                 oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: false,
+                expectedIntegrationContext: IntegrationContext.CONTINUOUS_INTEGRATE
+            },
+
+            /**
+             * The Specs when calendar permission is given
+             */
+            {
+                description: 'should be ensured that the integration context is not handled with sign-in requests when a user is already signed up and has OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.SIGN_IN,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.SIGN_IN
+            },
+            {
+                description: 'should be ensured that the integration context is handled to sign-up with sign-in requests when a user is not signed up and has no OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.SIGN_IN,
+                userStub: null,
+                oauth2AccountStub: null,
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.SIGN_UP
+            },
+            {
+                description: 'should be ensured that the integration context is handled to multiple social sign in with sign-in requests when a user is already signed up and has no OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.SIGN_IN,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
+            },
+            {
+                description: 'should be ensured that the integration context is handled to sign-in with sign-up requests when a user is already signed up and has OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.SIGN_UP,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.SIGN_IN
+            },
+            {
+                description: 'should be ensured that the integration context is handled to multiple social sign in with sign-up requests when a user is already signed up and has no OAuth integrated: Multi channel login (permission true)',
+                integrationContext: IntegrationContext.SIGN_UP,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
+            },
+            {
+                description: 'should be ensured that the integration context is not handled with sign-up requests when a user is not signed up and has no OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.SIGN_UP,
+                userStub: null,
+                oauth2AccountStub: null,
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.SIGN_UP
+            },
+            {
+                description: 'should be ensured that the integration context is not handled with sign-up requests when a user is not signed up and has OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.SIGN_UP,
+                userStub: null,
+                oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.SIGN_UP
+            },
+            {
+                description: 'should be ensured that the integration context is handled to multiple social sign in with sign-up requests when a user is signed up and has no OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.SIGN_UP,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
+            },
+            {
+                description: 'should be ensured that the integration context is not handled with multiple social sign in requests when a user is signed up and has no OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN
+            },
+            {
+                description: 'should be ensured that the integration context is handled to sign in with multiple social sign in requests when a user is signed up and has OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.SIGN_IN
+            },
+            {
+                description: 'should be ensured that the integration context is handled to sign up with multiple social sign in requests when a user is not signed up and has no OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.MULTIPLE_SOCIAL_SIGN_IN,
+                userStub: null,
+                oauth2AccountStub: null,
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.SIGN_UP
+            },
+            {
+                description: 'should be ensured that the integration context is handled to sign up with integrate requests when a user is not signed up and has no OAuth integrated (permission true)',
+                integrationContext: IntegrationContext.INTEGRATE,
+                userStub: null,
+                oauth2AccountStub: null,
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.SIGN_UP
+            },
+            {
+                description: 'should be ensured that the integration context is handled to integrate process when a user is already signed up and has OAuth integrated but no calendar permission (permission true)',
+                integrationContext: IntegrationContext.INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.INTEGRATE
+            },
+            {
+                description: 'should be ensured that the integration context is not handled with integrate requests when a user is already signed up and has no OAuth integrated, no google integration (permission true)',
+                integrationContext: IntegrationContext.INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.INTEGRATE
+            },
+            {
+                description: 'should be ensured that the integration context is not handled process when a user is already signed up, has OAuth integrated, gives the calendar permission (permission true)',
+                integrationContext: IntegrationContext.INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.INTEGRATE
+            },
+            {
+                description: 'should be ensured that the continuous integration context is handled to multiple social sign in process when user rejects to give the calendar permission with no oauth2 signed user (permission true)',
+                integrationContext: IntegrationContext.CONTINUOUS_INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                hasCalendarPermission: false,
+                expectedIntegrationContext: IntegrationContext.CONTINUOUS_INTEGRATE
+            },
+            {
+                description: 'should be ensured that the integration context is not handled process when a user is already signed up, has OAuth integrated, gives the calendar permission (permission true)',
+                integrationContext: IntegrationContext.INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.INTEGRATE
+            },
+            {
+                description: 'should be ensured that the continuous integration context is not handled to repeat the obtaining process of calendar permission (permission true)',
+                integrationContext: IntegrationContext.CONTINUOUS_INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: new OAuth2Account(),
+                hasCalendarPermission: true,
+                expectedIntegrationContext: IntegrationContext.CONTINUOUS_INTEGRATE
+            },
+            {
+                description: 'should be ensured that the continuous integration context is not handled to repeat the obtaining process of calendar permission (permission true)',
+                integrationContext: IntegrationContext.CONTINUOUS_INTEGRATE,
+                userStub: new User(),
+                oauth2AccountStub: null,
+                hasCalendarPermission: true,
                 expectedIntegrationContext: IntegrationContext.CONTINUOUS_INTEGRATE
             }
         ].forEach(function({
@@ -749,6 +940,7 @@ describe('UtilService', () => {
             integrationContext,
             userStub,
             oauth2AccountStub,
+            hasCalendarPermission,
             expectedIntegrationContext
         }) {
             it(description, () => {
@@ -756,7 +948,8 @@ describe('UtilService', () => {
                 const actualIntegrationContext = service.ensureIntegrationContext(
                     integrationContext,
                     userStub,
-                    oauth2AccountStub
+                    oauth2AccountStub,
+                    hasCalendarPermission
                 );
                 expect(actualIntegrationContext).equals(expectedIntegrationContext);
             });
