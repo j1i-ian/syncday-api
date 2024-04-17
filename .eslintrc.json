@@ -5,6 +5,7 @@
         "sourceType": "module"
     },
     "plugins": [
+        "unused-imports",
         "import",
         "jsdoc",
         "@typescript-eslint/eslint-plugin"
@@ -182,6 +183,89 @@
         "guard-for-in": "error",
         "id-blacklist": "error",
         "id-match": "error",
+        "import/no-deprecated": "error",
+        "import/no-extraneous-dependencies": "error",
+        "import/no-internal-modules": "error",
+        "import/order": [
+            "error",
+            {
+                "groups": [
+                    "builtin",
+                    "external",
+                    "internal",
+                    "parent",
+                    "sibling",
+                    "object",
+                    "type",
+                    "index"
+                ],
+                "pathGroups": [
+                    {
+                        "pattern": "@nestjs/**",
+                        "group": "external"
+                    },
+                    {
+                        "pattern": "@aws-sdk/**",
+                        "group": "external",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": "@core/**",
+                        "group": "internal",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": "@config/**",
+                        "group": "internal",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": "@decorators/**",
+                        "group": "internal",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": "@interfaces/**",
+                        "group": "internal",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": "@services/**",
+                        "group": "internal",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": "@entity/**",
+                        "group": "internal",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": "@dto/**",
+                        "group": "internal",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": "@app/**",
+                        "group": "internal",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": "@*/**",
+                        "group": "index",
+                        "position": "after"
+                    },
+                    {
+                        "pattern": ".*/**",
+                        "group": "index",
+                        "position": "after"
+                    }
+                ],
+                "pathGroupsExcludedImportTypes": [
+                    "builtin"
+                ]
+            }
+        ],
+        "unused-imports/no-unused-imports": "error",
         "jsdoc/check-alignment": "error",
         "jsdoc/check-indentation": "error",
         "jsdoc/newline-after-description": "error",
