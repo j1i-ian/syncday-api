@@ -463,7 +463,9 @@ export class ProfilesService {
                     OrderStatus.PLACED
                 );
 
-                await this.teamRedisRepository.incrementMemberCount(team.uuid, newInvitedNewMembers.length);
+                const totalInvitationCount = emailBulk.length + phoneNumberBulk.length;
+
+                await this.teamRedisRepository.incrementMemberCount(team.uuid, totalInvitationCount);
 
                 return {
                     searchedUsers,

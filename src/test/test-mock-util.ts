@@ -133,7 +133,7 @@ export class TestMockUtil {
         return stub(User, 10, {
             phone: TestMockUtil.faker.phone.number()
         }).map((_user, index) => index % 2 ? {
-            email: _user.email,
+            email: _user.email || faker.internet.email(),
             teamId: teamIdMock
         } as InvitedNewTeamMember : {
             phone: _user.phone,

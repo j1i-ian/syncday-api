@@ -606,6 +606,8 @@ describe('ProfilesService', () => {
                 const paymentStub = stubOne(Payment);
                 const newInvitedNewTeamMemberMocks = testMockUtil.getInvitedNewTeamMemberMocks(teamIdMock);
 
+                const expectedMemberIncrement = newInvitedNewTeamMemberMocks.length;
+
                 paymentMethodServiceStub.fetch.resolves(paymentMethodStub);
                 const fetchTeamOwnerProfileStub = serviceSandbox.stub(service, '_fetchTeamOwnerProfile');
                 fetchTeamOwnerProfileStub.returns(of(teamOwnerProfileStub));
@@ -665,6 +667,9 @@ describe('ProfilesService', () => {
                 expect(teamRedisRepositoryStub.incrementMemberCount.called).true;
                 expect(teamRedisRepositoryStub.setTeamPlanStatus.called).true;
                 expect(notificationServiceStub.sendTeamInvitation.called).true;
+
+                const actualMemberIncrement = teamRedisRepositoryStub.incrementMemberCount.getCall(0).args[1];
+                expect(actualMemberIncrement).equals(expectedMemberIncrement);
             });
         });
 
