@@ -1,5 +1,6 @@
 import { Inject } from '@nestjs/common';
 import { DEFAULT_CLUSTER_NAMESPACE, getClusterToken } from '@liaoliaots/nestjs-redis';
+// eslint-disable-next-line import/no-internal-modules
 import { namespaces } from '@liaoliaots/nestjs-redis/dist/cluster/common';
 
 type NestJSInjectReturnType = (
