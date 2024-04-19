@@ -338,6 +338,8 @@ export class ProfilesService {
 
         const orderUnit = newInvitedNewMembers.length;
 
+        this.logger.info('Invitation resources are Loading ...');
+
         return combineLatest([
             // product id 2 is 'invitation'
             from(this.productsService.findTeamPlanProduct(2)),
@@ -349,6 +351,9 @@ export class ProfilesService {
             buyerTeam$,
             teamPaymentMethod$
         ]).pipe(
+            tap(() => {
+                this.logger.info('Loading invitation resources are success');
+            }),
             mergeMap(([
                 loadedProduct,
                 searchedUsers,
