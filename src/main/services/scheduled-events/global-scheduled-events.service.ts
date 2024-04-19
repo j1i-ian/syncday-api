@@ -1,6 +1,25 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Observable, concat, concatMap, defaultIfEmpty, filter, firstValueFrom, forkJoin, from, last, map, mergeMap, of, reduce, tap, throwIfEmpty, toArray, zip } from 'rxjs';
+import {
+    Observable,
+    catchError,
+    concat,
+    concatMap,
+    defaultIfEmpty,
+    filter,
+    firstValueFrom,
+    forkJoin,
+    from,
+    last,
+    map,
+    mergeMap,
+    of,
+    reduce,
+    tap,
+    throwIfEmpty,
+    toArray,
+    zip
+} from 'rxjs';
 import { Between, EntityManager, FindOptionsWhere, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -244,6 +263,26 @@ export class GlobalScheduledEventsService {
                         loadedOutboundCalendarIntegrationOrNull,
                         availabilityTimezone
                     ).pipe(
+                        catchError((error) => {
+
+                            this.logger.error({
+                                message: 'Calendar event outbound is failed',
+                                scheduledEventId: patchedSchedule.id,
+                                error
+                            });
+
+                            patchedSchedule.warnings = {
+                                outboundFailed: true
+                            };
+
+                            return from(this.scheduledEventsRedisRepository.set(
+                                patchedSchedule.uuid,
+                                patchedSchedule
+                            )).pipe(
+                                concatMap(() => of(null))
+                            );
+
+                        }),
                         mergeMap((createdCalendarEventOrNull) => zip([
                             of(patchedSchedule),
                             of(createdCalendarEventOrNull),
@@ -455,6 +494,8 @@ export class GlobalScheduledEventsService {
      *
      * 3. Optionally, if a calendar integration is provided (via `calendarIntegrationOrNull`),
      * checks for conflicts with events from the integrated calendars.
+     *
+     * TODO: this method should be seperated by concerns
      *
      * @param scheduledEvent
      * @param availabilityTimezone

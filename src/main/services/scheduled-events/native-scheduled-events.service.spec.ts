@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { firstValueFrom, of } from 'rxjs';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { InviteeAnswer } from '@interfaces/scheduled-events/invitee-answers.interface';
+import { ScheduledEventBody } from '@interfaces/scheduled-events/schedule-body.interface';
 import { IntegrationsServiceLocator } from '@services/integrations/integrations.service-locator.service';
 import { UtilService } from '@services/util/util.service';
 import { EventsService } from '@services/events/events.service';
@@ -15,7 +16,6 @@ import { Event } from '@entity/events/event.entity';
 import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.entity';
 import { ScheduledBufferTime } from '@entity/scheduled-events/scheduled-buffer-time.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
-import { ScheduledEventBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
 import { NativeScheduledEventsService } from './native-scheduled-events.service';
 
 describe('NativeScheduledEventsService', () => {

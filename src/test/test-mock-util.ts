@@ -35,6 +35,7 @@ import { IntegrationContext } from '@interfaces/integrations/integration-context
 import { InvitedNewTeamMember } from '@interfaces/users/invited-new-team-member.type';
 import { HostQuestion } from '@interfaces/events/event-details/host-question.interface';
 import { QuestionType } from '@interfaces/events/event-details/question-type.enum';
+import { ScheduledEventBody } from '@interfaces/scheduled-events/schedule-body.interface';
 import { Weekday } from '@entity/availability/weekday.enum';
 import { GoogleIntegration } from '@entity/integrations/google/google-integration.entity';
 import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
@@ -44,7 +45,6 @@ import { ScheduledTimeset } from '@entity/scheduled-events/scheduled-timeset.ent
 import { User } from '@entity/users/user.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { AvailabilityBody } from '@app/interfaces/availability/availability-body.type';
-import { ScheduledEventBody } from '@app/interfaces/scheduled-events/schedule-body.interface';
 import { SyncdayOAuth2TokenResponse } from '@app/interfaces/auth/syncday-oauth2-token-response.interface';
 import { ZoomCreateConferenceLinkResponseDTO } from '@app/interfaces/integrations/zoom/zoom-create-meeting-response.interface';
 import { MeetingType } from '@app/interfaces/integrations/zoom/enum/meeting-type.enum';
