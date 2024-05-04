@@ -71,9 +71,14 @@ export class BookingsController {
     @Get('availabilities')
     searchHostAvailabilities(
         @Query('workspace', ValidateQueryParamPipe, ParseEncodedUrl) teamWorkspace: string,
+        @Query('timezone', ParseEncodedUrl) timezone: string | undefined,
         @Query('eventLink', ParseEncodedUrl, FilterDuplicatedQueryParamsPipe) eventLink: string
     ): Observable<HostAvailabilityDto> {
-        return this.bookingsService.getHostAvailability(teamWorkspace, eventLink)
+        return this.bookingsService.getHostAvailability(
+            teamWorkspace,
+            eventLink,
+            timezone
+        )
             .pipe(
                 map((availability) => plainToInstance(HostAvailabilityDto, availability, {
                     excludeExtraneousValues: true

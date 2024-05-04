@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { Attendee, DateArray, createEvent } from 'ics';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
@@ -39,18 +39,18 @@ export class TimeUtilService {
             timezone: timezoneB
         } = availabilityB;
 
-        if (timezoneA !== timezoneB) {
-            throw new InternalServerErrorException('Different timezone is not yet supported');
-        }
-
         const intersectAvailableTimes = this.intersectAvailableTimes(
             availableTimesA,
             availableTimesB
         );
 
         this.logger.info({
+            availableTimesA,
             overridedAvailableTimesA,
-            overridedAvailableTimesB
+            timezoneA,
+            availableTimesB,
+            overridedAvailableTimesB,
+            timezoneB
         });
 
         const intersectOverridedAvailableTimes = this.intersectOverridedAvailableTimes(

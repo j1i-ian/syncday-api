@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { Observable, from, map, mergeMap, of, reduce, zip } from 'rxjs';
+import { Inject, Injectable } from '@nestjs/common';
+import { Observable, from, map, mergeMap, of, reduce, tap, zip } from 'rxjs';
 import { plainToInstance } from 'class-transformer';
 import { ScheduledEventSearchOption } from '@interfaces/scheduled-events/scheduled-event-search-option.type';
 import { HostEvent } from '@interfaces/bookings/host-event';
@@ -10,11 +10,15 @@ import { GlobalScheduledEventsService } from '@services/scheduled-events/global-
 import { TeamService } from '@services/team/team.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { UtilService } from '@services/util/util.service';
+import { SHARE_TIME_UTIL_SERVICE_PROVIDER } from '@services/util/share-time-util-service-provider.token';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { ScheduledEvent } from '@entity/scheduled-events/scheduled-event.entity';
 import { EventStatus } from '@entity/events/event-status.enum';
+import { AvailableTime } from '@entity/availability/availability-time.entity';
+import { OverridedAvailabilityTime } from '@entity/availability/overrided-availability-time.entity';
 import { ScheduledEventResponseDto } from '@dto/scheduled-events/scheduled-event-response.dto';
+import { ShareTimeUtilService } from '@share/services/share-time-util.service';
 
 @Injectable()
 export class BookingsService {
@@ -25,7 +29,8 @@ export class BookingsService {
         private readonly eventService: EventsService,
         private readonly scheduledEventsService: GlobalScheduledEventsService,
         private readonly utilService: UtilService,
-        private readonly timeUtilService: TimeUtilService
+        private readonly timeUtilService: TimeUtilService,
+        @Inject(SHARE_TIME_UTIL_SERVICE_PROVIDER) private readonly shareTimeUtilService: ShareTimeUtilService
     ) {}
 
     fetchHost(
@@ -80,10 +85,62 @@ export class BookingsService {
             );
     }
 
-    getHostAvailability(teamWorkspace: string, eventLink: string): Observable<Availability> {
+    getHostAvailability(
+        teamWorkspace: string,
+        eventLink: string,
+        inviteeTimezone?: string | undefined | null
+    ): Observable<Availability> {
+
+        let ensuredTimezone = inviteeTimezone as string;
+
         return this.availabilityService.searchByTeamWorkspaceAndLink(teamWorkspace, eventLink)
             .pipe(
+                tap((availabilities) => {
+                    ensuredTimezone = inviteeTimezone ?? availabilities[0].timezone;
+                }),
                 mergeMap((availabilities) => from(availabilities)),
+                map((availability) => {
+
+                    const availabilityTimezone = availability.timezone;
+
+                    const normalizedWeekdayTimeRangeMap = this.shareTimeUtilService.normalizeToWeekdayTimeRangeMap(
+                        availabilityTimezone,
+                        ensuredTimezone,
+                        availability.availableTimes
+                    );
+                    const normalizedAvailableTimes = [...normalizedWeekdayTimeRangeMap].map(([weekday, timeRanges]) => ({
+                        day: weekday,
+                        timeRanges
+                    }) as AvailableTime);
+
+                    const normalizedOverridesMap = this.shareTimeUtilService.normalizeToOverridedAvailabilityTimeRangeMap(
+                        availabilityTimezone,
+                        ensuredTimezone,
+                        availability.overrides
+                    );
+
+                    const normalizedOverrides = [...normalizedOverridesMap.overridedTimeRangeMap].map(
+                        ([yyyymmdd, timeRanges]) => {
+
+                            const yyyy = yyyymmdd.substring(0, 4);
+                            const mm = yyyymmdd.substring(4, 6);
+                            const dd = yyyymmdd.substring(6, 8);
+
+                            const utcYYYYMMDD = [yyyy, mm, dd].join('-');
+                            const targetDate = new Date(`${utcYYYYMMDD}T00:00:00.000Z`);
+
+                            return {
+                                targetDate,
+                                timeRanges
+                            } as OverridedAvailabilityTime;
+                        }
+                    );
+
+                    availability.availableTimes = normalizedAvailableTimes;
+                    availability.overrides = normalizedOverrides;
+
+                    return availability;
+                }),
                 reduce((intersectAvailability, availability) => availability
                     ? this.timeUtilService.intersectAvailability(intersectAvailability, availability)
                     : availability)
@@ -103,12 +160,22 @@ export class BookingsService {
         return this.scheduledEventsService.findOne(scheduleUUID);
     }
 
-    createScheduledEvent(teamWorkspace: string, eventUUID: string, newScheduledEvent: ScheduledEvent): Observable<ScheduledEvent> {
+    createScheduledEvent(
+        teamWorkspace: string,
+        eventUUID: string,
+        newScheduledEvent: ScheduledEvent
+    ): Observable<ScheduledEvent> {
+
+        const inviteeTimezone = newScheduledEvent.invitees[0].timezone;
 
         const hostAvailability$ = this.eventService.findOneByTeamWorkspaceAndUUID(teamWorkspace, eventUUID)
             .pipe(
                 mergeMap((event) =>
-                    this.getHostAvailability(teamWorkspace, event.link)
+                    this.getHostAvailability(
+                        teamWorkspace,
+                        event.link,
+                        inviteeTimezone
+                    )
                 )
             );
 

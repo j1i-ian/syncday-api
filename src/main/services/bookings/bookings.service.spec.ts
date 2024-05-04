@@ -1,12 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { firstValueFrom, of } from 'rxjs';
 import { Host } from '@interfaces/bookings/host';
+import { Weekday } from '@interfaces/availabilities/weekday.enum';
+import { NormalizedDateTimeOverrides } from '@interfaces/utils/normalized-datetime-overrides.interface';
 import { EventsService } from '@services/events/events.service';
 import { AvailabilityService } from '@services/availability/availability.service';
 import { GlobalScheduledEventsService } from '@services/scheduled-events/global-scheduled-events.service';
 import { TeamService } from '@services/team/team.service';
 import { TimeUtilService } from '@services/util/time-util/time-util.service';
 import { UtilService } from '@services/util/util.service';
+import { SHARE_TIME_UTIL_SERVICE_PROVIDER } from '@services/util/share-time-util-service-provider.token';
 import { Event } from '@entity/events/event.entity';
 import { Availability } from '@entity/availability/availability.entity';
 import { Team } from '@entity/teams/team.entity';
@@ -14,6 +17,8 @@ import { Profile } from '@entity/profiles/profile.entity';
 import { EventProfile } from '@entity/events/event-profile.entity';
 import { EventDetail } from '@entity/events/event-detail.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { TimeRange } from '@entity/events/time-range.entity';
+import { ShareTimeUtilService } from '@share/services/share-time-util.service';
 import { BookingsService } from './bookings.service';
 
 describe('BookingsService', () => {
@@ -24,6 +29,7 @@ describe('BookingsService', () => {
     let schedulesServiceStub: sinon.SinonStubbedInstance<GlobalScheduledEventsService>;
     let utilServiceStub: sinon.SinonStubbedInstance<UtilService>;
     let timeUtilServiceStub: sinon.SinonStubbedInstance<TimeUtilService>;
+    let shareTimeUtilServiceStub: sinon.SinonStubbedInstance<ShareTimeUtilService>;
 
     before(async () => {
 
@@ -33,6 +39,7 @@ describe('BookingsService', () => {
         schedulesServiceStub = sinon.createStubInstance(GlobalScheduledEventsService);
         utilServiceStub = sinon.createStubInstance(UtilService);
         timeUtilServiceStub = sinon.createStubInstance(TimeUtilService);
+        shareTimeUtilServiceStub = sinon.createStubInstance(ShareTimeUtilService);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -60,6 +67,10 @@ describe('BookingsService', () => {
                 {
                     provide: TimeUtilService,
                     useValue: timeUtilServiceStub
+                },
+                {
+                    provide: SHARE_TIME_UTIL_SERVICE_PROVIDER,
+                    useValue: shareTimeUtilServiceStub
                 }
             ]
         }).compile();
@@ -143,6 +154,21 @@ describe('BookingsService', () => {
         const availabilityStub = stubOne(Availability);
 
         availabilityServiceStub.searchByTeamWorkspaceAndLink.returns(of([availabilityStub]));
+
+        const normalizedWeekdayTimeRangeMapStub = new Map<Weekday, TimeRange[]>();
+        normalizedWeekdayTimeRangeMapStub.set(Weekday.MONDAY, [{ startTime: '09:00', endTime: '18:00' }]);
+        shareTimeUtilServiceStub.normalizeToWeekdayTimeRangeMap.returns(normalizedWeekdayTimeRangeMapStub);
+
+        const normalizedOverridesMapStub = new Map<string, TimeRange[]>();
+        normalizedOverridesMapStub.set('20240401', [{ startTime: '09:00', endTime: '18:00' }]);
+        const normalizedOverridesStub: NormalizedDateTimeOverrides = {
+            overridedDateRanges: [{
+                startDateTimestamp: new Date('2024-04-01T18:00:00').getTime(),
+                endDateTimestamp: new Date('2024-04-02T03:00:00').getTime()
+            }],
+            overridedTimeRangeMap: normalizedOverridesMapStub
+        };
+        shareTimeUtilServiceStub.normalizeToOverridedAvailabilityTimeRangeMap.returns(normalizedOverridesStub);
 
         await firstValueFrom(service.getHostAvailability(teamWorkspaceMock as string, eventLinkMock));
 
