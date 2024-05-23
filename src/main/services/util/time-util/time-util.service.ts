@@ -474,12 +474,13 @@ export class TimeUtilService {
         const localizedDate = Intl.DateTimeFormat([], {
             timeZone: availabilityTimezone,
             day: '2-digit'
-        }).format(new Date(localizedStartDateTime));
+        }).format(new Date(localizedStartDateTime))
+            .match(/\d\d/)?.[0];
 
         let startWeekday: number;
         let endWeekday: number;
 
-        if (+localizedDate !== localizedStartDateTime.getDate()) {
+        if (localizedDate && +localizedDate !== localizedStartDateTime.getDate()) {
             startWeekday = (localizedStartDateTime.getDay() + 1) % 7;
             endWeekday = (localizedEndDateTime.getDay() + 1) % 7;
         } else {
