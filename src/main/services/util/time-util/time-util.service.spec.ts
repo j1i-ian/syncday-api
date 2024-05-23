@@ -1078,7 +1078,6 @@ describe('TimeUtilService', () => {
                 isTimeOverlappingWithEndDateTimeStub: true,
                 expectedResult: true
             }
-
         ].forEach(function ({
             description,
             availableTimesMock,
