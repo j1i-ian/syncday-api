@@ -257,12 +257,7 @@ deploy-to-development:
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash  #download secure files(https://docs.gitlab.com/ee/ci/secure_files/index.html)
   script:
     # SSH over Session Manager
-    - mkdir $HOME/.ssh
-    - echo -e "host i-* mi-*\n
-          ProxyCommand sh -c \"aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters 'portNumber=%p'\"" > $HOME/.ssh/config
-    - cp ./.secure_files/syncday.pem ./syncday.pem && chmod 400 syncday.pem
-    - cp ./.secure_files/.env.dev ./.env.dev
-    - bash ./scripts/deploy-to-dev.sh $DEV_EC2_INSTANCE_ID
+    - echo "Development Server has been configured. Cannot run yet"
   only:
     - develop
 
