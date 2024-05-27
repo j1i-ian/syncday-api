@@ -42,11 +42,6 @@ stages:
         CI_ENVIRONMENT_NAME=production
         APP_NAME=syncday-api
         DOCKER_FILE=Dockerfile
-      elif [[ $CI_COMMIT_TAG != null ]]; then
-        ENV=staging
-        CI_ENVIRONMENT_NAME=staging
-        APP_NAME=stg-syncday-api
-        DOCKER_FILE=Dockerfile.stg
       else
         ENV=development
         CI_ENVIRONMENT_NAME=development
@@ -76,7 +71,6 @@ stages:
   script: |
     curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     cp ./.secure_files/.env.production ./.env.production
-    cp ./.secure_files/.env.staging ./.env.staging
     docker build -t $APP_NAME -f $DOCKER_FILE .
     docker tag $APP_NAME:latest $ECR_REPOSITORY_URL/$APP_NAME:latest
     docker push $ECR_REPOSITORY_URL/$APP_NAME:latest
@@ -97,7 +91,6 @@ init:
       npm install
   only:
     - main
-    - tags # for staging
     - develop
 
 build:
@@ -125,7 +118,6 @@ lint:
     npm run lint
   only:
     - main
-    - tags # for staging
     - develop
 
 unit-test:
@@ -137,7 +129,6 @@ unit-test:
     npm run test:ci
   only:
     - main
-    - tags # for staging
     - develop
   artifacts:
     when: always
@@ -177,7 +168,6 @@ unit-test:
       fi
   only:
     - main
-    - tags # for staging
   artifacts:
     when: always
     paths:
@@ -208,7 +198,6 @@ coverage-then-documentations:
     expire_in: 1 day
   only:
     - main
-    - tags # for staging
     - develop
 
 deploy-docs-to-s3:
@@ -230,8 +219,6 @@ upload-staging-container-repository:
   environment: staging
   needs:
     - unit-test
-  only:
-    - tags # for staging
 
 upload-production-container-repository:
   <<: *upload-container-repository
@@ -260,23 +247,6 @@ deploy-to-development:
     - echo "Development Server has been configured. Cannot run yet"
   only:
     - develop
-
-deploy-to-staging:
-  image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-ecs:latest
-  stage: deploy
-  environment: staging
-  dependencies:
-    - upload-staging-container-repository
-  needs:
-    - upload-staging-container-repository
-  before_script:
-    - !reference [.resolve-variables-by-env, before_script]
-  script:
-    - cp $CI_AWS_ECS_TASK_DEFINITION_FILE task-definition.json
-    - aws ecs register-task-definition --cli-input-json file://task-definition.json --family $CI_AWS_ECS_TASK_DEFINITION
-    - aws ecs update-service --cluster $CI_AWS_ECS_CLUSTER --service $CI_AWS_ECS_SERVICE --task-definition $CI_AWS_ECS_TASK_DEFINITION --force-new-deployment
-  only:
-    - tags
 
 deploy-to-production:
   image: registry.gitlab.com/gitlab-org/cloud-deploy/aws-ecs:latest
