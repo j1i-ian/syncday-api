@@ -1,5 +1,8 @@
 import { EventSubscriber, EntitySubscriberInterface, InsertEvent, UpdateEvent } from 'typeorm';
+import { PaymentType } from '@interfaces/payments/payment-type.enum';
+import { Billing } from '@interfaces/payments/billing.interface';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
+import { CreditCard } from '@entity/payments/credit-card.entity';
 
 @EventSubscriber()
 export class PaymentMethodSubscriber implements EntitySubscriberInterface<PaymentMethod> {
@@ -12,14 +15,31 @@ export class PaymentMethodSubscriber implements EntitySubscriberInterface<Paymen
 
         const updatePaymentMethod = event.entity as PaymentMethod;
 
-        this.maskingSensitiveData(updatePaymentMethod);
+        if (updatePaymentMethod.type !== PaymentType.PG) {
+            this.maskingSensitiveData(updatePaymentMethod);
+        }
     }
 
     beforeInsert(event: InsertEvent<PaymentMethod>): void {
 
         const newPaymentMethod = event.entity;
 
-        this.maskingSensitiveData(newPaymentMethod);
+        if (newPaymentMethod.type !== PaymentType.PG) {
+            this.maskingSensitiveData(newPaymentMethod);
+        } else {
+            newPaymentMethod.billing = {
+                expireAt: null,
+                key: null
+            } as unknown as Billing;
+            newPaymentMethod.creditCard = {
+                expirationYear: null,
+                expirationMonth: null,
+                identification: null,
+                password: null,
+                serialNumber: null,
+                cvc: null
+            } as unknown as CreditCard;
+        }
     }
 
     maskingSensitiveData(newPaymentMethod: PaymentMethod): void {

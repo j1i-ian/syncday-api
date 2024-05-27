@@ -7,6 +7,7 @@ import { Payment } from '@entity/payments/payment.entity';
 import { PaymentsService } from './payments.service';
 import { BootpayModule } from './bootpay/bootpay.module';
 import { PaymentMethodModule } from './payment-method/payment-method.module';
+import { PaypalModule } from './paypal/paypal.module';
 
 @Module({
     imports: [
@@ -14,7 +15,8 @@ import { PaymentMethodModule } from './payment-method/payment-method.module';
         ConfigModule,
         BootpayModule,
         SyncdayRedisModule,
-        PaymentMethodModule
+        PaymentMethodModule,
+        PaypalModule
     ],
     providers: [PaymentsService, PaymentRedisRepository],
     exports: [PaymentsService]

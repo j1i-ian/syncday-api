@@ -7,10 +7,12 @@ import { Observable, combineLatestWith, concatMap, defaultIfEmpty, filter, from,
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
 import { AppConfigService } from '@config/app-config.service';
 import { PaymentStatus } from '@interfaces/payments/payment-status.enum';
+import { PaymentType } from '@interfaces/payments/payment-type.enum';
 import { PaymentRedisRepository } from '@services/payments/payment.redis-repository';
 import { BootpayService } from '@services/payments/bootpay/bootpay.service';
 import { BootpayConfiguration } from '@services/payments/bootpay/bootpay-configuration.interface';
 import { BootpayPGPaymentStatus } from '@services/payments/bootpay-pg-payment-status.enum';
+import { PaypalService } from '@services/payments/paypal/paypal.service';
 import { Payment } from '@entity/payments/payment.entity';
 import { Order } from '@entity/orders/order.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
@@ -23,6 +25,7 @@ export class PaymentsService {
     constructor(
         private readonly paymentRedisRepository: PaymentRedisRepository,
         private readonly configService: ConfigService,
+        private readonly paypalService: PaypalService,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
         const bootpaySetting = AppConfigService.getBootpaySetting(this.configService);
@@ -50,6 +53,34 @@ export class PaymentsService {
         paymentMethod: PaymentMethod,
         buyer: Buyer
     ): Promise<Payment> {
+
+        if (paymentMethod.type !== PaymentType.PG) {
+            await this._placeWithBootpay(
+                relatedOrder,
+                paymentMethod,
+                buyer
+            );
+        }
+
+        const _paymentRepository = transactionManager.getRepository(Payment);
+
+        const createdPayment = _paymentRepository.create({
+            amount: relatedOrder.amount,
+            orderId: relatedOrder.id,
+            proration,
+            paymentMethodId: paymentMethod.id
+        });
+
+        const savedPayment = await _paymentRepository.save(createdPayment);
+
+        return savedPayment;
+    }
+
+    async _placeWithBootpay(
+        relatedOrder: Order,
+        paymentMethod: PaymentMethod,
+        buyer: Buyer
+    ): Promise<void> {
 
         try {
 
@@ -89,19 +120,6 @@ export class PaymentsService {
 
             throw error;
         }
-
-        const _paymentRepository = transactionManager.getRepository(Payment);
-
-        const createdPayment = _paymentRepository.create({
-            amount: relatedOrder.amount,
-            orderId: relatedOrder.id,
-            proration,
-            paymentMethodId: paymentMethod.id
-        });
-
-        const savedPayment = await _paymentRepository.save(createdPayment);
-
-        return savedPayment;
     }
 
     _refund(

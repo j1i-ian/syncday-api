@@ -4,12 +4,10 @@ import { EntityNotFoundError } from 'typeorm';
 import { AuthProfile } from '@decorators/auth-profile.decorator';
 import { Roles } from '@decorators/roles.decorator';
 import { Role } from '@interfaces/profiles/role.enum';
+import { NonSensitivePaymentMethod } from '@interfaces/payments/non-sensitive-payment-method.interface';
 import { PaymentMethodService } from '@services/payments/payment-method/payment-method.service';
-import { CreditCard } from '@entity/payments/credit-card.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { PaymentMethodRequestDto } from '@dto/payments/payment-method-request.dto';
-
-type NonSensitivePaymentMethod = Pick<PaymentMethod, 'id'> & { creditCard: Pick<CreditCard, 'serialNumber'> };
 
 @Controller()
 @Roles(Role.OWNER, Role.MANAGER)
@@ -29,8 +27,10 @@ export class PaymentMethodController {
                     id: teamPaymentMethod.id,
                     creditCard: {
                         serialNumber: teamPaymentMethod.creditCard.serialNumber
-                    }
-                })),
+                    },
+                    pg: teamPaymentMethod.pg,
+                    type: teamPaymentMethod.type
+                } as NonSensitivePaymentMethod)),
                 catchError((error) => {
 
                     if (error instanceof EntityNotFoundError) {
@@ -53,8 +53,10 @@ export class PaymentMethodController {
         @AuthProfile('teamId') teamId: number,
         @Body() createPaymentMethodRequestDto: PaymentMethodRequestDto
     ): Observable<boolean> {
-        return this.paymentMethodSevice.create(teamId, createPaymentMethodRequestDto as PaymentMethod)
-            .pipe(map(() => true));
+        return this.paymentMethodSevice.create(
+            teamId,
+            createPaymentMethodRequestDto as unknown as Pick<PaymentMethod, 'creditCard' | 'type'> & Partial<Pick<PaymentMethod, 'teams'>>
+        ).pipe(map(() => true));
     }
 
     /**
@@ -73,7 +75,7 @@ export class PaymentMethodController {
         return this.paymentMethodSevice.update(
             paymentMethodId,
             teamId,
-            updatePaymentMethodRequestDto as PaymentMethod
+            updatePaymentMethodRequestDto as unknown as PaymentMethod
         );
     }
 }

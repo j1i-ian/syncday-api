@@ -20,6 +20,7 @@ import { Orderer } from '@interfaces/orders/orderer.interface';
 import { TeamService } from '@services/team/team.service';
 import { Team } from '@entity/teams/team.entity';
 import { TeamSetting } from '@entity/teams/team-setting.entity';
+import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { CreateTeamRequestDto } from '@dto/teams/create-team-request.dto';
 import { BootpayException } from '@exceptions/bootpay.exception';
 
@@ -77,7 +78,7 @@ export class TeamController {
 
         return this.teamService.create(
             orderUnit,
-            newPaymentMethod,
+            newPaymentMethod as unknown as PaymentMethod,
             newTeam,
             newTeamSetting,
             newTeamMembers,

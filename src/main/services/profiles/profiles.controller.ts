@@ -136,7 +136,7 @@ export class ProfilesController {
             teamUUID,
             invitedMembers,
             orderer,
-            newPaymentMethod as PaymentMethod
+            newPaymentMethod as unknown as PaymentMethod
         );
     }
 

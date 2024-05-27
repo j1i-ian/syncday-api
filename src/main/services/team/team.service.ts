@@ -215,7 +215,7 @@ export class TeamService {
      */
     create(
         orderUnit: number,
-        newPaymentMethod: Pick<PaymentMethod, 'creditCard'> & Partial<Pick<PaymentMethod, 'teams'>>,
+        newPaymentMethod: Pick<PaymentMethod, 'creditCard' | 'type'> & Partial<Pick<PaymentMethod, 'teams'>>,
         newTeam: Partial<Team>,
         newTeamSetting: Pick<TeamSetting, 'workspace' | 'greetings'>,
         teamMembers: InvitedNewTeamMember[],
