@@ -294,6 +294,11 @@ export class TeamService {
                         orderer
                     );
 
+                    this.logger.info({
+                        message: 'An order is created. Trying to create a payment method',
+                        orderId: _createdOrder.id
+                    });
+
                     const _createdPaymentMethod = await this.paymentMethodService._create(
                         transactionManager,
                         newPaymentMethod,
@@ -308,6 +313,10 @@ export class TeamService {
                         _createdPaymentMethod,
                         _buyer
                     );
+
+                    this.logger.info({
+                        message: 'Update order and that status'
+                    });
 
                     await this.ordersService._updateOrderStatus(
                         transactionManager,

@@ -6,7 +6,6 @@ import { PaymentMethodService } from '@services/payments/payment-method/payment-
 import { ProfilesModule } from '@services/profiles/profiles.module';
 import { PaypalModule } from '@services/payments/paypal/paypal.module';
 import { OrdersModule } from '@services/orders/orders.module';
-import { ProductsModule } from '@services/products/products.module';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
 
 @Module({
@@ -16,8 +15,7 @@ import { PaymentMethod } from '@entity/payments/payment-method.entity';
         ConfigModule,
         ProfilesModule,
         PaypalModule,
-        OrdersModule,
-        ProductsModule
+        OrdersModule
     ],
     providers: [PaymentMethodService],
     exports: [PaymentMethodService]

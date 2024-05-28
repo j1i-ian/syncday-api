@@ -5,7 +5,6 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { Observable, combineLatestWith, concatMap, defaultIfEmpty, filter, from, map, mergeMap, of, zip } from 'rxjs';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
-import { AppConfigService } from '@config/app-config.service';
 import { PaymentStatus } from '@interfaces/payments/payment-status.enum';
 import { PaymentType } from '@interfaces/payments/payment-type.enum';
 import { PaymentRedisRepository } from '@services/payments/payment.redis-repository';
@@ -16,8 +15,6 @@ import { PaypalService } from '@services/payments/paypal/paypal.service';
 import { Payment } from '@entity/payments/payment.entity';
 import { Order } from '@entity/orders/order.entity';
 import { PaymentMethod } from '@entity/payments/payment-method.entity';
-import { BootpayException } from '@exceptions/bootpay.exception';
-import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
 
 @Injectable()
 export class PaymentsService {
@@ -27,14 +24,7 @@ export class PaymentsService {
         private readonly configService: ConfigService,
         private readonly paypalService: PaypalService,
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
-    ) {
-        const bootpaySetting = AppConfigService.getBootpaySetting(this.configService);
-
-        this.bootpayConfiguration = {
-            application_id: bootpaySetting.clientId,
-            private_key: bootpaySetting.clientSecret
-        };
-    }
+    ) {}
 
     bootpayConfiguration: BootpayConfiguration;
 
@@ -54,14 +44,6 @@ export class PaymentsService {
         buyer: Buyer
     ): Promise<Payment> {
 
-        if (paymentMethod.type !== PaymentType.PG) {
-            await this._placeWithBootpay(
-                relatedOrder,
-                paymentMethod,
-                buyer
-            );
-        }
-
         const _paymentRepository = transactionManager.getRepository(Payment);
 
         const createdPayment = _paymentRepository.create({
@@ -73,53 +55,37 @@ export class PaymentsService {
 
         const savedPayment = await _paymentRepository.save(createdPayment);
 
+        if (paymentMethod.type === PaymentType.BILLING_KEY) {
+            await this.__placeOrder(
+                relatedOrder,
+                paymentMethod,
+                buyer
+            );
+        } else {
+            await this.paypalService.validatePGSubscription(paymentMethod.vendorSubscriptionUUID);
+        }
+
         return savedPayment;
     }
 
-    async _placeWithBootpay(
+    async __placeOrder(
         relatedOrder: Order,
         paymentMethod: PaymentMethod,
         buyer: Buyer
     ): Promise<void> {
 
-        try {
+        const bootpayService = new BootpayService(this.configService);
 
-            const bootpayService = new BootpayService();
+        const billingPaymentResult = await bootpayService.placeWithBootpay(
+            relatedOrder,
+            paymentMethod,
+            buyer
+        );
 
-            await bootpayService.init(this.bootpayConfiguration);
-
-            const pgPaymentResult = await bootpayService.placeOrder(
-                relatedOrder,
-                relatedOrder.amount,
-                buyer,
-                paymentMethod.billing
-            );
-
-            await this.paymentRedisRepository.setPGPaymentResult(
-                relatedOrder.uuid,
-                pgPaymentResult
-            );
-        } catch (error) {
-
-            const bootpayError = (error as InternalBootpayException);
-
-            if (bootpayError.error_code && bootpayError.message) {
-
-                const bootpayException = new BootpayException(bootpayError.message);
-                bootpayException.name = bootpayError.error_code;
-                bootpayException.message = bootpayError.message;
-
-                this.logger.error({
-                    message: 'Error while placing the order',
-                    error,
-                    bootpayException
-                });
-
-                error = bootpayException;
-            }
-
-            throw error;
-        }
+        await this.paymentRedisRepository.setPGPaymentResult(
+            relatedOrder.uuid,
+            billingPaymentResult
+        );
     }
 
     _refund(
@@ -133,19 +99,16 @@ export class PaymentsService {
         return from(this.paymentRedisRepository.getPGPaymentResult(relatedOrder.uuid))
             .pipe(
                 filter((pgPaymentResult) => pgPaymentResult.status !== BootpayPGPaymentStatus.CANCELLED),
-                combineLatestWith(of(new BootpayService())),
+                combineLatestWith(of(new BootpayService(this.configService))),
                 mergeMap(([pgPaymentResult, bootpayService]) =>
-                    from(bootpayService.init(this.bootpayConfiguration))
-                        .pipe(
-                            concatMap(() => bootpayService.refund(
-                                relatedOrder.uuid,
-                                pgPaymentResult.receipt_id,
-                                canceler,
-                                message,
-                                proratedRefundUnitPrice,
-                                isPartialCancelation
-                            ))
-                        )
+                    bootpayService.refund(
+                        relatedOrder.uuid,
+                        pgPaymentResult.receipt_id,
+                        canceler,
+                        message,
+                        proratedRefundUnitPrice,
+                        isPartialCancelation
+                    )
                 ),
                 concatMap((result) => this.paymentRedisRepository.setPGPaymentResult(
                     relatedOrder.uuid,

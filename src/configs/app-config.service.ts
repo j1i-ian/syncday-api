@@ -25,16 +25,18 @@ export class AppConfigService {
 
     static INTEGRATION_MAX_ADD_LIMIT = 6;
 
-    static getPaypalClientIdAndSecret(
+    static getPaypalSetting(
         configService: ConfigService
-    ): { clientId: string; secret: string } {
+    ): { clientId: string; secret: string; hostUrl: string } {
 
         const clientIdKey = 'PAYPAL_CLIENT_ID';
         const secretKey = 'PAYPAL_SECRET';
+        const hostUrlKey = 'PAYPAL_HOST_URL';
 
         return {
             clientId: configService.getOrThrow(clientIdKey),
-            secret: configService.getOrThrow(secretKey)
+            secret: configService.getOrThrow(secretKey),
+            hostUrl: configService.getOrThrow(hostUrlKey)
         };
     }
 

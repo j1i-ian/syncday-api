@@ -5,13 +5,6 @@ export interface PayPalTokenResponse {
     expires_in: number;
 }
 
-export interface SubscriptionCheckRequestBody {
-    pg: string;
-    type: string;
-    vendorOrderUUID: string;
-    vendorSubscriptionUUID: string;
-}
-
 export interface SubscriptionCheckResponse {
     status: string;
     reason?: string;

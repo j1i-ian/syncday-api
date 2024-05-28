@@ -1,42 +1,106 @@
-import { Injectable, Scope } from '@nestjs/common';
+import { Inject, Injectable, Scope } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
+import { ConfigService } from '@nestjs/config';
 import { Billing } from '@core/interfaces/payments/billing.interface';
 import { Buyer } from '@core/interfaces/payments/buyer.interface';
+import { AppConfigService } from '@config/app-config.service';
 import { BootpayConfiguration } from '@services/payments/bootpay/bootpay-configuration.interface';
 import { CreditCard } from '@entity/payments/credit-card.entity';
 import { Order } from '@entity/orders/order.entity';
+import { PaymentMethod } from '@entity/payments/payment-method.entity';
 import { BootpayBackendNodejs, ReceiptResponseParameters } from '@typings/bootpay';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment, import/no-internal-modules
 import { CancelPaymentParameters } from '@bootpay/backend-js/lib/response';
+import { BootpayException } from '@exceptions/bootpay.exception';
+import { InternalBootpayException } from '@exceptions/internal-bootpay.exception';
 
 @Injectable({
     scope: Scope.REQUEST
 })
 export class BootpayService {
 
+    constructor(
+        private readonly configService: ConfigService
+    ) {}
+
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger;
+
     private _billing: Billing;
     private Bootpay: BootpayBackendNodejs;
 
-    async init(bootpayConfig: BootpayConfiguration): Promise<void> {
-        await this.patchBootpay();
+    async placeWithBootpay(
+        relatedOrder: Order,
+        paymentMethod: PaymentMethod,
+        buyer: Buyer
+    ): Promise<ReceiptResponseParameters> {
 
-        this.setConfig(bootpayConfig);
+        try {
+
+            await this._init(this.configService);
+
+            const pgPaymentResult = await this._placeOrder(
+                relatedOrder,
+                relatedOrder.amount,
+                buyer,
+                paymentMethod.billing
+            );
+
+            return pgPaymentResult;
+        } catch (error) {
+
+            const bootpayError = (error as InternalBootpayException);
+
+            if (bootpayError.error_code && bootpayError.message) {
+
+                const bootpayException = new BootpayException(bootpayError.message);
+                bootpayException.name = bootpayError.error_code;
+                bootpayException.message = bootpayError.message;
+
+                this.logger.error({
+                    message: 'Error while placing the order',
+                    error,
+                    bootpayException
+                });
+
+                error = bootpayException;
+            }
+
+            throw error;
+        }
+    }
+
+    async _init(
+        configService: ConfigService
+    ): Promise<void> {
+
+        const bootpaySetting = AppConfigService.getBootpaySetting(configService);
+
+        const bootpayConfiguration = {
+            application_id: bootpaySetting.clientId,
+            private_key: bootpaySetting.clientSecret
+        } as BootpayConfiguration;
+
+        await this.__patchBootpay();
+
+        this.__setConfig(bootpayConfiguration);
 
         await this.Bootpay.getAccessToken();
     }
 
-    async patchBootpay(): Promise<void> {
+    async __patchBootpay(): Promise<void> {
         const { Bootpay } = (await import('@bootpay/backend-js'));
 
         this.Bootpay = Bootpay;
     }
 
-    setConfig(bootpayConfig: BootpayConfiguration): this {
+    __setConfig(bootpayConfig: BootpayConfiguration): this {
         this.Bootpay.setConfiguration(bootpayConfig);
 
         return this;
     }
 
-    async placeOrder(
+    async _placeOrder(
         order: Order,
         price: number,
         buyer: Partial<Buyer>,
@@ -65,12 +129,14 @@ export class BootpayService {
         return paymentResponse;
     }
 
-    async issueBillingKey(
+    async _issueBillingKey(
         orderId: string,
         placedOrderName: string,
         creditCard: CreditCard,
         buyer: Buyer
     ): Promise<BootpayService> {
+
+        await this._init(this.configService);
 
         await this._getAccessToken();
 
@@ -121,6 +187,8 @@ export class BootpayService {
         partialCancelation: boolean
     ): Promise<ReceiptResponseParameters> {
 
+        await this._init(this.configService);
+
         await this._getAccessToken();
 
         const cancelPaymentOptions: CancelPaymentParameters = {
@@ -141,9 +209,32 @@ export class BootpayService {
         return response;
     }
 
-
     async _getAccessToken(): Promise<void> {
         await this.Bootpay.getAccessToken();
+    }
+
+    _toBootpayException(
+        error: unknown
+    ): BootpayException | unknown {
+
+        const bootpayError = (error as InternalBootpayException);
+
+        if (bootpayError.error_code && bootpayError.message) {
+
+            const bootpayException = new BootpayException(bootpayError.message);
+            bootpayException.name = bootpayError.error_code;
+            bootpayException.message = bootpayError.message;
+
+            this.logger.error({
+                message: 'Error while issue the billing key',
+                error,
+                bootpayException
+            });
+
+            error = bootpayException;
+        }
+
+        throw error;
     }
 
     get billing(): Billing {
