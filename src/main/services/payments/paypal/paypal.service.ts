@@ -1,6 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import fetch from 'node-fetch';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { AppConfigService } from '@config/app-config.service';
 import { PayPalTokenResponse } from '@services/payments/payment-method/paypal.interfaces';
 
@@ -8,7 +10,8 @@ import { PayPalTokenResponse } from '@services/payments/payment-method/paypal.in
 export class PaypalService {
 
     constructor(
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {
         const {
             clientId,
@@ -48,6 +51,13 @@ export class PaypalService {
         const validated = response.ok;
 
         if (validated === false) {
+
+            const errorTextMessage = await response.text();
+
+            this.logger.info({
+                errorTextMessage
+            });
+
             throw new BadRequestException('Subscription is invalid');
         }
 
