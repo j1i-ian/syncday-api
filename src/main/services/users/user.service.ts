@@ -766,7 +766,7 @@ export class UserService {
             );
 
             this.logger.info({
-                message: 'Creting a team and user with profile is completed. Trying to create a oauth2 account',
+                message: 'Creating a team and user with profile is completed. Trying to create a oauth2 account',
                 newProfileName,
                 teamWorkspace,
                 oauth2Type
@@ -795,7 +795,7 @@ export class UserService {
                 } = integrationParams as OAuth2MetaInfo;
 
                 this.logger.info({
-                    message: 'Creting a google integration service',
+                    message: 'Creating a google integration service',
                     oauth2UserEmail,
                     teamWorkspace
                 });
