@@ -151,20 +151,22 @@ export class NotificationsService {
     sendBookingRequest(
         teamId: number,
         eventId: number,
+        reminderType: ReminderType,
         hostName: string,
         inviteeName: string,
         phoneNumber: string,
-        additionalMessage?: string
+        additionalMessage?: string,
+        language?: Language | undefined
     ): Observable<boolean> {
 
-        const reminderType = ReminderType.KAKAOTALK;
         const syncdayNotificationPublishKey = this.utilService.convertReminderTypeToSyncdayNotificationPublishKey(reminderType);
 
         this.logger.info({
             message: 'booking request',
             eventId,
             phoneNumber,
-            syncdayNotificationPublishKey
+            syncdayNotificationPublishKey,
+            language
         });
 
         // load event by event id
@@ -192,7 +194,8 @@ export class NotificationsService {
                         {
                             template: TextTemplate.BOOKING_REQUEST,
                             data: JSON.stringify(bookingRequest),
-                            phoneNumber
+                            phoneNumber,
+                            language
                         } as SyncdayAwsSnsRequest
                     )
                 )
