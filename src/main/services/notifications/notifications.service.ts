@@ -188,17 +188,22 @@ export class NotificationsService {
                         additionalMessage
                     } as BookingRequest;
                 }),
-                mergeMap((bookingRequest) =>
-                    this.sendMessage(
+                mergeMap((bookingRequest) => {
+
+                    const template = bookingRequest.additionalMessage
+                        ? TextTemplate.BOOKING_REQUEST
+                        : TextTemplate.BOOKING_REQUEST_POST_SCRIPT;
+
+                    return this.sendMessage(
                         syncdayNotificationPublishKey,
                         {
-                            template: TextTemplate.BOOKING_REQUEST,
+                            template,
                             data: JSON.stringify(bookingRequest),
                             phoneNumber,
                             language
                         } as SyncdayAwsSnsRequest
-                    )
-                )
+                    );
+                })
             );
     }
 
