@@ -191,8 +191,8 @@ export class NotificationsService {
                 mergeMap((bookingRequest) => {
 
                     const template = bookingRequest.additionalMessage
-                        ? TextTemplate.BOOKING_REQUEST
-                        : TextTemplate.BOOKING_REQUEST_POST_SCRIPT;
+                        ? TextTemplate.BOOKING_REQUEST_POST_SCRIPT
+                        : TextTemplate.BOOKING_REQUEST;
 
                     return this.sendMessage(
                         syncdayNotificationPublishKey,
