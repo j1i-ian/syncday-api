@@ -237,7 +237,10 @@ export class TimeUtilService {
             );
     }
 
-    intersectAvailableTimes(availableTimesA: AvailableTime[], availableTimesB: AvailableTime[]): AvailableTime[] {
+    intersectAvailableTimes(
+        availableTimesA: AvailableTime[],
+        availableTimesB: AvailableTime[]
+    ): AvailableTime[] {
 
         const intersectAvailableTimes: AvailableTime[] = [];
 
@@ -456,6 +459,14 @@ export class TimeUtilService {
         endDateTime: Date
     ): boolean {
 
+        this.logger.debug({
+            message: 'Availability - Time Calculation',
+            availableTimes,
+            availabilityTimezone,
+            startDateTime,
+            endDateTime
+        });
+
         const startTimeString = this.dateToTimeString(startDateTime, availabilityTimezone);
         const endTimeString = this.dateToTimeString(endDateTime, availabilityTimezone);
 
@@ -480,7 +491,9 @@ export class TimeUtilService {
         let startWeekday: number;
         let endWeekday: number;
 
-        if (localizedDate && +localizedDate !== localizedStartDateTime.getDate()) {
+        const isSameDate = localizedDate && +localizedDate !== localizedStartDateTime.getDate();
+
+        if (isSameDate) {
             startWeekday = (localizedStartDateTime.getDay() + 1) % 7;
             endWeekday = (localizedEndDateTime.getDay() + 1) % 7;
         } else {
@@ -492,8 +505,9 @@ export class TimeUtilService {
         const endWeekdayAvailableTime = availableTimes.find((_availableTime) => _availableTime.day === endWeekday);
 
         let isTimeOverlapping;
+        const hasAvailabileTime = startWeekdayAvailableTime && endWeekdayAvailableTime;
 
-        if (startWeekdayAvailableTime && endWeekdayAvailableTime) {
+        if (hasAvailabileTime) {
             const isTimeOverlappingWithStartDateTime = this.isTimeOverlappingWithAvailableTimeRange(
                 localizedStartDateTime,
                 availabilityTimezone,
@@ -641,6 +655,7 @@ export class TimeUtilService {
     }
 
     /**
+     * @param date the availabiility for only date with time ignore
      * @param timeString ex) 10:00
      */
     localizeDateTime(

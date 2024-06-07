@@ -138,6 +138,7 @@ export class BookingsService {
 
                     availability.availableTimes = normalizedAvailableTimes;
                     availability.overrides = normalizedOverrides;
+                    availability.timezone = ensuredTimezone;
 
                     return availability;
                 }),

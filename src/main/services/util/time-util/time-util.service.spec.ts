@@ -1059,6 +1059,48 @@ describe('TimeUtilService', () => {
                 expectedResult: false
             },
             {
+                /**
+                 * @see {@link [Cannot book when hosts have different time zones](syncday/syncday-frontend#1437)}
+                 */
+                description: 'should be returned true with availability times, at least one of the ensured start time and end time is included in the availability time',
+                availableTimesMock: [
+                    {
+                        day: 1,
+                        timeRanges: []
+                    },
+                    {
+                        day: 2,
+                        timeRanges: [
+                            { startTime: '09:00', endTime: '12:00' }
+                        ]
+                    },
+                    {
+                        day: 3,
+                        timeRanges: [
+                            { startTime: '09:00', endTime: '12:00' }
+                        ]
+                    },
+                    {
+                        day: 4,
+                        timeRanges: [
+                            { startTime: '09:00', endTime: '12:00' }
+                        ]
+                    },
+                    {
+                        day: 5,
+                        timeRanges: [
+                            { startTime: '09:00', endTime: '12:00' }
+                        ]
+                    }
+                ],
+                availabilityTimezone: 'America/Anguilla',
+                startDateTimeMock: new Date('2024-06-06T01:00:00.000Z'),
+                endDateTimeMock: new Date('2024-06-06T01:30:00.000Z'),
+                isTimeOverlappingWithStartDateTimeStub: true,
+                isTimeOverlappingWithEndDateTimeStub: true,
+                expectedResult: true
+            },
+            {
                 description: 'should be returned true if there are availability times, and at least one of the ensured start time and end time is included in the availability time',
                 availableTimesMock: [
                     {

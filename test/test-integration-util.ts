@@ -52,6 +52,7 @@ import { AppleCalendarEventListService } from '@services/integrations/apple-inte
 import { AppleCalendarEventCreateService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-create.service';
 import { AppleCalendarEventPatchService } from '@services/integrations/apple-integrations/facades/apple-calendar-event-patch.service';
 import { NotificationsService } from '@services/notifications/notifications.service';
+import { TemporaryUsersModule } from '@services/users/temporary-users/temporary-users.module';
 import { User } from '@entity/users/user.entity';
 import { Verification } from '@entity/verifications/verification.interface';
 import { GoogleIntegrationScheduledEvent } from '@entity/integrations/google/google-integration-scheduled-event.entity';
@@ -462,8 +463,13 @@ export class TestIntegrationUtil {
             },
             inviteeAnswers: [
                 {
-                    inputType: QuestionType.TEXT,
-                    name: 'testname',
+                    type: QuestionType.TEXT,
+                    options: [],
+                    priority: 1,
+                    selectedIndex: 1,
+                    subject: '',
+                    scheduleUUID: '',
+                    answer: '',
                     required: true
                 }
             ],
@@ -488,8 +494,11 @@ export class TestIntegrationUtil {
                     }
                 ]
             },
-            meetingNote: 'test meeting note ~',
             invitee: {
+                email: 'dev@sync.day',
+                locale: '',
+                name: '',
+                phoneNumber: '',
                 timezone: inviteeTimezone
             },
             eventUUID: hostEvent.uuid
@@ -738,6 +747,7 @@ export class TestIntegrationUtil {
                 ClusterModule.forRootAsync(AppConfigService.getRedisModuleOptions()),
 
                 UserModule,
+                TemporaryUsersModule,
 
                 AuthModule,
 
