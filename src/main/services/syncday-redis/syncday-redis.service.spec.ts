@@ -234,11 +234,11 @@ describe('Redis Service Test', () => {
         });
 
         it('coverage fill: getEventLinkStatusKey', () => {
-            const userUUIDMock = TestMockUtil.faker.datatype.uuid();
+            const teamUUIDMock = TestMockUtil.faker.datatype.uuid();
 
             serviceSandbox.stub(service, <any>'getRedisKey').returns('local:workspaces');
 
-            const result = service.getEventLinkSetStatusKey(userUUIDMock);
+            const result = service.getEventLinkSetStatusKey(teamUUIDMock);
 
             expect(result).ok;
         });

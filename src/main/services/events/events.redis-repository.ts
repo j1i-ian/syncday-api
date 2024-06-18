@@ -146,22 +146,22 @@ export class EventsRedisRepository {
         );
     }
 
-    async getEventLinkSetStatus(userUUID: string, eventLink: string): Promise<boolean> {
-        const eventLinkSetStatusKey = this.syncdayRedisService.getEventLinkSetStatusKey(userUUID);
+    async getEventLinkSetStatus(teamUUID: string, eventLink: string): Promise<boolean> {
+        const eventLinkSetStatusKey = this.syncdayRedisService.getEventLinkSetStatusKey(teamUUID);
         const usedCount = await this.cluster.sismember(eventLinkSetStatusKey, eventLink);
 
         return usedCount > 0;
     }
 
-    async setEventLinkSetStatus(userUUID: string, eventLink: string): Promise<boolean> {
-        const eventLinkSetStatusKey = this.syncdayRedisService.getEventLinkSetStatusKey(userUUID);
+    async setEventLinkSetStatus(teamUUID: string, eventLink: string): Promise<boolean> {
+        const eventLinkSetStatusKey = this.syncdayRedisService.getEventLinkSetStatusKey(teamUUID);
         const addedItemCount = await this.cluster.sadd(eventLinkSetStatusKey, eventLink);
 
         return addedItemCount > 0;
     }
 
-    async deleteEventLinkSetStatus(userUUID: string, eventLink: string): Promise<boolean> {
-        const eventLinkSetStatusKey = this.syncdayRedisService.getEventLinkSetStatusKey(userUUID);
+    async deleteEventLinkSetStatus(teamUUID: string, eventLink: string): Promise<boolean> {
+        const eventLinkSetStatusKey = this.syncdayRedisService.getEventLinkSetStatusKey(teamUUID);
         const deletedItemCount = await this.cluster.srem(eventLinkSetStatusKey, eventLink);
 
         return deletedItemCount > 0;

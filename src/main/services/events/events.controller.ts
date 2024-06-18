@@ -114,10 +114,15 @@ export class EventsController {
     @HttpCode(HttpStatus.NO_CONTENT)
     @Roles(Role.OWNER, Role.MANAGER)
     async remove(
+        @AuthProfile('teamUUID') teamUUID: string,
         @AuthProfile('teamId') teamId: number,
         @Param('eventId', ParseIntPipe) eventId: number
     ): Promise<void> {
-        await this.eventsService.remove(eventId, teamId);
+        await this.eventsService.remove(
+            eventId,
+            teamId,
+            teamUUID
+        );
     }
 
     clone(eventId: number, teamId: number, teamUUID: string): Promise<Event> {

@@ -516,6 +516,7 @@ export class EventsService {
             return _rdbUpdateSuccess;
         });
 
+        console.log('dfd');
         // update event detail
         await this.eventRedisRepository.save(
             validatedEventDetail.uuid,
@@ -529,7 +530,11 @@ export class EventsService {
         return true;
     }
 
-    async remove(eventId: number, teamId: number): Promise<boolean> {
+    async remove(
+        eventId: number,
+        teamId: number,
+        teamUUID: string
+    ): Promise<boolean> {
         const validatedEvent = await this.validator.validate(teamId, eventId, Event);
 
         const eventDetail = validatedEvent.eventDetail;
@@ -551,10 +556,12 @@ export class EventsService {
                 throw new InternalServerErrorException('Delete event detail or event is failed');
             }
 
-            await this.eventRedisRepository.remove(eventDetail.uuid);
-
             return _isDeleteEventDetailSuccess && _isDeleteEventSuccess;
         });
+
+        await this.eventRedisRepository.remove(eventDetail.uuid);
+
+        await this.eventRedisRepository.deleteEventLinkSetStatus(teamUUID, validatedEvent.link);
 
         return deleteSuccess;
     }
